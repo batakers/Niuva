@@ -1,0 +1,135 @@
+{
+  "theme_and_archetype": {
+    "theme": "Dark",
+    "archetype": "Archetype 4 (Swiss & High-Contrast) - Technical R&D Variant",
+    "rationale": "NIUVA requires a clean, modern, industrial-tech aesthetic. Dark navy/charcoal conveys professional R&D and engineering precision, while electric accents highlight innovation."
+  },
+  "typography": {
+    "headings": {
+      "family": "Outfit, sans-serif",
+      "weights": ["600", "700", "800"],
+      "tracking": "tracking-tight",
+      "usage": "Hero headings, section titles, major call-outs."
+    },
+    "body": {
+      "family": "Plus Jakarta Sans, sans-serif",
+      "weights": ["400", "500"],
+      "leading": "leading-relaxed",
+      "usage": "Paragraphs, dashboard data, form labels."
+    },
+    "monospace": {
+      "family": "JetBrains Mono, monospace",
+      "weights": ["400", "600"],
+      "usage": "Order IDs, SLAs, tracking numbers, technical specs."
+    },
+    "hierarchy_rules": "H1 max text-5xl to text-6xl. Do not skip more than two tailwind size steps between heading and subheading."
+  },
+  "color_palette": {
+    "background": {
+      "base": "#0A0B10",
+      "description": "Deepest Charcoal/Navy for main page background."
+    },
+    "surface": {
+      "level_1": "#13151F",
+      "level_2": "#1E2130",
+      "description": "Cards, modals, and dropdowns. Do not use pure black or grey. Maintain the navy tint."
+    },
+    "borders": {
+      "default": "#2B2F42",
+      "focus": "#3B82F6",
+      "description": "Visible grid lines and technical borders."
+    },
+    "brand": {
+      "primary": "#3B82F6",
+      "secondary": "#F59E0B",
+      "description": "Electric Cobalt Blue as main NIUVA accent, Tech Amber for heat/industrial highlights."
+    },
+    "text": {
+      "primary": "#F8FAFC",
+      "secondary": "#94A3B8",
+      "muted": "#64748B"
+    },
+    "status": {
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "info": "#3B82F6"
+    }
+  },
+  "layout_and_spacing": {
+    "marketing_pages": {
+      "grid": "Tetris Grid (asymmetrical, overlapping)",
+      "spacing": "Generous (p-12, p-16, p-24)",
+      "hero_overlay": "bg-black/40 or bg-gradient-to-r from-[#0A0B10]/90 to-transparent for readability"
+    },
+    "dashboard_and_order_flow": {
+      "grid": "Control Room Grid (dense, structured, border-collapse styles)",
+      "spacing": "Compact (p-4, p-6)",
+      "card_style": "Flat, 1px border, no soft shadows. Sharp or 4px radius max."
+    }
+  },
+  "components_strategy": {
+    "buttons": {
+      "style": "Rectangular, max rounded-md (4px).",
+      "primary": "bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors",
+      "outline": "border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white"
+    },
+    "forms_and_wizard": {
+      "style": "Left-aligned labels, distinct active/focus states with ring-2 ring-blue-500/50.",
+      "wizard_steps": "Visual stepper using monospace font for numbers, clear active vs pending colors."
+    },
+    "navigation": {
+      "style": "Glassmorphism for marketing (backdrop-blur-xl bg-[#0A0B10]/70 border-b border-slate-800). Solid for dashboard."
+    },
+    "cards": {
+      "style": "Technical Grid Borders. Use 'The Tracing Beam' or subtle top-border accent (border-t-2 border-t-blue-500) for active dashboard widgets."
+    }
+  },
+  "motion_and_interactions": {
+    "hover": "Mechanical and crisp. Scale down slightly (scale-95) on click, rapid color transitions (duration-150).",
+    "page_transitions": "Staggered fade-up for portfolio items and dashboard widgets.",
+    "accessibility": "Respect prefers-reduced-motion. High contrast focus rings mandatory."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "styling": "stroke-width: 1.5 for a precise, engineered look."
+  },
+  "media_and_images": {
+    "hero": {
+      "url": "https://images.unsplash.com/photo-1555550252-fc3187f10240?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwxfHxlbGVjdHJpYyUyMHZlaGljbGUlMjBmdXR1cmlzdGljJTIwcHJvdG90eXBlfGVufDB8fHx8MTc4MjY1NjI1MXww&ixlib=rb-4.1.0&q=85",
+      "description": "White and blue futuristic EV prototype for the bold homepage hero visual.",
+      "treatment": "Use gradient overlay from left to ensure text legibility."
+    },
+    "services_3d_printing": {
+      "url": "https://images.unsplash.com/photo-1642969164999-979483e21601?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwxfHwzZCUyMHByaW50ZXIlMjBwcmludGluZyUyMGluZHVzdHJpYWwlMjBwcm9jZXNzfGVufDB8fHx8MTc4MjY1NjI1MXww&ixlib=rb-4.1.0&q=85",
+      "description": "Close up of an industrial 3D printing machine with blue light."
+    },
+    "services_ev_design": {
+      "url": "https://images.unsplash.com/photo-1737982560500-e152da0e770e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHw0fHxlbGVjdHJpYyUyMHZlaGljbGUlMjBmdXR1cmlzdGljJTIwcHJvdG90eXBlfGVufDB8fHx8MTc4MjY1NjI1MXww&ixlib=rb-4.1.0&q=85",
+      "description": "Red EV shaped prototype on black surface for EV Design pillar."
+    },
+    "company_about": {
+      "url": "https://images.unsplash.com/photo-1576669801838-1b1c52121e6a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB0ZWNoJTIwb2ZmaWNlJTIwbGFib3JhdG9yeXxlbnwwfHx8fDE3ODI2NTYyNTJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Modern tech office/laboratory reflecting PT Niuva's R&D studio."
+    },
+    "partnerships_logos": [
+      {
+        "url": "https://images.unsplash.com/photo-1763929272543-0df093e4f659?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHwxfHxpbm5vdmF0aW9uJTIwcGFyayUyMGxvZ28lMjB3aGl0ZSUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzgyNjU2Mjc3fDA&ixlib=rb-4.1.0&q=85",
+        "name": "Telkom University / Bandung Techno Park Placeholder 1"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1777643825708-21fad6164f52?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHwyfHxpbm5vdmF0aW9uJTIwcGFyayUyMGxvZ28lMjB3aGl0ZSUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzgyNjU2Mjc3fDA&ixlib=rb-4.1.0&q=85",
+        "name": "TelU Makerspace Placeholder 2"
+      }
+    ]
+  },
+  "testing": {
+    "attributes": "All interactive elements, forms, links, and buttons MUST use role-based data-testid attributes (e.g., data-testid='order-submit-button', data-testid='language-toggle')."
+  },
+  "instructions_to_main_agent": [
+    "Ensure global Bilingual (ID/EN) state management affects both marketing and dashboard views.",
+    "Implement the 3D printing order wizard with strict SLA messaging ('1x24 jam') clearly visible in the UI.",
+    "Portfolio grid must feature a Lightbox gallery for zooming into images and 3D models.",
+    "Admin dashboard should utilize pure Shadcn tables/cards but styled with the Technical Grid Borders defined in components_strategy."
+  ]
+}
