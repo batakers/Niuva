@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
+export const HAS_CONFIGURED_BACKEND = Boolean(BACKEND_URL);
 export const API = `${BACKEND_URL}/api`;
 export const TOKEN_KEY = "niuva_token";
 

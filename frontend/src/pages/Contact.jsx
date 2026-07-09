@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Mail, Phone, Send } from "lucide-react";
+import { MapPin, Mail, Phone, Send, TerminalSquare } from "lucide-react";
 import { useI18n } from "../i18n";
-import { PublicLayout, PageHeader } from "../components/Layout";
+import { ConversionLayout } from "../components/Layout";
 import { api, formatApiError } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
+import { profileContent } from "../components/brand/CompanyProfileBlocks";
 
 export default function Contact() {
   const { t } = useI18n();
@@ -30,44 +31,91 @@ export default function Contact() {
   };
 
   return (
-    <PublicLayout>
-      <PageHeader tag="Get in touch" title={t("contact.title")} subtitle={t("contact.subtitle")} />
-      <section className="max-w-7xl mx-auto px-5 sm:px-8 py-20 grid lg:grid-cols-2 gap-12">
-        <div className="space-y-5">
+    <ConversionLayout title={t("contact.title")} subtitle={t("contact.subtitle")}>
+      <div className="w-full space-y-12">
+
+        {/* Contact Specs */}
+        <div className="grid sm:grid-cols-3 gap-4 border border-border bg-surface-1 p-2">
           {[
-            { icon: MapPin, label: t("contact.location"), val: t("contact.locationVal") },
-            { icon: Mail, label: "Email", val: "hello@niuva.com" },
-            { icon: Phone, label: t("common.phone"), val: "+62 22 0000 0000" },
+            { icon: MapPin, label: "HQ", val: profileContent.contact.location },
+            { icon: Mail, label: "Email", val: profileContent.contact.email },
+            { icon: Phone, label: "Comms", val: "WhatsApp melalui formulir" },
           ].map(({ icon: Icon, label, val }) => (
-            <div key={label} className="flex items-start gap-4 p-5 rounded-md bg-[#13151F] border border-slate-800">
-              <span className="h-10 w-10 rounded-md bg-blue-600/10 border border-blue-500/30 grid place-items-center flex-shrink-0">
-                <Icon className="h-5 w-5 text-blue-400" strokeWidth={1.5} />
-              </span>
-              <div>
-                <p className="text-xs font-mono-tech uppercase text-slate-500">{label}</p>
-                <p className="text-slate-200">{val}</p>
-              </div>
+            <div key={label} className="border border-border/50 bg-background p-4 flex flex-col justify-center text-center">
+              <Icon className="h-5 w-5 text-primary mx-auto mb-3" strokeWidth={1.5} />
+              <p className="font-mono text-[10px] uppercase text-muted-foreground tracking-widest mb-1">{label}</p>
+              <p className="font-heading text-sm font-bold text-foreground">{val}</p>
             </div>
           ))}
         </div>
 
-        <form onSubmit={submit} className="rounded-lg border border-slate-800 bg-[#13151F] p-7 space-y-4" data-testid="contact-form">
-          <h3 className="font-heading text-xl font-semibold text-white mb-2">{t("contact.formTitle")}</h3>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div><Label className="text-slate-300 mb-1.5 block">{t("common.name")}</Label>
-              <Input data-testid="contact-name" value={form.name} onChange={set("name")} required className="bg-[#1E2130] border-slate-700 text-white focus-visible:ring-blue-500/50" /></div>
-            <div><Label className="text-slate-300 mb-1.5 block">{t("common.email")}</Label>
-              <Input data-testid="contact-email" type="email" value={form.email} onChange={set("email")} required className="bg-[#1E2130] border-slate-700 text-white focus-visible:ring-blue-500/50" /></div>
+        {/* Form Terminal */}
+        <div className="relative border border-border bg-surface-1 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-8 bg-surface-2 border-b border-border flex items-center px-4 gap-2">
+            <TerminalSquare className="h-4 w-4 text-muted-foreground" />
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">TRANSMISSION_PROTOCOL // SECURE</span>
           </div>
-          <div><Label className="text-slate-300 mb-1.5 block">{t("contact.subject")}</Label>
-            <Input data-testid="contact-subject" value={form.subject} onChange={set("subject")} required className="bg-[#1E2130] border-slate-700 text-white focus-visible:ring-blue-500/50" /></div>
-          <div><Label className="text-slate-300 mb-1.5 block">{t("contact.message")}</Label>
-            <Textarea data-testid="contact-message" value={form.message} onChange={set("message")} required rows={5} className="bg-[#1E2130] border-slate-700 text-white focus-visible:ring-blue-500/50" /></div>
-          <Button type="submit" disabled={loading} data-testid="contact-submit" className="bg-blue-600 hover:bg-blue-500 w-full h-11">
-            <Send className="mr-2 h-4 w-4" /> {loading ? t("common.loading") : t("common.send")}
-          </Button>
-        </form>
-      </section>
-    </PublicLayout>
+
+          <form onSubmit={submit} className="p-6 sm:p-8 pt-14 space-y-6" data-testid="contact-form">
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest block">IDENTIFIER</Label>
+                <Input
+                  data-testid="contact-name"
+                  value={form.name}
+                  onChange={set("name")}
+                  required
+                  className="rounded-none border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 bg-background font-mono text-sm h-12"
+                  placeholder="Nama lengkap"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest block">RETURN_ADDRESS</Label>
+                <Input
+                  data-testid="contact-email"
+                  type="email"
+                  value={form.email}
+                  onChange={set("email")}
+                  required
+                  className="rounded-none border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 bg-background font-mono text-sm h-12"
+                  placeholder="nama@perusahaan.com"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest block">QUERY_SUBJECT</Label>
+              <Input
+                data-testid="contact-subject"
+                value={form.subject}
+                onChange={set("subject")}
+                required
+                className="rounded-none border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 bg-background font-mono text-sm h-12"
+                placeholder="Pengembangan prototipe produk"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest block">PAYLOAD</Label>
+              <Textarea
+                data-testid="contact-message"
+                value={form.message}
+                onChange={set("message")}
+                required
+                rows={5}
+                className="rounded-none border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 bg-background font-mono text-sm resize-none"
+                placeholder="Jelaskan konteks, tujuan, dan ruang lingkup proyek."
+              />
+            </div>
+
+            <div className="pt-4 border-t border-border/50">
+              <Button type="submit" disabled={loading} data-testid="contact-submit" className="w-full rounded-none bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-mono uppercase tracking-widest text-xs">
+                <Send className="mr-2 h-4 w-4" /> {loading ? "TRANSMITTING..." : "EXECUTE"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </ConversionLayout>
   );
 }

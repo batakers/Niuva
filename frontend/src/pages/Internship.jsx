@@ -1,15 +1,19 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { GraduationCap, CheckCircle2 } from "lucide-react";
+import { GraduationCap, Code, ShieldCheck, Database, TerminalSquare, Send } from "lucide-react";
 import { useI18n } from "../i18n";
-import { PublicLayout, PageHeader } from "../components/Layout";
+import { ConversionLayout } from "../components/Layout";
 import { api, formatApiError } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 
-const BENEFITS = ["Proyek R&D nyata", "Mentoring engineer", "Sertifikat & portofolio", "Lingkungan technopark"];
+const PROGRAM_SPECS = [
+  { icon: Code, label: "Projects", desc: "Live R&D deployment" },
+  { icon: ShieldCheck, label: "Mentoring", desc: "Direct engineer guidance" },
+  { icon: Database, label: "Portfolio", desc: "Verifiable credentials" },
+];
 
 export default function Internship() {
   const { t } = useI18n();
@@ -34,59 +38,83 @@ export default function Internship() {
   };
 
   return (
-    <PublicLayout>
-      <PageHeader tag="Careers" title={t("internship.title")} subtitle={t("internship.subtitle")} />
-      <section className="max-w-7xl mx-auto px-5 sm:px-8 py-20 grid lg:grid-cols-5 gap-12">
-        <div className="lg:col-span-2">
-          <span className="h-12 w-12 rounded-md bg-blue-600/10 border border-blue-500/30 grid place-items-center mb-6">
-            <GraduationCap className="h-6 w-6 text-blue-400" strokeWidth={1.5} />
-          </span>
-          <ul className="space-y-4">
-            {BENEFITS.map((b) => (
-              <li key={b} className="flex gap-3 text-slate-300"><CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0" strokeWidth={1.5} />{b}</li>
-            ))}
-          </ul>
+    <ConversionLayout title={t("internship.title")} subtitle={t("internship.subtitle")}>
+      <div className="w-full space-y-12">
+        
+        {/* Program Specs */}
+        <div className="grid sm:grid-cols-3 gap-4 border border-border bg-surface-1 p-2">
+          {PROGRAM_SPECS.map(({ icon: Icon, label, desc }) => (
+            <div key={label} className="border border-border/50 bg-background p-4 flex flex-col items-center text-center">
+              <Icon className="h-5 w-5 text-primary mb-3" strokeWidth={1.5} />
+              <p className="font-mono text-[10px] uppercase text-muted-foreground tracking-widest mb-1">{label}</p>
+              <p className="font-heading text-sm font-bold text-foreground">{desc}</p>
+            </div>
+          ))}
         </div>
 
-        <div className="lg:col-span-3">
-          {done ? (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-10 text-center" data-testid="internship-success">
-              <CheckCircle2 className="h-12 w-12 text-emerald-400 mx-auto mb-4" strokeWidth={1.5} />
-              <p className="text-slate-200 text-lg">{t("internship.success")}</p>
-            </div>
-          ) : (
-            <form onSubmit={submit} className="rounded-lg border border-slate-800 bg-[#13151F] p-7 space-y-4" data-testid="internship-form">
-              <h3 className="font-heading text-xl font-semibold text-white mb-2">{t("internship.formTitle")}</h3>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Field label={t("internship.fullName")} testid="intern-name" value={form.full_name} onChange={set("full_name")} required />
-                <Field label={t("common.email")} testid="intern-email" type="email" value={form.email} onChange={set("email")} required />
-                <Field label={t("common.phone")} testid="intern-phone" value={form.phone} onChange={set("phone")} required />
-                <Field label={t("internship.university")} testid="intern-univ" value={form.university} onChange={set("university")} required />
-                <Field label={t("internship.major")} testid="intern-major" value={form.major} onChange={set("major")} required />
-                <Field label={t("internship.semester")} testid="intern-sem" value={form.semester} onChange={set("semester")} />
-                <Field label={t("internship.duration")} testid="intern-duration" value={form.duration} onChange={set("duration")} />
-                <Field label={`${t("internship.portfolioUrl")} ${t("common.optional")}`} testid="intern-portfolio" value={form.portfolio_url} onChange={set("portfolio_url")} />
+        {/* Application Terminal */}
+        <div className="relative border border-border bg-surface-1 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-8 bg-surface-2 border-b border-border flex items-center px-4 gap-2">
+            <TerminalSquare className="h-4 w-4 text-muted-foreground" />
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">CANDIDATE_ONBOARDING // INTERNSHIP_PROG</span>
+          </div>
+          
+          <div className="p-6 sm:p-8 pt-14">
+            {done ? (
+              <div className="border border-status-success/30 bg-status-success/5 p-10 text-center" data-testid="internship-success">
+                <ShieldCheck className="h-12 w-12 text-status-success mx-auto mb-4" strokeWidth={1.5} />
+                <h3 className="font-heading text-xl font-bold text-foreground mb-2">APPLICATION_RECEIVED</h3>
+                <p className="font-mono text-xs text-muted-foreground uppercase">{t("internship.success")}</p>
               </div>
-              <div>
-                <Label className="text-slate-300 mb-1.5 block">{t("internship.motivation")}</Label>
-                <Textarea data-testid="intern-motivation" value={form.motivation} onChange={set("motivation")} required rows={4}
-                  className="bg-[#1E2130] border-slate-700 text-white focus-visible:ring-blue-500/50" />
-              </div>
-              <Button type="submit" disabled={loading} data-testid="intern-submit"
-                className="bg-blue-600 hover:bg-blue-500 w-full h-11">{loading ? t("common.loading") : t("internship.submit")}</Button>
-            </form>
-          )}
+            ) : (
+              <form onSubmit={submit} className="space-y-6" data-testid="internship-form">
+                
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <Field label={t("internship.fullName")} testid="intern-name" value={form.full_name} onChange={set("full_name")} required />
+                  <Field label={t("common.email")} testid="intern-email" type="email" value={form.email} onChange={set("email")} required />
+                  <Field label={t("common.phone")} testid="intern-phone" value={form.phone} onChange={set("phone")} required />
+                  <Field label={t("internship.university")} testid="intern-univ" value={form.university} onChange={set("university")} required />
+                  <Field label={t("internship.major")} testid="intern-major" value={form.major} onChange={set("major")} required />
+                  <Field label={t("internship.semester")} testid="intern-sem" value={form.semester} onChange={set("semester")} />
+                  <Field label={t("internship.duration")} testid="intern-duration" value={form.duration} onChange={set("duration")} />
+                  <Field label={`${t("internship.portfolioUrl")} (OPTIONAL)`} testid="intern-portfolio" value={form.portfolio_url} onChange={set("portfolio_url")} />
+                </div>
+                
+                <div>
+                  <Label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest block mb-2">{t("internship.motivation")}</Label>
+                  <Textarea 
+                    data-testid="intern-motivation" 
+                    value={form.motivation} 
+                    onChange={set("motivation")} 
+                    required 
+                    rows={4} 
+                    className="rounded-none border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 bg-background font-mono text-sm resize-none"
+                  />
+                </div>
+                
+                <div className="pt-4 border-t border-border/50">
+                  <Button type="submit" disabled={loading} data-testid="intern-submit" className="w-full rounded-none bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-mono uppercase tracking-widest text-xs">
+                    <Send className="mr-2 h-4 w-4" /> {loading ? "PROCESSING..." : "SUBMIT_APPLICATION"}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
-      </section>
-    </PublicLayout>
+      </div>
+    </ConversionLayout>
   );
 }
 
 function Field({ label, testid, ...props }) {
   return (
-    <div>
-      <Label className="text-slate-300 mb-1.5 block">{label}</Label>
-      <Input data-testid={testid} {...props} className="bg-[#1E2130] border-slate-700 text-white focus-visible:ring-blue-500/50" />
+    <div className="space-y-2">
+      <Label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest block">{label}</Label>
+      <Input 
+        data-testid={testid} 
+        {...props} 
+        className="rounded-none border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 bg-background font-mono text-sm h-12"
+      />
     </div>
   );
 }

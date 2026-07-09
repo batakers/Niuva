@@ -6,8 +6,8 @@ export function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-[#0A0B10]">
-        <div className="h-10 w-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen grid place-items-center bg-background">
+        <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
