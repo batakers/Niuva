@@ -1,16 +1,22 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    darkMode: ["class"],
-    content: [
+  darkMode: ["class"],
+  content: [
     "./src/**/*.{js,jsx,ts,tsx}",
     "./public/index.html"
   ],
   theme: {
     extend: {
+      fontFamily: {
+        heading: ["'Poppins'", "system-ui", "sans-serif"],
+        body: ["'Poppins'", "system-ui", "sans-serif"],
+        mono: ["'JetBrains Mono'", "ui-monospace", "monospace"],
+      },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)'
+        lg: '0.75rem',
+        md: '0.625rem',
+        sm: 'var(--radius)',
+        DEFAULT: 'var(--radius)',
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -46,36 +52,69 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        chart: {
-          '1': 'hsl(var(--chart-1))',
-          '2': 'hsl(var(--chart-2))',
-          '3': 'hsl(var(--chart-3))',
-          '4': 'hsl(var(--chart-4))',
-          '5': 'hsl(var(--chart-5))'
-        }
+        niuva: {
+          blue: '#6692BC',
+          sky: '#90AFCD',
+          dark: '#4A72A0',
+          midnight: '#243241',
+          steel: '#5F7285',
+          smoke: '#6B7A8D',
+          silver: '#D8E6F1',
+          frost: '#E8F1F8',
+          cloud: '#F8FAFC',
+          white: '#FFFFFF',
+        },
+        signal: {
+          DEFAULT: 'hsl(var(--signal))',
+          hover: 'hsl(var(--signal-hover))',
+        },
+        warm: 'hsl(var(--warm))',
+        surface: {
+          1: 'hsl(var(--surface-1))',
+          2: 'hsl(var(--surface-2))',
+          3: 'hsl(var(--surface-3))',
+        },
+        status: {
+          success: 'hsl(var(--success))',
+          warning: 'hsl(var(--warning))',
+          error: 'hsl(var(--error))',
+          info: 'hsl(var(--info))',
+        },
+      },
+      boxShadow: {
+        sm: '0 1px 2px rgba(28, 43, 58, 0.06)',
+        md: '0 6px 14px rgba(28, 43, 58, 0.08)',
+        lg: '0 10px 24px rgba(28, 43, 58, 0.10)',
+        glow: '0 0 0 3px hsl(var(--primary) / 0.14)',
       },
       keyframes: {
         'accordion-down': {
-          from: {
-            height: '0'
-          },
-          to: {
-            height: 'var(--radix-accordion-content-height)'
-          }
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' }
         },
         'accordion-up': {
-          from: {
-            height: 'var(--radix-accordion-content-height)'
-          },
-          to: {
-            height: '0'
-          }
-        }
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' }
+        },
+        'reveal': {
+          from: { opacity: '0', transform: 'translateY(18px)' },
+          to: { opacity: '1', transform: 'translateY(0)' }
+        },
+        'snap-in': {
+          from: { opacity: '0', transform: 'scale(0.98)' },
+          to: { opacity: '1', transform: 'scale(1)' }
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out'
-      }
+        'accordion-up': 'accordion-up 0.2s ease-out',
+        'reveal': 'reveal 0.4s cubic-bezier(0.22,1,0.36,1) both',
+        'snap-in': 'snap-in 0.2s cubic-bezier(0.16,1,0.3,1) both',
+      },
+      transitionTimingFunction: {
+        'snap': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'reveal': 'cubic-bezier(0.22, 1, 0.36, 1)',
+      },
     }
   },
   plugins: [require("tailwindcss-animate")],

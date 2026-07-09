@@ -2,13 +2,13 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 
 const translations = {
   id: {
-    "nav.home": "Beranda",
-    "nav.about": "Tentang",
-    "nav.services": "Layanan",
-    "nav.portfolio": "Portofolio",
+    "nav.home": "Home",
+    "nav.about": "About",
+    "nav.services": "Capabilities",
+    "nav.portfolio": "Projects",
     "nav.ecosystem": "Ekosistem",
     "nav.internship": "Magang",
-    "nav.contact": "Kontak",
+    "nav.contact": "Contact",
     "nav.order": "Pesan 3D Printing",
     "nav.login": "Masuk",
     "nav.register": "Daftar",
@@ -64,13 +64,13 @@ const translations = {
     "about.mission2": "Mempercepat siklus inovasi melalui prototyping & 3D printing.",
     "about.mission3": "Membangun talenta engineering melalui kolaborasi akademik & industri.",
     "about.valueTitle": "Value Proposition",
-    "about.value": "Kami menjembatani dunia riset akademik dan kebutuhan industri nyata — gesit seperti startup, presisi seperti laboratorium.",
+    "about.value": "Kami menjembatani dunia riset akademik dan kebutuhan industri nyata: gesit seperti startup, presisi seperti laboratorium.",
 
-    "services.title": "Layanan Kami",
-    "services.subtitle": "Empat pilar yang saling melengkapi untuk perjalanan inovasi Anda.",
+    "services.title": "Capabilities",
+    "services.subtitle": "Riset, desain, prototyping, workshop, apparel, dan merchandise untuk kebutuhan inovasi.",
 
-    "portfolio.title": "Portofolio",
-    "portfolio.subtitle": "Pilihan proyek desain & rekayasa unggulan NIUVA.",
+    "portfolio.title": "Projects",
+    "portfolio.subtitle": "Pratinjau studi kasus pengembangan produk, mobilitas, dan simulator interaktif NIUVA.",
     "portfolio.client": "Klien",
     "portfolio.empty": "Belum ada proyek.",
 
@@ -99,7 +99,7 @@ const translations = {
     "contact.formTitle": "Form Inquiry",
     "contact.subject": "Subjek",
     "contact.message": "Pesan",
-    "contact.success": "Pesan berhasil dikirim! Kami akan segera membalas.",
+    "contact.success": "Pesan berhasil dikirim. Tim Niuva akan meninjau permintaan Anda.",
 
     "auth.loginTitle": "Masuk ke Akun",
     "auth.registerTitle": "Buat Akun Klien",
@@ -174,8 +174,8 @@ const translations = {
   en: {
     "nav.home": "Home",
     "nav.about": "About",
-    "nav.services": "Services",
-    "nav.portfolio": "Portfolio",
+    "nav.services": "Capabilities",
+    "nav.portfolio": "Projects",
     "nav.ecosystem": "Ecosystem",
     "nav.internship": "Internship",
     "nav.contact": "Contact",
@@ -234,13 +234,13 @@ const translations = {
     "about.mission2": "Accelerate the innovation cycle through prototyping & 3D printing.",
     "about.mission3": "Build engineering talent through academic & industry collaboration.",
     "about.valueTitle": "Value Proposition",
-    "about.value": "We bridge academic research and real industry needs — agile like a startup, precise like a lab.",
+    "about.value": "We bridge academic research and real industry needs: agile like a startup, precise like a lab.",
 
-    "services.title": "Our Services",
-    "services.subtitle": "Four complementary pillars for your innovation journey.",
+    "services.title": "Capabilities",
+    "services.subtitle": "Research, design, prototyping, workshops, apparel, and merchandise for innovation needs.",
 
-    "portfolio.title": "Portfolio",
-    "portfolio.subtitle": "A selection of NIUVA's featured design & engineering projects.",
+    "portfolio.title": "Projects",
+    "portfolio.subtitle": "Case-study previews across product development, mobility, and interactive simulators.",
     "portfolio.client": "Client",
     "portfolio.empty": "No projects yet.",
 
@@ -269,7 +269,7 @@ const translations = {
     "contact.formTitle": "Inquiry Form",
     "contact.subject": "Subject",
     "contact.message": "Message",
-    "contact.success": "Message sent successfully! We'll reply soon.",
+    "contact.success": "Message sent. The Niuva team will review your request.",
 
     "auth.loginTitle": "Sign In to Your Account",
     "auth.registerTitle": "Create a Client Account",
@@ -358,3 +358,4 @@ export function I18nProvider({ children }) {
 export function useI18n() {
   return useContext(I18nContext);
 }
+
