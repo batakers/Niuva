@@ -3,9 +3,80 @@ import { useLocation } from "react-router-dom";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
 
+const DEFAULT_PUBLIC_META = {
+  title: "Niuva Inovasi Utama - Mitra R&D, Design Engineering, dan Prototyping",
+  description:
+    "PT Niuva Inovasi Utama membantu organisasi mengembangkan inovasi, riset produk, design engineering, prototyping, EV/product development, simulator, workshop, apparel, dan merchandise.",
+  canonical: "/",
+};
+
+const PUBLIC_ROUTE_META = {
+  "/": DEFAULT_PUBLIC_META,
+  "/about": {
+    title: "Tentang Niuva - Mitra Inovasi dan Pengembangan Produk",
+    description:
+      "Kenali PT Niuva Inovasi Utama sebagai mitra strategis untuk inovasi, riset berbasis kebutuhan, konsultasi ahli, design engineering, prototyping, dan pertumbuhan bisnis berkelanjutan.",
+    canonical: "/about",
+  },
+  "/capabilities": {
+    title: "Capabilities Niuva - R&D, Design Engineering, dan Prototyping",
+    description:
+      "Pelajari kapabilitas Niuva untuk Research & Development, Design & Prototyping, Consultant & Workshop, serta Apparel & Merchandise.",
+    canonical: "/capabilities",
+  },
+  "/services": {
+    title: "Capabilities Niuva - R&D, Design Engineering, dan Prototyping",
+    description:
+      "Pelajari kapabilitas Niuva untuk Research & Development, Design & Prototyping, Consultant & Workshop, serta Apparel & Merchandise.",
+    canonical: "/capabilities",
+  },
+  "/projects": {
+    title: "Projects Niuva - Mobilitas, EV, Simulator, dan Produk Teknis",
+    description:
+      "Lihat mini case study Niuva untuk Redesain Motor Xeon, Pengembangan Motor EV PT Pindad, Bicycle Arcade Agate, dan Motorcycle Simulator Agate.",
+    canonical: "/projects",
+  },
+  "/portfolio": {
+    title: "Projects Niuva - Mobilitas, EV, Simulator, dan Produk Teknis",
+    description:
+      "Lihat mini case study Niuva untuk Redesain Motor Xeon, Pengembangan Motor EV PT Pindad, Bicycle Arcade Agate, dan Motorcycle Simulator Agate.",
+    canonical: "/projects",
+  },
+  "/contact": {
+    title: "Contact Niuva - Diskusikan Project R&D dan Prototyping",
+    description:
+      "Hubungi Niuva melalui WhatsApp, email, atau form project intake untuk kebutuhan riset, desain, prototyping, EV/product development, simulator, workshop, apparel, dan merchandise.",
+    canonical: "/contact",
+  },
+};
+
+function ensureMetaDescription(content) {
+  let tag = document.querySelector('meta[name="description"]');
+
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.setAttribute("name", "description");
+    document.head.appendChild(tag);
+  }
+
+  tag.setAttribute("content", content);
+}
+
+function ensureCanonical(pathname) {
+  let tag = document.querySelector('link[rel="canonical"]');
+
+  if (!tag) {
+    tag = document.createElement("link");
+    tag.setAttribute("rel", "canonical");
+    document.head.appendChild(tag);
+  }
+
+  tag.setAttribute("href", `${window.location.origin}${pathname}`);
+}
+
 /**
  * MarketingLayout
- * For public-facing pages: Home, About, Services, Portfolio, Ecosystem
+ * For public-facing pages: Home, About, Capabilities, Projects, Contact
  * Full-bleed capable, generous spacing, includes Navbar and Footer.
  */
 export function MarketingLayout({ children, hideFooter = false }) {
@@ -13,13 +84,21 @@ export function MarketingLayout({ children, hideFooter = false }) {
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+
+    const routeMeta = PUBLIC_ROUTE_META[location.pathname] || {
+      ...DEFAULT_PUBLIC_META,
+      canonical: location.pathname,
+    };
+    document.title = routeMeta.title;
+    ensureMetaDescription(routeMeta.description);
+    ensureCanonical(routeMeta.canonical || location.pathname);
   }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--brand-offwhite)] selection:bg-primary/20 selection:text-foreground">
       <a
         href="#main-content"
-        className="fixed left-4 top-3 z-[60] -translate-y-24 rounded-full bg-[var(--brand-ink)] px-4 py-2 text-sm font-semibold text-white transition-transform duration-300 ease-snap focus:translate-y-0"
+        className="fixed left-4 top-3 z-[60] inline-flex min-h-11 -translate-y-24 items-center rounded-full bg-[var(--brand-ink)] px-4 py-2 text-sm font-semibold text-white transition-transform duration-300 ease-snap focus:translate-y-0"
       >
         Lewati ke konten
       </a>
@@ -32,7 +111,7 @@ export function MarketingLayout({ children, hideFooter = false }) {
 
 /**
  * ConversionLayout
- * For focused task pages: Contact, Internship, Login, Register, Order
+ * For focused task pages such as Contact and internal operational forms.
  * Narrow centered content, minimal distraction.
  */
 export function ConversionLayout({ children, title, subtitle, hideFooter = false }) {
@@ -61,6 +140,20 @@ export function ConversionLayout({ children, title, subtitle, hideFooter = false
  * Max-width, compact spacing.
  */
 export function OperationalLayout({ children, sidebar }) {
+  useEffect(() => {
+    document.querySelector('link[rel="canonical"]')?.remove();
+
+    let robots = document.querySelector('meta[name="robots"]');
+    if (!robots) {
+      robots = document.createElement("meta");
+      robots.setAttribute("name", "robots");
+      document.head.appendChild(robots);
+    }
+    robots.setAttribute("content", "noindex, nofollow");
+
+    return () => robots.remove();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20 selection:text-foreground">
       <Navbar />

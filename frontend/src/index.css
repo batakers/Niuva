@@ -23,17 +23,28 @@
   --brand-ink: #243241;
   --brand-muted: #5F7285;
   --brand-border: #D8E6F1;
-  --brand-radius-card: 1.5rem;
-  --brand-radius-outer: 2rem;
-  --brand-radius-inner: 1.55rem;
-  --brand-shadow-card: 0 18px 60px rgba(36, 50, 65, 0.07);
-  --brand-shadow-button: 0 18px 44px rgba(102, 146, 188, 0.24);
-  --brand-page-start: clamp(5.75rem, 8.8vw, 7.5rem);
-  --brand-page-hero-bottom: clamp(4rem, 6.5vw, 6rem);
-  --brand-section-space: clamp(4rem, 7vw, 6.75rem);
-  --brand-cta-space: clamp(4rem, 6.6vw, 6rem);
-  --brand-section-header-gap: clamp(2.25rem, 3.5vw, 3.75rem);
-  --brand-footer-space: clamp(3rem, 5vw, 4.5rem);
+  --brand-font-sans: 'Poppins', system-ui, sans-serif;
+  --brand-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --brand-container: 1344px;
+  --brand-radius-control: 0.75rem;
+  --brand-radius-card: 1rem;
+  --brand-radius-panel: 1.25rem;
+  --brand-radius-outer: 1.5rem;
+  --brand-radius-inner: 1.125rem;
+  --brand-radius-pill: 999px;
+  --brand-shadow-card: 0 1px 2px rgba(36, 50, 65, 0.05);
+  --brand-shadow-nav: 0 8px 24px rgba(36, 50, 65, 0.09);
+  --brand-shadow-dialog: 0 18px 48px rgba(36, 50, 65, 0.16);
+  --brand-shadow-button: 0 8px 18px rgba(102, 146, 188, 0.18);
+  --brand-focus-ring: 0 0 0 3px rgba(102, 146, 188, 0.22);
+  --brand-nav-offset: 6.25rem;
+  --brand-page-start: clamp(6.5rem, 7.2vw, 7rem);
+  --brand-page-hero-bottom: clamp(3rem, 4.8vw, 4.75rem);
+  --brand-section-space: clamp(4.5rem, 5.8vw, 6rem);
+  --brand-section-space-compact: clamp(3rem, 4.3vw, 4.5rem);
+  --brand-cta-space: clamp(3.75rem, 5.6vw, 5.5rem);
+  --brand-section-header-gap: clamp(1.5rem, 2.6vw, 2.5rem);
+  --brand-footer-space: clamp(2.75rem, 4.4vw, 4rem);
 
   /* shadcn-compatible tokens */
   --background: var(--cloud);
@@ -63,7 +74,7 @@
   --border: var(--silver);
   --input: var(--silver);
   --ring: var(--blue-dark);
-  --radius: 0.5rem;
+  --radius: var(--brand-radius-control);
 
   /* Extended tokens used throughout the current UI */
   --surface-1: var(--pure-white);
@@ -83,34 +94,37 @@
 html {
   background-color: hsl(var(--background));
   scroll-behavior: smooth;
+  scroll-padding-top: var(--brand-nav-offset);
 }
 
 body {
   margin: 0;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--brand-font-sans);
+  font-size: 16px;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 .font-heading {
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--brand-font-sans);
   letter-spacing: 0;
 }
 
 .font-display {
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--brand-font-sans);
   letter-spacing: 0;
 }
 
 .font-mono-tech {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--brand-font-mono);
 }
 
 @layer base {
   h1, h2, h3, h4 {
-    font-family: 'Poppins', system-ui, sans-serif;
+    font-family: var(--brand-font-sans);
     letter-spacing: 0;
     text-wrap: balance;
   }
@@ -118,6 +132,11 @@ body {
   p {
     text-wrap: pretty;
   }
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 3px;
 }
 
 ::selection {
@@ -141,7 +160,7 @@ body {
 }
 
 .annotation-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--brand-font-mono);
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -160,23 +179,32 @@ body {
 }
 
 .brand-heading {
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--brand-font-sans);
   font-weight: 800;
   letter-spacing: 0;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .brand-eyebrow {
   display: inline-flex;
   align-items: center;
-  min-height: 2rem;
-  border-radius: 999px;
-  background: rgba(144, 175, 205, 0.22);
-  padding: 0.35rem 0.85rem;
-  color: var(--brand-blue);
-  font-size: 0.72rem;
+  min-height: 1.85rem;
+  border: 1px solid rgba(102, 146, 188, 0.18);
+  border-radius: var(--brand-radius-control);
+  background: rgba(232, 241, 248, 0.72);
+  padding: 0.35rem 0.75rem;
+  color: var(--brand-ink);
+  font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-transform: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.brand-page :where(p, li, a, span, h1, h2, h3) {
+  overflow-wrap: break-word;
 }
 
 .brand-u-motif {
@@ -276,7 +304,7 @@ body {
 }
 
 .brand-page section[id] {
-  scroll-margin-top: var(--brand-page-start);
+  scroll-margin-top: var(--brand-nav-offset);
 }
 
 .brand-section {
@@ -286,7 +314,7 @@ body {
 .brand-field {
   min-height: 3.25rem;
   border-color: var(--brand-border);
-  border-radius: 0.85rem;
+  border-radius: var(--brand-radius-control);
   background: #fff;
   color: var(--brand-ink);
   box-shadow: none;
@@ -298,5 +326,22 @@ body {
 
 .brand-field:focus-visible {
   border-color: var(--brand-blue);
-  box-shadow: 0 0 0 3px rgba(102, 146, 188, 0.15);
+  box-shadow: var(--brand-focus-ring);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --brand-nav-offset: 5.75rem;
+    --brand-page-start: 6rem;
+    --brand-page-hero-bottom: 2.75rem;
+    --brand-section-space: 3.75rem;
+    --brand-section-space-compact: 3rem;
+    --brand-cta-space: 3.25rem;
+    --brand-section-header-gap: 1.5rem;
+    --brand-footer-space: 2.5rem;
+  }
+
+  .brand-u-motif span {
+    border-width: 8px;
+  }
 }

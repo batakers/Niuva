@@ -2,18 +2,50 @@ import React from "react";
 import { MarketingLayout } from "../../components/Layout";
 import {
   BrandButton,
+  CapabilityPanel,
+  ProcessTimeline,
   RoundedVisualFrame,
-  SectionShell,
-  ServiceGrid,
+  ServiceCard,
   profileContent,
 } from "../../components/brand/CompanyProfileBlocks";
-import { BrandPage, CTASection, PageHero } from "../../components/brand/BrandSystem";
+import {
+  BrandPage,
+  CTASection,
+  PageContainer,
+  PageHero,
+  SectionHeader,
+} from "../../components/brand/BrandSystem";
 
-const process = [
-  { title: "Memahami konteks", body: "Menyelaraskan kebutuhan bisnis, target pengguna, ruang lingkup, batasan, dan ukuran keberhasilan proyek." },
-  { title: "Menentukan prioritas", body: "Mengolah riset dan konsultasi menjadi arah pengembangan yang realistis untuk dijalankan oleh tim." },
-  { title: "Membangun hasil", body: "Mengembangkan desain, teknologi, prototipe, materi, atau program sesuai ruang lingkup yang disepakati." },
-  { title: "Menguji hasil", body: "Mengevaluasi hasil bersama pemangku kepentingan sebelum keputusan implementasi atau iterasi berikutnya." },
+const primaryCapabilities = profileContent.services.filter((service) => service.priority === "primary");
+const supportingCapabilities = profileContent.services.filter((service) => service.priority === "supporting");
+
+const engagementSteps = [
+  {
+    label: "Brief",
+    title: "Kebutuhan dirumuskan",
+    body: "Niuva membantu memperjelas konteks bisnis, target pengguna, batasan teknis, dan bentuk output.",
+  },
+  {
+    label: "Research",
+    title: "Arah divalidasi",
+    body: "Riset, konsultasi, dan studi awal digunakan untuk mengurangi asumsi sebelum masuk produksi solusi.",
+  },
+  {
+    label: "Build",
+    title: "Solusi dikembangkan",
+    body: "Tim menyusun desain, prototipe, perangkat, materi workshop, atau produk kreatif sesuai ruang lingkup.",
+  },
+  {
+    label: "Review",
+    title: "Hasil dievaluasi",
+    body: "Output dibaca kembali bersama mitra untuk menentukan iterasi, implementasi, atau kebutuhan lanjutan.",
+  },
+];
+
+const capabilityNotes = [
+  "R&D dan Design & Prototyping diposisikan sebagai kapabilitas inti karena menjadi dasar keputusan produk.",
+  "Consultant & Workshop membantu penyelarasan tim, pemahaman teknis, dan pengembangan kapasitas SDM.",
+  "Apparel & Merchandise mendukung kebutuhan identitas program, komunitas, event, dan aktivasi brand.",
 ];
 
 export default function ServicesPage() {
@@ -22,17 +54,17 @@ export default function ServicesPage() {
       <BrandPage>
         <PageHero
           eyebrow="Capabilities"
-          title="Kapabilitas terintegrasi untuk riset, design engineering, prototyping, dan eksekusi kreatif."
-          body="Niuva membantu organisasi memahami kebutuhan, menentukan arah pengembangan, membangun hasil yang dapat diuji, dan menyiapkan eksekusi kreatif sesuai ruang lingkup proyek."
+          title="Kapabilitas untuk mengubah ide menjadi produk yang dapat diuji."
+          body="Research & Development serta Design & Prototyping menjadi kapabilitas utama Niuva. Konsultasi, workshop, apparel, dan merchandise mendukung ekosistem inovasi yang lebih luas."
           primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/projects" variant="secondary">Lihat Projects</BrandButton>}
           visual={
-            <RoundedVisualFrame title="Dari temuan ke hasil yang dapat diuji" kicker="Capabilities Niuva">
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <RoundedVisualFrame title="From research brief to validated prototype." kicker="Capability deck">
+              <div className="grid gap-3">
                 {profileContent.services.map((service, index) => (
-                  <div key={service.title} className="rounded-[1rem] bg-white/15 p-3 sm:rounded-[1.25rem] sm:p-4">
-                    <p className="text-xl font-extrabold sm:text-2xl">{String(index + 1).padStart(2, "0")}</p>
-                    <p className="mt-4 text-xs font-semibold text-white/80 sm:mt-5 sm:text-sm">{service.accent}</p>
+                  <div key={service.title} className="flex items-center justify-between rounded-[var(--brand-radius-control)] bg-white/14 px-4 py-3">
+                    <span className="text-sm font-semibold text-white/84">{service.title}</span>
+                    <span className="font-mono-tech text-xs font-bold text-white/70">{String(index + 1).padStart(2, "0")}</span>
                   </div>
                 ))}
               </div>
@@ -40,41 +72,73 @@ export default function ServicesPage() {
           }
         />
 
-        <SectionShell
-          eyebrow="Kapabilitas Utama"
-          title="R&D dan Design & Prototyping menjadi fondasi pengembangan produk."
-          body="Kedua kapabilitas utama ini membantu organisasi mengambil keputusan lebih awal, memvalidasi ide, dan mengubah konsep menjadi rancangan atau purwarupa yang dapat diuji."
-          className="bg-[var(--brand-blue-bg)]"
-        >
-          <ServiceGrid />
-        </SectionShell>
+        <section className="relative bg-[var(--brand-blue-bg)] py-[var(--brand-section-space)]">
+          <PageContainer className="relative z-10">
+            <SectionHeader
+              eyebrow="Primary Capabilities"
+              title="R&D serta Design & Prototyping menjadi pusat pengembangan produk."
+              body="Dua kapabilitas utama ini membantu mitra memahami masalah, menentukan arah teknologi, memvalidasi konsep, dan menyiapkan hasil yang dapat diuji sebelum keputusan implementasi lebih besar."
+              align="split"
+            />
+            <div className="grid gap-6">
+              {primaryCapabilities.map((service, index) => (
+                <CapabilityPanel key={service.title} service={service} index={index} />
+              ))}
+            </div>
+          </PageContainer>
+        </section>
 
-        <SectionShell
-          eyebrow="Proses Kolaborasi"
-          title="Alur kerja yang terstruktur, tetap adaptif terhadap kebutuhan proyek."
-          body="Niuva dapat masuk sejak tahap riset awal maupun saat organisasi sudah memiliki brief, konsep, atau kebutuhan produksi yang perlu divalidasi."
-          className="bg-white"
-        >
-          <div className="grid gap-5 md:grid-cols-2">
-            {process.map((item, index) => (
-              <article key={item.title} className="brand-reveal flex gap-4 rounded-[var(--brand-radius-card)] bg-[var(--brand-offwhite)] p-5 sm:gap-6 sm:p-6 md:p-8">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--brand-blue)] text-sm font-bold text-white">
-                  {index + 1}
-                </span>
-                <div>
-                  <h3 className="brand-heading text-xl text-[var(--brand-ink)] sm:text-2xl">{item.title}</h3>
-                  <p className="mt-3 leading-7 text-[var(--brand-muted)]">{item.body}</p>
+        <section className="bg-white py-[var(--brand-section-space)]">
+          <PageContainer>
+            <SectionHeader
+              eyebrow="Supporting Capabilities"
+              title="Konsultasi, workshop, apparel, dan merchandise sebagai penguat eksekusi."
+              body="Tidak semua kebutuhan dimulai dari prototipe. Sebagian mitra membutuhkan penyelarasan strategi, pelatihan praktis, atau produk kreatif pendukung identitas program."
+              align="split"
+            />
+            <div className="grid gap-5 lg:grid-cols-12">
+              {supportingCapabilities.map((service, index) => (
+                <ServiceCard key={service.title} service={service} index={index + primaryCapabilities.length} />
+              ))}
+            </div>
+          </PageContainer>
+        </section>
+
+        <section className="bg-[var(--brand-offwhite)] py-[var(--brand-section-space)]">
+          <PageContainer>
+            <div className="grid gap-8 min-[1100px]:grid-cols-[0.86fr_1.14fr] min-[1100px]:items-start">
+              <div>
+                <SectionHeader
+                  eyebrow="Engagement Model"
+                  title="Alur kolaborasi untuk kebutuhan teknis dan kreatif."
+                  body="Proses kerja dibuat ringkas agar mitra memahami titik masuk, hasil sementara, dan keputusan berikutnya sejak awal."
+                  className="mb-0"
+                />
+                <div className="brand-reveal mt-7 border-y border-[var(--brand-border)] py-5 sm:py-6">
+                  <p className="text-sm font-semibold text-[var(--brand-blue)]">Posisi kapabilitas</p>
+                  <ul className="mt-5 grid gap-4">
+                    {capabilityNotes.map((note) => (
+                      <li key={note} className="flex gap-4">
+                        <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--brand-blue)]" />
+                        <p className="text-sm leading-7 text-[var(--brand-ink)] sm:text-base">{note}</p>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </article>
-            ))}
-          </div>
-        </SectionShell>
+              </div>
+              <ProcessTimeline items={engagementSteps} />
+            </div>
+          </PageContainer>
+        </section>
 
         <CTASection
-          title="Tentukan titik mulai yang paling relevan untuk proyek Anda."
-          body="Tim Niuva dapat membantu sejak riset awal, konsultasi keputusan, pengembangan desain dan prototipe, sampai kebutuhan kreatif yang sudah siap dieksekusi."
-          primaryAction={<BrandButton to="/contact" variant="secondary">Diskusikan Project</BrandButton>}
+          title="Tentukan titik mulai yang relevan untuk kebutuhan Anda."
+          body="Tim Niuva dapat masuk dari riset awal, evaluasi konsep, desain dan prototyping, penyusunan workshop, atau kebutuhan produk kreatif yang sudah siap dieksekusi."
+          primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton href={`mailto:${profileContent.contact.email}`} variant="secondary">Kirim Brief</BrandButton>}
+          contactEmphasis="Sampaikan jenis kebutuhan, target hasil, dan perkiraan timeline agar respons awal lebih tepat."
+          whatsappHref={profileContent.contact.whatsappHref}
+          email={profileContent.contact.email}
         />
       </BrandPage>
     </MarketingLayout>

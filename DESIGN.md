@@ -17,25 +17,25 @@ colors:
   error: "#C14444"
 typography:
   display:
-    fontFamily: "Manrope, system-ui, sans-serif"
+    fontFamily: "Poppins, system-ui, sans-serif"
     fontSize: "clamp(2.5rem, 6vw, 4.5rem)"
     fontWeight: 800
     lineHeight: 1.05
     letterSpacing: "-0.02em"
   headline:
-    fontFamily: "Manrope, system-ui, sans-serif"
+    fontFamily: "Poppins, system-ui, sans-serif"
     fontSize: "clamp(2rem, 4vw, 3.75rem)"
     fontWeight: 800
     lineHeight: 1.1
     letterSpacing: "-0.02em"
   title:
-    fontFamily: "Manrope, system-ui, sans-serif"
+    fontFamily: "Poppins, system-ui, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 700
     lineHeight: 1.25
     letterSpacing: "-0.02em"
   body:
-    fontFamily: "Manrope, system-ui, sans-serif"
+    fontFamily: "Poppins, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.625
@@ -49,8 +49,10 @@ typography:
 rounded:
   none: "0px"
   sm: "8px"
-  md: "10px"
-  lg: "12px"
+  md: "12px"
+  lg: "16px"
+  panel: "20px"
+  outer: "24px"
   full: "999px"
 spacing:
   xs: "4px"
@@ -121,12 +123,12 @@ components:
 
 NIUVA's visual system should feel like a precise engineering dossier made presentable for business decision makers: clean, technical, credible, and easy to act on. The public site uses a light corporate surface, steel-blue identity color, real project imagery, measured typography, and clear CTA hierarchy to make R&D, design engineering, prototyping, EV development, and 3D printing feel concrete rather than abstract.
 
-The system rejects commodity-vendor styling. It must not feel like a generic marketplace, a static PDF company profile copied into HTML, or a cheap "best and cheapest service" pitch. Public pages may carry stronger brand expression through imagery, large Manrope headlines, and technical annotations; authenticated dashboards stay restrained, data-dense, and task-first.
+The system rejects commodity-vendor styling. It must not feel like a generic marketplace, a static PDF company profile copied into HTML, or a cheap "best and cheapest service" pitch. Public pages may carry stronger brand expression through imagery, large Poppins headlines, and technical annotations; authenticated dashboards stay restrained, data-dense, and task-first.
 
 **Key Characteristics:**
 - Light, steel-tinted surfaces with high-contrast ink.
 - Blue is decisive but scarce: primary actions, active states, proof points, and technical highlights.
-- Manrope carries the brand voice; JetBrains Mono is reserved for technical data, IDs, status metadata, and compact operational labels.
+- Poppins carries the brand voice; JetBrains Mono is reserved for technical data, IDs, status metadata, and compact operational labels.
 - Public pages show evidence through portfolio/case-study structure; dashboards optimize order completion, verification, and admin scanning.
 - Motion is short, stateful, and respectful of reduced-motion preferences.
 
@@ -161,11 +163,11 @@ The palette is a desaturated steel-blue system: trustworthy, technical, and calm
 
 ## 3. Typography
 
-**Display Font:** Manrope with system-ui fallback
-**Body Font:** Manrope with system-ui fallback
+**Display Font:** Poppins with system-ui fallback
+**Body Font:** Poppins with system-ui fallback
 **Label/Mono Font:** JetBrains Mono with ui-monospace fallback
 
-**Character:** Manrope gives NIUVA a clean engineering-business voice without the coldness of default dashboard sans fonts. JetBrains Mono adds technical precision, but only where the content is actually technical.
+**Character:** Poppins gives NIUVA a rounded engineering-business voice close to the approved company profile direction. JetBrains Mono adds technical precision, but only where the content is actually technical.
 
 ### Hierarchy
 
@@ -188,9 +190,9 @@ NIUVA uses tonal layering first and shadow second. Most public and dashboard sur
 ### Shadow Vocabulary
 
 - **Subtle** (`0 1px 2px rgba(28, 43, 58, 0.06)`): Inputs, small controls, and low-lift elements that need separation from Cloud.
-- **Navigation** (`0 6px 14px rgba(28, 43, 58, 0.08)`): Sticky navbar, dropdowns, and compact panels that float above content.
-- **Dialog** (`0 10px 24px rgba(28, 43, 58, 0.10)`): Modals, mobile menu panels, and high-priority overlays.
-- **Focus Glow** (`0 0 0 3px hsl(var(--primary) / 0.14)`): Focus-visible or selected state support; do not use as decorative ambient glow.
+- **Navigation** (`0 8px 24px rgba(36, 50, 65, 0.09)`): Sticky navbar, dropdowns, and compact panels that float above content.
+- **Dialog** (`0 18px 48px rgba(36, 50, 65, 0.16)`): Modals, mobile menu panels, and high-priority overlays.
+- **Focus Glow** (`0 0 0 3px rgba(102, 146, 188, 0.22)`): Focus-visible or selected state support; do not use as decorative ambient glow.
 
 ### Named Rules
 
@@ -204,14 +206,14 @@ NIUVA uses tonal layering first and shadow second. Most public and dashboard sur
 
 Buttons are confident and utilitarian, not pillowy. They should be immediately scannable in public CTAs and dashboard actions.
 
-- **Shape:** Gently curved by default (10px radius). Square overrides are allowed in dense engineering pages and admin tables when the surrounding system is intentionally technical.
+- **Shape:** Gently curved by default (12px radius). Square overrides are allowed in dense engineering pages and admin tables when the surrounding system is intentionally technical.
 - **Primary:** Command Blue background with Pure White text, 40px default height, 44px large height, 16-28px horizontal padding depending on size.
 - **Hover / Focus:** Hover deepens to Midnight Ink. Focus uses a 2px ring plus offset on Cloud or Pure White.
 - **Secondary / Ghost / Outline:** Secondary uses Frost with Midnight Ink. Outline uses Pure White, Silver border, and hover border shift to Command Blue. Ghost stays transparent until hover.
 
 ### Technical Labels
 
-Technical labels are the reusable system voice for order numbers, registry headers, compact admin metadata, and engineering readouts. They use JetBrains Mono, uppercase text, 0.04em letter spacing, and the Steel Body or Command Blue tones. They must stay short; if the text needs a full sentence, use Manrope body copy instead.
+Technical labels are the reusable system voice for order numbers, registry headers, compact admin metadata, and engineering readouts. They use JetBrains Mono, uppercase text, 0.04em letter spacing, and the Steel Body or Command Blue tones. They must stay short; if the text needs a full sentence, use Poppins body copy instead.
 
 ### Surface Panels
 
@@ -229,7 +231,7 @@ Chips and badges are compact status cues. They use 8-10px radius, semibold text,
 
 Cards are used only for repeated items, portfolio objects, modal-like panels, and operational blocks. Marketing sections should usually be full-width bands or unframed layouts rather than nested cards.
 
-- **Corner Style:** Default card radius is 0-12px depending on surface. Dense operational containers may be square; nav and dropdown surfaces use 12px.
+- **Corner Style:** Default card radius is 12-18px depending on surface. Larger brand panels may use 20-24px. Dense operational containers may be square; nav and dropdown surfaces use 16-20px.
 - **Background:** Pure White for readable content, Frost for grouped support areas, Cloud for page canvas.
 - **Shadow Strategy:** Flat by default with Silver borders. Shadow only for sticky/floating UI.
 - **Border:** Silver 1px border for structure. No colored side stripes.
@@ -237,11 +239,11 @@ Cards are used only for repeated items, portfolio objects, modal-like panels, an
 
 ### Inputs / Fields
 
-Inputs are white, bordered, and direct. Default height is 40px with 10px radius, 12px horizontal padding, Midnight text, and Steel placeholder/support copy. Focus changes the border to Command Blue and adds a faint ring. Error states use Controlled Error Red plus text, never color alone.
+Inputs are white, bordered, and direct. Default height is 40px with 12px radius, 12px horizontal padding, Midnight text, and Steel placeholder/support copy. Focus changes the border to Command Blue and adds a faint ring. Error states use Controlled Error Red plus text, never color alone.
 
 ### Navigation
 
-The public navbar is a compact floating shell: Pure White at high opacity, 12px radius, Silver border, and a modest shadow. Active links use Command Blue; inactive links use Steel Body and turn Midnight on hover. Dropdowns and mobile panels use the same card shell. Language and utility controls may use JetBrains Mono only because they behave like compact system metadata.
+The public navbar is a compact floating shell: Pure White at high opacity, 20px radius, Silver border, and a modest shadow. Active links use Command Blue; inactive links use Steel Body and turn Midnight on hover. Dropdowns and mobile panels use the same card shell. Language and utility controls may use JetBrains Mono only because they behave like compact system metadata.
 
 ### Status Stepper
 
@@ -249,7 +251,7 @@ The status stepper is an operational pattern for order progress. Completed steps
 
 ### Logo
 
-The mark is a technical "N" form with a Command Blue block and low-opacity measurement marks. The wordmark uses Manrope ExtraBold in title case: `Niuva`, not all-caps shouting. Use it in Midnight on light surfaces and Pure White only on dark bands.
+The mark is a technical "N" form with a Command Blue block and low-opacity measurement marks. The wordmark uses Poppins ExtraBold in title case: `Niuva`, not all-caps shouting. Use it in Midnight on light surfaces and Pure White only on dark bands.
 
 ## 6. Do's and Don'ts
 

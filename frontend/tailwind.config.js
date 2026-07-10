@@ -8,13 +8,13 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        heading: ["'Poppins'", "system-ui", "sans-serif"],
-        body: ["'Poppins'", "system-ui", "sans-serif"],
-        mono: ["'JetBrains Mono'", "ui-monospace", "monospace"],
+        heading: ["var(--brand-font-sans)"],
+        body: ["var(--brand-font-sans)"],
+        mono: ["var(--brand-font-mono)"],
       },
       borderRadius: {
-        lg: '0.75rem',
-        md: '0.625rem',
+        lg: 'var(--brand-radius-panel)',
+        md: 'var(--brand-radius-control)',
         sm: 'var(--radius)',
         DEFAULT: 'var(--radius)',
       },
@@ -82,10 +82,10 @@ module.exports = {
         },
       },
       boxShadow: {
-        sm: '0 1px 2px rgba(28, 43, 58, 0.06)',
-        md: '0 6px 14px rgba(28, 43, 58, 0.08)',
-        lg: '0 10px 24px rgba(28, 43, 58, 0.10)',
-        glow: '0 0 0 3px hsl(var(--primary) / 0.14)',
+        sm: 'var(--brand-shadow-card)',
+        md: 'var(--brand-shadow-nav)',
+        lg: 'var(--brand-shadow-dialog)',
+        glow: 'var(--brand-focus-ring)',
       },
       keyframes: {
         'accordion-down': {
