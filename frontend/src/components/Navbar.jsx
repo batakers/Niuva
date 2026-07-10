@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { LogoWordmark } from "./ui/logo";
 import { useI18n } from "../i18n";
-import { useAuth } from "../context/AuthContext";
 
 export function Navbar() {
-  const { lang, setLang, t } = useI18n();
-  const { user, logout } = useAuth();
+  const { lang, setLang } = useI18n();
   const [open, setOpen] = useState(false);
   const loc = useLocation();
-  const nav = useNavigate();
   const primaryLinks = [
     { to: "/", label: "Home" },
     { to: "/about", label: "About" },
@@ -18,11 +15,8 @@ export function Navbar() {
     { to: "/contact", label: "Contact" },
   ];
 
-  const goDash = () => nav(user?.role === "admin" ? "/admin" : "/dashboard");
   const isActive = (item) => loc.pathname === item.to || item.aliases?.includes(loc.pathname);
   const smallPillClass = "rounded-full px-4 py-2 text-sm font-semibold transition-all duration-500 ease-snap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] xl:text-[0.95rem]";
-  const outlinePillClass = `${smallPillClass} bg-white text-[var(--brand-ink)] ring-1 ring-[rgba(102,146,188,0.28)] hover:bg-[var(--brand-blue-bg)]`;
-  const quietPillClass = `${smallPillClass} text-[var(--brand-muted)] hover:bg-[var(--brand-blue-bg)] hover:text-[var(--brand-ink)]`;
 
   useEffect(() => {
     setOpen(false);
@@ -67,30 +61,12 @@ export function Navbar() {
             {lang}
           </button>
 
-          {user ? (
-            <>
-              <button onClick={goDash} type="button" className={outlinePillClass}>
-                {user.role === "admin" ? t("nav.admin") : t("nav.dashboard")}
-              </button>
-              <button
-                onClick={() => {
-                  logout();
-                  nav("/");
-                }}
-                type="button"
-                className={quietPillClass}
-              >
-                {t("nav.logout")}
-              </button>
-            </>
-          ) : (
-            <Link
-              to="/contact"
-              className={`${smallPillClass} bg-[var(--brand-blue)] text-white hover:bg-[var(--brand-ink)]`}
-            >
-              Diskusikan Project
-            </Link>
-          )}
+          <Link
+            to="/contact"
+            className={`${smallPillClass} bg-[var(--brand-blue)] text-white hover:bg-[var(--brand-ink)]`}
+          >
+            Diskusikan Project
+          </Link>
         </div>
 
         <button
@@ -139,15 +115,9 @@ export function Navbar() {
             >
               {lang === "id" ? "English" : "Indonesia"}
             </button>
-            {user ? (
-              <button onClick={goDash} className="rounded-full bg-[var(--brand-blue)] px-4 py-3 text-sm font-semibold text-white transition-all duration-500 ease-snap hover:bg-[var(--brand-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]">
-                Dashboard
-              </button>
-            ) : (
-              <Link to="/contact" className="rounded-full bg-[var(--brand-blue)] px-4 py-3 text-center text-sm font-semibold text-white transition-all duration-500 ease-snap hover:bg-[var(--brand-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]">
-                Diskusikan Project
-              </Link>
-            )}
+            <Link to="/contact" className="rounded-full bg-[var(--brand-blue)] px-4 py-3 text-center text-sm font-semibold text-white transition-all duration-500 ease-snap hover:bg-[var(--brand-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]">
+              Diskusikan Project
+            </Link>
           </div>
         </nav>
       </div>

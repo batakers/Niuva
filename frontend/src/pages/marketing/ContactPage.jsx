@@ -149,6 +149,8 @@ export default function ContactPage() {
                       value={form.name}
                       onChange={set("name")}
                       required
+                      minLength={2}
+                      maxLength={100}
                       autoComplete="name"
                       className="brand-field"
                       placeholder="Nama lengkap"
@@ -161,7 +163,7 @@ export default function ContactPage() {
                       data-testid="contact-company"
                       value={form.company}
                       onChange={set("company")}
-                      required
+                      maxLength={100}
                       autoComplete="organization"
                       className="brand-field"
                       placeholder="Nama perusahaan atau institusi"
@@ -189,6 +191,8 @@ export default function ContactPage() {
                       value={form.phone}
                       onChange={set("phone")}
                       required
+                      minLength={9}
+                      pattern="[0-9+() -]{9,}"
                       autoComplete="tel"
                       className="brand-field"
                       placeholder="08xx xxxx xxxx"
@@ -234,6 +238,8 @@ export default function ContactPage() {
                     value={form.message}
                     onChange={set("message")}
                     required
+                    minLength={10}
+                    maxLength={5000}
                     rows={7}
                     className="brand-field min-h-[190px] resize-y py-4"
                     placeholder="Jelaskan konteks, tujuan, ruang lingkup, target pengguna, bentuk hasil, atau batasan proyek."

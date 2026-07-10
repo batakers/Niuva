@@ -1,7 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { MarketingLayout } from "../../components/Layout";
-import { useI18n } from "../../i18n";
-import { HAS_CONFIGURED_BACKEND, api } from "../../lib/api";
 import {
   BrandButton,
   ProjectGrid,
@@ -10,10 +8,6 @@ import {
   profileContent,
 } from "../../components/brand/CompanyProfileBlocks";
 import { BrandPage, CTASection, PageHero } from "../../components/brand/BrandSystem";
-
-function normalizeTitle(value = "") {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
 
 function DetailBlock({ label, value, tone = "soft" }) {
   if (!value) return null;
@@ -26,22 +20,7 @@ function DetailBlock({ label, value, tone = "soft" }) {
 }
 
 export default function ProjectsPage() {
-  const { lang } = useI18n();
-  const [apiProjects, setApiProjects] = useState([]);
   const [active, setActive] = useState(null);
-
-  useEffect(() => {
-    if (!HAS_CONFIGURED_BACKEND) return undefined;
-
-    let mounted = true;
-    api.get("/portfolio").then((response) => {
-      if (mounted) setApiProjects(response.data);
-    }).catch(() => {});
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!active) return undefined;
@@ -56,30 +35,7 @@ export default function ProjectsPage() {
     };
   }, [active]);
 
-  const projects = useMemo(
-    () =>
-      profileContent.projects.map((project) => {
-        const target = normalizeTitle(project.title);
-        const match = apiProjects.find((item) => {
-          const idTitle = normalizeTitle(item.title_id);
-          const enTitle = normalizeTitle(item.title_en);
-          return (
-            (idTitle && (idTitle.includes(target) || target.includes(idTitle))) ||
-            (enTitle && (enTitle.includes(target) || target.includes(enTitle)))
-          );
-        });
-
-        return {
-          ...project,
-          body: match
-            ? (lang === "id" ? match.description_id : match.description_en) || project.body
-            : project.body,
-          image: match?.images?.[0],
-          client: match?.client,
-        };
-      }),
-    [apiProjects, lang]
-  );
+  const projects = profileContent.projects;
 
   return (
     <MarketingLayout>
