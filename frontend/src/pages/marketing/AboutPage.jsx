@@ -1,5 +1,5 @@
 import React from "react";
-import { MarketingLayout } from "../../components/Layout";
+import { MarketingLayout } from "@/components/layout/Layout";
 import {
   BrandButton,
   ProcessTimeline,
@@ -10,6 +10,7 @@ import {
   BrandPage,
   CTASection,
   DecorativeMotif,
+  MarketingSection,
   PageContainer,
   PageHero,
   SectionHeader,
@@ -71,53 +72,82 @@ const ecosystem = [
   "Kolaborasi di lingkungan Bandung Techno Park",
 ];
 
+const backgroundPoints = [
+  "Berangkat dari kebutuhan organisasi untuk menghubungkan riset dengan realisasi produk.",
+  "Menggabungkan konsultasi, design engineering, teknologi, dan prototyping dalam satu alur kerja.",
+  "Beroperasi dari lingkungan makerspace Bandung Techno Park untuk mendukung eksperimen dan kolaborasi teknis.",
+];
+
 export default function AboutPage() {
   return (
     <MarketingLayout>
       <BrandPage>
         <PageHero
           eyebrow="About Niuva"
-          title="Mitra inovasi berbasis riset, engineering, dan prototyping."
+          title="Mitra inovasi untuk engineering dan prototyping."
           body="Niuva membantu perusahaan, institusi, dan komunitas mengambil keputusan pengembangan produk melalui riset, konsultasi ahli, design engineering, dan prototyping yang dapat diuji."
           primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
           visual={
-            <RoundedVisualFrame title="Research, design, prototype, validate." kicker="Company dossier">
-              <div className="grid gap-3 text-sm font-semibold text-white/82">
-                <span>Riset berbasis kebutuhan</span>
-                <span>Konsultasi dan workshop praktis</span>
-                <span>Desain produk dan purwarupa</span>
+            <RoundedVisualFrame title="Riset, desain, dan validasi dalam satu alur kerja." kicker="Profil perusahaan">
+              <div className="grid gap-3 text-sm font-semibold text-text-inverse">
+                <span>Mitra pengembangan produk</span>
+                <span>Berbasis Bandung Techno Park</span>
+                <span>Kolaborasi bisnis dan teknis</span>
               </div>
             </RoundedVisualFrame>
           }
         />
 
-        <section className="relative bg-white py-[var(--brand-section-space)]">
+        <MarketingSection tone="default">
           <PageContainer>
-            <SectionHeader
-              eyebrow="Company Role"
-              title="Niuva bekerja sebagai partner strategi, bukan hanya vendor eksekusi."
-              body="Setiap inisiatif dimulai dari pemahaman konteks. Dengan cara ini, riset, desain, teknologi, dan prototyping tidak berjalan sebagai aktivitas terpisah, tetapi sebagai rangkaian keputusan yang saling menguatkan."
-              align="split"
-            />
-            <div className="grid border-y border-[var(--brand-border)] lg:grid-cols-3">
+            <div className="mb-8 grid gap-6 md:mb-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-12 xl:mb-12">
+              <div>
+                <p className="brand-eyebrow mb-5">Peran perusahaan</p>
+                <h2 className="type-heading-section max-w-3xl text-text-primary">Niuva bekerja sebagai partner strategi, bukan hanya vendor eksekusi.</h2>
+              </div>
+              <p className="max-w-[62ch] text-base leading-8 text-text-secondary md:text-lg">
+                Setiap inisiatif dimulai dari pemahaman konteks agar riset, desain, teknologi, dan prototyping menjadi rangkaian keputusan yang saling menguatkan.
+              </p>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
               {dossierItems.map((item) => (
                 <article
                   key={item.title}
-                  className="brand-reveal border-b border-[var(--brand-border)] py-6 last:border-b-0 lg:border-b-0 lg:border-l lg:px-7 lg:first:border-l-0 lg:first:pl-0 lg:last:pr-0"
+                  className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6 sm:p-7"
                 >
-                  <p className="text-sm font-semibold text-[var(--brand-blue)]">{item.label}</p>
-                  <h3 className="brand-heading mt-5 text-2xl leading-tight text-[var(--brand-ink)] sm:text-3xl">
+                  <p className="text-sm font-semibold text-action-primary">{item.label}</p>
+                  <h3 className="brand-heading mt-5 text-2xl leading-tight text-text-primary sm:text-3xl">
                     {item.title}
                   </h3>
-                  <p className="mt-4 text-base leading-7 text-[var(--brand-muted)]">{item.body}</p>
+                  <p className="mt-4 text-base leading-7 text-text-secondary">{item.body}</p>
                 </article>
               ))}
             </div>
           </PageContainer>
-        </section>
+        </MarketingSection>
 
-        <section className="bg-[var(--brand-blue-bg)] py-[var(--brand-section-space)]">
+        <MarketingSection tone="page">
+          <PageContainer>
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:items-start lg:gap-16">
+              <div className="brand-reveal">
+                <p className="brand-eyebrow mb-5">Latar perusahaan</p>
+                <h2 className="type-heading-section text-text-primary">Menghubungkan kebutuhan organisasi dengan eksperimen yang dapat diuji.</h2>
+                <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary md:text-lg">{profileContent.intro}</p>
+              </div>
+              <ol className="border-y border-border-default">
+                {backgroundPoints.map((point, index) => (
+                  <li key={point} className="brand-reveal grid gap-3 border-b border-border-default py-5 last:border-b-0 sm:grid-cols-[3rem_1fr] sm:gap-5">
+                    <span className="font-mono-tech text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                    <p className="text-base leading-7 text-text-primary">{point}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </PageContainer>
+        </MarketingSection>
+
+        <MarketingSection tone="muted">
           <PageContainer>
             <SectionHeader
               eyebrow="Vision and Mission"
@@ -126,32 +156,32 @@ export default function AboutPage() {
               align="split"
             />
             <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-              <article className="brand-reveal relative overflow-hidden rounded-[var(--brand-radius-panel)] bg-[var(--brand-blue)] p-6 text-white shadow-[var(--brand-shadow-card)] sm:p-8 md:p-10">
+              <article className="brand-reveal relative overflow-hidden rounded-panel bg-action-primary p-6 text-text-inverse shadow-surface sm:p-8 md:p-10">
                 <DecorativeMotif light className="-right-24 -top-20 h-80 w-80 opacity-45" density="sparse" />
                 <div className="relative z-10">
-                  <p className="font-mono-tech text-xs font-bold text-white/70">VISION</p>
-                  <h3 className="brand-heading mt-8 max-w-2xl text-3xl leading-tight text-white md:text-4xl">
+                  <p className="font-mono-tech text-xs font-bold text-text-inverse">VISION</p>
+                  <h3 className="brand-heading mt-8 max-w-2xl text-3xl leading-tight text-text-inverse md:text-4xl">
                     Menjadi mitra strategis inovasi dan pengembangan produk yang terpercaya.
                   </h3>
-                  <p className="mt-6 max-w-xl text-base leading-8 text-white/82">
+                  <p className="mt-6 max-w-xl text-base leading-8 text-text-inverse">
                     Visi ini menempatkan Niuva sebagai rekan kerja yang membantu organisasi membangun arah inovasi secara bertahap, terukur, dan dapat dipertanggungjawabkan.
                   </p>
                 </div>
               </article>
-              <article className="brand-reveal rounded-[var(--brand-radius-panel)] bg-white p-6 shadow-[var(--brand-shadow-card)] ring-1 ring-[rgba(102,146,188,0.14)] sm:p-8 md:p-10">
-                <p className="font-mono-tech text-xs font-bold text-[var(--brand-blue)]">MISSION</p>
-                <h3 className="brand-heading mt-8 max-w-2xl text-3xl leading-tight text-[var(--brand-ink)] md:text-4xl">
+              <article className="brand-reveal rounded-panel bg-surface-default p-6 shadow-surface ring-1 ring-border-default sm:p-8 md:p-10">
+                <p className="font-mono-tech text-xs font-bold text-action-primary">MISSION</p>
+                <h3 className="brand-heading mt-8 max-w-2xl text-3xl leading-tight text-text-primary md:text-4xl">
                   Menghasilkan solusi kreatif berbasis riset yang dapat diterapkan.
                 </h3>
-                <p className="mt-6 max-w-2xl text-base leading-8 text-[var(--brand-muted)]">
+                <p className="mt-6 max-w-2xl text-base leading-8 text-text-secondary">
                   Niuva menggabungkan konsultasi ahli, pengembangan teknologi, desain, prototyping, workshop, apparel, dan merchandise untuk mendukung nilai bisnis, kapasitas tim, serta inovasi berkelanjutan.
                 </p>
               </article>
             </div>
           </PageContainer>
-        </section>
+        </MarketingSection>
 
-        <section className="bg-white py-[var(--brand-section-space)]">
+        <MarketingSection tone="default">
           <PageContainer>
             <SectionHeader
               eyebrow="Operating Model"
@@ -161,49 +191,47 @@ export default function AboutPage() {
             />
             <ProcessTimeline items={approachSteps} />
           </PageContainer>
-        </section>
+        </MarketingSection>
 
-        <section className="bg-[var(--brand-offwhite)] py-[var(--brand-section-space)]">
+        <MarketingSection tone="page">
           <PageContainer>
-            <div className="grid gap-8 min-[1100px]:grid-cols-[0.85fr_1.15fr] min-[1100px]:items-start">
-              <div>
-                <SectionHeader
-                  eyebrow="Values and Ecosystem"
-                  title="Nilai kerja yang menahan inovasi agar tetap konkret."
-                  body="Niuva berada di lingkungan Bandung Techno Park, Gedung D Lt.1, Ruang Makerspace. Konteks ini mendukung riset, eksperimen bentuk, prototyping, workshop, dan kolaborasi lintas disiplin."
-                  className="mb-0"
-                />
-                <BrandButton to="/contact" className="mt-8">Diskusikan Kolaborasi</BrandButton>
-              </div>
-              <div className="grid gap-5">
-                <article className="brand-reveal border-y border-[var(--brand-border)] bg-white py-6 sm:px-2 sm:py-7">
-                  <p className="font-mono-tech text-xs font-bold text-[var(--brand-blue)]">WORK VALUES</p>
-                  <ul className="mt-7 grid gap-4">
-                    {values.map((value) => (
-                      <li key={value} className="flex gap-4">
-                        <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--brand-blue)]" />
-                        <p className="text-base leading-7 text-[var(--brand-ink)]">{value}</p>
-                      </li>
-                    ))}
-                  </ul>
+            <SectionHeader eyebrow="Nilai kerja" title="Prinsip yang menjaga inovasi tetap konkret." body="Nilai ini menjadi dasar saat tim menyusun masalah, memilih pendekatan, dan mengevaluasi output bersama mitra." align="split" />
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+              {values.map((value, index) => (
+                <article key={value} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-5">
+                  <span className="font-mono-tech text-xs font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                  <p className="mt-4 text-sm font-semibold leading-6 text-text-primary">{value}</p>
                 </article>
-                <div className="grid border-y border-[var(--brand-border)] sm:grid-cols-2">
-                  {ecosystem.map((item) => (
-                    <article key={item} className="brand-reveal border-b border-[var(--brand-border)] py-5 sm:px-5 sm:odd:border-r">
-                      <div className="mb-4 h-2.5 w-2.5 rounded-full bg-[var(--brand-blue)]" />
-                      <p className="font-semibold leading-7 text-[var(--brand-ink)]">{item}</p>
-                    </article>
-                  ))}
-                </div>
+              ))}
+            </div>
+          </PageContainer>
+        </MarketingSection>
+
+        <MarketingSection tone="muted">
+          <PageContainer>
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start lg:gap-16">
+              <div>
+                <p className="brand-eyebrow mb-5">Bandung Techno Park</p>
+                <h2 className="type-heading-section text-text-primary">Ekosistem untuk riset, makerspace, dan kolaborasi teknis.</h2>
+                <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary">Niuva berada di Gedung D Lt.1, Ruang Makerspace. Konteks ini mendukung eksperimen bentuk, prototyping, workshop, dan kerja lintas disiplin.</p>
+                <BrandButton to="/contact" variant="secondary" className="mt-7">Hubungi Niuva</BrandButton>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {ecosystem.map((item) => (
+                  <article key={item} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-5">
+                    <div className="mb-4 h-2.5 w-2.5 rounded-full bg-brand-primary" />
+                    <p className="font-semibold leading-7 text-text-primary">{item}</p>
+                  </article>
+                ))}
               </div>
             </div>
           </PageContainer>
-        </section>
+        </MarketingSection>
 
         <CTASection
           title="Bangun arah inovasi yang relevan bagi organisasi."
           body="Ceritakan tantangan, ide, atau target pengembangan. Tim Niuva akan membantu memetakan kebutuhan riset, desain, teknologi, prototyping, atau workshop yang paling relevan."
-          primaryAction={<BrandButton to="/contact" variant="inverse">Mulai Konsultasi</BrandButton>}
+          primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/projects" variant="secondary">Lihat Projects</BrandButton>}
           contactEmphasis="Respons awal akan fokus pada konteks kebutuhan, ruang lingkup, dan output yang perlu dicapai."
           whatsappHref={profileContent.contact.whatsappHref}

@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutGrid, Package, Layers, Image as ImageIcon, GraduationCap, Mail, Users, Settings as SettingsIcon, TerminalSquare } from "lucide-react";
 import { useI18n } from "../../i18n";
-import { OperationalLayout } from "../../components/Layout";
+import { OperationalLayout } from "@/components/layout/Layout";
 import { useAuth } from "../../context/AuthContext";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
 import { TechnicalLabel } from "../../components/ui/technical-label";

@@ -8,6 +8,7 @@ import os
 import uuid
 import logging
 import asyncio
+import html
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
@@ -152,10 +153,10 @@ class InternshipReq(BaseModel):
 
 
 class ContactReq(BaseModel):
-    name: str
+    name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    subject: str
-    message: str
+    subject: str = Field(min_length=3, max_length=180)
+    message: str = Field(min_length=10, max_length=5000)
 
 
 class PortfolioReq(BaseModel):
@@ -223,11 +224,11 @@ async def provision_client(req: ClientProvisionReq) -> dict:
 _rate_buckets: dict = {}
 
 
-def rate_limit(key: str, limit: int = 10, window: int = 60):
+def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terlalu banyak permintaan. Coba lagi sesaat."):
     now = datetime.now(timezone.utc).timestamp()
     bucket = [t for t in _rate_buckets.get(key, []) if now - t < window]
     if len(bucket) >= limit:
-        raise HTTPException(status_code=429, detail="Too many uploads. Please wait a moment.")
+        raise HTTPException(status_code=429, detail=detail)
     bucket.append(now)
     _rate_buckets[key] = bucket
 
@@ -533,16 +534,27 @@ async def list_internships(user: dict = Depends(require_admin)):
 
 # ----------------------------- Contact -----------------------------
 @api.post("/contact")
-async def contact(req: ContactReq):
+async def contact(req: ContactReq, request: Request):
+    client_host = request.client.host if request.client else "unknown"
+    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
+        client_host = request.headers.get("x-forwarded-for", client_host).split(",", 1)[0].strip()
+    rate_limit(f"contact:{client_host}", limit=5, window=600)
+
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.contacts.insert_one(dict(doc))
-    await emailer.send_email(
-        HRD_EMAIL,
-        f"Inquiry Baru: {req.subject}",
-        "Pesan Kontak Baru",
-        f"<p>Dari <strong>{req.name}</strong> ({req.email})</p><p>{req.message}</p>",
-        db=db,
-    )
+    try:
+        email_result = await emailer.send_email(
+            HRD_EMAIL,
+            f"Inquiry Baru: {req.subject}",
+            "Pesan Kontak Baru",
+            f"<p>Dari <strong>{html.escape(req.name)}</strong> ({html.escape(str(req.email))})</p>"
+            f"<p>{html.escape(req.message).replace(chr(10), '<br>')}</p>",
+            db=db,
+        )
+        if email_result.get("status") == "error":
+            logger.error("Contact inquiry stored, but notification email failed (contact_id=%s)", doc["id"])
+    except Exception:
+        logger.exception("Contact inquiry stored, but notification email failed (contact_id=%s)", doc["id"])
     return {"ok": True, "message": "Pesan berhasil dikirim"}
 
 
@@ -629,10 +641,18 @@ async def root():
 
 app.include_router(api)
 
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
+if "*" in cors_origins:
+    raise RuntimeError("CORS_ORIGINS must contain exact trusted origins when credentials are enabled")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,6 +1,6 @@
 import React from "react";
 import { Check } from "lucide-react";
-import { useI18n } from "../i18n";
+import { useI18n } from "@/i18n";
 
 const STEPS = ["pending_estimate", "awaiting_payment", "in_process", "completed"];
 

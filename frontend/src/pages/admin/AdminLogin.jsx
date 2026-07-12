@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, TerminalSquare } from "lucide-react";
-import { LogoWordmark } from "../../components/ui/logo";
+import { LogoWordmark } from "@/components/brand/Logo";
 import { useAuth } from "../../context/AuthContext";
 import { api, formatApiError } from "../../lib/api";
 import { Button } from "../../components/ui/button";

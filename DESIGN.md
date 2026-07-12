@@ -18,15 +18,15 @@ colors:
 typography:
   display:
     fontFamily: "Poppins, system-ui, sans-serif"
-    fontSize: "clamp(2.5rem, 6vw, 4.5rem)"
+    fontSize: "clamp(2.25rem, 4.6vw, 3.5rem)"
     fontWeight: 800
-    lineHeight: 1.05
-    letterSpacing: "-0.02em"
+    lineHeight: "42px mobile / 62px desktop"
+    letterSpacing: "-0.025em"
   headline:
     fontFamily: "Poppins, system-ui, sans-serif"
-    fontSize: "clamp(2rem, 4vw, 3.75rem)"
+    fontSize: "clamp(2.125rem, 4.2vw, 3rem)"
     fontWeight: 800
-    lineHeight: 1.1
+    lineHeight: "40px mobile / 55px desktop"
     letterSpacing: "-0.02em"
   title:
     fontFamily: "Poppins, system-ui, sans-serif"
@@ -57,9 +57,11 @@ rounded:
 spacing:
   xs: "4px"
   sm: "8px"
-  md: "16px"
-  lg: "24px"
-  xl: "32px"
+  md: "12px"
+  lg: "16px"
+  xl: "20px"
+  2xl: "24px"
+  3xl: "32px"
   section: "96px"
 components:
   button-primary:
@@ -275,4 +277,71 @@ The mark is a technical "N" form with a Command Blue block and low-opacity measu
 - **Don't** use gradient text, colored side-stripe borders, decorative grid backgrounds, repeated tiny uppercase section eyebrows, or identical icon-card grids as default scaffolding.
 - **Don't** use Smoke Label for paragraph text or placeholder text if contrast drops below 4.5:1.
 - **Don't** use JetBrains Mono for long paragraphs, service explanations, or brand claims.
+
+## 7. Canonical Token Architecture
+
+The public website uses one token pipeline:
+
+```txt
+Approved Niuva values
+-> semantic CSS tokens in frontend/src/index.css
+-> semantic Tailwind mappings
+-> shared public components
+```
+
+Public components must not introduce parallel HSL palettes, hardcoded brand hex values, or local RGBA substitutes for an existing semantic role. The HSL variables below the semantic system in `index.css` are a temporary operational compatibility layer for shadcn-based admin, dashboard, order, and authentication surfaces.
+
+### Semantic colors
+
+| Role | Token | Value | Usage |
+|---|---|---:|---|
+| Brand identity | `--color-brand-primary` | `#6390BB` | Logo, identity accents, large decorative fields |
+| Brand support | `--color-brand-secondary` | `#8AAECF` | Soft highlights and secondary brand decoration |
+| Primary action | `--color-action-primary` | `#4A72A0` | CTA, active controls, important interactive text |
+| Action hover | `--color-action-primary-hover` | `#1C2B3A` | Hover and pressed emphasis |
+| Page surface | `--color-surface-page` | `#F8F9FB` | Public page canvas |
+| Default surface | `--color-surface-default` | `#FFFFFF` | Cards, fields, navigation, dialogs |
+| Muted surface | `--color-surface-muted` | `#EBF1F7` | Supporting groups and hover surfaces |
+| Highlight surface | `--color-surface-highlight` | `#E2E8EE` | Selected or stronger neutral relief |
+| Primary text | `--color-text-primary` | `#1C2B3A` | Headings and high-emphasis copy |
+| Secondary text | `--color-text-secondary` | `#3D5266` | Body and supporting copy |
+| Disabled text | `--color-text-disabled` | `#6B7A8D` | Disabled or low-emphasis metadata only |
+| Default border | `--color-border-default` | `#E2E8EE` | Structural borders and dividers |
+| Strong border | `--color-border-strong` | `#8AAECF` | Selected or emphasized borders |
+| Focus | `--color-focus-ring` | `#4A72A0` | Keyboard focus |
+
+Niuva Blue, Sky Blue, and Blue Dark form one tonal family with distinct semantic roles. Niuva Blue carries brand identity, Sky Blue supports highlights, and Blue Dark provides accessible contrast for buttons, active controls, and important interactive text.
+
+### Typography roles
+
+The reusable classes are `type-display-home`, `type-heading-page`, `type-heading-section`, `type-heading-subsection`, `type-heading-card`, `type-body-large`, `type-body`, `type-body-small`, `type-label`, `type-technical-metadata`, `type-button`, and `type-navigation`.
+
+- Poppins is the display and body family.
+- JetBrains Mono is reserved for genuine technical metadata.
+- Home H1 is 36/42px on mobile and 56/62px on desktop.
+- Page H1 is 34/40px on mobile and 48/55px on desktop.
+- Prose defaults to 65ch. The 70ch extended measure requires a clear editorial reason.
+
+### Spacing and containers
+
+The canonical spacing scale is 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, and 120px. Semantic section roles distinguish standard, compact, hero-bottom, card, and page-gutter spacing.
+
+- Wide container: `--container-wide` = 1344px.
+- Content container: `--container-content` = 1120px.
+- Narrow/form container: `--container-narrow` = 768px.
+- Page gutters: 16px mobile, 24px tablet, 32px desktop.
+- `PageContainer` is the canonical public container primitive.
+
+### Radius and elevation
+
+- Radius: none 0, small 8px, control 12px, card 16px, panel 20px, feature 24px, full 999px.
+- `radius-full` is only for circles, compact statuses, avatars, and justified small pills.
+- Shadows: none, surface `0 1px 2px rgba(28,43,58,.06)`, navigation `0 8px 24px rgba(28,43,58,.09)`, and overlay `0 18px 48px rgba(28,43,58,.16)`.
+- Static bordered cards remain flat unless elevation communicates stacking.
+
+### Breakpoints and motion
+
+Canonical breakpoints are 640, 768, 1024, 1280, and 1536px through Tailwind `sm`, `md`, `lg`, `xl`, and `2xl`. An arbitrary breakpoint requires a documented component-specific need and must not become page layout infrastructure.
+
+Motion durations are fast 150ms, standard 200ms, and emphasis 300ms. Page reveals may use at most 450ms with 12-16px travel. Existing GSAP remains scoped to public reveal behavior and must keep its reduced-motion exit.
 

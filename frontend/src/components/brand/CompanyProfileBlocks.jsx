@@ -1,6 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import xeonRedesignImage from "@/assets/projects/xeon-redesign.webp";
+import pindadEvImage from "@/assets/projects/pindad-ev-motor.webp";
+import bicycleArcadeImage from "@/assets/projects/agate-bicycle-arcade.webp";
+import motorcycleSimulatorImage from "@/assets/projects/agate-motorcycle-simulator.webp";
 
 export const profileContent = {
   intro: "Niuva Inovasi Utama hadir sebagai mitra strategis dalam bidang inovasi dan pengembangan produk, berfokus pada solusi kreatif terintegrasi berbasis ekosistem Bandung Techno Park.",
@@ -89,6 +93,11 @@ export const profileContent = {
       output: "Arah body engineering dan dasar prototype untuk konversi Yamaha Xeon.",
       capability: "Body engineering, integrasi komponen EV, dan prototyping mobilitas.",
       cta: "Diskusikan Project Mobilitas",
+      image: xeonRedesignImage,
+      imageWidth: 553,
+      imageHeight: 383,
+      imageAlt: "Tampak samping rancangan ulang Yamaha Xeon berwarna biru untuk konversi kendaraan listrik.",
+      imageFit: "contain",
     },
     {
       title: "Pengembangan Motor EV PT Pindad",
@@ -99,6 +108,11 @@ export const profileContent = {
       output: "Konsep motor EV taktis dan dukungan prototype untuk kebutuhan operasional.",
       capability: "R&D produk, desain mobilitas EV, dan kolaborasi engineering.",
       cta: "Diskusikan Project EV",
+      image: pindadEvImage,
+      imageWidth: 555,
+      imageHeight: 414,
+      imageAlt: "Prototipe motor listrik taktis berwarna hijau hasil pengembangan bersama PT Pindad.",
+      imageFit: "contain",
     },
     {
       title: "Bicycle Arcade Agate",
@@ -109,6 +123,11 @@ export const profileContent = {
       output: "Prototype bicycle arcade sebagai dasar evaluasi pengalaman pengguna.",
       capability: "Experience design, interactive product development, dan prototyping perangkat.",
       cta: "Diskusikan Simulator Interaktif",
+      image: bicycleArcadeImage,
+      imageWidth: 385,
+      imageHeight: 546,
+      imageAlt: "Prototipe bicycle arcade Agate dengan sepeda terpasang pada rangka simulator.",
+      imageFit: "contain",
     },
     {
       title: "Motorcycle Simulator Agate",
@@ -119,23 +138,28 @@ export const profileContent = {
       output: "Prototype simulator sepeda motor untuk edukasi safety riding.",
       capability: "Desain simulator, prototyping, dan pengujian pengalaman pengguna.",
       cta: "Diskusikan Project Simulator",
+      image: motorcycleSimulatorImage,
+      imageWidth: 387,
+      imageHeight: 553,
+      imageAlt: "Prototipe motorcycle simulator Agate pada rangka pengujian.",
+      imageFit: "contain",
     },
   ],
 };
 
 export function SectionShell({ id, eyebrow, title, body, children, className, titleClassName }) {
   return (
-    <section id={id} className={cn("relative overflow-hidden py-[var(--brand-section-space)]", className)}>
-      <div className="mx-auto w-full max-w-[var(--brand-container)] px-4 sm:px-6 lg:px-8">
+    <section id={id} className={cn("marketing-section-standard relative overflow-hidden", className)} data-marketing-section="true" data-spacing="standard">
+      <div className="mx-auto w-full max-w-[var(--container-wide)] px-4 sm:px-6 lg:px-8">
         {(eyebrow || title || body) && (
-          <div className="mb-[var(--brand-section-header-gap)] max-w-5xl">
+          <div className="mb-[var(--space-section-header)] max-w-5xl">
             {eyebrow && <p className="brand-eyebrow mb-5">{eyebrow}</p>}
             {title && (
-              <h2 className={cn("brand-heading text-[clamp(1.9rem,4.4vw,3.5rem)] leading-[1.06] text-[var(--brand-ink)]", titleClassName)}>
+              <h2 className={cn("type-heading-section text-text-primary", titleClassName)}>
                 {title}
               </h2>
             )}
-            {body && <p className="mt-5 max-w-[65ch] text-base leading-7 text-[var(--brand-muted)] md:mt-6 md:text-lg md:leading-8">{body}</p>}
+            {body && <p className="mt-5 max-w-[65ch] text-base leading-7 text-text-secondary md:mt-6 md:text-lg md:leading-8">{body}</p>}
           </div>
         )}
         {children}
@@ -152,23 +176,23 @@ export function BrandButton({
   className,
   type = "button",
   disabled = false,
-  icon = true,
+  icon = false,
   ...props
 }) {
   const variantClasses = {
-    primary: "bg-[var(--brand-blue)] text-white shadow-[var(--brand-shadow-button)] hover:bg-[var(--brand-ink)]",
-    secondary: "bg-white text-[var(--brand-ink)] ring-1 ring-[rgba(102,146,188,0.28)] hover:bg-[var(--brand-blue-bg)]",
-    quiet: "bg-transparent text-[var(--brand-ink)] ring-1 ring-transparent hover:bg-[var(--brand-blue-bg)]",
-    inverse: "bg-white text-[var(--brand-blue)] ring-1 ring-white/40 hover:bg-[var(--brand-offwhite)] hover:text-[var(--brand-ink)]",
+    primary: "bg-action-primary text-text-inverse hover:bg-action-primary-hover",
+    secondary: "bg-surface-default text-text-primary ring-1 ring-border-strong hover:bg-surface-muted",
+    quiet: "bg-transparent text-text-primary ring-1 ring-transparent hover:bg-surface-muted",
+    inverse: "bg-surface-default text-action-primary ring-1 ring-white/40 hover:bg-surface-page hover:text-text-primary",
   };
   const iconClasses = {
-    primary: "bg-white/20 text-white",
-    secondary: "bg-[var(--brand-blue)] text-white",
-    quiet: "bg-[var(--brand-blue-bg)] text-[var(--brand-blue)]",
-    inverse: "bg-[var(--brand-blue-bg)] text-[var(--brand-blue)]",
+    primary: "bg-white/20 text-text-inverse",
+    secondary: "bg-action-primary text-text-inverse",
+    quiet: "bg-surface-muted text-action-primary",
+    inverse: "bg-surface-muted text-action-primary",
   };
   const shared = cn(
-    "group inline-flex min-h-12 w-full min-w-0 cursor-pointer items-center justify-center gap-3 rounded-[var(--brand-radius-control)] px-5 py-3 text-center text-sm font-semibold leading-snug transition-all duration-300 ease-snap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--brand-offwhite)] active:scale-[0.98] sm:w-auto sm:px-7 sm:text-[0.95rem]",
+    "type-button group inline-flex min-h-12 w-full min-w-0 cursor-pointer items-center justify-center gap-3 rounded-control px-5 py-3 text-center transition-all duration-emphasis ease-snap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page active:scale-[0.98] sm:w-auto sm:px-7",
     variantClasses[variant] || variantClasses.secondary,
     disabled && "pointer-events-none opacity-60",
     className
@@ -179,7 +203,7 @@ export function BrandButton({
       {icon && (
         <span
           className={cn(
-            "grid h-7 w-7 shrink-0 place-items-center rounded-[0.625rem] transition-transform duration-300 ease-snap group-hover:translate-x-1 group-hover:-translate-y-px",
+            "grid h-7 w-7 shrink-0 place-items-center rounded-[0.625rem] transition-transform duration-emphasis ease-snap group-hover:translate-x-1 group-hover:-translate-y-px",
             iconClasses[variant] || iconClasses.secondary
           )}
         >
@@ -229,8 +253,8 @@ export function DotPagination({ count = 5, active = 0, className }) {
         <span
           key={index}
           className={cn(
-            "h-2.5 rounded-full bg-[var(--brand-soft-blue)] transition-all duration-500",
-            index === active ? "w-8 bg-[var(--brand-blue)]" : "w-2.5 opacity-60"
+            "h-2.5 rounded-full bg-[var(--color-brand-secondary)] transition-all duration-emphasis",
+            index === active ? "w-8 bg-brand-primary" : "w-2.5 opacity-60"
           )}
         />
       ))}
@@ -240,15 +264,15 @@ export function DotPagination({ count = 5, active = 0, className }) {
 
 export function RoundedVisualFrame({ title, kicker, className, children }) {
   return (
-    <div className={cn("rounded-[var(--brand-radius-outer)] bg-[rgba(102,146,188,0.12)] p-1.5 ring-1 ring-[rgba(102,146,188,0.12)]", className)}>
-      <div className="relative min-h-[220px] overflow-hidden rounded-[var(--brand-radius-inner)] bg-[var(--brand-blue)] p-5 text-white sm:min-h-[260px] sm:p-7 md:p-8 min-[1100px]:min-h-[300px]">
+    <div className={cn("rounded-feature bg-decoration-brand-soft p-1.5 ring-1 ring-border-default", className)}>
+      <div className="relative min-h-[210px] overflow-hidden rounded-card bg-action-primary p-5 text-text-inverse sm:min-h-[240px] sm:p-7 md:p-8 xl:min-h-[260px]">
         <ULineMotif light className="absolute -right-10 -top-8 hidden h-44 w-44 opacity-30 sm:block sm:h-56 sm:w-56" />
         <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full bg-white/20 sm:bottom-8 sm:right-8 sm:h-24 sm:w-24" />
         <div className="absolute bottom-16 right-20 h-5 w-5 rounded-full bg-white/40 sm:bottom-20 sm:right-24 sm:h-8 sm:w-8" />
-        <div className="relative z-10 flex h-full min-h-[174px] flex-col justify-between sm:min-h-[208px] min-[1100px]:min-h-[236px]">
+        <div className="relative z-10 flex h-full min-h-[164px] flex-col justify-between sm:min-h-[188px] xl:min-h-[196px]">
           <div>
-            <p className="text-sm font-semibold text-white/70">{kicker}</p>
-            <p className="mt-4 max-w-full text-[clamp(1.55rem,6vw,2.5rem)] font-extrabold leading-tight [overflow-wrap:anywhere] sm:max-w-md sm:text-3xl md:text-4xl">{title}</p>
+            <p className="text-sm font-semibold text-text-inverse">{kicker}</p>
+            <p className="type-heading-subsection mt-4 max-w-full [overflow-wrap:anywhere] sm:max-w-sm">{title}</p>
           </div>
           {children}
         </div>
@@ -261,9 +285,9 @@ function CapabilityDetailRow({ label, value }) {
   if (!value) return null;
 
   return (
-    <div className="grid gap-2 border-t border-[var(--brand-border)] py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
-      <dt className="text-sm font-semibold text-[var(--brand-blue)]">{label}</dt>
-      <dd className="text-sm leading-6 text-[var(--brand-ink)]">{value}</dd>
+    <div className="grid gap-3 border-t border-border-default py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
+      <dt className="text-sm font-semibold text-action-primary">{label}</dt>
+      <dd className="type-body text-text-primary">{value}</dd>
     </div>
   );
 }
@@ -281,21 +305,21 @@ export function CapabilityPanel({
 
   if (compact) {
     return (
-      <article className={cn("brand-reveal border-t border-[var(--brand-border)] py-6 sm:py-8 lg:col-span-6", className)}>
+      <article className={cn("brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6 sm:p-8 lg:col-span-6", className)}>
         <div className="flex items-start justify-between gap-5">
-          <p className="text-sm font-semibold text-[var(--brand-blue)]">
+          <p className="text-sm font-semibold text-action-primary">
             {item.accent || "Kapabilitas utama"}
           </p>
-          <span className="font-mono-tech text-xs font-semibold text-[var(--brand-muted)]">
+          <span className="font-mono-tech text-xs font-semibold text-text-secondary">
             {String(index + 1).padStart(2, "0")}
           </span>
         </div>
-        <h3 className="brand-heading mt-5 max-w-xl text-3xl leading-tight text-[var(--brand-ink)]">
+        <h3 className="brand-heading mt-5 max-w-xl text-3xl leading-tight text-text-primary">
           {item.title}
         </h3>
-        <p className="mt-4 max-w-xl text-base leading-7 text-[var(--brand-muted)]">{item.body}</p>
+        <p className="mt-4 max-w-xl text-base leading-7 text-text-secondary">{item.body}</p>
         {item.role && (
-          <p className="mt-5 max-w-xl border-l-2 border-[var(--brand-blue)] pl-4 text-sm font-semibold leading-6 text-[var(--brand-ink)]">
+          <p className="mt-5 max-w-xl border-l-2 border-[var(--color-brand-primary)] pl-4 text-sm font-semibold leading-6 text-text-primary">
             {item.role}
           </p>
         )}
@@ -322,36 +346,36 @@ export function CapabilityPanel({
   return (
     <article
       className={cn(
-        "brand-reveal rounded-[var(--brand-radius-card)] border border-[var(--brand-border)] bg-white p-6 sm:p-8 lg:p-10",
+        "brand-reveal rounded-card border border-border-default bg-surface-default p-6 md:p-8",
         className
       )}
     >
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-12">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-10">
         <div>
-          <div className="flex items-start justify-between gap-5 border-b border-[var(--brand-border)] pb-4">
+          <div className="flex items-start justify-between gap-5 border-b border-border-default pb-4">
             <div>
-              <p className="text-sm font-semibold text-[var(--brand-blue)]">{item.accent || "Kapabilitas"}</p>
-              {featured && <p className="mt-1 text-sm text-[var(--brand-muted)]">Kapabilitas utama</p>}
+              <p className="text-sm font-semibold text-action-primary">{item.accent || "Kapabilitas"}</p>
+              {featured && <p className="mt-1 text-sm text-text-secondary">Kapabilitas utama</p>}
             </div>
-            <span className="font-mono-tech text-sm font-semibold text-[var(--brand-blue)]">
+            <span className="font-mono-tech text-sm font-semibold text-action-primary">
               {String(index + 1).padStart(2, "0")}
             </span>
           </div>
-          <h3 className="brand-heading mt-6 max-w-xl text-[clamp(2rem,4vw,3.25rem)] leading-[1.06] text-[var(--brand-ink)]">
+          <h3 className="type-heading-section mt-6 max-w-xl text-text-primary">
             {item.title}
           </h3>
-          <p className="mt-5 max-w-xl text-base leading-8 text-[var(--brand-muted)]">{item.body}</p>
+          <p className="mt-5 max-w-xl text-base leading-8 text-text-secondary">{item.body}</p>
           <BrandButton
             to="/contact"
             variant="secondary"
-            className="mt-7"
+            className="mt-6"
             aria-label={`${actionLabel} untuk ${item.title}`}
           >
             {actionLabel}
           </BrandButton>
         </div>
 
-        <dl className="border-b border-[var(--brand-border)]">
+        <dl className="border-b border-border-default">
           {details.map((detail) => (
             <CapabilityDetailRow key={detail.label} label={detail.label} value={detail.value} />
           ))}
@@ -375,25 +399,25 @@ export function ServiceCard({ service, index, featured = false, className }) {
   return (
     <article
       className={cn(
-        "brand-reveal rounded-[var(--brand-radius-card)] border border-[var(--brand-border)] bg-[var(--brand-offwhite)] p-6 sm:p-7 lg:col-span-6",
+        "brand-reveal rounded-card border border-border-default bg-surface-page p-6 lg:col-span-6",
         className
       )}
     >
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-sm font-semibold text-[var(--brand-blue)]">{service.accent}</p>
-          <p className="mt-1 text-sm text-[var(--brand-muted)]">Kapabilitas pendukung</p>
+          <p className="text-sm font-semibold text-action-primary">{service.accent}</p>
+          <p className="mt-1 text-sm text-text-secondary">Kapabilitas pendukung</p>
         </div>
-        <span className="font-mono-tech text-xs font-semibold text-[var(--brand-muted)]">
+        <span className="font-mono-tech text-xs font-semibold text-text-secondary">
           {String(index + 1).padStart(2, "0")}
         </span>
       </div>
-      <h3 className="brand-heading mt-6 text-2xl leading-tight text-[var(--brand-ink)] sm:text-3xl">
+      <h3 className="brand-heading mt-6 text-2xl leading-tight text-text-primary sm:text-3xl">
         {service.title}
       </h3>
-      <p className="mt-4 text-base leading-7 text-[var(--brand-muted)]">{service.body}</p>
-      {service.role && <p className="mt-4 text-sm font-semibold leading-6 text-[var(--brand-ink)]">{service.role}</p>}
-      <dl className="mt-6 border-b border-[var(--brand-border)]">
+      <p className="mt-4 text-base leading-7 text-text-secondary">{service.body}</p>
+      {service.role && <p className="mt-4 text-sm font-semibold leading-6 text-text-primary">{service.role}</p>}
+      <dl className="mt-6 border-b border-border-default">
         {details.map((detail) => (
           <CapabilityDetailRow key={detail.label} label={detail.label} value={detail.value} />
         ))}
@@ -412,7 +436,7 @@ export function ServiceCard({ service, index, featured = false, className }) {
 
 export function ServiceGrid({ services = profileContent.services, className }) {
   return (
-    <div className={cn("grid grid-flow-dense gap-5 md:grid-cols-2 lg:grid-cols-12", className)}>
+    <div className={cn("grid grid-flow-dense gap-6 md:grid-cols-2 lg:grid-cols-12 lg:gap-8", className)}>
       {services.map((service, index) => (
         <ServiceCard
           key={service.title}
@@ -430,23 +454,23 @@ export function ProcessTimeline({ items = [], className }) {
   return (
     <ol
       className={cn(
-        "grid gap-px overflow-hidden border border-[var(--brand-border)] bg-[var(--brand-border)] md:grid-cols-2 lg:grid-cols-4",
+        "grid gap-6 md:grid-cols-2 lg:grid-cols-3",
         className
       )}
     >
       {items.map((item, index) => (
-        <li key={`${item.title}-${index}`} className="brand-reveal bg-white p-5 sm:p-6">
+        <li key={`${item.title}-${index}`} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
-            <span className="font-mono-tech text-sm font-semibold text-[var(--brand-blue)]">
+            <span className="font-mono-tech text-sm font-semibold text-action-primary">
               {String(index + 1).padStart(2, "0")}
             </span>
-            <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 rounded-full bg-[var(--brand-blue)]" />
+            <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 rounded-full bg-brand-primary" />
           </div>
-          {item.label && <p className="mt-5 text-sm font-semibold text-[var(--brand-muted)]">{item.label}</p>}
-          <h3 className="brand-heading mt-3 text-xl leading-tight text-[var(--brand-ink)] sm:text-2xl">
+          {item.label && <p className="mt-5 text-sm font-semibold text-text-secondary">{item.label}</p>}
+          <h3 className="type-heading-card mt-3 text-text-primary">
             {item.title}
           </h3>
-          {item.body && <p className="mt-3 text-sm leading-6 text-[var(--brand-muted)] sm:text-base sm:leading-7">{item.body}</p>}
+          {item.body && <p className="type-body-small mt-3 text-text-secondary sm:text-base sm:leading-[var(--type-body-leading)]">{item.body}</p>}
         </li>
       ))}
     </ol>
@@ -455,26 +479,26 @@ export function ProcessTimeline({ items = [], className }) {
 
 export function GoalItem({ children, index }) {
   return (
-    <li className="brand-reveal flex gap-4 rounded-[var(--brand-radius-card)] bg-white/85 p-5 shadow-[var(--brand-shadow-card)] ring-1 ring-[rgba(102,146,188,0.12)] sm:gap-5">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--brand-blue)] text-sm font-bold text-white">
+    <li className="brand-reveal flex gap-4 rounded-card bg-surface-default p-5 shadow-surface ring-1 ring-border-default sm:gap-5">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-action-primary text-sm font-bold text-text-inverse">
         {index + 1}
       </span>
-      <p className="min-w-0 self-center text-base leading-7 text-[var(--brand-ink)]">{children}</p>
+      <p className="min-w-0 self-center text-base leading-7 text-text-primary">{children}</p>
     </li>
   );
 }
 
 function ProjectMotifFallback({ index }) {
   return (
-    <div aria-hidden="true" className="absolute inset-0 bg-[var(--brand-blue-bg)]">
+    <div aria-hidden="true" className="absolute inset-0 bg-surface-muted">
       <ULineMotif className="absolute -right-12 -top-14 hidden h-48 w-48 opacity-20 sm:block" />
       <div className="relative flex h-full flex-col justify-between p-6 sm:p-8">
-        <span className="font-mono-tech text-xs font-semibold text-[var(--brand-muted)]">PROJECT DOSSIER</span>
+        <span className="font-mono-tech text-xs font-semibold text-text-secondary">PROJECT DOSSIER</span>
         <div className="flex items-end justify-between gap-6">
-          <span className="font-mono-tech text-6xl font-semibold leading-none text-[rgba(102,146,188,0.24)] sm:text-7xl">
+          <span className="font-mono-tech text-6xl font-semibold leading-none text-decoration-brand-line sm:text-7xl">
             {String(index + 1).padStart(2, "0")}
           </span>
-          <span className="h-3 w-3 rounded-full bg-[var(--brand-blue)]" />
+          <span className="h-3 w-3 rounded-full bg-brand-primary" />
         </div>
       </div>
     </div>
@@ -507,62 +531,61 @@ export function ProjectCaseStudyCard({
       onClick={onClick}
       aria-label={`${actionLabel}: ${project.title}`}
       className={cn(
-        "brand-reveal group block w-full overflow-hidden rounded-[var(--brand-radius-card)] border border-[var(--brand-border)] bg-white text-left transition-colors duration-300 ease-snap hover:border-[rgba(102,146,188,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-2",
+        "brand-reveal group block w-full overflow-hidden rounded-card border border-border-default bg-surface-default text-left transition-colors duration-emphasis ease-snap hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2",
         className
       )}
     >
-      <div className="grid lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)] lg:gap-10">
         <div
           data-brand-visual
           className={cn(
-            "relative min-h-[190px] overflow-hidden bg-[var(--brand-blue-bg)] sm:min-h-[240px] lg:min-h-full",
+            "relative aspect-[4/3] min-h-0 overflow-hidden bg-surface-muted sm:aspect-[16/10] lg:aspect-auto lg:min-h-full",
             reverse && "lg:order-2"
           )}
         >
           {image ? (
             <img
               src={image}
-              alt={`Dokumentasi ${project.title}`}
+              alt={project.imageAlt || `Dokumentasi ${project.title}`}
+              width={project.imageWidth}
+              height={project.imageHeight}
               loading="lazy"
               decoding="async"
-              className="h-full w-full object-cover transition-transform duration-700 ease-snap group-hover:scale-[1.03]"
+              className={cn("h-full w-full transition-transform duration-emphasis ease-snap group-hover:scale-[1.03]", project.imageFit === "contain" ? "object-contain" : "object-cover")}
             />
           ) : (
             <ProjectMotifFallback index={index} />
           )}
         </div>
 
-        <div className={cn("flex min-w-0 flex-col p-5 sm:p-7 lg:p-8", reverse && "lg:order-1")}>
+        <div className={cn("flex min-w-0 flex-col px-5 pb-6 sm:px-7 sm:pb-8 lg:p-8", reverse && "lg:order-1")}>
           <div className="flex items-start justify-between gap-5">
-            <p className="text-sm font-semibold leading-6 text-[var(--brand-blue)]">{project.category}</p>
-            <span className="shrink-0 font-mono-tech text-xs font-semibold text-[var(--brand-muted)]">
+            <p className="text-sm font-semibold leading-6 text-action-primary">{project.category}</p>
+            <span className="shrink-0 font-mono-tech text-xs font-semibold text-text-secondary">
               CASE {String(index + 1).padStart(2, "0")}
             </span>
           </div>
-          <h3 className="brand-heading mt-4 max-w-2xl text-2xl leading-tight text-[var(--brand-ink)] sm:text-3xl">
+          <h3 className="type-heading-subsection mt-4 max-w-2xl text-text-primary">
             {project.title}
           </h3>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--brand-muted)]">{project.body}</p>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-text-secondary">{project.body}</p>
           {project.capability && (
-            <p className="mt-4 text-sm leading-6 text-[var(--brand-ink)]">
+            <p className="type-body-small mt-4 text-text-primary">
               <span className="font-semibold">Kapabilitas:</span> {project.capability}
             </p>
           )}
 
-          <dl className="mt-6 divide-y divide-[var(--brand-border)] border-y border-[var(--brand-border)]">
+          <dl className="mt-6 divide-y divide-[var(--color-border-default)] border-y border-border-default">
             {proofItems.map((item) => (
-              <div key={item.label} className="grid grid-cols-[5.5rem_1fr] gap-3 py-3.5 sm:grid-cols-[7rem_1fr] sm:gap-5">
-                <dt className="text-sm font-semibold text-[var(--brand-blue)]">{item.label}</dt>
-                <dd className="text-sm leading-6 text-[var(--brand-ink)]">{item.value}</dd>
+              <div key={item.label} className="grid gap-3 py-4 sm:grid-cols-[7rem_1fr] sm:gap-5">
+                <dt className="text-sm font-semibold text-action-primary">{item.label}</dt>
+                <dd className="type-body-small text-text-primary">{item.value}</dd>
               </div>
             ))}
           </dl>
 
-          <div className="mt-5 flex items-center justify-between gap-5">
-            <span className="text-sm font-semibold text-[var(--brand-ink)]">{actionLabel}</span>
-            <span aria-hidden="true" className="text-lg text-[var(--brand-blue)] transition-transform duration-300 ease-snap group-hover:translate-x-1">
-              →
-            </span>
+          <div className="mt-6 border-t border-border-default pt-5">
+            <span className="text-sm font-semibold text-action-primary group-hover:text-text-primary">{actionLabel}</span>
           </div>
         </div>
       </div>
@@ -576,7 +599,7 @@ export function ProjectCard(props) {
 
 export function ProjectGrid({ projects = profileContent.projects, onSelect, className }) {
   return (
-    <div className={cn("grid gap-6", className)}>
+    <div className={cn("grid gap-12 lg:gap-16", className)}>
       {projects.map((project, index) => (
         <ProjectCaseStudyCard
           key={project.title}

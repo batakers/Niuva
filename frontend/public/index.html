@@ -5,17 +5,52 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#F8F9FB" />
         <meta name="description" content="PT Niuva Inovasi Utama adalah mitra pengembangan inovasi dan produk untuk riset, konsultasi ahli, desain, prototyping, teknologi, apparel, merchandise, dan workshop." />
+        <link
+            rel="icon"
+            type="image/svg+xml"
+            href="%PUBLIC_URL%/niuva-mark.svg"
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="preload"
+            as="style"
+            href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+            media="print"
+            onload="this.media='all'"
+        />
+        <noscript>
+            <link
+                rel="stylesheet"
+                href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+            />
+        </noscript>
         <title>Niuva Inovasi Utama - Riset, desain, teknologi, dan prototyping</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
-        <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
+        <script>
+            if ("%REACT_APP_ENABLE_EMERGENT_RUNTIME%" === "true") {
+                var emergentScript = document.createElement("script");
+                emergentScript.src = "https://assets.emergent.sh/scripts/emergent-main.js";
+                emergentScript.defer = true;
+                document.head.appendChild(emergentScript);
+            }
+        </script>
     </head>
     <body>
         <noscript>Anda perlu mengaktifkan JavaScript untuk membuka website ini.</noscript>
         <div id="root"></div>
         <script>
-            !(function (t, e) {
+            var analyticsEnabled =
+                "%NODE_ENV%" === "production" &&
+                "%REACT_APP_ENABLE_ANALYTICS%" === "true";
+            var posthogKey = "%REACT_APP_POSTHOG_KEY%";
+
+            if (analyticsEnabled && posthogKey && posthogKey.charAt(0) !== "%") {
+                !(function (t, e) {
                 var o, n, p, r;
                 e.__SV ||
                     ((window.posthog = e),
@@ -75,15 +110,42 @@
                         e._i.push([i, s, a]);
                     }),
                     (e.__SV = 1));
-            })(document, window.posthog || []);
-            posthog.init("phc_xAvL2Iq4tFmANRE7kzbKwaSqp1HJjN7x48s3vr0CMjs", {
-                api_host: "https://us.i.posthog.com",
-                person_profiles: "identified_only",
-                session_recording: {
-                    recordCrossOriginIframes: true,
-                    capturePerformance: false,
+                })(document, window.posthog || []);
+                window.addEventListener(
+                "load",
+                function () {
+                    var initializePostHog = function () {
+                        var configuredHost = "%REACT_APP_POSTHOG_HOST%";
+                        var posthogHost = /^https:\/\//.test(configuredHost)
+                            ? configuredHost.replace(/\/$/, "")
+                            : "https://us.i.posthog.com";
+                        posthog.init(posthogKey, {
+                            api_host: posthogHost,
+                            person_profiles: "identified_only",
+                            autocapture: {
+                                dom_event_allowlist: ["click", "change", "submit"],
+                            },
+                            session_recording: {
+                                recordCrossOriginIframes: false,
+                                capturePerformance: false,
+                                maskAllInputs: true,
+                                maskTextSelector: "[data-private]",
+                            },
+                        });
+                        if ("%REACT_APP_ENABLE_SESSION_RECORDING%" !== "true") {
+                            posthog.stopSessionRecording();
+                        }
+                    };
+
+                    if ("requestIdleCallback" in window) {
+                        window.requestIdleCallback(initializePostHog, { timeout: 3000 });
+                    } else {
+                        window.setTimeout(initializePostHog, 0);
+                    }
                 },
-            });
+                { once: true },
+                );
+            }
         </script>
     </body>
 </html>

@@ -50,6 +50,21 @@ const PUBLIC_ROUTE_META = {
   },
 };
 
+const configuredPublicSiteUrl = (process.env.REACT_APP_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+
+function getCanonicalOrigin() {
+  try {
+    const configuredUrl = new URL(configuredPublicSiteUrl);
+    if (/^https?:$/.test(configuredUrl.protocol) && !/^(localhost|127\.0\.0\.1)$/i.test(configuredUrl.hostname)) {
+      return configuredUrl.origin;
+    }
+  } catch {
+    // Runtime origin is the safe fallback when no confirmed public origin is configured.
+  }
+
+  return window.location.origin;
+}
+
 function ensureMetaDescription(content) {
   let tag = document.querySelector('meta[name="description"]');
 
@@ -71,7 +86,7 @@ function ensureCanonical(pathname) {
     document.head.appendChild(tag);
   }
 
-  tag.setAttribute("href", `${window.location.origin}${pathname}`);
+  tag.setAttribute("href", `${getCanonicalOrigin()}${pathname}`);
 }
 
 /**
@@ -95,15 +110,15 @@ export function MarketingLayout({ children, hideFooter = false }) {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--brand-offwhite)] selection:bg-primary/20 selection:text-foreground">
+    <div className="min-h-screen flex flex-col bg-surface-page selection:bg-primary/20 selection:text-foreground">
       <a
         href="#main-content"
-        className="fixed left-4 top-3 z-[60] inline-flex min-h-11 -translate-y-24 items-center rounded-full bg-[var(--brand-ink)] px-4 py-2 text-sm font-semibold text-white transition-transform duration-300 ease-snap focus:translate-y-0"
+        className="fixed left-4 top-3 z-[60] inline-flex min-h-11 -translate-y-24 items-center rounded-full bg-[var(--color-text-primary)] px-4 py-2 text-sm font-semibold text-text-inverse transition-transform duration-emphasis ease-snap focus:translate-y-0"
       >
         Lewati ke konten
       </a>
       <Navbar />
-      <main id="main-content" className="flex-1 w-full max-w-full overflow-x-hidden">{children}</main>
+      <main id="main-content" tabIndex="-1" className="flex-1 w-full max-w-full overflow-x-hidden">{children}</main>
       {!hideFooter && <Footer />}
     </div>
   );
@@ -118,7 +133,7 @@ export function ConversionLayout({ children, title, subtitle, hideFooter = false
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20 selection:text-foreground">
       <Navbar />
-      <main className="flex-1 px-4 pb-[var(--brand-section-space)] pt-[var(--brand-page-start)] sm:px-6 flex flex-col items-center">
+      <main className="flex-1 px-4 pb-[clamp(var(--space-section-standard-mobile), 5.8vw, var(--space-section-standard-desktop))] pt-[var(--space-page-start)] sm:px-6 flex flex-col items-center">
         <div className="w-full max-w-2xl">
           {(title || subtitle) && (
             <div className="mb-10 text-center">
@@ -157,7 +172,7 @@ export function OperationalLayout({ children, sidebar }) {
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20 selection:text-foreground">
       <Navbar />
-      <main className="flex-1 px-4 pb-12 pt-[var(--brand-page-start)] sm:px-6 w-full max-w-7xl mx-auto flex gap-6">
+      <main className="flex-1 px-4 pb-12 pt-[var(--space-page-start)] sm:px-6 w-full max-w-7xl mx-auto flex gap-6">
         {sidebar && (
           <aside className="hidden lg:block w-64 shrink-0">
             {sidebar}

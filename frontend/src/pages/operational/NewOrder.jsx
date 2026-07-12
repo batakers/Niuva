@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Upload, FileBox, Check, Clock, ArrowLeft, ArrowRight, TerminalSquare } from "lucide-react";
 import { useI18n } from "../../i18n";
-import { OperationalLayout } from "../../components/Layout";
+import { OperationalLayout } from "@/components/layout/Layout";
 import { api, formatApiError } from "../../lib/api";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";

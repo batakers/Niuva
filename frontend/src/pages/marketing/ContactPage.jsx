@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { MarketingLayout } from "../../components/Layout";
-import { useI18n } from "../../i18n";
+import { MarketingLayout } from "@/components/layout/Layout";
 import { api, formatApiError } from "../../lib/api";
 import {
   BrandButton,
@@ -12,8 +11,8 @@ import {
   BrandPage,
   ContactForm,
   ContactSummary,
-  CTASection,
   DecorativeMotif,
+  MarketingSection,
   PageContainer,
   PageHero,
   SectionHeader,
@@ -61,7 +60,6 @@ const responseSteps = [
 ];
 
 export default function ContactPage() {
-  const { t } = useI18n();
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -86,7 +84,7 @@ export default function ContactPage() {
 
     try {
       await api.post("/contact", payload);
-      toast.success(t("contact.success"));
+      toast.success("Pesan berhasil dikirim. Tim Niuva akan menghubungi Anda.");
       setForm(initialForm);
     } catch (error) {
       toast.error(formatApiError(error.response?.data?.detail));
@@ -100,63 +98,49 @@ export default function ContactPage() {
       <BrandPage>
         <PageHero
           eyebrow="Contact"
-          title="Mulai diskusi proyek dengan brief yang dapat ditindaklanjuti."
+          title="Mulai diskusi proyek dengan brief yang siap."
           body="Sampaikan kebutuhan riset, design engineering, prototyping, EV/product development, simulator, workshop, atau produk kreatif. Tim Niuva akan meninjau konteks awal sebelum diskusi lanjutan."
-          primaryAction={<BrandButton href={profileContent.contact.whatsappHref}>WhatsApp Niuva</BrandButton>}
+          primaryAction={<BrandButton href={profileContent.contact.whatsappHref}>Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton href="#form-konsultasi" variant="secondary">Isi Formulir Project</BrandButton>}
           variant="contact"
           visual={
-            <RoundedVisualFrame title="Project intake for technical and creative work." kicker="Consultation channel">
-              <div className="grid gap-3 text-sm font-semibold text-white/82">
-                <span>Research and development</span>
-                <span>Design and prototyping</span>
-                <span>Simulator, EV, workshop, merchandise</span>
+            <RoundedVisualFrame title="WhatsApp adalah jalur tercepat untuk memulai." kicker="Kanal konsultasi">
+              <div className="grid gap-3 text-sm font-semibold text-text-inverse">
+                <span>WhatsApp: 0851-1767-8901</span>
+                <span>Email: niuvamakerspace@gmail.com</span>
+                <span>Bandung Techno Park</span>
               </div>
             </RoundedVisualFrame>
           }
         />
 
-        <section className="relative bg-[var(--brand-blue-bg)] py-[var(--brand-section-space)]">
+        <MarketingSection tone="muted">
           <DecorativeMotif className="-right-24 top-10 h-72 w-72 opacity-35" density="sparse" />
           <PageContainer className="relative z-10">
             <SectionHeader
-              eyebrow="Contact Summary"
-              title="Hubungi Niuva melalui kanal resmi atau kirim brief singkat."
-              body="Informasi kontak dibuat mudah ditemukan agar calon mitra dapat langsung memilih jalur yang paling sesuai: WhatsApp untuk percakapan cepat, email untuk brief formal, atau formulir untuk konteks proyek yang lebih lengkap."
+              eyebrow="Kanal resmi"
+              title="Pilih jalur kontak sesuai kesiapan brief Anda."
+              body="Gunakan WhatsApp untuk respons awal tercepat, email untuk dokumen formal, atau formulir untuk menyampaikan konteks proyek secara terstruktur."
               align="split"
             />
             <ContactSummary contact={profileContent.contact} showMapLink />
           </PageContainer>
-        </section>
+        </MarketingSection>
 
-        <section id="form-konsultasi" className="bg-white py-[var(--brand-section-space)]">
+        <MarketingSection id="form-konsultasi" tone="default">
           <PageContainer>
-            <div className="grid gap-8 min-[1100px]:grid-cols-[0.86fr_1.14fr] min-[1100px]:items-start">
+            <div className="grid gap-8 xl:grid-cols-[0.86fr_1.14fr] xl:items-start">
               <div>
                 <SectionHeader
-                  eyebrow="Project Intake"
+                  eyebrow="Form konsultasi"
                   title="Form konsultasi untuk riset, desain, dan prototyping."
                   body="Semakin jelas konteks awal, semakin mudah tim Niuva menentukan pendekatan pertama dan pertanyaan lanjutan yang perlu dijawab."
                   className="mb-0"
                 />
-                <div className="brand-reveal mt-8 grid gap-4">
-                  {responseSteps.map((step, index) => (
-                    <article key={step.title} className="rounded-[var(--brand-radius-card)] bg-[var(--brand-offwhite)] p-5 ring-1 ring-[rgba(102,146,188,0.14)]">
-                      <div className="flex items-start gap-4">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--brand-radius-control)] bg-white font-mono-tech text-xs font-bold text-[var(--brand-blue)]">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
-                        <div>
-                          <h3 className="brand-heading text-xl leading-tight text-[var(--brand-ink)]">{step.title}</h3>
-                          <p className="mt-2 text-sm leading-6 text-[var(--brand-muted)]">{step.body}</p>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                <p className="brand-reveal mt-8 border-y border-border-default py-5 text-sm leading-7 text-text-secondary">Semua field dipertahankan agar tim menerima nama, organisasi, kontak, jenis kebutuhan, timeline, dan pesan dalam satu brief awal.</p>
               </div>
 
-              <div className="brand-reveal rounded-[var(--brand-radius-panel)] bg-[var(--brand-blue-bg)] p-1.5 shadow-[var(--brand-shadow-card)] ring-1 ring-[rgba(102,146,188,0.14)]">
+              <div className="brand-reveal">
                 <ContactForm
                   form={form}
                   onChange={set}
@@ -165,41 +149,52 @@ export default function ContactPage() {
                   needOptions={needOptions}
                   timelineOptions={timelineOptions}
                   submitLabel="Kirim Brief Project"
+                  className="bg-surface-muted"
                 />
               </div>
             </div>
           </PageContainer>
-        </section>
+        </MarketingSection>
 
-        <section className="bg-[var(--brand-offwhite)] py-[var(--brand-section-space)]">
+        <MarketingSection tone="page">
           <PageContainer>
             <SectionHeader
-              eyebrow="Location"
+              eyebrow="Setelah brief dikirim"
+              title="Tiga langkah menuju diskusi lanjutan."
+              body="Respons awal difokuskan pada konteks kebutuhan, kecocokan kapabilitas, dan informasi yang masih perlu dilengkapi."
+              align="split"
+            />
+            <ol className="grid gap-5 md:grid-cols-3">
+              {responseSteps.map((step, index) => (
+                <li key={step.title} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6">
+                  <span className="font-mono-tech text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                  <h3 className="type-heading-card mt-5 text-text-primary">{step.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-text-secondary">{step.body}</p>
+                </li>
+              ))}
+            </ol>
+          </PageContainer>
+        </MarketingSection>
+
+        <MarketingSection tone="muted">
+          <PageContainer>
+            <SectionHeader
+              eyebrow="Lokasi"
               title="Berbasis di Bandung Techno Park untuk riset dan prototyping."
               body="Alamat Niuva: Bandung Techno Park - Gedung D Lt.1, Ruang Makerspace. Pertemuan proyek dan kunjungan dilakukan berdasarkan janji."
               align="split"
             />
-            <div className="brand-reveal overflow-hidden rounded-[var(--brand-radius-panel)] bg-white p-1.5 shadow-[var(--brand-shadow-card)] ring-1 ring-[rgba(102,146,188,0.14)]">
+            <div className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default">
               <iframe
                 title="Lokasi Niuva di Bandung Techno Park"
                 src={profileContent.contact.mapsEmbed}
-                className="h-[320px] w-full rounded-[var(--brand-radius-inner)] border-0 md:h-[430px]"
+                className="h-[320px] w-full border-0 md:h-[430px]"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
           </PageContainer>
-        </section>
-
-        <CTASection
-          title="Diskusikan kebutuhan riset, desain, atau prototyping bersama Niuva."
-          body="Hubungi Niuva melalui WhatsApp, email resmi, atau formulir. Tim akan meninjau konteks awal sebelum mengatur percakapan lanjutan."
-          primaryAction={<BrandButton href={profileContent.contact.whatsappHref} variant="inverse">WhatsApp Niuva</BrandButton>}
-          secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
-          contactEmphasis="Kanal resmi: WhatsApp, email, dan formulir project intake."
-          whatsappHref={profileContent.contact.whatsappHref}
-          email={profileContent.contact.email}
-        />
+        </MarketingSection>
       </BrandPage>
     </MarketingLayout>
   );

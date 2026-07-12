@@ -36,13 +36,13 @@
     },
     "borders": {
       "default": "#2B2F42",
-      "focus": "#3B82F6",
+      "focus": "#4A72A0",
       "description": "Visible grid lines and technical borders."
     },
     "brand": {
-      "primary": "#3B82F6",
+      "primary": "#6390BB",
       "secondary": "#F59E0B",
-      "description": "Electric Cobalt Blue as main NIUVA accent, Tech Amber for heat/industrial highlights."
+      "description": "Unified Steel Blue as the main NIUVA accent, Tech Amber for heat/industrial highlights."
     },
     "text": {
       "primary": "#F8FAFC",
@@ -53,7 +53,7 @@
       "success": "#10B981",
       "warning": "#F59E0B",
       "error": "#EF4444",
-      "info": "#3B82F6"
+      "info": "#4A72A0"
     }
   },
   "layout_and_spacing": {
@@ -71,18 +71,18 @@
   "components_strategy": {
     "buttons": {
       "style": "Rectangular, max rounded-md (4px).",
-      "primary": "bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors",
+      "primary": "bg-[#4A72A0] hover:bg-[#1C2B3A] text-white font-semibold transition-colors",
       "outline": "border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white"
     },
     "forms_and_wizard": {
-      "style": "Left-aligned labels, distinct active/focus states with ring-2 ring-blue-500/50.",
+      "style": "Left-aligned labels, distinct active/focus states with ring-2 ring-[#4A72A0]/50.",
       "wizard_steps": "Visual stepper using monospace font for numbers, clear active vs pending colors."
     },
     "navigation": {
       "style": "Glassmorphism for marketing (backdrop-blur-xl bg-[#0A0B10]/70 border-b border-slate-800). Solid for dashboard."
     },
     "cards": {
-      "style": "Technical Grid Borders. Use 'The Tracing Beam' or subtle top-border accent (border-t-2 border-t-blue-500) for active dashboard widgets."
+      "style": "Technical Grid Borders. Use 'The Tracing Beam' or subtle top-border accent (border-t-2 border-t-[#6390BB]) for active dashboard widgets."
     }
   },
   "motion_and_interactions": {
