@@ -23,6 +23,13 @@ const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminInternships = lazy(() => import("@/pages/admin/Internships"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
+const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
+const EditorialHomepagePrototype = brandLabEnabled
+  ? lazy(() => import("@/pages/brand-lab/EditorialHomepagePrototype"))
+  : null;
+const ExperimentalHomepagePrototype = brandLabEnabled
+  ? lazy(() => import("@/pages/brand-lab/ExperimentalHomepagePrototype"))
+  : null;
 
 function RouteFallback() {
   return (
@@ -102,6 +109,12 @@ function App() {
                 <Route path="/admin/contacts" element={<ProtectedRoute adminOnly><AdminContacts /></ProtectedRoute>} />
                 <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
                 <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
+                {brandLabEnabled && (
+                  <>
+                    <Route path="/__brand-lab/editorial" element={<EditorialHomepagePrototype />} />
+                    <Route path="/__brand-lab/experimental" element={<ExperimentalHomepagePrototype />} />
+                  </>
+                )}
                 <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
