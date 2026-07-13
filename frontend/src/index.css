@@ -1,39 +1,131 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Core palette from the approved Niuva blue system */
-  --niuva-blue: 209 39% 57%;       /* #6692BC */
-  --sky-blue: 209 38% 68%;         /* #90AFCD */
-  --blue-dark: 209 38% 48%;
-  --midnight: 211 29% 20%;         /* #243241 */
-  --steel: 209 17% 45%;            /* #5F7285 */
-  --smoke: 209 17% 45%;
-  --silver: 210 26% 91%;           /* #E2E8EE */
-  --frost: 206 53% 94%;            /* #E8F1F8 */
-  --cloud: 210 40% 98%;            /* #F8FAFC */
-  --pure-white: 0 0% 100%;         /* #FFFFFF */
-  --brand-blue: #6692BC;
-  --brand-soft-blue: #90AFCD;
-  --brand-blue-bg: #E8F1F8;
-  --brand-blue-light: rgba(144, 175, 205, 0.28);
-  --brand-offwhite: #F8FAFC;
-  --brand-ink: #243241;
-  --brand-muted: #5F7285;
-  --brand-border: #D8E6F1;
-  --brand-radius-card: 1.5rem;
-  --brand-radius-outer: 2rem;
-  --brand-radius-inner: 1.55rem;
-  --brand-shadow-card: 0 18px 60px rgba(36, 50, 65, 0.07);
-  --brand-shadow-button: 0 18px 44px rgba(102, 146, 188, 0.24);
-  --brand-page-start: clamp(5.75rem, 8.8vw, 7.5rem);
-  --brand-page-hero-bottom: clamp(4rem, 6.5vw, 6rem);
-  --brand-section-space: clamp(4rem, 7vw, 6.75rem);
-  --brand-cta-space: clamp(4rem, 6.6vw, 6rem);
-  --brand-section-header-gap: clamp(2.25rem, 3.5vw, 3.75rem);
-  --brand-footer-space: clamp(3rem, 5vw, 4.5rem);
+  /* Canonical public semantic colors. */
+  --color-brand-primary: #6390BB;
+  --color-brand-secondary: #8AAECF;
+  --color-action-primary: #4A72A0;
+  --color-action-primary-hover: #1C2B3A;
+  --color-surface-page: #F8F9FB;
+  --color-surface-default: #FFFFFF;
+  --color-surface-muted: #EBF1F7;
+  --color-surface-highlight: #E2E8EE;
+  --color-text-primary: #1C2B3A;
+  --color-text-secondary: #3D5266;
+  --color-text-disabled: #6B7A8D;
+  --color-text-inverse: #FFFFFF;
+  --color-border-default: #E2E8EE;
+  --color-border-strong: #8AAECF;
+  --color-focus-ring: #4A72A0;
+  --color-status-success: #2E8452;
+  --color-status-warning: #B87B1E;
+  --color-status-error: #C14444;
+  --color-disabled-surface: #E2E8EE;
+  --color-overlay-scrim: rgba(28, 43, 58, 0.72);
+  --color-navigation-backdrop: rgba(248, 249, 251, 0.96);
+  --color-decoration-brand-soft: rgba(138, 174, 207, 0.28);
+  --color-decoration-brand-line: rgba(99, 144, 187, 0.24);
+  --color-decoration-brand-strong: rgba(99, 144, 187, 0.55);
+  --color-decoration-inverse-line: rgba(255, 255, 255, 0.38);
+
+  /* Typography roles. */
+  --font-family-sans: 'Poppins', system-ui, sans-serif;
+  --font-family-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --type-display-home-size: clamp(2.25rem, 4.6vw, 3.5rem);
+  --type-display-home-leading: clamp(2.625rem, 5.1vw, 3.875rem);
+  --type-heading-page-size: clamp(2.125rem, 4.2vw, 3rem);
+  --type-heading-page-leading: clamp(2.5rem, 4.8vw, 3.4375rem);
+  --type-heading-section-size: clamp(1.75rem, 3.4vw, 2.5rem);
+  --type-heading-section-leading: clamp(2.1875rem, 4vw, 3rem);
+  --type-heading-subsection-size: clamp(1.375rem, 2.4vw, 1.625rem);
+  --type-heading-subsection-leading: clamp(1.8125rem, 3vw, 2.125rem);
+  --type-heading-card-size: clamp(1.25rem, 2vw, 1.375rem);
+  --type-heading-card-leading: clamp(1.75rem, 2.6vw, 1.875rem);
+  --type-body-large-size: 1.125rem;
+  --type-body-large-leading: 1.875rem;
+  --type-body-size: 1rem;
+  --type-body-leading: 1.625rem;
+  --type-body-small-size: 0.875rem;
+  --type-body-small-leading: 1.375rem;
+  --type-label-size: 0.8125rem;
+  --type-label-leading: 1.125rem;
+  --type-technical-size: 0.75rem;
+  --type-technical-leading: 1.125rem;
+  --type-button-size: 0.9375rem;
+  --type-button-leading: 1.25rem;
+  --type-navigation-size: 0.9375rem;
+  --type-navigation-leading: 1.25rem;
+
+  /* Canonical spacing and layout roles. */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-30: 7.5rem;
+  --space-page-gutter-mobile: 1rem;
+  --space-page-gutter-tablet: 1.5rem;
+  --space-page-gutter-desktop: 2rem;
+  --space-section-standard-mobile: 4rem;
+  --space-section-standard-desktop: 6rem;
+  --space-section-compact-mobile: 3rem;
+  --space-section-compact-desktop: 4rem;
+  --space-hero-bottom-mobile: 3rem;
+  --space-hero-bottom-desktop: 4rem;
+  --space-card-mobile: 1.25rem;
+  --space-card-desktop: 2rem;
+  --container-wide: 84rem;
+  --container-content: 70rem;
+  --container-narrow: 48rem;
+  --measure-prose: 65ch;
+  --measure-prose-extended: 70ch;
+
+  /* Shape, elevation, and motion roles. */
+  --radius-none: 0;
+  --radius-sm: 0.5rem;
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.25rem;
+  --radius-feature: 1.5rem;
+  --radius-full: 999px;
+  --shadow-none: none;
+  --shadow-surface: 0 1px 2px rgba(28, 43, 58, 0.06);
+  --shadow-navigation: 0 8px 24px rgba(28, 43, 58, 0.09);
+  --shadow-overlay: 0 18px 48px rgba(28, 43, 58, 0.16);
+  --shadow-focus-ring: 0 0 0 3px rgba(74, 114, 160, 0.22);
+  --motion-fast: 150ms;
+  --motion-standard: 200ms;
+  --motion-emphasis: 300ms;
+  --motion-reveal: 450ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-reveal: cubic-bezier(0.22, 1, 0.36, 1);
+  --nav-offset: 6.25rem;
+  --space-page-start: clamp(6.5rem, 7.2vw, 7rem);
+  --space-section-header: clamp(1.5rem, 2.6vw, 2.5rem);
+  --space-cta-section: clamp(3.75rem, 5.6vw, 5.5rem);
+  --space-footer: clamp(2.75rem, 4.4vw, 4rem);
+
+  /* Operational HSL compatibility layer. Public components must not use these. */
+  --niuva-blue: 209 38% 56%;
+  --sky-blue: 209 40% 68%;
+  --blue-dark: 212 36% 46%;
+  --midnight: 211 35% 17%;
+  --steel: 210 25% 32%;
+  --smoke: 215 14% 49%;
+  --silver: 210 17% 91%;
+  --frost: 210 38% 95%;
+  --cloud: 220 18% 98%;
+  --pure-white: 0 0% 100%;
 
   /* shadcn-compatible tokens */
   --background: var(--cloud);
@@ -63,7 +155,7 @@
   --border: var(--silver);
   --input: var(--silver);
   --ring: var(--blue-dark);
-  --radius: 0.5rem;
+  --radius: var(--radius-control);
 
   /* Extended tokens used throughout the current UI */
   --surface-1: var(--pure-white);
@@ -82,35 +174,40 @@
 
 html {
   background-color: hsl(var(--background));
+  scrollbar-gutter: stable;
   scroll-behavior: smooth;
+  scroll-padding-top: var(--nav-offset);
 }
 
 body {
   margin: 0;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--font-family-sans);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-leading);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: break-word;
 }
 
 .font-heading {
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--font-family-sans);
   letter-spacing: 0;
 }
 
 .font-display {
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--font-family-sans);
   letter-spacing: 0;
 }
 
 .font-mono-tech {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-family-mono);
 }
 
 @layer base {
   h1, h2, h3, h4 {
-    font-family: 'Poppins', system-ui, sans-serif;
+    font-family: var(--font-family-sans);
     letter-spacing: 0;
     text-wrap: balance;
   }
@@ -118,6 +215,11 @@ body {
   p {
     text-wrap: pretty;
   }
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
 }
 
 ::selection {
@@ -141,8 +243,9 @@ body {
 }
 
 .annotation-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--type-technical-size);
+  line-height: var(--type-technical-leading);
   font-weight: 500;
   letter-spacing: 0.04em;
   color: hsl(var(--muted-foreground));
@@ -159,24 +262,115 @@ body {
   vertical-align: middle;
 }
 
+@layer components {
+  .type-display-home {
+    font-family: var(--font-family-sans);
+    font-size: var(--type-display-home-size);
+    font-weight: 800;
+    line-height: var(--type-display-home-leading);
+    letter-spacing: -0.025em;
+  }
+
+  .type-heading-page {
+    font-family: var(--font-family-sans);
+    font-size: var(--type-heading-page-size);
+    font-weight: 800;
+    line-height: var(--type-heading-page-leading);
+    letter-spacing: -0.02em;
+  }
+
+  .type-heading-section {
+    font-family: var(--font-family-sans);
+    font-size: var(--type-heading-section-size);
+    font-weight: 800;
+    line-height: var(--type-heading-section-leading);
+    letter-spacing: -0.015em;
+  }
+
+  .type-heading-subsection {
+    font-family: var(--font-family-sans);
+    font-size: var(--type-heading-subsection-size);
+    font-weight: 700;
+    line-height: var(--type-heading-subsection-leading);
+  }
+
+  .type-heading-card {
+    font-family: var(--font-family-sans);
+    font-size: var(--type-heading-card-size);
+    font-weight: 700;
+    line-height: var(--type-heading-card-leading);
+  }
+
+  .type-body-large {
+    font-size: var(--type-body-large-size);
+    line-height: var(--type-body-large-leading);
+  }
+
+  .type-body {
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-leading);
+  }
+
+  .type-body-small {
+    font-size: var(--type-body-small-size);
+    line-height: var(--type-body-small-leading);
+  }
+
+  .type-label {
+    font-size: var(--type-label-size);
+    font-weight: 600;
+    line-height: var(--type-label-leading);
+  }
+
+  .type-technical-metadata {
+    font-family: var(--font-family-mono);
+    font-size: var(--type-technical-size);
+    font-weight: 600;
+    line-height: var(--type-technical-leading);
+    letter-spacing: 0.04em;
+  }
+
+  .type-button {
+    font-size: var(--type-button-size);
+    font-weight: 600;
+    line-height: var(--type-button-leading);
+  }
+
+  .type-navigation {
+    font-size: var(--type-navigation-size);
+    font-weight: 600;
+    line-height: var(--type-navigation-leading);
+  }
+}
+
 .brand-heading {
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--font-family-sans);
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .brand-eyebrow {
   display: inline-flex;
   align-items: center;
-  min-height: 2rem;
-  border-radius: 999px;
-  background: rgba(144, 175, 205, 0.22);
-  padding: 0.35rem 0.85rem;
-  color: var(--brand-blue);
-  font-size: 0.72rem;
-  font-weight: 700;
+  min-height: 1.85rem;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-muted);
+  padding: 0.35rem 0.75rem;
+  color: var(--color-text-primary);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-leading);
+  font-weight: 600;
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-transform: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.brand-page :where(p, li, a, span, h1, h2, h3) {
+  overflow-wrap: break-word;
 }
 
 .brand-u-motif {
@@ -195,7 +389,7 @@ body {
 .brand-u-motif span {
   position: absolute;
   inset: calc(var(--i, 0) * 1rem);
-  border: 10px solid rgba(102, 146, 188, 0.24);
+  border: 10px solid var(--color-decoration-brand-line);
   border-top: 0;
   border-radius: 0 0 999px 999px;
 }
@@ -205,7 +399,7 @@ body {
 .brand-u-motif span:nth-child(3) { --i: 2; }
 
 .brand-u-motif-light span {
-  border-color: rgba(255, 255, 255, 0.38);
+  border-color: var(--color-decoration-inverse-line);
 }
 
 .brand-reveal {
@@ -215,7 +409,7 @@ body {
 
 @media (prefers-reduced-motion: no-preference) {
   @keyframes reveal {
-    from { opacity: 0; transform: translateY(18px); }
+    from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
@@ -239,15 +433,11 @@ body {
     to { transform: translateX(-50%); }
   }
 
-  .reveal { animation: reveal 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  .snap-in { animation: snap-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .fade-up { animation: reveal 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .reveal { animation: reveal var(--motion-reveal) var(--ease-reveal) both; }
+  .snap-in { animation: snap-in var(--motion-standard) var(--ease-standard) both; }
+  .fade-up { animation: reveal var(--motion-reveal) var(--ease-reveal) both; }
   .niuva-marquee { animation: niuva-marquee 26s linear infinite; }
 
-  .brand-reveal {
-    opacity: 0;
-    transform: translateY(28px);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -271,32 +461,89 @@ body {
 }
 
 .brand-page {
-  background: var(--brand-offwhite);
-  color: var(--brand-ink);
+  background: var(--color-surface-page);
+  color: var(--color-text-primary);
 }
 
 .brand-page section[id] {
-  scroll-margin-top: var(--brand-page-start);
+  scroll-margin-top: var(--nav-offset);
 }
 
 .brand-section {
-  padding-block: var(--brand-section-space);
+  padding-block: clamp(var(--space-section-standard-mobile), 5.8vw, var(--space-section-standard-desktop));
+}
+
+.marketing-page-hero {
+  padding-top: var(--space-page-start);
+  padding-bottom: var(--space-hero-bottom-mobile);
+}
+
+.marketing-section-standard {
+  padding-top: var(--space-section-standard-mobile);
+  padding-bottom: var(--space-section-standard-mobile);
+}
+
+.marketing-section-compact {
+  padding-top: var(--space-section-compact-mobile);
+  padding-bottom: var(--space-section-compact-mobile);
+}
+
+.marketing-section-none {
+  padding-top: var(--space-0);
+  padding-bottom: var(--space-0);
+}
+
+@media (min-width: 768px) {
+  .marketing-section-standard {
+    padding-top: var(--space-20);
+    padding-bottom: var(--space-20);
+  }
+}
+
+@media (min-width: 1024px) {
+  .marketing-page-hero {
+    padding-bottom: var(--space-hero-bottom-desktop);
+  }
+
+  .marketing-section-standard {
+    padding-top: var(--space-section-standard-desktop);
+    padding-bottom: var(--space-section-standard-desktop);
+  }
+
+  .marketing-section-compact {
+    padding-top: var(--space-section-compact-desktop);
+    padding-bottom: var(--space-section-compact-desktop);
+  }
 }
 
 .brand-field {
   min-height: 3.25rem;
-  border-color: var(--brand-border);
-  border-radius: 0.85rem;
-  background: #fff;
-  color: var(--brand-ink);
-  box-shadow: none;
+  border-color: var(--color-border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-default);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-none);
 }
 
 .brand-field::placeholder {
-  color: #8192A2;
+  color: var(--color-text-secondary);
 }
 
 .brand-field:focus-visible {
-  border-color: var(--brand-blue);
-  box-shadow: 0 0 0 3px rgba(102, 146, 188, 0.15);
+  border-color: var(--color-focus-ring);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --nav-offset: 5.75rem;
+    --space-page-start: 6rem;
+    --space-section-header: 1.5rem;
+    --space-cta-section: 3.25rem;
+    --space-footer: 2.5rem;
+  }
+
+  .brand-u-motif span {
+    border-width: 8px;
+  }
 }

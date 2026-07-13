@@ -1,22 +1,22 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { MarketingLayout } from "../../components/Layout";
-import { useI18n } from "../../i18n";
+import { MarketingLayout } from "@/components/layout/Layout";
 import { api, formatApiError } from "../../lib/api";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { Textarea } from "../../components/ui/textarea";
+import { useI18n } from "@/i18n";
 import {
   BrandButton,
   RoundedVisualFrame,
-  SectionShell,
-  profileContent,
+  useProfileContent,
 } from "../../components/brand/CompanyProfileBlocks";
 import {
   BrandPage,
+  ContactForm,
   ContactSummary,
-  CTASection,
+  DecorativeMotif,
+  MarketingSection,
+  PageContainer,
   PageHero,
+  SectionHeader,
 } from "../../components/brand/BrandSystem";
 
 const initialForm = {
@@ -45,8 +45,24 @@ const timelineOptions = [
   "Lebih dari 6 bulan",
 ];
 
+const responseSteps = [
+  {
+    title: "Konteks diterima",
+    body: "Tim membaca jenis kebutuhan, tujuan, ruang lingkup, timeline, dan kontak yang dapat dihubungi.",
+  },
+  {
+    title: "Kebutuhan dipetakan",
+    body: "Niuva menilai apakah titik masuk paling tepat adalah riset, konsultasi, desain, prototyping, workshop, atau produk kreatif.",
+  },
+  {
+    title: "Diskusi lanjutan",
+    body: "Percakapan berikutnya digunakan untuk memperjelas brief, batasan, output, dan bentuk kolaborasi.",
+  },
+];
+
 export default function ContactPage() {
-  const { t } = useI18n();
+  const { locale } = useI18n();
+  const profileContent = useProfileContent();
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -57,21 +73,21 @@ export default function ContactPage() {
     const payload = {
       name: form.name,
       email: form.email,
-      subject: `${form.needType} - ${form.company || "Tanpa perusahaan"}`,
+      subject: `${form.needType} - ${form.company || (locale === "en" ? "No company" : "Tanpa perusahaan")}`,
       message: [
-        `Perusahaan / Instansi: ${form.company || "-"}`,
-        `Nomor WhatsApp: ${form.phone || "-"}`,
-        `Jenis kebutuhan: ${form.needType}`,
-        `Estimasi timeline: ${form.timeline}`,
+        `${locale === "en" ? "Company / Institution" : "Perusahaan / Instansi"}: ${form.company || "-"}`,
+        `${locale === "en" ? "WhatsApp number" : "Nomor WhatsApp"}: ${form.phone || "-"}`,
+        `${locale === "en" ? "Type of need" : "Jenis kebutuhan"}: ${form.needType}`,
+        `${locale === "en" ? "Estimated timeline" : "Estimasi timeline"}: ${form.timeline}`,
         "",
-        "Pesan tambahan:",
+        locale === "en" ? "Additional message:" : "Pesan tambahan:",
         form.message,
       ].join("\n"),
     };
 
     try {
       await api.post("/contact", payload);
-      toast.success(t("contact.success"));
+      toast.success(locale === "en" ? "Your message has been sent. The Niuva team will contact you." : "Pesan berhasil dikirim. Tim Niuva akan menghubungi Anda.");
       setForm(initialForm);
     } catch (error) {
       toast.error(formatApiError(error.response?.data?.detail));
@@ -85,187 +101,103 @@ export default function ContactPage() {
       <BrandPage>
         <PageHero
           eyebrow="Contact"
-          title="Mulai konsultasi proyek dengan konteks yang jelas."
-          body="Sampaikan kebutuhan, tujuan, ruang lingkup, target hasil, dan batasan proyek. Tim Niuva akan meninjau permintaan untuk menentukan langkah awal yang relevan."
+          title="Mulai diskusi proyek dengan brief yang siap."
+          body="Sampaikan kebutuhan riset, design engineering, prototyping, EV/product development, simulator, workshop, atau produk kreatif. Tim Niuva akan meninjau konteks awal sebelum diskusi lanjutan."
           primaryAction={<BrandButton href={profileContent.contact.whatsappHref}>Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton href="#form-konsultasi" variant="secondary">Isi Formulir</BrandButton>}
+          secondaryAction={<BrandButton href="#form-konsultasi" variant="secondary">Isi Formulir Project</BrandButton>}
+          variant="contact"
           visual={
-            <RoundedVisualFrame title="Rumuskan langkah awal yang tepat" kicker="Konsultasi proyek">
-              <p className="max-w-sm text-base leading-7 text-white/80">
-                Permintaan dapat mencakup riset, konsultasi, workshop, desain produk, prototyping, apparel, merchandise, atau kolaborasi lintas disiplin.
-              </p>
+            <RoundedVisualFrame title="WhatsApp adalah jalur tercepat untuk memulai." kicker="Kanal konsultasi">
+              <div className="grid gap-3 text-sm font-semibold text-text-inverse">
+                <span>WhatsApp: 0851-1767-8901</span>
+                <span>Email: niuvamakerspace@gmail.com</span>
+                <span>Bandung Techno Park</span>
+              </div>
             </RoundedVisualFrame>
           }
         />
 
-        <SectionShell
-          eyebrow="Informasi Kontak"
-          title="Hubungi tim Niuva."
-          body="Gunakan WhatsApp, email, atau formulir untuk menjelaskan kebutuhan riset, desain, prototyping, workshop, apparel, atau merchandise. Kunjungan dan pertemuan proyek dilakukan berdasarkan janji."
-          className="bg-[var(--brand-blue-bg)]"
-        >
-          <ContactSummary contact={profileContent.contact} />
-          <div className="brand-reveal mt-6 overflow-hidden rounded-[var(--brand-radius-outer)] bg-white p-2 shadow-[var(--brand-shadow-card)]">
-            <iframe
-              title="Lokasi Niuva di Bandung Techno Park"
-              src={profileContent.contact.mapsEmbed}
-              className="h-[320px] w-full rounded-[var(--brand-radius-inner)] border-0 md:h-[420px]"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
+        <MarketingSection tone="muted">
+          <DecorativeMotif className="-right-24 top-10 h-72 w-72 opacity-35" density="sparse" />
+          <PageContainer className="relative z-10">
+            <SectionHeader
+              eyebrow="Kanal resmi"
+              title="Pilih jalur kontak sesuai kesiapan brief Anda."
+              body="Gunakan WhatsApp untuk respons awal tercepat, email untuk dokumen formal, atau formulir untuk menyampaikan konteks proyek secara terstruktur."
+              align="split"
             />
-          </div>
-        </SectionShell>
+            <ContactSummary contact={profileContent.contact} showMapLink />
+          </PageContainer>
+        </MarketingSection>
 
-        <SectionShell
-          id="form-konsultasi"
-          eyebrow="Formulir Konsultasi"
-          title="Berikan konteks singkat agar respons awal lebih tepat."
-          body="Informasi mengenai tujuan, ruang lingkup, bentuk hasil, target pengguna, dan batasan waktu membantu tim memahami kebutuhan sebelum percakapan lanjutan."
-          className="bg-white"
-        >
-          <div className="grid gap-6 md:gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-stretch">
-            <RoundedVisualFrame
-              title="Konteks awal untuk permintaan proyek"
-              kicker="Konsultasi awal"
-              className="brand-reveal"
-            >
-              <p className="max-w-sm text-base leading-7 text-white/80">
-                Sertakan tujuan, ruang lingkup, target pengguna, bentuk hasil, dan batasan waktu bila sudah tersedia.
-              </p>
-            </RoundedVisualFrame>
+        <MarketingSection id="form-konsultasi" tone="default">
+          <PageContainer>
+            <div className="grid gap-8 xl:grid-cols-[0.86fr_1.14fr] xl:items-start">
+              <div>
+                <SectionHeader
+                  eyebrow="Form konsultasi"
+                  title="Form konsultasi untuk riset, desain, dan prototyping."
+                  body="Semakin jelas konteks awal, semakin mudah tim Niuva menentukan pendekatan pertama dan pertanyaan lanjutan yang perlu dijawab."
+                  className="mb-0"
+                />
+                <p className="brand-reveal mt-8 border-y border-border-default py-5 text-sm leading-7 text-text-secondary">Semua field dipertahankan agar tim menerima nama, organisasi, kontak, jenis kebutuhan, timeline, dan pesan dalam satu brief awal.</p>
+              </div>
 
-            <div className="brand-reveal rounded-[var(--brand-radius-outer)] bg-[var(--brand-blue-bg)] p-2">
-              <form
-                onSubmit={submit}
-                className="rounded-[var(--brand-radius-inner)] bg-[var(--brand-offwhite)] p-5 sm:p-6 md:p-9"
-                data-testid="contact-form"
-              >
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-name" className="text-sm font-semibold text-[var(--brand-ink)]">Nama</Label>
-                    <Input
-                      id="contact-name"
-                      data-testid="contact-name"
-                      value={form.name}
-                      onChange={set("name")}
-                      required
-                      minLength={2}
-                      maxLength={100}
-                      autoComplete="name"
-                      className="brand-field"
-                      placeholder="Nama lengkap"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-company" className="text-sm font-semibold text-[var(--brand-ink)]">Perusahaan / Instansi</Label>
-                    <Input
-                      id="contact-company"
-                      data-testid="contact-company"
-                      value={form.company}
-                      onChange={set("company")}
-                      maxLength={100}
-                      autoComplete="organization"
-                      className="brand-field"
-                      placeholder="Nama perusahaan atau institusi"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-email" className="text-sm font-semibold text-[var(--brand-ink)]">Email</Label>
-                    <Input
-                      id="contact-email"
-                      data-testid="contact-email"
-                      type="email"
-                      value={form.email}
-                      onChange={set("email")}
-                      required
-                      autoComplete="email"
-                      className="brand-field"
-                      placeholder="nama@perusahaan.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-phone" className="text-sm font-semibold text-[var(--brand-ink)]">Nomor WhatsApp</Label>
-                    <Input
-                      id="contact-phone"
-                      data-testid="contact-phone"
-                      value={form.phone}
-                      onChange={set("phone")}
-                      required
-                      minLength={9}
-                      pattern="[0-9+() -]{9,}"
-                      autoComplete="tel"
-                      className="brand-field"
-                      placeholder="08xx xxxx xxxx"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-need" className="text-sm font-semibold text-[var(--brand-ink)]">Jenis kebutuhan</Label>
-                    <select
-                      id="contact-need"
-                      data-testid="contact-need"
-                      value={form.needType}
-                      onChange={set("needType")}
-                      required
-                      className="brand-field flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-[var(--brand-ink)] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-2"
-                    >
-                      {needOptions.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-timeline" className="text-sm font-semibold text-[var(--brand-ink)]">Estimasi timeline</Label>
-                    <select
-                      id="contact-timeline"
-                      data-testid="contact-timeline"
-                      value={form.timeline}
-                      onChange={set("timeline")}
-                      required
-                      className="brand-field flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-[var(--brand-ink)] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-2"
-                    >
-                      {timelineOptions.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="mt-6 space-y-2">
-                  <Label htmlFor="contact-message" className="text-sm font-semibold text-[var(--brand-ink)]">Pesan tambahan</Label>
-                  <Textarea
-                    id="contact-message"
-                    data-testid="contact-message"
-                    value={form.message}
-                    onChange={set("message")}
-                    required
-                    minLength={10}
-                    maxLength={5000}
-                    rows={7}
-                    className="brand-field min-h-[190px] resize-y py-4"
-                    placeholder="Jelaskan konteks, tujuan, ruang lingkup, target pengguna, bentuk hasil, atau batasan proyek."
-                  />
-                </div>
-
-                <div className="mt-8 flex flex-col gap-4 border-t border-[var(--brand-border)] pt-7 md:flex-row md:items-center md:justify-between">
-                  <p className="max-w-sm text-sm leading-6 text-[var(--brand-muted)]">
-                    Tim Niuva akan menggunakan informasi ini hanya untuk menanggapi permintaan proyek.
-                  </p>
-                  <BrandButton type="submit" disabled={loading} data-testid="contact-submit">
-                    {loading ? "Mengirim" : "Kirim Permintaan"}
-                  </BrandButton>
-                </div>
-              </form>
+              <div className="brand-reveal">
+                <ContactForm
+                  form={form}
+                  onChange={set}
+                  onSubmit={submit}
+                  loading={loading}
+                  needOptions={needOptions}
+                  timelineOptions={timelineOptions}
+                  submitLabel="Kirim Brief Project"
+                  className="bg-surface-muted"
+                />
+              </div>
             </div>
-          </div>
-        </SectionShell>
+          </PageContainer>
+        </MarketingSection>
 
-        <CTASection
-          eyebrow="Kolaborasi"
-          title="Diskusikan kebutuhan riset, desain, atau prototyping Anda bersama Niuva."
-          body="Hubungi Niuva melalui WhatsApp atau email resmi. Tim akan meninjau konteks awal sebelum mengatur percakapan lanjutan."
-          primaryAction={<BrandButton href={profileContent.contact.whatsappHref} variant="secondary">WhatsApp Niuva</BrandButton>}
-          secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
-        />
+        <MarketingSection tone="page">
+          <PageContainer>
+            <SectionHeader
+              eyebrow="Setelah brief dikirim"
+              title="Tiga langkah menuju diskusi lanjutan."
+              body="Respons awal difokuskan pada konteks kebutuhan, kecocokan kapabilitas, dan informasi yang masih perlu dilengkapi."
+              align="split"
+            />
+            <ol className="grid gap-5 md:grid-cols-3">
+              {responseSteps.map((step, index) => (
+                <li key={`response-step-${index}`} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6">
+                  <span className="font-mono-tech text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                  <h3 className="type-heading-card mt-5 text-text-primary">{step.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-text-secondary">{step.body}</p>
+                </li>
+              ))}
+            </ol>
+          </PageContainer>
+        </MarketingSection>
+
+        <MarketingSection tone="muted">
+          <PageContainer>
+            <SectionHeader
+              eyebrow="Lokasi"
+              title="Berbasis di Bandung Techno Park untuk riset dan prototyping."
+              body="Alamat Niuva: Bandung Techno Park - Gedung D Lt.1, Ruang Makerspace. Pertemuan proyek dan kunjungan dilakukan berdasarkan janji."
+              align="split"
+            />
+            <div className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default">
+              <iframe
+                title="Lokasi Niuva di Bandung Techno Park"
+                src={profileContent.contact.mapsEmbed}
+                className="h-[320px] w-full border-0 md:h-[430px]"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+          </PageContainer>
+        </MarketingSection>
       </BrandPage>
     </MarketingLayout>
   );
