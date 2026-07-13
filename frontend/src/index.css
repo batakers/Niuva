@@ -33,6 +33,9 @@
   /* Typography roles. */
   --font-family-sans: 'Poppins', system-ui, sans-serif;
   --font-family-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-family-display: var(--font-family-sans);
+  --font-family-body: var(--font-family-sans);
+  --font-family-technical: var(--font-family-mono);
   --type-display-home-size: clamp(2.25rem, 4.6vw, 3.5rem);
   --type-display-home-leading: clamp(2.625rem, 5.1vw, 3.875rem);
   --type-heading-page-size: clamp(2.125rem, 4.2vw, 3rem);
@@ -170,6 +173,12 @@
   --info: var(--blue-dark);
 }
 
+.home-production {
+  --font-family-display: 'Poppins', system-ui, sans-serif;
+  --font-family-body: 'Inter', system-ui, sans-serif;
+  --font-family-technical: var(--font-family-body);
+}
+
 * { border-color: hsl(var(--border)); }
 
 html {
@@ -182,7 +191,7 @@ body {
   margin: 0;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-family-sans);
+  font-family: var(--font-family-body);
   font-size: var(--type-body-size);
   line-height: var(--type-body-leading);
   -webkit-font-smoothing: antialiased;
@@ -190,12 +199,12 @@ body {
 }
 
 .font-heading {
-  font-family: var(--font-family-sans);
+  font-family: var(--font-family-display);
   letter-spacing: 0;
 }
 
 .font-display {
-  font-family: var(--font-family-sans);
+  font-family: var(--font-family-display);
   letter-spacing: 0;
 }
 
@@ -205,12 +214,13 @@ body {
 
 @layer base {
   h1, h2, h3, h4 {
-    font-family: var(--font-family-sans);
+    font-family: var(--font-family-display);
     letter-spacing: 0;
     text-wrap: balance;
   }
 
   p {
+    font-family: var(--font-family-body);
     text-wrap: pretty;
   }
 }
@@ -262,7 +272,7 @@ body {
 
 @layer components {
   .type-display-home {
-    font-family: var(--font-family-sans);
+    font-family: var(--font-family-display);
     font-size: var(--type-display-home-size);
     font-weight: 800;
     line-height: var(--type-display-home-leading);
@@ -270,7 +280,7 @@ body {
   }
 
   .type-heading-page {
-    font-family: var(--font-family-sans);
+    font-family: var(--font-family-display);
     font-size: var(--type-heading-page-size);
     font-weight: 800;
     line-height: var(--type-heading-page-leading);
@@ -278,7 +288,7 @@ body {
   }
 
   .type-heading-section {
-    font-family: var(--font-family-sans);
+    font-family: var(--font-family-display);
     font-size: var(--type-heading-section-size);
     font-weight: 800;
     line-height: var(--type-heading-section-leading);
@@ -286,42 +296,46 @@ body {
   }
 
   .type-heading-subsection {
-    font-family: var(--font-family-sans);
+    font-family: var(--font-family-display);
     font-size: var(--type-heading-subsection-size);
     font-weight: 700;
     line-height: var(--type-heading-subsection-leading);
   }
 
   .type-heading-card {
-    font-family: var(--font-family-sans);
+    font-family: var(--font-family-display);
     font-size: var(--type-heading-card-size);
     font-weight: 700;
     line-height: var(--type-heading-card-leading);
   }
 
   .type-body-large {
+    font-family: var(--font-family-body);
     font-size: var(--type-body-large-size);
     line-height: var(--type-body-large-leading);
   }
 
   .type-body {
+    font-family: var(--font-family-body);
     font-size: var(--type-body-size);
     line-height: var(--type-body-leading);
   }
 
   .type-body-small {
+    font-family: var(--font-family-body);
     font-size: var(--type-body-small-size);
     line-height: var(--type-body-small-leading);
   }
 
   .type-label {
+    font-family: var(--font-family-body);
     font-size: var(--type-label-size);
     font-weight: 600;
     line-height: var(--type-label-leading);
   }
 
   .type-technical-metadata {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-family-technical);
     font-size: var(--type-technical-size);
     font-weight: 600;
     line-height: var(--type-technical-leading);
@@ -329,12 +343,14 @@ body {
   }
 
   .type-button {
+    font-family: var(--font-family-display);
     font-size: var(--type-button-size);
     font-weight: 600;
     line-height: var(--type-button-leading);
   }
 
   .type-navigation {
+    font-family: var(--font-family-display);
     font-size: var(--type-navigation-size);
     font-weight: 600;
     line-height: var(--type-navigation-leading);
@@ -342,7 +358,7 @@ body {
 }
 
 .brand-heading {
-  font-family: var(--font-family-sans);
+  font-family: var(--font-family-display);
   font-weight: 800;
   letter-spacing: -0.02em;
   text-wrap: balance;
@@ -358,6 +374,7 @@ body {
   background: var(--color-surface-muted);
   padding: 0.35rem 0.75rem;
   color: var(--color-text-primary);
+  font-family: var(--font-family-body);
   font-size: var(--type-label-size);
   line-height: var(--type-label-leading);
   font-weight: 600;
