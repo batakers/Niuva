@@ -1,40 +1,21 @@
-# PRD — NIUVA Company Profile & 3D Printing Order Platform
+# Active PRD — Niuva Unified Retail–B2B Platform
 
-## Original Problem Statement
-Bilingual (ID default + EN) company profile website for PT Niuva Inovasi Utama (indie R&D studio, Bandung) integrated with a 3D printing service ordering system. Public profile + client order system + admin dashboard. Tech: React + FastAPI + MongoDB, JWT auth, Emergent object storage, Resend email.
+Tanggal baseline: 14 Juli 2026
 
-## User Personas
-- **Admin NIUVA**: manage content, orders, materials, internship applicants, clients, payment verification.
-- **Klien**: register/login, create 3D printing orders (upload STL/OBJ, pick material), track status, upload payment proof.
-- **Pengunjung/Pelamar Magang**: view profile, submit internship & contact forms (no account).
+Status: Disetujui untuk perencanaan implementasi
 
-## Architecture
-- Backend FastAPI single app (`server.py`), helpers `storage.py` (Emergent S3), `emailer.py` (Resend + in-app notification fallback).
-- MongoDB **standalone** (config read-only) → atomicity via **single-document embedded** estimate/payment inside order doc (no multi-doc transactions).
-- JWT Bearer auth (localStorage `niuva_token`), role-based (admin/client). Admin seeded on startup.
-- Frontend React + custom lightweight i18n context (react-i18next install blocked by env integrity check), dark industrial theme.
-- Files: UUID-named paths `niuva/orders/{user_id}/{uuid}.stl`; original filename stored as metadata. 50MB limit, ext validation, in-memory rate limiting. Auto-delete loop for awaiting_payment orders >14 days.
+PRD aktif berada di:
 
-## Core Requirements (static)
-Company profile (Home, About, Services, Portfolio + lightbox, Ecosystem, Internship, Contact), bilingual ID/EN toggle, 3D printing order wizard, status tracking with SLA messaging, manual transfer payment + proof upload, admin CMS (orders, materials CRUD, portfolio CRUD, internships, contacts, users, bank settings).
+- `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 
-## Implemented (2026-06-28) — MVP COMPLETE
-- ✅ JWT auth (register/login/me), admin seed, role-based routes.
-- ✅ Full order lifecycle: create (file upload + material) → admin estimate → awaiting_payment → client proof upload → admin verify → in_process → completed. Status stepper + history + SLA banner.
-- ✅ Materials CRUD, Portfolio CRUD (bilingual), Settings (bank details), Users list, Stats overview.
-- ✅ Public internship form (→ HRD email mock + DB), contact form (→ email mock + DB).
-- ✅ Emergent object storage for design files & payment proofs; secured download endpoint.
-- ✅ Bilingual ID/EN across all pages. Dark industrial UI per design guidelines.
-- ✅ Tested: 31/31 backend pass, frontend E2E flows verified.
+Dokumen pendukung aktif:
 
-## MOCKED
-- **Resend email**: no API key provided → emails are logged + stored in `notifications` collection. Add `RESEND_API_KEY` in backend/.env to activate.
+- `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+- `PRODUCT.md`
+- `AGENTS.md`
 
-## Backlog / Next
-- P1: Activate Resend (user to provide `re_...` key) + day-3 payment reminder cron.
-- P1: 3D STL preview (three.js) before submit; auto-pricing via numpy-stl/trimesh.
-- P2: Payment gateway (Midtrans), granular tracking, analytics dashboard, WhatsApp/Twilio chat.
-- P2: Content CMS for static homepage/about text (currently i18n-driven).
+Baseline lama untuk company profile dan order 3D printing telah dirangkum dalam bagian status baseline, migration, dan compatibility pada PRD v2.1. Jangan menggunakan asumsi lama `B2B-only`, `3D-printing-only`, atau role `admin/client` sebagai arah akhir produk.
 
-## Credentials
-Admin: admin@niuva.com / __REMOVED_NIV_001__ (see /app/memory/test_credentials.md)
+Jangan menulis kredensial, secret, token, atau API key di file PRD. Gunakan environment/secret management dan dokumentasi operasional yang tidak menyimpan nilainya.

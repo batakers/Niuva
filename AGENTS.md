@@ -1,592 +1,286 @@
-# AGENTS.md — Niuva Inovasi Utama Website
+# AGENTS.md — Niuva Unified Retail–B2B Platform
 
-This file gives coding agents the fixed product, business, brand, UX, and implementation rules for the Niuva Inovasi Utama website.
+This file defines the fixed product, business, UX, data, and implementation rules for coding agents working in this repository.
+
+For detailed website-v1 brand, copy, public-page, contact, and visual rules, also read `AGENTS.brand-baseline-v1.md`. Those rules remain active unless they conflict with this v2.1 file or the approved requirements hierarchy below.
 
 ## 1. Project Mission
 
-Build and maintain the official public website for **PT Niuva Inovasi Utama**.
+Build and maintain one Niuva website and one operational platform with two customer journeys:
 
-The website is not just a visual company profile. It is a **B2B company profile + portfolio + lead-generation website** that must:
+- **Retail:** catalog, standardized configuration, safe price/ETA, checkout, payment, production tracking, and fulfillment.
+- **Business/B2B:** capabilities and portfolio proof, inquiry/RFQ, quotation, approval, project milestone, payment term, and fulfillment.
 
-- Build credibility for Niuva as a strategic partner in **Research & Development, design engineering, prototyping, EV/product development, simulators, and custom technical products**.
-- Help visitors quickly understand Niuva’s capabilities.
-- Show real project evidence through mini case studies.
-- Guide visitors toward business inquiries through WhatsApp, email, form consultation, and project discussion CTAs.
-- Support sales, proposals, pitching, networking, and business development conversations.
+Both journeys share CMS, customer/organization, catalog, material, inventory, production, payment, shipment, notification, audit, and Admin Studio foundations.
 
-Primary conversion goal: **Diskusikan Project**.
-
----
+Niuva's main brand positioning remains a strategic partner for R&D, design engineering, and prototyping. Retail must not turn the entire website into a commodity-only marketplace.
 
 ## 2. Source of Truth Hierarchy
 
 When requirements conflict, follow this order:
 
-1. **BRD** — business goals, business requirements, KPI, risks, scope boundaries.
-2. **PRS** — product goals, target users, page structure, page scope, user flow, CTA logic.
-3. **PRODUCT.md** — product purpose, brand personality, anti-references, design principles, accessibility, implementation context.
-4. **Company Profile PDF** — visual identity, brand motifs, base content, services, projects, contact details.
-5. Current implementation — reuse what is useful, but refactor anything that conflicts with the documents above.
+1. `doc/BRD_Website_Niuva.md` plus the latest approved BRD addendum.
+2. `doc/PRS_Website_Niuva.md` plus the latest approved PRS addendum.
+3. `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`.
+4. `PRODUCT.md`.
+5. Approved design specs under `docs/superpowers/specs/`.
+6. Official Company Profile source material.
+7. This `AGENTS.md` and `AGENTS.brand-baseline-v1.md` for implementation guardrails.
+8. Current implementation.
 
-Do not invent a new business direction, page structure, service hierarchy, or visual identity.
+The approved v2.1 addenda are:
 
----
+- `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
 
-## 3. Target Users
+They supersede earlier v2 addenda for new planning. Do not implement from a superseded draft when v2.1 addresses the same requirement.
 
-### Primary Users
+Do not invent a new business direction, journey, pricing promise, role model, page structure, or visual identity.
 
-Companies, institutions, and industry teams looking for partners in:
+## 3. Locked Product Decisions
 
-- R&D
-- Design engineering
-- Prototyping
-- EV/product development
-- Simulators
-- Custom technical products
-- Engineering support
-- Product validation
+- Retail and B2B are two journeys inside one website, not separate products.
+- Retail initially covers 3D printing, ready-stock, apparel, and simple custom merchandise.
+- B2B covers RFQ, bulk/repeat procurement, R&D, engineering, prototyping, workshops, and complex projects.
+- A product may offer both Retail purchase and Bulk/RFQ actions.
+- Pricing modes are `fixed`, `calculated`, and `quote_required`.
+- Retail supports guest checkout and an optional account.
+- B2B inquiry may begin without login, but quotation/project access requires an organization account.
+- Retail uses online payment; B2B supports quotation/invoice, transfer, DP, and terms.
+- Both journeys show real milestones and ETA, not fake percentage progress.
+- CMS is an integrated structured module, not an external CMS or free-form page builder.
+- Admin Studio contains CMS and Operations Back-office.
+- Commercial history uses versioning and snapshots.
 
-Examples:
+## 4. Deferred Decisions
 
-- Manufacturing companies
-- Automotive companies
-- BUMN
-- Government institutions
-- Defense institutions
-- Technology companies
-- Corporate innovation teams
-- Industrial training organizations
+Do not silently decide:
 
-They need fast evidence that Niuva is credible, experienced, technically capable, and easy to contact.
+- Homepage pattern: split gateway, unified homepage, or retail-first.
+- Payment gateway provider.
+- Detailed visual treatment of Retail/B2B navigation.
 
-### Secondary Users
+Foundation work may proceed. A public or payment surface that directly depends on one of these choices must wait for the decision or remain provider/pattern-neutral.
 
-- Startups
-- Universities
-- Research institutions
-- Innovation communities
-- Makers
-- Training organizations
-- Incubators
+## 5. Product Structure
 
-They usually need idea validation, early prototypes, workshops, consulting, research collaboration, or team capability development.
+```text
+Public Website
+├── Shared Brand/Company Pages
+├── Retail
+│   ├── Catalog
+│   ├── Product Detail/Configurator
+│   ├── Cart/Checkout
+│   └── Order Tracking
+└── Business/B2B
+    ├── Capabilities
+    ├── Projects/Portfolio
+    ├── Project Inquiry
+    └── Bulk RFQ
 
-### Tertiary Users
-
-- Brands
-- Communities
-- Event organizers
-- Marketing teams
-- Organizations needing apparel, merchandise, brand identity products, or event-related creative production
-
-Tertiary users are valid, but they must not overpower the R&D/prototyping positioning.
-
----
-
-## 4. Product Scope
-
-### Public Website Scope
-
-The public website must include exactly these core pages for MVP:
-
-- Home
-- About
-- Capabilities
-- Projects
-- Contact
-
-Main navigation:
-
-```txt
-Home | About | Capabilities | Projects | Contact | Diskusikan Project
+Authenticated
+├── Retail Account
+├── B2B Organization Portal
+└── Admin Studio
+    ├── CMS
+    └── Operations Back-office
 ```
 
-If the current implementation uses `Services`, rename or reposition it as **Capabilities**.
+Back-office is not a third customer journey.
 
-If the current implementation uses `Portfolio`, rename or reposition it as **Projects**.
+## 6. Experience Boundaries
 
-### In Scope
+### Public Brand and B2B Surfaces
 
-- Public company profile website
-- Lead generation
-- Main navigation
-- CTA “Diskusikan Project”
-- Home page
-- About page
-- Capabilities page
-- Projects page
-- Contact page
-- Contact form
-- WhatsApp link
-- Email link
-- Google Maps embed
-- Responsive design for desktop, tablet, and mobile
-- Basic SEO
-- Project cards
-- Mini case studies
+Prioritize credibility, capability, portfolio evidence, clear project discussion, and Niuva's R&D/prototyping positioning.
 
-### Out of Scope for Public MVP
+### Retail Surfaces
 
-Do not add these to the public MVP unless explicitly requested later:
+Prioritize product discovery, configuration clarity, file requirements, price/ETA, checkout state, payment state, and tracking. Retail may be commerce-oriented without making the entire brand an e-commerce-only store.
 
-- E-commerce merchandise flow
-- Payment gateway
-- Automatic booking
-- Full blog
-- Public API
-- Full multilingual website
-- Project detail pages unless already implemented cleanly
-- Client portal as a primary public flow
-- Complex admin dashboard as a public-facing feature
+### Customer Portals
 
----
+Prioritize current status, next action, milestones, ETA, approvals, payment, files, and shipment. Show only customer-safe information.
 
-## 5. Important Implementation Boundary
+### Admin Studio
 
-The current product may include authenticated client/admin surfaces for a 3D printing order platform.
+Prioritize task completion, data density, filters, status, validation, permission, audit, and recovery. Do not apply heavy public-marketing decoration to operational pages.
 
-Keep this separation clear:
+## 7. Customer Journeys
 
-### Public Marketing Website
+### Retail
 
-Prioritize:
-
-- Brand credibility
-- Business clarity
-- Lead generation
-- Portfolio proof
-- CTA flow
-- Polished visual identity
-
-### Client/Admin/Operational Surfaces
-
-Prioritize:
-
-- Task completion
-- Order creation
-- Order tracking
-- Estimation
-- Payment-proof handling
-- Fulfillment
-- Materials
-- Portfolio management
-- Users
-- Contacts
-- Internships
-- Settings
-- Data clarity
-- Status clarity
-
-Do **not** let public website visuals create unnecessary friction inside operational dashboards. Operational pages should be clearer, denser, and more task-focused than the public marketing pages.
-
----
-
-## 6. Positioning
-
-Niuva must be positioned as:
-
-> A strategic innovation partner for R&D, design engineering, prototyping, and integrated creative solutions.
-
-Preferred positioning lines:
-
-- “Dari Ide Menjadi Produk Nyata”
-- “Mitra R&D, Design Engineering, dan Prototyping untuk Pengembangan Produk Inovatif”
-
-The website must make it clear that Niuva is **not just a production vendor**.
-
-Niuva’s process should feel like:
-
-```txt
-Riset → Desain → Engineering → Prototyping → Testing → Implementasi
+```text
+Catalog → configure → upload → price/ETA → checkout
+→ payment → file review → production → QC → fulfillment
 ```
 
----
+If rules cannot safely calculate a final price or ETA, use `quote_required` and transfer the current configuration, file, quantity, and contact data into the quote flow without re-entry.
 
-## 7. Service Hierarchy
+### B2B
 
-The website must show four services:
-
-1. Research & Development
-2. Design & Prototyping
-3. Consultant & Workshop
-4. Apparel & Merchandise
-
-But do **not** give all services equal weight.
-
-### Primary Capabilities
-
-These are the face of the business and must receive stronger visual hierarchy:
-
-- Research & Development
-- Design & Prototyping
-
-### Supporting Capabilities
-
-These are supporting services in Niuva’s wider innovation ecosystem:
-
-- Consultant & Workshop
-- Apparel & Merchandise
-
-Avoid making merchandise look like the main business. Merchandise should support brand, event, community, and corporate needs, but it must not weaken Niuva’s R&D/prototyping positioning.
-
----
-
-## 8. Required Page Requirements
-
-## Home
-
-Home is the main lead-generation entry point.
-
-Must include:
-
-1. Hero Section
-   - Clear headline about R&D, design engineering, prototyping, and turning ideas into real products.
-   - Subheadline explaining Niuva helps organizations clarify needs, develop concepts, build prototypes, and prepare solutions for implementation.
-   - Primary CTA: `Diskusikan Project`
-   - Secondary CTA: `Lihat Projects` or `Lihat Capabilities`
-
-2. About Preview
-   - Short explanation of Niuva as a strategic innovation and product development partner.
-
-3. Core Capabilities
-   - Four services, with R&D and Design & Prototyping visually dominant.
-
-4. Featured Projects
-   - Three to four projects as proof of capability.
-
-5. How We Work
-   - Need discovery, research, design, prototyping, validation, implementation.
-
-6. Why Niuva
-   - Research-based approach
-   - Engineering mindset
-   - Prototyping capability
-   - Practical execution
-   - Bandung Techno Park ecosystem
-
-7. Final CTA
-   - Strong invitation to discuss a project.
-
-## About
-
-About builds credibility.
-
-Must include:
-
-- Short company profile
-- Background of Niuva
-- Vision and mission
-- Work approach
-- Company values
-- Bandung Techno Park ecosystem
-
-Tone should be credible, concise, and business-oriented.
-
-## Capabilities
-
-Capabilities explains the services.
-
-For each capability, include:
-
-- Service name
-- Short description
-- Target users
-- Example client needs
-- Specific CTA
-
-Required capability CTAs:
-
-| Capability | CTA |
-|---|---|
-| Research & Development | Diskusikan Kebutuhan R&D |
-| Design & Prototyping | Buat Prototype Produk |
-| Consultant & Workshop | Rancang Workshop |
-| Apparel & Merchandise | Buat Merchandise Brand |
-
-R&D and Design & Prototyping must look more important than the supporting capabilities.
-
-## Projects
-
-Projects are proof of credibility. They must not be simple image cards.
-
-Required projects:
-
-- Redesain Motor Xeon
-- Pengembangan Motor EV PT Pindad
-- Bicycle Arcade Agate
-- Motorcycle Simulator Agate
-
-Each project must be presented as a mini case study with:
-
-- Project name
-- Category
-- Short summary
-- Challenge
-- Solution
-- Output
-- CTA
-
-Do not invent fake metrics, fake clients, fake awards, or exaggerated outcomes.
-
-## Contact
-
-Contact is a conversion page.
-
-Must include:
-
-- Contact headline
-- Short invitation to discuss project needs
-- WhatsApp button
-- Email link
-- Office location
-- Google Maps embed
-- Consultation form
-
-Required contact details:
-
-- WhatsApp: `0851-1767-8901`
-- Email: `niuvamakerspace@gmail.com`
-- Location: `Bandung Techno Park – Gedung D Lt.1, Ruang Makerspace`
-
-Required consultation form fields:
-
-- Nama
-- Perusahaan / Instansi
-- Email
-- Nomor WhatsApp
-- Jenis kebutuhan
-- Estimasi timeline
-- Pesan tambahan
-
----
-
-## 9. Brand Personality and Voice
-
-Niuva should feel:
-
-- Professional
-- Innovative
-- Clean
-- Technical
-- Trustworthy
-- Collaborative
-- Precise
-
-Copywriting rules:
-
-- Use Indonesian as the primary language.
-- English technical terms are allowed when useful: Research & Development, Design & Prototyping, Workshop, Engineering, Prototype, Capabilities, Project.
-- Be confident and clear, but not overly promotional.
-- Make technical capability understandable for business and institutional decision makers.
-- Communicate strategic partnership, not commodity production.
-- Avoid generic AI marketing phrases.
-- Avoid “best and cheapest” vendor language.
-- Avoid exaggerated claims.
-- Avoid fake metrics.
-
----
-
-## 10. Visual Identity
-
-Follow the official Niuva company profile visual language.
-
-Use:
-
-- Soft/desaturated blue and white palette
-- Rounded typography
-- Clean corporate-tech layout
-- Generous but controlled whitespace
-- Rounded cards
-- Rounded image frames
-- U-shaped rounded line motifs
-- Solid circle accents
-- Dot accents
-- Calm, precise, research-driven visual tone
-
-Approximate color tokens:
-
-```txt
-Niuva Blue: #6390BB
-Sky Blue: #8AAECF
-Blue Dark: #4A72A0
-Midnight: #1C2B3A
-Steel: #3D5266
-Smoke: #6B7A8D
-Silver: #E2E8EE
-Frost: #EBF1F7
-Cloud: #F8F9FB
-Pure White: #FFFFFF
+```text
+Inquiry/RFQ → estimate → quotation → approval/revision
+→ design/engineering → design approval → DP/term
+→ production → QC → shipment
 ```
 
-Do not introduce unrelated palettes.
+Accepted quotations and approved designs are immutable. Scope changes create new versions.
 
----
+## 8. Roles and Authorization
 
-## 11. Anti-References
+Internal roles:
 
-Do not make the website look like:
+- Content Editor
+- Catalog Manager
+- Warehouse
+- Order Admin
+- Sales/Estimator
+- Designer/Engineer
+- Production
+- Quality Control
+- Finance
+- Manager/Approver
+- Super Admin
 
-- Generic AI-generated landing page
-- Generic SaaS template
-- Purple/indigo startup website
-- Cheap vendor marketplace
-- E-commerce-first merchandise store
-- Blog-first content site
-- Static PDF simply converted into a web page
-- Overly decorative portfolio with weak business context
+B2B organization roles:
 
-Avoid:
+- Owner
+- Project PIC
+- Approver
+- Finance
+- Viewer
 
-- Random gradients
-- Neon colors
-- Glassmorphism
-- Fake dashboard illustrations on public pages
-- Emoji feature cards
-- Stock SaaS illustrations
-- Overly tiny text
-- Excessive top padding that pushes content too far down
-- Project cards without challenge/solution/output
-- Equal service weighting that hides R&D and prototyping
-- CTAs that are hard to find
+Authorization must be enforced in backend handlers and data queries. Hiding a button is not authorization. Use least privilege and audit sensitive actions.
 
----
+## 9. CMS Rules
 
-## 12. UX and Layout Principles
+CMS manages structured fields for content, SEO, media, portfolio, capabilities, B2B taxonomy, Retail category, product, variant, configuration, price/rule, promo, and base lead time.
 
-- Make the path to contact obvious.
-- Repeat the CTA “Diskusikan Project” in strategic sections.
-- Keep the first screen clear and not overly empty.
-- Avoid using `min-h-screen` or `h-screen` if it creates excessive vertical gaps.
-- Do not push page content too far below the navbar.
-- Use controlled whitespace, not empty whitespace.
-- Keep typography readable on desktop, tablet, and mobile.
-- Use consistent spacing across all pages.
-- Use consistent page heroes, cards, buttons, CTAs, navbar, and footer.
-- Decorative motifs must be absolutely positioned and must not create extra layout height.
+Publishing flow:
 
-Suggested spacing direction:
-
-```txt
-Navbar to first content on desktop: 96px–140px
-Page hero vertical padding desktop: 96px top / 96px bottom
-Normal section padding desktop: 96px–120px
-Mobile page hero padding: 72px top / 64px bottom
-Mobile section padding: 64px–80px
+```text
+draft → review → published/scheduled → archived
 ```
 
-Avoid full 100vh hero heights unless there is a strong reason.
+CMS must support preview, validation, version history, rollback, audit, and soft delete/archive. Block publishing when required fields, SKU, media, pricing, CTA, or production rules are invalid.
 
----
+Do not build homepage-specific schema until the homepage pattern is approved.
 
-## 13. Shared Components to Prefer
+## 10. Material, Pricing, and Inventory Rules
 
-Use or create shared reusable components instead of page-specific one-off styling:
+Authorized staff can add, edit, and archive materials; update material prices; and manage supplier, unit, waste, reorder point, lead time, and status.
 
-- PageContainer
-- SectionContainer
-- PageHero
-- SectionHeader
-- CapabilityCard
-- ProjectCaseStudyCard
-- CTASection
-- DecorativeMotif
-- Navbar
-- Footer
-- ContactForm
+- Material prices use versions and effective dates.
+- New prices affect new calculations or explicitly recalculated drafts.
+- Paid orders and accepted quotations retain their snapshots.
+- Referenced material is archived, never hard-deleted.
+- Monetary calculation uses Decimal or a consistent minor-unit representation, not binary floating point.
 
-All public pages should feel like one cohesive website, not separate templates.
+```text
+available = on_hand - reserved
+projected = available + incoming - planned_demand
+```
 
----
+Stock movements use unique operation IDs and atomic updates. Reject duplicate movements and any result that would make a balance negative.
 
-## 14. Accessibility and Responsiveness
+## 11. ETA and Progress Rules
 
-- Text must be easy to read.
-- Contrast must be sufficient.
-- Buttons and CTAs must be visually clear.
-- The website must work comfortably on desktop, tablet, and mobile.
-- Forms must be understandable without relying only on color, animation, or icons.
-- Motion must respect reduced-motion preferences.
-- Use semantic HTML where practical.
-- Images should have meaningful alt text.
-- Navigation must be usable on mobile.
+Retail ETA considers payment/file readiness, material availability, production slot, process duration, QC, and operational buffer.
 
----
+B2B ETA also considers design/revision cycle, customer approval, procurement, milestone dependencies, and payment gates.
 
-## 15. SEO Basics
+Use milestone state rather than invented progress percentages. ETA changes retain the previous value, new value, changed time, actor, and reason. Customer responses receive only a safe reason.
 
-Each public page should have clear metadata where the stack supports it:
+## 12. Security and Privacy Boundary
 
-- Title
-- Description
-- Open Graph title/description
-- Structured headings
-- Descriptive link text
+- Customer APIs and views must exclude internal cost, margin, supplier, profit, and internal notes.
+- Files require type/size validation, ownership checks, and controlled access.
+- Organization members only access assigned organizations/projects.
+- Payment webhook, stock operation, workflow retry, and approval must be idempotent or conflict-safe as appropriate.
+- Audit actor, time, target, before/after, and reason where required.
+- Do not place credentials, secret values, or API keys in source files or product documentation.
+- Avoid logging unnecessary personal, financial, or file data.
 
-Use page content that reflects the business focus:
+## 13. Failure Handling
 
-- R&D
-- Design engineering
-- Prototyping
-- Product development
-- EV development
-- Simulator
-- Workshop
-- Product innovation
+Explicitly handle:
 
-Do not keyword-stuff.
+- Final-stock checkout contention.
+- Expired reservation.
+- Duplicate payment webhook.
+- Price changes before payment.
+- Invalid or failed file upload.
+- Stale quotation/design/content approval.
+- Retried stock movement.
+- Notification failure and retry.
+- Permission denied, conflict, empty, loading, retry, and expired UI states.
 
----
+Notification failure must not roll back an otherwise successful core transaction.
 
-## 16. Development Workflow for Agents
+MongoDB standalone does not provide the same transaction assumptions as a replica set. Prefer single-document atomic updates, unique operation IDs, explicit state transitions, and idempotent workflow jobs.
+
+## 14. Migration Rules
+
+- Preserve existing users, 3D printing orders, materials, portfolio, and payment history unless an approved migration says otherwise.
+- Map legacy orders into the new model; do not silently delete or rewrite them.
+- Migrate `admin/client` roles to least-privilege roles with manual review for elevated access.
+- Seed an initial material price version before new pricing uses a legacy material.
+- Never run a destructive migration without backup, dry run, validation, and rollback instructions.
+
+## 15. Development Workflow
 
 Before editing code:
 
-1. Inspect the project structure.
-2. Identify the framework and styling system.
-3. Identify public routes and operational/auth routes.
-4. Identify shared layout components.
-5. Identify duplicated or conflicting styles.
-6. Compare implementation against this AGENTS.md.
-7. Make a short plan before modifying files.
+1. Read the applicable BRD, PRS, PRD, PRODUCT, design spec, and AGENTS files.
+2. Inspect the real project structure, routes, schemas, models, and scripts.
+3. Check the active branch and working tree; preserve unrelated user changes.
+4. Identify migration, compatibility, privacy, concurrency, and deferred-decision impact.
+5. Make a proportional plan for multi-step work.
 
 While editing:
 
-- Reuse the current stack and conventions.
-- Prefer shared components and tokens.
-- Keep changes focused.
-- Do not redesign randomly.
-- Do not introduce unnecessary dependencies.
-- Do not remove operational features unless explicitly instructed.
-- Do not let dashboard/auth surfaces inherit heavy public marketing decoration.
+- Reuse the current React, FastAPI, and MongoDB conventions unless an approved plan changes them.
+- Prefer shared components, schemas, services, and tokens.
+- Keep public, customer, and operational presentation concerns separated.
+- Do not add unnecessary dependencies.
+- Do not remove existing operational features without explicit approval.
+- Do not commit, push, reset, rebase, force-push, or delete branches without explicit user instruction.
+- Do not modify secrets or global environment configuration without explicit permission.
 
 After editing:
 
-- Run the available checks if commands exist.
-- If commands are unknown, inspect `package.json` or project scripts first.
-- Check responsive behavior.
-- Check navigation links.
-- Check CTA links.
-- Check contact form behavior.
-- Check WhatsApp and email links.
-- Check that all public pages remain visually consistent.
+- Run relevant tests, type checks, lint, and build commands where available.
+- Verify role and customer data boundaries.
+- Verify responsive and accessible UI for changed surfaces.
+- Verify critical state transitions, conflicts, retry, and migration behavior.
+- State what was verified and any checks that could not run.
 
----
+## 16. Release Sequence
+
+1. Foundation: role, CMS, catalog, material price, inventory, order/project, and audit foundations.
+2. Retail MVP: configurator, price/ETA, checkout, online payment, production tracking, and fulfillment.
+3. B2B MVP: inquiry/RFQ, organization, quotation, design approval, milestone, terms, and fulfillment.
+4. Operational maturity: production board, advanced notifications, analytics, and KPI reporting.
+5. Handover: manuals, SOP, data dictionary, training, backup/restore, recovery, ownership, and regression checks.
+
+Do not implement multiple phases as one uncontrolled change. Use vertical slices and explicit migration steps.
 
 ## 17. Acceptance Checklist
 
-A change is only acceptable if:
+A change is acceptable only when the criteria relevant to its scope hold:
 
-- Public website clearly communicates Niuva as a partner for R&D, design engineering, and prototyping.
-- Navigation is Home, About, Capabilities, Projects, Contact, Diskusikan Project.
-- R&D and Design & Prototyping are visually dominant.
-- Consultant & Workshop and Apparel & Merchandise remain supporting capabilities.
-- Projects are shown as mini case studies, not just image cards.
-- Contact paths are obvious: WhatsApp, email, form, location, Google Maps.
-- CTA “Diskusikan Project” is consistent.
-- Website supports sales, pitching, proposals, and business development.
-- Visual identity follows the Niuva company profile.
-- Website does not feel generic, AI-generated, or vendor-marketplace-like.
-- Public pages and operational dashboard surfaces are clearly separated.
-- Layout is responsive and readable.
-- No placeholder text, TODO comments, fake claims, fake metrics, or unfinished sections remain.
+- Retail and B2B remain understandable as two journeys in one platform.
+- Niuva's R&D/design engineering/prototyping positioning remains clear.
+- Standard Retail work can use safe price/ETA and complex work falls back to quote.
+- B2B quotation, design, approval, milestone, payment, and fulfillment retain version history.
+- Staff permissions match their operational role.
+- Historical paid/accepted records are not rewritten by later catalog or material edits.
+- Stock and payment retries do not create duplicate operations.
+- Customer responses do not expose internal data.
+- Loading, empty, error, conflict, retry, permission, and expired states are handled.
+- Tests and verification are proportional to the risk.
+- Documentation and handover impact are updated for operational changes.
+
+For public-page visual and content acceptance details, follow `AGENTS.brand-baseline-v1.md` where it does not conflict with the v2.1 requirements.
