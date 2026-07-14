@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { useI18n } from "@/i18n";
 import { useAuth } from "@/context/AuthContext";
+import { hasPermission } from "@/lib/permissions";
 
 export function Navbar() {
   const { lang, setLang, t } = useI18n();
@@ -13,6 +14,7 @@ export function Navbar() {
   const menuFocusTimerRef = useRef(null);
   const loc = useLocation();
   const nav = useNavigate();
+  const canAccessAdmin = hasPermission(user, "admin.access");
   const isOperationalRoute =
     loc.pathname === "/dashboard" ||
     loc.pathname === "/order" ||
@@ -26,7 +28,7 @@ export function Navbar() {
     { to: "/contact", label: "Contact" },
   ];
 
-  const goDash = () => nav(user?.role === "admin" ? "/admin" : "/dashboard");
+  const goDash = () => nav(canAccessAdmin ? "/admin" : "/dashboard");
   const toggleMenu = () => {
     if (open) {
       setOpen(false);
@@ -120,7 +122,7 @@ export function Navbar() {
           {isOperationalRoute && user ? (
             <>
               <button onClick={goDash} type="button" className={outlinePillClass}>
-                {user.role === "admin" ? t("nav.admin") : t("nav.dashboard")}
+                {canAccessAdmin ? t("nav.admin") : t("nav.dashboard")}
               </button>
               <button
                 onClick={signOut}

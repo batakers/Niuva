@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ADMIN_ROUTE_PERMISSIONS } from "@/lib/permissions";
 import Home from "@/pages/marketing/HomePage";
 
 const About = lazy(() => import("@/pages/marketing/AboutPage"));
@@ -23,6 +24,8 @@ const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminInternships = lazy(() => import("@/pages/admin/Internships"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
+const AdminOrganizations = lazy(() => import("@/pages/admin/Organizations"));
+const AdminAuditLog = lazy(() => import("@/pages/admin/AuditLog"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
 const EditorialHomepagePrototype = brandLabEnabled
   ? lazy(() => import("@/pages/brand-lab/EditorialHomepagePrototype"))
@@ -101,14 +104,16 @@ function App() {
                 <Route path="/order" element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
                 <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
                 <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/admin/orders" element={<ProtectedRoute adminOnly><AdminOrders /></ProtectedRoute>} />
-                <Route path="/admin/materials" element={<ProtectedRoute adminOnly><AdminMaterials /></ProtectedRoute>} />
-                <Route path="/admin/portfolio" element={<ProtectedRoute adminOnly><AdminPortfolio /></ProtectedRoute>} />
-                <Route path="/admin/internships" element={<ProtectedRoute adminOnly><AdminInternships /></ProtectedRoute>} />
-                <Route path="/admin/contacts" element={<ProtectedRoute adminOnly><AdminContacts /></ProtectedRoute>} />
-                <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
-                <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin"]}><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/orders" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/orders"]}><AdminOrders /></ProtectedRoute>} />
+                <Route path="/admin/materials" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/materials"]}><AdminMaterials /></ProtectedRoute>} />
+                <Route path="/admin/portfolio" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/portfolio"]}><AdminPortfolio /></ProtectedRoute>} />
+                <Route path="/admin/internships" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/internships"]}><AdminInternships /></ProtectedRoute>} />
+                <Route path="/admin/contacts" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/contacts"]}><AdminContacts /></ProtectedRoute>} />
+                <Route path="/admin/users" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/users"]}><AdminUsers /></ProtectedRoute>} />
+                <Route path="/admin/organizations" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/organizations"]}><AdminOrganizations /></ProtectedRoute>} />
+                <Route path="/admin/audit" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/audit"]}><AdminAuditLog /></ProtectedRoute>} />
+                <Route path="/admin/settings" element={<ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS["/admin/settings"]}><AdminSettings /></ProtectedRoute>} />
                 {brandLabEnabled && (
                   <>
                     <Route path="/__brand-lab/editorial" element={<EditorialHomepagePrototype />} />
@@ -128,5 +133,3 @@ function App() {
 }
 
 export default App;
-
-

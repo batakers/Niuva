@@ -21,6 +21,9 @@ from pydantic import BaseModel, EmailStr, Field
 
 import storage
 import emailer
+from identity_routes import build_identity_router
+from organization_routes import build_organization_router
+from permissions import canonical_roles, has_permission, permissions_for
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("niuva")
@@ -88,6 +91,8 @@ async def get_user_from_token(token: str) -> dict:
     )
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    if user.get("status", "active") == "disabled":
+        raise HTTPException(status_code=403, detail="User account is disabled")
     return user
 
 
@@ -103,10 +108,19 @@ async def get_current_user(request: Request) -> dict:
     return await get_user_from_token(token)
 
 
-async def require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return user
+def require_permission(permission: str):
+    async def dependency(user: dict = Depends(get_current_user)) -> dict:
+        if not has_permission(user, permission):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Permission required: {permission}",
+            )
+        return user
+
+    return dependency
+
+
+require_admin = require_permission("admin.access")
 
 
 # ----------------------------- Models -----------------------------
@@ -181,15 +195,27 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def auth_response(user: dict) -> dict:
-    token = create_token(user["id"], user["email"], user["role"])
+def safe_user(user: dict) -> dict:
+    roles = canonical_roles(user)
     return {
-        "token": token,
-        "user": {
-            key: user.get(key)
-            for key in ("id", "name", "email", "role", "phone", "company")
-        },
+        "id": user["id"],
+        "name": user.get("name", ""),
+        "email": user.get("email", ""),
+        "phone": user.get("phone", ""),
+        "company": user.get("company", ""),
+        "status": user.get("status", "active"),
+        "role": roles[0] if roles else "",
+        "roles": list(roles),
+        "permissions": sorted(permissions_for(user)),
+        "created_at": user.get("created_at"),
     }
+
+
+def auth_response(user: dict) -> dict:
+    roles = canonical_roles(user)
+    primary_role = roles[0] if roles else user.get("role", "")
+    token = create_token(user["id"], user["email"], primary_role)
+    return {"token": token, "user": safe_user(user)}
 
 
 async def authenticate_credentials(req: LoginReq) -> dict:
@@ -269,14 +295,17 @@ async def login(req: LoginReq):
 @api.post("/auth/admin/login")
 async def admin_login(req: LoginReq):
     user = await authenticate_credentials(req)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if not has_permission(user, "admin.access"):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission required: admin.access",
+        )
     return auth_response(user)
 
 
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
-    return user
+    return safe_user(user)
 
 
 # ----------------------------- Materials -----------------------------
@@ -288,19 +317,26 @@ async def list_materials():
 
 
 @api.get("/admin/materials")
-async def admin_materials(user: dict = Depends(require_admin)):
+async def admin_materials(user: dict = Depends(require_permission("materials.read"))):
     return await db.materials.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
 
 
 @api.post("/admin/materials")
-async def create_material(req: MaterialReq, user: dict = Depends(require_admin)):
+async def create_material(
+    req: MaterialReq,
+    user: dict = Depends(require_permission("materials.write")),
+):
     mat = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.materials.insert_one(mat)
     return {k: v for k, v in mat.items() if k != "_id"}
 
 
 @api.put("/admin/materials/{mid}")
-async def update_material(mid: str, req: MaterialReq, user: dict = Depends(require_admin)):
+async def update_material(
+    mid: str,
+    req: MaterialReq,
+    user: dict = Depends(require_permission("materials.write")),
+):
     res = await db.materials.update_one({"id": mid}, {"$set": req.model_dump()})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Material not found")
@@ -308,7 +344,10 @@ async def update_material(mid: str, req: MaterialReq, user: dict = Depends(requi
 
 
 @api.delete("/admin/materials/{mid}")
-async def delete_material(mid: str, user: dict = Depends(require_admin)):
+async def delete_material(
+    mid: str,
+    user: dict = Depends(require_permission("materials.write")),
+):
     await db.materials.delete_one({"id": mid})
     return {"ok": True}
 
@@ -384,7 +423,7 @@ async def get_order(oid: str, user: dict = Depends(get_current_user)):
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if user["role"] != "admin" and order["user_id"] != user["id"]:
+    if not has_permission(user, "orders.read") and order["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Forbidden")
     return order
 
@@ -411,13 +450,20 @@ async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dic
 
 # ----------------------------- Admin orders -----------------------------
 @api.get("/admin/orders")
-async def admin_orders(status: Optional[str] = None, user: dict = Depends(require_admin)):
+async def admin_orders(
+    status: Optional[str] = None,
+    user: dict = Depends(require_permission("orders.read")),
+):
     q = {"status": status} if status else {}
     return await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
 @api.post("/admin/orders/{oid}/estimate")
-async def set_estimate(oid: str, req: EstimateReq, user: dict = Depends(require_admin)):
+async def set_estimate(
+    oid: str,
+    req: EstimateReq,
+    user: dict = Depends(require_permission("quotes.write")),
+):
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -445,7 +491,10 @@ async def set_estimate(oid: str, req: EstimateReq, user: dict = Depends(require_
 
 
 @api.post("/admin/orders/{oid}/verify-payment")
-async def verify_payment(oid: str, user: dict = Depends(require_admin)):
+async def verify_payment(
+    oid: str,
+    user: dict = Depends(require_permission("payments.write")),
+):
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -468,7 +517,11 @@ async def verify_payment(oid: str, user: dict = Depends(require_admin)):
 
 
 @api.post("/admin/orders/{oid}/status")
-async def update_status(oid: str, req: StatusReq, user: dict = Depends(require_admin)):
+async def update_status(
+    oid: str,
+    req: StatusReq,
+    user: dict = Depends(require_permission("orders.write")),
+):
     if req.status not in ORDER_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status")
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
@@ -502,8 +555,8 @@ async def download_file(path: str, request: Request, auth: Optional[str] = Query
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user = await get_user_from_token(token)
-    # access control: admins can fetch anything; clients only their own paths
-    if user["role"] != "admin" and f"/{user['id']}/" not in f"/{path}":
+    # Staff with file-read access can fetch shared files; customers remain path-scoped.
+    if not has_permission(user, "files.read") and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
     data, content_type = storage.get_object(path)
     return Response(content=data, media_type=content_type)
@@ -528,7 +581,9 @@ async def apply_internship(req: InternshipReq):
 
 
 @api.get("/admin/internships")
-async def list_internships(user: dict = Depends(require_admin)):
+async def list_internships(
+    user: dict = Depends(require_permission("admin.access")),
+):
     return await db.internships.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
@@ -559,7 +614,9 @@ async def contact(req: ContactReq, request: Request):
 
 
 @api.get("/admin/contacts")
-async def list_contacts(user: dict = Depends(require_admin)):
+async def list_contacts(
+    user: dict = Depends(require_permission("inquiries.read")),
+):
     return await db.contacts.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
@@ -570,14 +627,21 @@ async def list_portfolio():
 
 
 @api.post("/admin/portfolio")
-async def create_portfolio(req: PortfolioReq, user: dict = Depends(require_admin)):
+async def create_portfolio(
+    req: PortfolioReq,
+    user: dict = Depends(require_permission("content.write")),
+):
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.portfolio.insert_one(dict(doc))
     return {k: v for k, v in doc.items() if k != "_id"}
 
 
 @api.put("/admin/portfolio/{pid}")
-async def update_portfolio(pid: str, req: PortfolioReq, user: dict = Depends(require_admin)):
+async def update_portfolio(
+    pid: str,
+    req: PortfolioReq,
+    user: dict = Depends(require_permission("content.write")),
+):
     res = await db.portfolio.update_one({"id": pid}, {"$set": req.model_dump()})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Not found")
@@ -585,7 +649,10 @@ async def update_portfolio(pid: str, req: PortfolioReq, user: dict = Depends(req
 
 
 @api.delete("/admin/portfolio/{pid}")
-async def delete_portfolio(pid: str, user: dict = Depends(require_admin)):
+async def delete_portfolio(
+    pid: str,
+    user: dict = Depends(require_permission("content.write")),
+):
     await db.portfolio.delete_one({"id": pid})
     return {"ok": True}
 
@@ -598,24 +665,27 @@ async def settings_public():
 
 
 @api.put("/admin/settings")
-async def update_settings(req: SettingsReq, user: dict = Depends(require_admin)):
+async def update_settings(
+    req: SettingsReq,
+    user: dict = Depends(require_permission("settings.write")),
+):
     await db.settings.update_one({"key": "site"}, {"$set": req.model_dump()}, upsert=True)
     s = await get_settings()
     return {k: v for k, v in s.items() if k != "key"}
 
 
-@api.get("/admin/users")
-async def list_users(user: dict = Depends(require_admin)):
-    return await db.users.find({"role": "client"}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
-
-
 @api.post("/admin/users", status_code=201)
-async def create_client_user(req: ClientProvisionReq, user: dict = Depends(require_admin)):
+async def create_client_user(
+    req: ClientProvisionReq,
+    user: dict = Depends(require_permission("users.manage")),
+):
     return await provision_client(req)
 
 
 @api.get("/admin/stats")
-async def admin_stats(user: dict = Depends(require_admin)):
+async def admin_stats(
+    user: dict = Depends(require_permission("admin.access")),
+):
     total_orders = await db.orders.count_documents({})
     pending = await db.orders.count_documents({"status": "pending_estimate"})
     awaiting = await db.orders.count_documents({"status": "awaiting_payment"})
@@ -638,6 +708,21 @@ async def my_notifications(user: dict = Depends(get_current_user)):
 async def root():
     return {"message": "NIUVA API", "status": "ok"}
 
+
+api.include_router(
+    build_identity_router(
+        get_db=lambda: db,
+        require_permission=require_permission,
+        safe_user=safe_user,
+    )
+)
+api.include_router(
+    build_organization_router(
+        get_db=lambda: db,
+        require_permission=require_permission,
+        get_current_user=get_current_user,
+    )
+)
 
 app.include_router(api)
 
@@ -662,6 +747,18 @@ app.add_middleware(
 async def seed():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
+    await db.users.create_index([("roles", 1), ("status", 1)])
+    await db.audit_events.create_index("id", unique=True)
+    await db.audit_events.create_index("created_at")
+    await db.audit_events.create_index("actor_user_id")
+    await db.audit_events.create_index([("target_type", 1), ("target_id", 1)])
+    await db.organizations.create_index("id", unique=True)
+    await db.organizations.create_index("status")
+    await db.organization_memberships.create_index("id", unique=True)
+    await db.organization_memberships.create_index(
+        [("organization_id", 1), ("user_id", 1)], unique=True
+    )
+    await db.organization_memberships.create_index([("user_id", 1), ("status", 1)])
     await db.orders.create_index("id", unique=True)
     admin_email = os.environ["ADMIN_EMAIL"].lower()
     admin_password = os.environ["ADMIN_PASSWORD"]

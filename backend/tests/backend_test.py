@@ -37,7 +37,10 @@ def admin_token():
     r = requests.post(f"{API}/auth/admin/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}, timeout=30)
     assert r.status_code == 200, f"admin login failed: {r.status_code} {r.text}"
     data = r.json()
-    assert data["user"]["role"] == "admin"
+    assert data["user"]["role"] == "super_admin"
+    assert data["user"]["roles"] == ["super_admin"]
+    assert "*" in data["user"]["permissions"]
+    assert "password_hash" not in data["user"]
     return data["token"]
 
 @pytest.fixture(scope="session")
@@ -86,7 +89,10 @@ class TestAuth:
     def test_me(self, admin_token):
         r = requests.get(f"{API}/auth/me", headers=hh(admin_token), timeout=20)
         assert r.status_code == 200
-        assert r.json()["role"] == "admin"
+        assert r.json()["role"] == "super_admin"
+        assert r.json()["roles"] == ["super_admin"]
+        assert "*" in r.json()["permissions"]
+        assert "password_hash" not in r.json()
 
     def test_public_registration_disabled(self):
         r = requests.post(

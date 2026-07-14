@@ -134,7 +134,29 @@ async def run_security_matrix():
         "role": "client",
         "created_at": server.now_iso(),
     }
-    server.db = FakeDatabase([admin, client, other_client])
+    editor = {
+        "id": "staff-editor-1",
+        "name": "Content Editor",
+        "email": "editor@niuva.com",
+        "password_hash": server.hash_password("EditorPassword123"),
+        "phone": "",
+        "company": "Niuva",
+        "roles": ["content_editor"],
+        "status": "active",
+        "created_at": server.now_iso(),
+    }
+    disabled_client = {
+        "id": "client-disabled",
+        "name": "Disabled Client",
+        "email": "disabled@example.com",
+        "password_hash": server.hash_password("DisabledPassword123"),
+        "phone": "",
+        "company": "Disabled Company",
+        "role": "client",
+        "status": "disabled",
+        "created_at": server.now_iso(),
+    }
+    server.db = FakeDatabase([admin, client, other_client, editor, disabled_client])
     server.db.orders.items.append(
         {
             "id": "order-1",
@@ -166,6 +188,22 @@ async def run_security_matrix():
         )
         assert admin_login.status_code == 200
         admin_token = admin_login.json()["token"]
+
+        editor_login = await api.post(
+            "/api/auth/admin/login",
+            json={"email": editor["email"], "password": "EditorPassword123"},
+        )
+        assert editor_login.status_code == 200
+        assert editor_login.json()["user"]["roles"] == ["content_editor"]
+        assert "admin.access" in editor_login.json()["user"]["permissions"]
+        assert "password_hash" not in editor_login.json()["user"]
+
+        editor_me = await api.get(
+            "/api/auth/me", headers=bearer(editor_login.json()["token"])
+        )
+        assert editor_me.status_code == 200
+        assert editor_me.json()["roles"] == ["content_editor"]
+        assert "roles.manage" not in editor_me.json()["permissions"]
 
         client_admin_login = await api.post(
             "/api/auth/admin/login",
@@ -270,6 +308,13 @@ async def run_security_matrix():
         stale = await api.get("/api/auth/me", headers=bearer(stale_token))
         assert stale.status_code == 401
         assert stale.json()["detail"] == "User not found"
+
+        disabled_token = server.create_token(
+            disabled_client["id"], disabled_client["email"], "client"
+        )
+        disabled = await api.get("/api/auth/me", headers=bearer(disabled_token))
+        assert disabled.status_code == 403
+        assert disabled.json()["detail"] == "User account is disabled"
 
         forged_role_token = server.create_token(client["id"], client["email"], "admin")
         role_mismatch = await api.get("/api/admin/users", headers=bearer(forged_role_token))

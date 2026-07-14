@@ -152,7 +152,9 @@ const translations = {
     "admin.portfolio": "Portofolio",
     "admin.internships": "Magang",
     "admin.contacts": "Inquiry",
-    "admin.users": "Klien",
+    "admin.users": "Peran & Akses",
+    "admin.organizations": "Organisasi",
+    "admin.audit": "Audit",
     "admin.settings": "Pengaturan",
     "admin.setEstimate": "Set Estimasi",
     "admin.verifyPayment": "Verifikasi Pembayaran",
@@ -312,7 +314,9 @@ const translations = {
     "admin.portfolio": "Portfolio",
     "admin.internships": "Internships",
     "admin.contacts": "Inquiries",
-    "admin.users": "Clients",
+    "admin.users": "Roles & Access",
+    "admin.organizations": "Organizations",
+    "admin.audit": "Audit",
     "admin.settings": "Settings",
     "admin.setEstimate": "Set Estimate",
     "admin.verifyPayment": "Verify Payment",
@@ -343,4 +347,3 @@ export function I18nProvider({ children }) {
 export function useI18n() {
   return useContext(I18nContext);
 }
-

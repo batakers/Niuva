@@ -4,6 +4,7 @@ import { ArrowLeft, TerminalSquare } from "lucide-react";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { useAuth } from "../../context/AuthContext";
 import { api, formatApiError } from "../../lib/api";
+import { hasPermission } from "../../lib/permissions";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -39,7 +40,7 @@ export default function AdminLogin() {
     return () => robots.remove();
   }, []);
 
-  if (!authLoading && user?.role === "admin") {
+  if (!authLoading && hasPermission(user, "admin.access")) {
     return <Navigate to={destination} replace />;
   }
 
