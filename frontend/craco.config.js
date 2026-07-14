@@ -89,6 +89,12 @@ let webpackConfig = {
     },
     configure: (webpackConfig) => {
 
+      // Public releases default to private/no source maps. Set explicitly to true
+      // only when the deployment uploads maps to a private error tracker.
+      if (!isDevServer && process.env.GENERATE_SOURCEMAP !== "true") {
+        webpackConfig.devtool = false;
+      }
+
       // Add ignored patterns to reduce watched directories
         webpackConfig.watchOptions = {
           ...webpackConfig.watchOptions,

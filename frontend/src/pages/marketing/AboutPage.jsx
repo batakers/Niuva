@@ -1,27 +1,81 @@
 import React from "react";
-import { MarketingLayout } from "../../components/Layout";
+import { MarketingLayout } from "@/components/layout/Layout";
 import {
   BrandButton,
-  GoalItem,
+  ProcessTimeline,
   RoundedVisualFrame,
-  SectionShell,
   profileContent,
 } from "../../components/brand/CompanyProfileBlocks";
-import { BrandPage, CTASection, PageHero } from "../../components/brand/BrandSystem";
+import {
+  BrandPage,
+  CTASection,
+  DecorativeMotif,
+  MarketingSection,
+  PageContainer,
+  PageHero,
+  SectionHeader,
+} from "../../components/brand/BrandSystem";
 
-const principles = [
+const dossierItems = [
   {
-    title: "Riset sebagai fondasi",
-    body: "Arah pengembangan dimulai dari pemahaman kebutuhan, konteks pengguna, peluang pasar, dan kesiapan teknologi agar keputusan tidak hanya berbasis asumsi.",
+    label: "Positioning",
+    title: "Mitra strategis inovasi dan pengembangan produk",
+    body: "Niuva membantu organisasi merumuskan kebutuhan, menilai peluang, lalu mengubah ide menjadi desain, prototipe, atau program yang dapat diuji.",
   },
   {
-    title: "Konsultasi yang relevan",
-    body: "Keputusan proyek dibangun bersama tenaga ahli agar strategi, desain, dan implementasi tetap realistis terhadap sumber daya dan tujuan organisasi.",
+    label: "Basis kerja",
+    title: "Riset mendalam dan konsultasi ahli",
+    body: "Keputusan proyek dibangun dari konteks pengguna, arah teknologi, batasan bisnis, dan masukan ahli agar proses pengembangan lebih terarah.",
   },
   {
-    title: "Solusi kreatif terintegrasi",
-    body: "Riset, teknologi, desain, prototyping, dan eksekusi kreatif dikelola sebagai proses yang saling terhubung dari brief sampai evaluasi.",
+    label: "Output",
+    title: "Solusi kreatif yang bisa direalisasikan",
+    body: "Riset, design engineering, teknologi, workshop, apparel, dan merchandise dirangkai sebagai layanan terintegrasi sesuai kebutuhan proyek.",
   },
+];
+
+const approachSteps = [
+  {
+    label: "Discover",
+    title: "Memahami konteks",
+    body: "Menggali tujuan, pengguna, batasan teknis, peluang pasar, dan kebutuhan pemangku kepentingan.",
+  },
+  {
+    label: "Define",
+    title: "Merumuskan arah",
+    body: "Menyusun prioritas pengembangan, ruang lingkup, dan bentuk output yang paling relevan.",
+  },
+  {
+    label: "Develop",
+    title: "Membangun solusi",
+    body: "Mengembangkan desain, teknologi, prototipe, materi workshop, atau produk kreatif sesuai brief.",
+  },
+  {
+    label: "Validate",
+    title: "Menguji keputusan",
+    body: "Mengevaluasi hasil bersama mitra sebelum masuk ke iterasi, produksi, atau implementasi lanjutan.",
+  },
+];
+
+const values = [
+  "Berbasis riset dan konteks nyata.",
+  "Presisi dalam merumuskan masalah dan output.",
+  "Kolaboratif dengan mitra, ahli, dan pemangku kepentingan.",
+  "Praktis dalam menghubungkan ide dengan realisasi.",
+  "Adaptif terhadap kebutuhan teknologi, produk, dan bisnis.",
+];
+
+const ecosystem = [
+  "Riset dan konsultasi awal",
+  "Design engineering dan prototyping",
+  "Workshop praktis dan pengembangan SDM",
+  "Kolaborasi di lingkungan Bandung Techno Park",
+];
+
+const backgroundPoints = [
+  "Berangkat dari kebutuhan organisasi untuk menghubungkan riset dengan realisasi produk.",
+  "Menggabungkan konsultasi, design engineering, teknologi, dan prototyping dalam satu alur kerja.",
+  "Beroperasi dari lingkungan makerspace Bandung Techno Park untuk mendukung eksperimen dan kolaborasi teknis.",
 ];
 
 export default function AboutPage() {
@@ -29,134 +83,161 @@ export default function AboutPage() {
     <MarketingLayout>
       <BrandPage>
         <PageHero
-          eyebrow="Tentang Niuva"
-          title="Mitra strategis untuk riset berbasis inovasi dan pengembangan produk."
-          body={profileContent.intro + " Niuva membantu organisasi membangun solusi nyata yang inovatif dan adaptif melalui riset, konsultasi ahli, desain, teknologi, dan prototyping."}
+          eyebrow="About Niuva"
+          title="Mitra inovasi untuk engineering dan prototyping."
+          body="Niuva membantu perusahaan, institusi, dan komunitas mengambil keputusan pengembangan produk melalui riset, konsultasi ahli, design engineering, dan prototyping yang dapat diuji."
           primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
           visual={
-            <RoundedVisualFrame title="Riset, konsultasi, kreasi, validasi." kicker="Pendekatan Niuva">
-              <p className="max-w-sm text-base leading-7 text-white/80">
-                Dari pertanyaan awal hingga produk yang dapat diuji, setiap tahap memberi dasar keputusan yang lebih jelas.
-              </p>
+            <RoundedVisualFrame title="Riset, desain, dan validasi dalam satu alur kerja." kicker="Profil perusahaan">
+              <div className="grid gap-3 text-sm font-semibold text-text-inverse">
+                <span>Mitra pengembangan produk</span>
+                <span>Berbasis Bandung Techno Park</span>
+                <span>Kolaborasi bisnis dan teknis</span>
+              </div>
             </RoundedVisualFrame>
           }
         />
 
-        <SectionShell
-          eyebrow="Peran Niuva"
-          title="Mitra berpikir untuk merumuskan arah, mengurangi risiko, dan membangun solusi."
-          body="Niuva bekerja bersama bisnis, institusi, dan komunitas untuk memahami tantangan, menentukan prioritas, lalu mengembangkan ide menjadi produk, prototipe, atau program praktis yang dapat dievaluasi dan memberi nilai tambah."
-          className="bg-white"
-        >
-          <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr] lg:items-stretch">
-            <article className="brand-reveal relative overflow-hidden rounded-[var(--brand-radius-outer)] bg-[var(--brand-blue)] p-6 text-white sm:p-8 md:p-10">
-              <div className="absolute -right-12 -top-12 h-56 w-56 rounded-full bg-white/10" />
-              <div className="relative z-10">
-                <p className="text-sm font-semibold text-white/70">Strategic partner</p>
-                <h3 className="brand-heading mt-4 text-3xl leading-tight text-white md:text-4xl">
-                  Fokus pada keputusan yang bisa diuji, bukan sekadar ide yang terlihat menarik.
-                </h3>
-                <p className="mt-6 text-base leading-8 text-white/80">
-                  Pendekatan Niuva menggabungkan pemahaman bisnis, riset mendalam, konsultasi ahli, dan kemampuan teknis agar pengembangan produk memiliki arah yang jelas sejak awal.
-                </p>
+        <MarketingSection tone="default">
+          <PageContainer>
+            <div className="mb-8 grid gap-6 md:mb-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-12 xl:mb-12">
+              <div>
+                <p className="brand-eyebrow mb-5">Peran perusahaan</p>
+                <h2 className="type-heading-section max-w-3xl text-text-primary">Niuva bekerja sebagai partner strategi, bukan hanya vendor eksekusi.</h2>
               </div>
-            </article>
-            <div className="grid gap-4">
-              {principles.map((item, index) => (
-                <article key={item.title} className="brand-reveal flex gap-5 rounded-[var(--brand-radius-outer)] bg-[var(--brand-offwhite)] p-5 sm:p-6 md:p-7">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--brand-blue)] text-sm font-bold text-white">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div>
-                    <h3 className="brand-heading text-2xl leading-tight text-[var(--brand-ink)]">{item.title}</h3>
-                    <p className="mt-3 text-base leading-8 text-[var(--brand-muted)]">{item.body}</p>
-                  </div>
+              <p className="max-w-[62ch] text-base leading-8 text-text-secondary md:text-lg">
+                Setiap inisiatif dimulai dari pemahaman konteks agar riset, desain, teknologi, dan prototyping menjadi rangkaian keputusan yang saling menguatkan.
+              </p>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
+              {dossierItems.map((item) => (
+                <article
+                  key={item.title}
+                  className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6 sm:p-7"
+                >
+                  <p className="text-sm font-semibold text-action-primary">{item.label}</p>
+                  <h3 className="brand-heading mt-5 text-2xl leading-tight text-text-primary sm:text-3xl">
+                    {item.title}
+                  </h3>
+                  <p className="mt-4 text-base leading-7 text-text-secondary">{item.body}</p>
                 </article>
               ))}
             </div>
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {profileContent.profileFocus.map((item) => (
-              <article key={item} className="brand-reveal rounded-[var(--brand-radius-card)] bg-[var(--brand-blue-bg)] p-5 shadow-[var(--brand-shadow-card)] sm:p-6">
-                <div className="mb-5 h-3 w-3 rounded-full bg-[var(--brand-blue)]" />
-                <p className="text-base font-semibold leading-7 text-[var(--brand-ink)]">{item}</p>
-              </article>
-            ))}
-          </div>
-        </SectionShell>
+          </PageContainer>
+        </MarketingSection>
 
-        <SectionShell
-          eyebrow="Visi & Misi"
-          title="Pertumbuhan bisnis yang ditopang inovasi berkelanjutan."
-          className="bg-[var(--brand-blue-bg)]"
-        >
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <article className="brand-reveal rounded-[var(--brand-radius-outer)] bg-[var(--brand-blue)] p-6 text-white sm:p-8 md:p-10">
-              <div className="mb-8 h-14 w-14 rounded-full bg-white/20 sm:mb-12 sm:h-16 sm:w-16" />
-              <p className="text-sm font-semibold text-white/70">Visi</p>
-              <h3 className="brand-heading mt-4 text-3xl leading-tight text-white md:text-4xl">
-                Menjadi mitra strategis inovasi dan pengembangan produk yang terpercaya.
-              </h3>
-              <p className="mt-6 text-base leading-8 text-white/78">
-                Visi ini menempatkan Niuva sebagai rekan yang membantu organisasi membangun arah inovasi secara bertahap dan terukur.
-              </p>
-            </article>
-            <article className="brand-reveal rounded-[var(--brand-radius-outer)] bg-white p-6 shadow-[var(--brand-shadow-card)] sm:p-8 md:p-10">
-              <p className="text-sm font-semibold text-[var(--brand-blue)]">Misi</p>
-              <h3 className="brand-heading mt-4 text-3xl leading-tight text-[var(--brand-ink)] md:text-4xl">
-                Menghasilkan solusi kreatif berbasis riset yang dapat diterapkan.
-              </h3>
-              <p className="mt-6 max-w-2xl leading-8 text-[var(--brand-muted)]">
-                Niuva menggabungkan konsultasi ahli, pengembangan teknologi, desain, prototyping, dan pembelajaran praktis untuk mendukung nilai bisnis, kapasitas tim, dan keberlanjutan inovasi.
-              </p>
-            </article>
-          </div>
-        </SectionShell>
+        <MarketingSection tone="page">
+          <PageContainer>
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:items-start lg:gap-16">
+              <div className="brand-reveal">
+                <p className="brand-eyebrow mb-5">Latar perusahaan</p>
+                <h2 className="type-heading-section text-text-primary">Menghubungkan kebutuhan organisasi dengan eksperimen yang dapat diuji.</h2>
+                <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary md:text-lg">{profileContent.intro}</p>
+              </div>
+              <ol className="border-y border-border-default">
+                {backgroundPoints.map((point, index) => (
+                  <li key={point} className="brand-reveal grid gap-3 border-b border-border-default py-5 last:border-b-0 sm:grid-cols-[3rem_1fr] sm:gap-5">
+                    <span className="font-mono-tech text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                    <p className="text-base leading-7 text-text-primary">{point}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </PageContainer>
+        </MarketingSection>
 
-        <SectionShell
-          eyebrow="Tujuan"
-          title="Lima fokus untuk menjaga inovasi tetap bernilai."
-          className="bg-white"
-        >
-          <ul className="grid gap-4 md:grid-cols-2">
-            {profileContent.goals.map((goal, index) => (
-              <GoalItem key={goal} index={index}>{goal}</GoalItem>
-            ))}
-          </ul>
-        </SectionShell>
-
-        <SectionShell
-          eyebrow="Ekosistem"
-          title="Berbasis di Bandung Techno Park untuk mendukung kolaborasi inovasi dan pengembangan SDM."
-          body="Lokasi Niuva di Bandung Techno Park - Gedung D Lt.1, Ruang Makerspace menempatkan kegiatan riset, prototyping, workshop, dan kolaborasi kreatif dalam lingkungan yang dekat dengan teknologi, pendidikan, dan komunitas maker."
-          className="bg-[var(--brand-blue-bg)]"
-        >
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
-            <RoundedVisualFrame title="Makerspace sebagai ruang realisasi" kicker="Bandung Techno Park">
-              <p className="max-w-sm text-base leading-7 text-white/80">
-                Ekosistem ini membantu proses dari konsultasi awal, pengembangan konsep, eksperimen bentuk, sampai workshop praktis.
-              </p>
-            </RoundedVisualFrame>
-            <div className="brand-reveal grid gap-4 sm:grid-cols-2">
-              {["Riset dan konsultasi", "Design engineering", "Prototyping dan testing", "Workshop dan pengembangan SDM"].map((item) => (
-                <div key={item} className="rounded-[var(--brand-radius-card)] bg-white p-6 shadow-[var(--brand-shadow-card)]">
-                  <div className="mb-6 h-3 w-3 rounded-full bg-[var(--brand-blue)]" />
-                  <p className="font-semibold leading-7 text-[var(--brand-ink)]">{item}</p>
+        <MarketingSection tone="muted">
+          <PageContainer>
+            <SectionHeader
+              eyebrow="Vision and Mission"
+              title="Arah strategis Niuva: inovasi yang bisa diterapkan dan memberi nilai bisnis."
+              body="Visi dan misi Niuva dirancang untuk menjaga pengembangan produk tetap berpijak pada riset, konsultasi ahli, dan realisasi teknis yang masuk akal."
+              align="split"
+            />
+            <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+              <article className="brand-reveal relative overflow-hidden rounded-panel bg-action-primary p-6 text-text-inverse shadow-surface sm:p-8 md:p-10">
+                <DecorativeMotif light className="-right-24 -top-20 h-80 w-80 opacity-45" density="sparse" />
+                <div className="relative z-10">
+                  <p className="font-mono-tech text-xs font-bold text-text-inverse">VISION</p>
+                  <h3 className="brand-heading mt-8 max-w-2xl text-3xl leading-tight text-text-inverse md:text-4xl">
+                    Menjadi mitra strategis inovasi dan pengembangan produk yang terpercaya.
+                  </h3>
+                  <p className="mt-6 max-w-xl text-base leading-8 text-text-inverse">
+                    Visi ini menempatkan Niuva sebagai rekan kerja yang membantu organisasi membangun arah inovasi secara bertahap, terukur, dan dapat dipertanggungjawabkan.
+                  </p>
                 </div>
+              </article>
+              <article className="brand-reveal rounded-panel bg-surface-default p-6 shadow-surface ring-1 ring-border-default sm:p-8 md:p-10">
+                <p className="font-mono-tech text-xs font-bold text-action-primary">MISSION</p>
+                <h3 className="brand-heading mt-8 max-w-2xl text-3xl leading-tight text-text-primary md:text-4xl">
+                  Menghasilkan solusi kreatif berbasis riset yang dapat diterapkan.
+                </h3>
+                <p className="mt-6 max-w-2xl text-base leading-8 text-text-secondary">
+                  Niuva menggabungkan konsultasi ahli, pengembangan teknologi, desain, prototyping, workshop, apparel, dan merchandise untuk mendukung nilai bisnis, kapasitas tim, serta inovasi berkelanjutan.
+                </p>
+              </article>
+            </div>
+          </PageContainer>
+        </MarketingSection>
+
+        <MarketingSection tone="default">
+          <PageContainer>
+            <SectionHeader
+              eyebrow="Operating Model"
+              title="Pendekatan kerja yang menjaga keputusan pengembangan tetap terarah."
+              body="Alur kerja ini menjaga proses tetap cukup terstruktur untuk kebutuhan B2B, namun tetap adaptif terhadap ruang lingkup riset, desain, prototyping, atau workshop."
+              align="split"
+            />
+            <ProcessTimeline items={approachSteps} />
+          </PageContainer>
+        </MarketingSection>
+
+        <MarketingSection tone="page">
+          <PageContainer>
+            <SectionHeader eyebrow="Nilai kerja" title="Prinsip yang menjaga inovasi tetap konkret." body="Nilai ini menjadi dasar saat tim menyusun masalah, memilih pendekatan, dan mengevaluasi output bersama mitra." align="split" />
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+              {values.map((value, index) => (
+                <article key={value} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-5">
+                  <span className="font-mono-tech text-xs font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                  <p className="mt-4 text-sm font-semibold leading-6 text-text-primary">{value}</p>
+                </article>
               ))}
             </div>
-          </div>
-        </SectionShell>
+          </PageContainer>
+        </MarketingSection>
+
+        <MarketingSection tone="muted">
+          <PageContainer>
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start lg:gap-16">
+              <div>
+                <p className="brand-eyebrow mb-5">Bandung Techno Park</p>
+                <h2 className="type-heading-section text-text-primary">Ekosistem untuk riset, makerspace, dan kolaborasi teknis.</h2>
+                <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary">Niuva berada di Gedung D Lt.1, Ruang Makerspace. Konteks ini mendukung eksperimen bentuk, prototyping, workshop, dan kerja lintas disiplin.</p>
+                <BrandButton to="/contact" variant="secondary" className="mt-7">Hubungi Niuva</BrandButton>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {ecosystem.map((item) => (
+                  <article key={item} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-5">
+                    <div className="mb-4 h-2.5 w-2.5 rounded-full bg-brand-primary" />
+                    <p className="font-semibold leading-7 text-text-primary">{item}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </PageContainer>
+        </MarketingSection>
+
         <CTASection
-          title="Bangun arah inovasi yang sesuai dengan kebutuhan organisasi."
-          body="Ceritakan tantangan, ide, atau target pengembangan. Tim Niuva akan membantu memetakan kebutuhan riset, desain, teknologi, atau prototyping yang relevan."
-          primaryAction={<BrandButton to="/contact" variant="secondary">Mulai Konsultasi</BrandButton>}
+          title="Bangun arah inovasi yang relevan bagi organisasi."
+          body="Ceritakan tantangan, ide, atau target pengembangan. Tim Niuva akan membantu memetakan kebutuhan riset, desain, teknologi, prototyping, atau workshop yang paling relevan."
+          primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/projects" variant="secondary">Lihat Projects</BrandButton>}
+          contactEmphasis="Respons awal akan fokus pada konteks kebutuhan, ruang lingkup, dan output yang perlu dicapai."
+          whatsappHref={profileContent.contact.whatsappHref}
+          email={profileContent.contact.email}
         />
       </BrandPage>
     </MarketingLayout>
   );
 }
-
-

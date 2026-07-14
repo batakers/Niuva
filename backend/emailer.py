@@ -19,9 +19,9 @@ def _wrap(title: str, body_html: str) -> str:
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0B10;padding:32px 0;font-family:Arial,Helvetica,sans-serif;">
       <tr><td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background:#13151F;border:1px solid #2B2F42;border-radius:8px;overflow:hidden;">
-          <tr><td style="background:#3B82F6;padding:20px 28px;">
-            <span style="color:#fff;font-size:20px;font-weight:700;letter-spacing:1px;">NIUVA</span>
-            <span style="color:#cdddff;font-size:12px;"> &nbsp;Inovasi Utama</span>
+          <tr><td style="background:#4A72A0;padding:20px 28px;">
+            <span style="color:#FFFFFF;font-size:20px;font-weight:700;letter-spacing:1px;">NIUVA</span>
+            <span style="color:#FFFFFF;font-size:12px;"> &nbsp;Inovasi Utama</span>
           </td></tr>
           <tr><td style="padding:28px;">
             <h1 style="color:#F8FAFC;font-size:20px;margin:0 0 16px;">{title}</h1>

@@ -1,11 +1,12 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutGrid, Package, Layers, Image as ImageIcon, GraduationCap, Mail, Users, Settings as SettingsIcon, TerminalSquare } from "lucide-react";
+import { LayoutGrid, Package, Layers, Image as ImageIcon, GraduationCap, Mail, Users, Settings as SettingsIcon, TerminalSquare, Building2, ScrollText } from "lucide-react";
 import { useI18n } from "../../i18n";
-import { OperationalLayout } from "../../components/Layout";
+import { OperationalLayout } from "@/components/layout/Layout";
 import { useAuth } from "../../context/AuthContext";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
 import { TechnicalLabel } from "../../components/ui/technical-label";
+import { ADMIN_ROUTE_PERMISSIONS, hasPermission } from "../../lib/permissions";
 
 const ADMIN_ROUTES = [
   { path: "/admin", label: "admin.overview", icon: LayoutGrid },
@@ -15,6 +16,8 @@ const ADMIN_ROUTES = [
   { path: "/admin/internships", label: "admin.internships", icon: GraduationCap },
   { path: "/admin/contacts", label: "admin.contacts", icon: Mail },
   { path: "/admin/users", label: "admin.users", icon: Users },
+  { path: "/admin/organizations", label: "admin.organizations", icon: Building2 },
+  { path: "/admin/audit", label: "admin.audit", icon: ScrollText },
   { path: "/admin/settings", label: "admin.settings", icon: SettingsIcon },
 ];
 
@@ -22,6 +25,10 @@ export function AdminLayout({ children, title, subtitle }) {
   const { t } = useI18n();
   const { user } = useAuth();
   const location = useLocation();
+  const visibleRoutes = ADMIN_ROUTES.filter(({ path }) =>
+    hasPermission(user, ADMIN_ROUTE_PERMISSIONS[path])
+  );
+  const accessLevel = user?.roles?.join("+") || "unknown";
 
   return (
     <OperationalLayout>
@@ -33,10 +40,10 @@ export function AdminLayout({ children, title, subtitle }) {
           </SurfacePanelHeader>
           <div className="p-4 border-b border-border bg-background">
             <TechnicalLabel tone="primary" size="sm" as="p" className="truncate">{user?.name}</TechnicalLabel>
-            <TechnicalLabel as="p" className="mt-1">ACCESS_LEVEL: ROOT</TechnicalLabel>
+            <TechnicalLabel as="p" className="mt-1">ACCESS_LEVEL: {accessLevel}</TechnicalLabel>
           </div>
           <div className="p-2 flex flex-col gap-1">
-            {ADMIN_ROUTES.map(({ path, label, icon: Icon }) => {
+            {visibleRoutes.map(({ path, label, icon: Icon }) => {
               const active = location.pathname === path;
               return (
                 <Link key={path} to={path} className={`flex items-center gap-3 px-3 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors ${

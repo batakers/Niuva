@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 const translations = {
   id: {
@@ -10,8 +10,6 @@ const translations = {
     "nav.internship": "Magang",
     "nav.contact": "Contact",
     "nav.order": "Pesan 3D Printing",
-    "nav.login": "Masuk",
-    "nav.register": "Daftar",
     "nav.dashboard": "Dashboard",
     "nav.logout": "Keluar",
     "nav.admin": "Admin",
@@ -101,14 +99,6 @@ const translations = {
     "contact.message": "Pesan",
     "contact.success": "Pesan berhasil dikirim. Tim Niuva akan meninjau permintaan Anda.",
 
-    "auth.loginTitle": "Masuk ke Akun",
-    "auth.registerTitle": "Buat Akun Klien",
-    "auth.noAccount": "Belum punya akun?",
-    "auth.haveAccount": "Sudah punya akun?",
-    "auth.company": "Perusahaan",
-    "auth.loginBtn": "Masuk",
-    "auth.registerBtn": "Daftar Sekarang",
-
     "dash.title": "Pesanan Saya",
     "dash.newOrder": "Pesanan Baru",
     "dash.noOrders": "Belum ada pesanan. Mulai pesanan 3D printing pertama Anda!",
@@ -162,7 +152,9 @@ const translations = {
     "admin.portfolio": "Portofolio",
     "admin.internships": "Magang",
     "admin.contacts": "Inquiry",
-    "admin.users": "Klien",
+    "admin.users": "Peran & Akses",
+    "admin.organizations": "Organisasi",
+    "admin.audit": "Audit",
     "admin.settings": "Pengaturan",
     "admin.setEstimate": "Set Estimasi",
     "admin.verifyPayment": "Verifikasi Pembayaran",
@@ -180,8 +172,6 @@ const translations = {
     "nav.internship": "Internship",
     "nav.contact": "Contact",
     "nav.order": "Order 3D Printing",
-    "nav.login": "Sign In",
-    "nav.register": "Sign Up",
     "nav.dashboard": "Dashboard",
     "nav.logout": "Logout",
     "nav.admin": "Admin",
@@ -271,14 +261,6 @@ const translations = {
     "contact.message": "Message",
     "contact.success": "Message sent. The Niuva team will review your request.",
 
-    "auth.loginTitle": "Sign In to Your Account",
-    "auth.registerTitle": "Create a Client Account",
-    "auth.noAccount": "Don't have an account?",
-    "auth.haveAccount": "Already have an account?",
-    "auth.company": "Company",
-    "auth.loginBtn": "Sign In",
-    "auth.registerBtn": "Sign Up Now",
-
     "dash.title": "My Orders",
     "dash.newOrder": "New Order",
     "dash.noOrders": "No orders yet. Start your first 3D printing order!",
@@ -332,7 +314,9 @@ const translations = {
     "admin.portfolio": "Portfolio",
     "admin.internships": "Internships",
     "admin.contacts": "Inquiries",
-    "admin.users": "Clients",
+    "admin.users": "Roles & Access",
+    "admin.organizations": "Organizations",
+    "admin.audit": "Audit",
     "admin.settings": "Settings",
     "admin.setEstimate": "Set Estimate",
     "admin.verifyPayment": "Verify Payment",
@@ -352,10 +336,14 @@ export function I18nProvider({ children }) {
     localStorage.setItem("niuva_lang", l);
   }, []);
   const t = useCallback((key) => translations[lang][key] || translations.id[key] || key, [lang]);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   return <I18nContext.Provider value={{ lang, setLang: changeLang, t }}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n() {
   return useContext(I18nContext);
 }
-
