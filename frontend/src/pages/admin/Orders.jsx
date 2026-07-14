@@ -5,7 +5,7 @@ import { useI18n } from "../../i18n";
 import { api, fileUrl, formatApiError } from "../../lib/api";
 import { fmtDay } from "../../lib/format";
 import { AdminLayout } from "./AdminLayout";
-import { StatusBadge } from "../../components/StatusStepper";
+import { StatusBadge } from "@/components/operational/StatusStepper";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";

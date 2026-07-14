@@ -8,6 +8,7 @@ import os
 import uuid
 import logging
 import asyncio
+import html
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
@@ -20,6 +21,9 @@ from pydantic import BaseModel, EmailStr, Field
 
 import storage
 import emailer
+from identity_routes import build_identity_router
+from organization_routes import build_organization_router
+from permissions import canonical_roles, has_permission, permissions_for
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("niuva")
@@ -66,6 +70,32 @@ def create_token(user_id: str, email: str, role: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
 
 
+async def get_user_from_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGO],
+            options={"require": ["sub", "exp", "type"]},
+        )
+        if payload.get("type") != "access":
+            raise jwt.InvalidTokenError("Invalid token type")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = await db.users.find_one(
+        {"id": payload["sub"]},
+        {"_id": 0, "password_hash": 0},
+    )
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    if user.get("status", "active") == "disabled":
+        raise HTTPException(status_code=403, detail="User account is disabled")
+    return user
+
+
 async def get_current_user(request: Request) -> dict:
     token = None
     auth_header = request.headers.get("Authorization", "")
@@ -75,26 +105,26 @@ async def get_current_user(request: Request) -> dict:
         token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password_hash": 0})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
+    return await get_user_from_token(token)
 
 
-async def require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return user
+def require_permission(permission: str):
+    async def dependency(user: dict = Depends(get_current_user)) -> dict:
+        if not has_permission(user, permission):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Permission required: {permission}",
+            )
+        return user
+
+    return dependency
+
+
+require_admin = require_permission("admin.access")
 
 
 # ----------------------------- Models -----------------------------
-class RegisterReq(BaseModel):
+class ClientProvisionReq(BaseModel):
     name: str
     email: EmailStr
     password: str = Field(min_length=6)
@@ -137,10 +167,10 @@ class InternshipReq(BaseModel):
 
 
 class ContactReq(BaseModel):
-    name: str
+    name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    subject: str
-    message: str
+    subject: str = Field(min_length=3, max_length=180)
+    message: str = Field(min_length=10, max_length=5000)
 
 
 class PortfolioReq(BaseModel):
@@ -165,14 +195,66 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def safe_user(user: dict) -> dict:
+    roles = canonical_roles(user)
+    return {
+        "id": user["id"],
+        "name": user.get("name", ""),
+        "email": user.get("email", ""),
+        "phone": user.get("phone", ""),
+        "company": user.get("company", ""),
+        "status": user.get("status", "active"),
+        "role": roles[0] if roles else "",
+        "roles": list(roles),
+        "permissions": sorted(permissions_for(user)),
+        "created_at": user.get("created_at"),
+    }
+
+
+def auth_response(user: dict) -> dict:
+    roles = canonical_roles(user)
+    primary_role = roles[0] if roles else user.get("role", "")
+    token = create_token(user["id"], user["email"], primary_role)
+    return {"token": token, "user": safe_user(user)}
+
+
+async def authenticate_credentials(req: LoginReq) -> dict:
+    user = await db.users.find_one({"email": req.email.lower()})
+    if not user or not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return user
+
+
+async def provision_client(req: ClientProvisionReq) -> dict:
+    email = req.email.lower()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = {
+        "id": str(uuid.uuid4()),
+        "name": req.name,
+        "email": email,
+        "password_hash": hash_password(req.password),
+        "phone": req.phone or "",
+        "company": req.company or "",
+        "role": "client",
+        "created_at": now_iso(),
+    }
+    await db.users.insert_one(user)
+    return {
+        key: user[key]
+        for key in ("id", "name", "email", "role", "phone", "company", "created_at")
+    }
+
+
 _rate_buckets: dict = {}
 
 
-def rate_limit(key: str, limit: int = 10, window: int = 60):
+def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terlalu banyak permintaan. Coba lagi sesaat."):
     now = datetime.now(timezone.utc).timestamp()
     bucket = [t for t in _rate_buckets.get(key, []) if now - t < window]
     if len(bucket) >= limit:
-        raise HTTPException(status_code=429, detail="Too many uploads. Please wait a moment.")
+        raise HTTPException(status_code=429, detail=detail)
     bucket.append(now)
     _rate_buckets[key] = bucket
 
@@ -197,38 +279,33 @@ async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict
 
 # ----------------------------- Auth routes -----------------------------
 @api.post("/auth/register")
-async def register(req: RegisterReq):
-    email = req.email.lower()
-    if await db.users.find_one({"email": email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
-    user = {
-        "id": str(uuid.uuid4()),
-        "name": req.name,
-        "email": email,
-        "password_hash": hash_password(req.password),
-        "phone": req.phone or "",
-        "company": req.company or "",
-        "role": "client",
-        "created_at": now_iso(),
-    }
-    await db.users.insert_one(user)
-    token = create_token(user["id"], email, "client")
-    return {"token": token, "user": {k: user[k] for k in ("id", "name", "email", "role", "phone", "company")}}
+async def register():
+    raise HTTPException(
+        status_code=403,
+        detail="Public registration is disabled. Client accounts must be provisioned by an administrator.",
+    )
 
 
 @api.post("/auth/login")
 async def login(req: LoginReq):
-    email = req.email.lower()
-    user = await db.users.find_one({"email": email})
-    if not user or not verify_password(req.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_token(user["id"], email, user["role"])
-    return {"token": token, "user": {k: user.get(k) for k in ("id", "name", "email", "role", "phone", "company")}}
+    user = await authenticate_credentials(req)
+    return auth_response(user)
+
+
+@api.post("/auth/admin/login")
+async def admin_login(req: LoginReq):
+    user = await authenticate_credentials(req)
+    if not has_permission(user, "admin.access"):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission required: admin.access",
+        )
+    return auth_response(user)
 
 
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
-    return user
+    return safe_user(user)
 
 
 # ----------------------------- Materials -----------------------------
@@ -240,19 +317,26 @@ async def list_materials():
 
 
 @api.get("/admin/materials")
-async def admin_materials(user: dict = Depends(require_admin)):
+async def admin_materials(user: dict = Depends(require_permission("materials.read"))):
     return await db.materials.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
 
 
 @api.post("/admin/materials")
-async def create_material(req: MaterialReq, user: dict = Depends(require_admin)):
+async def create_material(
+    req: MaterialReq,
+    user: dict = Depends(require_permission("materials.write")),
+):
     mat = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.materials.insert_one(mat)
     return {k: v for k, v in mat.items() if k != "_id"}
 
 
 @api.put("/admin/materials/{mid}")
-async def update_material(mid: str, req: MaterialReq, user: dict = Depends(require_admin)):
+async def update_material(
+    mid: str,
+    req: MaterialReq,
+    user: dict = Depends(require_permission("materials.write")),
+):
     res = await db.materials.update_one({"id": mid}, {"$set": req.model_dump()})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Material not found")
@@ -260,7 +344,10 @@ async def update_material(mid: str, req: MaterialReq, user: dict = Depends(requi
 
 
 @api.delete("/admin/materials/{mid}")
-async def delete_material(mid: str, user: dict = Depends(require_admin)):
+async def delete_material(
+    mid: str,
+    user: dict = Depends(require_permission("materials.write")),
+):
     await db.materials.delete_one({"id": mid})
     return {"ok": True}
 
@@ -336,7 +423,7 @@ async def get_order(oid: str, user: dict = Depends(get_current_user)):
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if user["role"] != "admin" and order["user_id"] != user["id"]:
+    if not has_permission(user, "orders.read") and order["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Forbidden")
     return order
 
@@ -363,13 +450,20 @@ async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dic
 
 # ----------------------------- Admin orders -----------------------------
 @api.get("/admin/orders")
-async def admin_orders(status: Optional[str] = None, user: dict = Depends(require_admin)):
+async def admin_orders(
+    status: Optional[str] = None,
+    user: dict = Depends(require_permission("orders.read")),
+):
     q = {"status": status} if status else {}
     return await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
 @api.post("/admin/orders/{oid}/estimate")
-async def set_estimate(oid: str, req: EstimateReq, user: dict = Depends(require_admin)):
+async def set_estimate(
+    oid: str,
+    req: EstimateReq,
+    user: dict = Depends(require_permission("quotes.write")),
+):
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -397,7 +491,10 @@ async def set_estimate(oid: str, req: EstimateReq, user: dict = Depends(require_
 
 
 @api.post("/admin/orders/{oid}/verify-payment")
-async def verify_payment(oid: str, user: dict = Depends(require_admin)):
+async def verify_payment(
+    oid: str,
+    user: dict = Depends(require_permission("payments.write")),
+):
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -420,7 +517,11 @@ async def verify_payment(oid: str, user: dict = Depends(require_admin)):
 
 
 @api.post("/admin/orders/{oid}/status")
-async def update_status(oid: str, req: StatusReq, user: dict = Depends(require_admin)):
+async def update_status(
+    oid: str,
+    req: StatusReq,
+    user: dict = Depends(require_permission("orders.write")),
+):
     if req.status not in ORDER_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status")
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
@@ -453,15 +554,9 @@ async def download_file(path: str, request: Request, auth: Optional[str] = Query
             token = h[7:]
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    # access control: admins can fetch anything; clients only their own paths
-    if user["role"] != "admin" and f"/{user['id']}/" not in f"/{path}":
+    user = await get_user_from_token(token)
+    # Staff with file-read access can fetch shared files; customers remain path-scoped.
+    if not has_permission(user, "files.read") and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
     data, content_type = storage.get_object(path)
     return Response(content=data, media_type=content_type)
@@ -486,27 +581,42 @@ async def apply_internship(req: InternshipReq):
 
 
 @api.get("/admin/internships")
-async def list_internships(user: dict = Depends(require_admin)):
+async def list_internships(
+    user: dict = Depends(require_permission("admin.access")),
+):
     return await db.internships.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
 # ----------------------------- Contact -----------------------------
 @api.post("/contact")
-async def contact(req: ContactReq):
+async def contact(req: ContactReq, request: Request):
+    client_host = request.client.host if request.client else "unknown"
+    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
+        client_host = request.headers.get("x-forwarded-for", client_host).split(",", 1)[0].strip()
+    rate_limit(f"contact:{client_host}", limit=5, window=600)
+
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.contacts.insert_one(dict(doc))
-    await emailer.send_email(
-        HRD_EMAIL,
-        f"Inquiry Baru: {req.subject}",
-        "Pesan Kontak Baru",
-        f"<p>Dari <strong>{req.name}</strong> ({req.email})</p><p>{req.message}</p>",
-        db=db,
-    )
+    try:
+        email_result = await emailer.send_email(
+            HRD_EMAIL,
+            f"Inquiry Baru: {req.subject}",
+            "Pesan Kontak Baru",
+            f"<p>Dari <strong>{html.escape(req.name)}</strong> ({html.escape(str(req.email))})</p>"
+            f"<p>{html.escape(req.message).replace(chr(10), '<br>')}</p>",
+            db=db,
+        )
+        if email_result.get("status") == "error":
+            logger.error("Contact inquiry stored, but notification email failed (contact_id=%s)", doc["id"])
+    except Exception:
+        logger.exception("Contact inquiry stored, but notification email failed (contact_id=%s)", doc["id"])
     return {"ok": True, "message": "Pesan berhasil dikirim"}
 
 
 @api.get("/admin/contacts")
-async def list_contacts(user: dict = Depends(require_admin)):
+async def list_contacts(
+    user: dict = Depends(require_permission("inquiries.read")),
+):
     return await db.contacts.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
@@ -517,14 +627,21 @@ async def list_portfolio():
 
 
 @api.post("/admin/portfolio")
-async def create_portfolio(req: PortfolioReq, user: dict = Depends(require_admin)):
+async def create_portfolio(
+    req: PortfolioReq,
+    user: dict = Depends(require_permission("content.write")),
+):
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.portfolio.insert_one(dict(doc))
     return {k: v for k, v in doc.items() if k != "_id"}
 
 
 @api.put("/admin/portfolio/{pid}")
-async def update_portfolio(pid: str, req: PortfolioReq, user: dict = Depends(require_admin)):
+async def update_portfolio(
+    pid: str,
+    req: PortfolioReq,
+    user: dict = Depends(require_permission("content.write")),
+):
     res = await db.portfolio.update_one({"id": pid}, {"$set": req.model_dump()})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Not found")
@@ -532,7 +649,10 @@ async def update_portfolio(pid: str, req: PortfolioReq, user: dict = Depends(req
 
 
 @api.delete("/admin/portfolio/{pid}")
-async def delete_portfolio(pid: str, user: dict = Depends(require_admin)):
+async def delete_portfolio(
+    pid: str,
+    user: dict = Depends(require_permission("content.write")),
+):
     await db.portfolio.delete_one({"id": pid})
     return {"ok": True}
 
@@ -545,19 +665,27 @@ async def settings_public():
 
 
 @api.put("/admin/settings")
-async def update_settings(req: SettingsReq, user: dict = Depends(require_admin)):
+async def update_settings(
+    req: SettingsReq,
+    user: dict = Depends(require_permission("settings.write")),
+):
     await db.settings.update_one({"key": "site"}, {"$set": req.model_dump()}, upsert=True)
     s = await get_settings()
     return {k: v for k, v in s.items() if k != "key"}
 
 
-@api.get("/admin/users")
-async def list_users(user: dict = Depends(require_admin)):
-    return await db.users.find({"role": "client"}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
+@api.post("/admin/users", status_code=201)
+async def create_client_user(
+    req: ClientProvisionReq,
+    user: dict = Depends(require_permission("users.manage")),
+):
+    return await provision_client(req)
 
 
 @api.get("/admin/stats")
-async def admin_stats(user: dict = Depends(require_admin)):
+async def admin_stats(
+    user: dict = Depends(require_permission("admin.access")),
+):
     total_orders = await db.orders.count_documents({})
     pending = await db.orders.count_documents({"status": "pending_estimate"})
     awaiting = await db.orders.count_documents({"status": "awaiting_payment"})
@@ -581,12 +709,35 @@ async def root():
     return {"message": "NIUVA API", "status": "ok"}
 
 
+api.include_router(
+    build_identity_router(
+        get_db=lambda: db,
+        require_permission=require_permission,
+        safe_user=safe_user,
+    )
+)
+api.include_router(
+    build_organization_router(
+        get_db=lambda: db,
+        require_permission=require_permission,
+        get_current_user=get_current_user,
+    )
+)
+
 app.include_router(api)
+
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
+if "*" in cors_origins:
+    raise RuntimeError("CORS_ORIGINS must contain exact trusted origins when credentials are enabled")
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -596,6 +747,18 @@ app.add_middleware(
 async def seed():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
+    await db.users.create_index([("roles", 1), ("status", 1)])
+    await db.audit_events.create_index("id", unique=True)
+    await db.audit_events.create_index("created_at")
+    await db.audit_events.create_index("actor_user_id")
+    await db.audit_events.create_index([("target_type", 1), ("target_id", 1)])
+    await db.organizations.create_index("id", unique=True)
+    await db.organizations.create_index("status")
+    await db.organization_memberships.create_index("id", unique=True)
+    await db.organization_memberships.create_index(
+        [("organization_id", 1), ("user_id", 1)], unique=True
+    )
+    await db.organization_memberships.create_index([("user_id", 1), ("status", 1)])
     await db.orders.create_index("id", unique=True)
     admin_email = os.environ["ADMIN_EMAIL"].lower()
     admin_password = os.environ["ADMIN_PASSWORD"]

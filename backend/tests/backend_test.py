@@ -7,16 +7,25 @@ import os
 import io
 import uuid
 import time
+from pathlib import Path
+
 import pytest
 import requests
 
 BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/") if os.environ.get("REACT_APP_BACKEND_URL") else None
 if not BASE_URL:
     # fallback to read frontend .env
-    with open("/app/frontend/.env") as f:
-        for line in f:
+    frontend_env = Path(__file__).resolve().parents[2] / "frontend" / ".env"
+    if frontend_env.exists():
+        for line in frontend_env.read_text(encoding="utf-8").splitlines():
             if line.startswith("REACT_APP_BACKEND_URL="):
                 BASE_URL = line.split("=", 1)[1].strip().rstrip("/")
+
+if not BASE_URL:
+    pytest.skip(
+        "Integration backend URL is not configured; set REACT_APP_BACKEND_URL to run this suite.",
+        allow_module_level=True,
+    )
 
 API = f"{BASE_URL}/api"
 ADMIN_EMAIL = "admin@niuva.com"
@@ -25,21 +34,39 @@ ADMIN_PASSWORD = "__REMOVED_NIV_001__"
 # ---------- Helpers / fixtures ----------
 @pytest.fixture(scope="session")
 def admin_token():
-    r = requests.post(f"{API}/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}, timeout=30)
+    r = requests.post(f"{API}/auth/admin/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}, timeout=30)
     assert r.status_code == 200, f"admin login failed: {r.status_code} {r.text}"
     data = r.json()
-    assert data["user"]["role"] == "admin"
+    assert data["user"]["role"] == "super_admin"
+    assert data["user"]["roles"] == ["super_admin"]
+    assert "*" in data["user"]["permissions"]
+    assert "password_hash" not in data["user"]
     return data["token"]
 
 @pytest.fixture(scope="session")
-def client_user():
+def client_user(admin_token):
     suffix = uuid.uuid4().hex[:8]
     email = f"TEST_client_{suffix}@test.com"
     payload = {"name": "Test Client", "email": email, "password": "Client123"}
-    r = requests.post(f"{API}/auth/register", json=payload, timeout=30)
-    assert r.status_code == 200, f"register failed: {r.status_code} {r.text}"
-    data = r.json()
-    return {"email": email, "password": "Client123", "token": data["token"], "id": data["user"]["id"]}
+    provisioned = requests.post(
+        f"{API}/admin/users",
+        json=payload,
+        headers=hh(admin_token),
+        timeout=30,
+    )
+    assert provisioned.status_code == 201, f"provision failed: {provisioned.status_code} {provisioned.text}"
+    login = requests.post(
+        f"{API}/auth/login",
+        json={"email": email, "password": "Client123"},
+        timeout=30,
+    )
+    assert login.status_code == 200, f"client login failed: {login.status_code} {login.text}"
+    return {
+        "email": email,
+        "password": "Client123",
+        "token": login.json()["token"],
+        "id": provisioned.json()["id"],
+    }
 
 def hh(token):
     return {"Authorization": f"Bearer {token}"}
@@ -62,12 +89,27 @@ class TestAuth:
     def test_me(self, admin_token):
         r = requests.get(f"{API}/auth/me", headers=hh(admin_token), timeout=20)
         assert r.status_code == 200
-        assert r.json()["role"] == "admin"
+        assert r.json()["role"] == "super_admin"
+        assert r.json()["roles"] == ["super_admin"]
+        assert "*" in r.json()["permissions"]
+        assert "password_hash" not in r.json()
 
-    def test_register_duplicate(self, client_user):
-        r = requests.post(f"{API}/auth/register",
-                          json={"name": "Dup", "email": client_user["email"], "password": "Client123"}, timeout=20)
-        assert r.status_code == 400
+    def test_public_registration_disabled(self):
+        r = requests.post(
+            f"{API}/auth/register",
+            json={"name": "Blocked", "email": "blocked@test.com", "password": "Client123"},
+            timeout=20,
+        )
+        assert r.status_code == 403
+        assert "Public registration is disabled" in r.json()["detail"]
+
+    def test_client_cannot_use_admin_login(self, client_user):
+        r = requests.post(
+            f"{API}/auth/admin/login",
+            json={"email": client_user["email"], "password": client_user["password"]},
+            timeout=20,
+        )
+        assert r.status_code == 403
 
     def test_no_auth_protected(self):
         r = requests.get(f"{API}/orders", timeout=20)
@@ -168,8 +210,13 @@ class TestOrderFlow:
     def test_other_client_cannot_view(self, admin_token):
         # create another client
         other_email = f"TEST_other_{uuid.uuid4().hex[:6]}@t.com"
-        requests.post(f"{API}/auth/register",
-                      json={"name": "Other", "email": other_email, "password": "Client123"}, timeout=20)
+        provisioned = requests.post(
+            f"{API}/admin/users",
+            json={"name": "Other", "email": other_email, "password": "Client123"},
+            headers=hh(admin_token),
+            timeout=20,
+        )
+        assert provisioned.status_code == 201
         lr = requests.post(f"{API}/auth/login",
                            json={"email": other_email, "password": "Client123"}, timeout=20).json()
         r = requests.get(f"{API}/orders/{TestOrderFlow.order_id}", headers=hh(lr["token"]), timeout=20)
