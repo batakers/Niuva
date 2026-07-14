@@ -59,6 +59,7 @@ venv/
 /.agents/
 /.codex/
 /.impeccable/
+/.worktrees/
 chainlit.md
 .chainlit
 .ipynb_checkpoints/
