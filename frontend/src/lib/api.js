@@ -13,9 +13,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export function fileUrl(path) {
-  const token = localStorage.getItem(TOKEN_KEY);
-  return `${API}/files/${path}?auth=${token}`;
+export async function downloadFile(path, filename) {
+  const response = await api.get(`/files/${path}`, { responseType: "blob" });
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename || path.split("/").pop() || "download";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 export function formatApiError(detail) {

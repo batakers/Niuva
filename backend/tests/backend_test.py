@@ -208,8 +208,8 @@ class TestOrderFlow:
         # get path from order
         ord_ = requests.get(f"{API}/orders/{TestOrderFlow.order_id}", headers=hh(client_user["token"]), timeout=20).json()
         path = ord_["file"]["storage_path"]
-        # owner with token in query
-        r = requests.get(f"{API}/files/{path}?auth={client_user['token']}", timeout=30)
+        # owner with Bearer token; access tokens must never be placed in URLs.
+        r = requests.get(f"{API}/files/{path}", headers=hh(client_user["token"]), timeout=30)
         assert r.status_code == 200
         # unauthenticated
         r2 = requests.get(f"{API}/files/{path}", timeout=20)

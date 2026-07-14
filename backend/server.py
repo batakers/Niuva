@@ -8,6 +8,7 @@ import os
 import uuid
 import logging
 import asyncio
+import html
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
@@ -16,6 +17,7 @@ import bcrypt
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Query, Header, Response
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import ReturnDocument
 from pydantic import BaseModel, EmailStr, Field
 
 import storage
@@ -125,22 +127,22 @@ class StatusReq(BaseModel):
 
 
 class InternshipReq(BaseModel):
-    full_name: str
+    full_name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    phone: str
-    university: str
-    major: str
-    semester: Optional[str] = ""
-    duration: Optional[str] = ""
-    motivation: str
-    portfolio_url: Optional[str] = ""
+    phone: str = Field(min_length=6, max_length=40)
+    university: str = Field(min_length=2, max_length=180)
+    major: str = Field(min_length=2, max_length=120)
+    semester: Optional[str] = Field(default="", max_length=60)
+    duration: Optional[str] = Field(default="", max_length=80)
+    motivation: str = Field(min_length=10, max_length=5000)
+    portfolio_url: Optional[str] = Field(default="", max_length=500)
 
 
 class ContactReq(BaseModel):
-    name: str
+    name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    subject: str
-    message: str
+    subject: str = Field(min_length=3, max_length=180)
+    message: str = Field(min_length=10, max_length=5000)
 
 
 class PortfolioReq(BaseModel):
@@ -168,11 +170,11 @@ def now_iso() -> str:
 _rate_buckets: dict = {}
 
 
-def rate_limit(key: str, limit: int = 10, window: int = 60):
+def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terlalu banyak permintaan. Coba lagi sesaat."):
     now = datetime.now(timezone.utc).timestamp()
     bucket = [t for t in _rate_buckets.get(key, []) if now - t < window]
     if len(bucket) >= limit:
-        raise HTTPException(status_code=429, detail="Too many uploads. Please wait a moment.")
+        raise HTTPException(status_code=429, detail=detail)
     bucket.append(now)
     _rate_buckets[key] = bucket
 
@@ -193,6 +195,14 @@ async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict
         "content_type": file.content_type or "application/octet-stream",
         "size": result.get("size", len(data)),
     }
+
+
+def request_client_host(request: Request) -> str:
+    """Use forwarded client IP only when a trusted proxy is configured."""
+    host = request.client.host if request.client else "unknown"
+    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
+        return request.headers.get("x-forwarded-for", host).split(",", 1)[0].strip()
+    return host
 
 
 # ----------------------------- Auth routes -----------------------------
@@ -292,8 +302,14 @@ async def create_order(
         raise HTTPException(status_code=400, detail="Invalid material selected")
     file_meta = await store_upload(file, f"orders/{user['id']}", DESIGN_EXTS)
 
-    count = await db.orders.count_documents({})
-    order_number = f"NIV-{datetime.now(timezone.utc).strftime('%y%m')}-{count + 1:04d}"
+    period = datetime.now(timezone.utc).strftime('%y%m')
+    counter = await db.counters.find_one_and_update(
+        {"_id": f"order_number:{period}"},
+        {"$inc": {"value": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    order_number = f"NIV-{period}-{counter['value']:04d}"
     ts = now_iso()
     order = {
         "id": str(uuid.uuid4()),
@@ -445,12 +461,9 @@ async def update_status(oid: str, req: StatusReq, user: dict = Depends(require_a
 
 # ----------------------------- File download -----------------------------
 @api.get("/files/{path:path}")
-async def download_file(path: str, request: Request, auth: Optional[str] = Query(None)):
-    token = auth
-    if not token:
-        h = request.headers.get("Authorization", "")
-        if h.startswith("Bearer "):
-            token = h[7:]
+async def download_file(path: str, request: Request):
+    h = request.headers.get("Authorization", "")
+    token = h[7:] if h.startswith("Bearer ") else None
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
@@ -463,23 +476,34 @@ async def download_file(path: str, request: Request, auth: Optional[str] = Query
     # access control: admins can fetch anything; clients only their own paths
     if user["role"] != "admin" and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
+    order = await db.orders.find_one(
+        {"$or": [{"file.storage_path": path}, {"payment.proof.storage_path": path}]},
+        {"_id": 0, "user_id": 1, "file.deleted": 1},
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="File not found")
+    if user["role"] != "admin" and order.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if order.get("file", {}).get("deleted"):
+        raise HTTPException(status_code=410, detail="File has expired")
     data, content_type = storage.get_object(path)
-    return Response(content=data, media_type=content_type)
+    return Response(content=data, media_type=content_type, headers={"Cache-Control": "private, no-store"})
 
 
 # ----------------------------- Internship -----------------------------
 @api.post("/internships")
-async def apply_internship(req: InternshipReq):
+async def apply_internship(req: InternshipReq, request: Request):
+    rate_limit(f"internship:{request_client_host(request)}", limit=3, window=3600)
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.internships.insert_one(dict(doc))
     await emailer.send_email(
         HRD_EMAIL,
         f"Pelamar Magang Baru: {req.full_name}",
         "Pendaftaran Magang Baru",
-        f"<p><strong>{req.full_name}</strong> ({req.email}, {req.phone}) mendaftar magang.</p>"
-        f"<p>Universitas: {req.university} — {req.major} (Sem {req.semester})<br>Durasi: {req.duration}</p>"
-        f"<p>Motivasi: {req.motivation}</p>"
-        f"<p>Portofolio: {req.portfolio_url or '-'}</p>",
+        f"<p><strong>{html.escape(req.full_name)}</strong> ({html.escape(str(req.email))}, {html.escape(req.phone)}) mendaftar magang.</p>"
+        f"<p>Universitas: {html.escape(req.university)} — {html.escape(req.major)} (Sem {html.escape(req.semester or '')})<br>Durasi: {html.escape(req.duration or '')}</p>"
+        f"<p>Motivasi: {html.escape(req.motivation)}</p>"
+        f"<p>Portofolio: {html.escape(req.portfolio_url or '-')}</p>",
         db=db,
     )
     return {"ok": True, "message": "Pendaftaran berhasil dikirim"}
@@ -492,14 +516,16 @@ async def list_internships(user: dict = Depends(require_admin)):
 
 # ----------------------------- Contact -----------------------------
 @api.post("/contact")
-async def contact(req: ContactReq):
+async def contact(req: ContactReq, request: Request):
+    rate_limit(f"contact:{request_client_host(request)}", limit=5, window=600)
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.contacts.insert_one(dict(doc))
     await emailer.send_email(
         HRD_EMAIL,
-        f"Inquiry Baru: {req.subject}",
+        f"Inquiry Baru: {html.escape(req.subject)}",
         "Pesan Kontak Baru",
-        f"<p>Dari <strong>{req.name}</strong> ({req.email})</p><p>{req.message}</p>",
+        f"<p>Dari <strong>{html.escape(req.name)}</strong> ({html.escape(str(req.email))})</p>"
+        f"<p>{html.escape(req.message).replace(chr(10), '<br>')}</p>",
         db=db,
     )
     return {"ok": True, "message": "Pesan berhasil dikirim"}
@@ -583,10 +609,14 @@ async def root():
 
 app.include_router(api)
 
+cors_origins = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",") if origin.strip()]
+if "*" in cors_origins:
+    raise RuntimeError("CORS_ORIGINS must contain exact trusted origins when credentials are enabled")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -597,6 +627,7 @@ async def seed():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
     await db.orders.create_index("id", unique=True)
+    await db.orders.create_index("order_number", unique=True)
     admin_email = os.environ["ADMIN_EMAIL"].lower()
     admin_password = os.environ["ADMIN_PASSWORD"]
     existing = await db.users.find_one({"email": admin_email})
@@ -661,10 +692,14 @@ async def auto_delete_loop():
             cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
             stale = await db.orders.find(
                 {"status": "awaiting_payment", "created_at": {"$lt": cutoff}, "file.deleted": {"$ne": True}},
-                {"_id": 0, "id": 1},
+                {"_id": 0, "id": 1, "file.storage_path": 1},
             ).to_list(500)
             for o in stale:
-                await db.orders.update_one({"id": o["id"]}, {"$set": {"file.deleted": True}})
+                storage.delete_object(o["file"]["storage_path"])
+                await db.orders.update_one(
+                    {"id": o["id"]},
+                    {"$set": {"file.deleted": True, "file.deleted_at": now_iso()}},
+                )
             if stale:
                 logger.info(f"Auto-deleted design files for {len(stale)} stale orders")
         except Exception as e:

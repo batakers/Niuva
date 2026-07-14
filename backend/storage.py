@@ -66,3 +66,25 @@ def get_object(path: str):
         resp.raise_for_status()
         return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
     raise RuntimeError("Failed to download object after retries")
+
+
+def delete_object(path: str):
+    """Permanently remove an object after its retention period expires."""
+    for attempt in range(3):
+        key = init_storage()
+        resp = requests.delete(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key},
+            timeout=60,
+        )
+        if resp.status_code == 403:
+            _reset_key()
+            continue
+        if resp.status_code == 429:
+            time.sleep(2 ** attempt)
+            continue
+        if resp.status_code == 404:
+            return
+        resp.raise_for_status()
+        return
+    raise RuntimeError("Failed to delete object after retries")
