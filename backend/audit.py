@@ -44,6 +44,7 @@ async def append_audit_event(
     before: dict | None = None,
     after: dict | None = None,
     reason: str | None = None,
+    session=None,
 ) -> dict:
     event = {
         "id": str(uuid.uuid4()),
@@ -57,6 +58,7 @@ async def append_audit_event(
         "reason": reason,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.audit_events.insert_one(event)
+    insert_options = {"session": session} if session is not None else {}
+    await db.audit_events.insert_one(event, **insert_options)
     event.pop("_id", None)
     return event

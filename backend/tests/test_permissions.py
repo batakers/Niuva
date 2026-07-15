@@ -24,3 +24,26 @@ def test_super_admin_wildcard_and_customer_boundary():
     assert is_internal({"roles": ["super_admin"]})
     assert permissions_for({"roles": ["retail_customer"]}) == frozenset()
     assert not is_internal({"roles": ["organization_customer"]})
+
+
+def test_catalog_material_inventory_permissions_match_operational_roles():
+    catalog = {"roles": ["catalog_manager"]}
+    warehouse = {"roles": ["warehouse"]}
+    estimator = {"roles": ["sales_estimator"]}
+    manager = {"roles": ["manager_approver"]}
+
+    assert has_permission(catalog, "catalog.publish")
+    assert has_permission(catalog, "pricing.write")
+    assert has_permission(catalog, "materials.read")
+    assert not has_permission(catalog, "inventory.write")
+    assert has_permission(warehouse, "materials.write")
+    assert has_permission(warehouse, "inventory.write")
+    assert has_permission(warehouse, "restock_alerts.manage")
+    assert not has_permission(warehouse, "inventory.adjust")
+    assert has_permission(estimator, "catalog.read")
+    assert has_permission(estimator, "materials.read")
+    assert has_permission(estimator, "pricing.read")
+    assert has_permission(estimator, "inventory.read")
+    assert has_permission(manager, "catalog.archive")
+    assert has_permission(manager, "materials.archive")
+    assert has_permission(manager, "inventory.adjust")
