@@ -1,23 +1,37 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useMerchandiseCatalog } from "@/hooks/useMerchandiseCatalog";
 
 function MerchandiseCalculator() {
-  const { catalog } = useMerchandiseCatalog();
+  const { catalog, loading, error: catalogError } = useMerchandiseCatalog();
   
-  const [selectedProduct, setSelectedProduct] = useState(catalog[0]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(10);
-  const [selectedColor, setSelectedColor] = useState(selectedProduct.colors[0]);
-  const [selectedSize, setSelectedSize] = useState(selectedProduct.sizes[0]);
-  const [selectedPrintMethod, setSelectedPrintMethod] = useState(selectedProduct.printMethods[0]);
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedPrintMethod, setSelectedPrintMethod] = useState(null);
   const [designNote, setDesignNote] = useState("");
+
+  useEffect(() => {
+    if (!catalog.length) return;
+    const current = catalog.find((product) => product.id === selectedProduct?.id) || catalog[0];
+    setSelectedProduct(current);
+    setSelectedColor((color) => current.colors.includes(color) ? color : (current.colors[0] || ""));
+    setSelectedSize((size) => current.sizes.includes(size) ? size : (current.sizes[0] || ""));
+    setSelectedPrintMethod((method) => current.printMethods.find((item) => item.name === method?.name) || current.printMethods[0] || null);
+  }, [catalog, selectedProduct?.id]);
 
   const handleProductChange = (productId) => {
     const product = catalog.find((p) => p.id === productId);
+    if (!product) return;
     setSelectedProduct(product);
     setSelectedColor(product.colors[0]);
     setSelectedSize(product.sizes[0]);
     setSelectedPrintMethod(product.printMethods[0]);
   };
+
+  if (loading) return <div className="rounded-panel border border-surface-border p-8 text-center text-text-secondary">Memuat katalog...</div>;
+  if (catalogError) return <div className="rounded-panel border border-error/30 p-8 text-center text-error">{catalogError}</div>;
+  if (!selectedProduct || !selectedPrintMethod) return <div className="rounded-panel border border-surface-border p-8 text-center text-text-secondary">Katalog belum tersedia.</div>;
 
   const validateQuantity = (method) => {
     if (quantity < method.minOrder) {
@@ -34,6 +48,7 @@ function MerchandiseCalculator() {
   const total = subtotal - discount + tax;
 
   const error = validateQuantity(selectedPrintMethod);
+  const outOfStock = selectedProduct.stock <= 0;
 
   const handleWhatsApp = () => {
     const message = `Halo Niuva, saya ingin pesan merchandise:
@@ -47,7 +62,7 @@ ${designNote ? `- Catatan: ${designNote}` : ""}
 
 Saya ingin diskusikan detail lebih lanjut.`;
     
-    const phoneNumber = "6281234567890";
+    const phoneNumber = "6285117678901";
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, "_blank");
   };
@@ -79,6 +94,9 @@ Saya ingin diskusikan detail lebih lanjut.`;
                   </div>
                   <div className="text-xs text-text-secondary mt-1">
                     Rp {product.basePrice.toLocaleString("id-ID")}
+                  </div>
+                  <div className={`mt-1 text-[11px] font-semibold ${product.stock > 0 ? "text-success" : "text-error"}`}>
+                    {product.stock > 0 ? `Stok: ${product.stock}` : "Stok habis"}
                   </div>
                 </button>
               ))}
@@ -209,6 +227,7 @@ Saya ingin diskusikan detail lebih lanjut.`;
             {error && (
               <p className="text-error text-sm mt-2">⚠️ {error}</p>
             )}
+            {outOfStock && <p className="mt-2 text-sm text-error">⚠️ Produk ini sedang habis.</p>}
           </div>
 
           {/* Design Notes */}
@@ -290,7 +309,7 @@ Saya ingin diskusikan detail lebih lanjut.`;
           {/* CTA Button */}
           <button
             onClick={handleWhatsApp}
-            disabled={error}
+            disabled={error || outOfStock}
             className="w-full min-h-12 rounded-control bg-action-primary text-text-inverse font-semibold hover:bg-action-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             💬 Pesan via WhatsApp

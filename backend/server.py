@@ -177,6 +177,24 @@ class SettingsReq(BaseModel):
     account_holder: str
 
 
+class MerchandisePrintMethodReq(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    price: int = Field(ge=0)
+    minOrder: int = Field(default=1, ge=1)
+
+
+class MerchandiseReq(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    basePrice: int = Field(ge=0)
+    stock: int = Field(default=0, ge=0)
+    description: str = Field(default="", max_length=2000)
+    image: str = Field(default="🛍️", max_length=16)
+    sizes: List[str] = Field(default_factory=list, max_length=30)
+    colors: List[str] = Field(default_factory=list, max_length=30)
+    printMethods: List[MerchandisePrintMethodReq] = Field(default_factory=list, max_length=20)
+    active: bool = True
+
+
 # ----------------------------- Helpers -----------------------------
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -319,6 +337,44 @@ async def update_material(mid: str, req: MaterialReq, user: dict = Depends(requi
 @api.delete("/admin/materials/{mid}")
 async def delete_material(mid: str, user: dict = Depends(require_admin)):
     await db.materials.delete_one({"id": mid})
+    return {"ok": True}
+
+
+# ----------------------------- Merchandise catalog -----------------------------
+@api.get("/merchandise")
+async def list_merchandise():
+    """Public catalog. Only products deliberately published by an admin are exposed."""
+    return await db.merchandise.find({"active": True}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+@api.get("/admin/merchandise")
+async def admin_merchandise(user: dict = Depends(require_admin)):
+    return await db.merchandise.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+@api.post("/admin/merchandise", status_code=201)
+async def create_merchandise(req: MerchandiseReq, user: dict = Depends(require_admin)):
+    doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso(), "updated_at": now_iso()}
+    await db.merchandise.insert_one(dict(doc))
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.put("/admin/merchandise/{product_id}")
+async def update_merchandise(product_id: str, req: MerchandiseReq, user: dict = Depends(require_admin)):
+    res = await db.merchandise.update_one(
+        {"id": product_id},
+        {"$set": {**req.model_dump(), "updated_at": now_iso()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Produk merchandise tidak ditemukan")
+    return await db.merchandise.find_one({"id": product_id}, {"_id": 0})
+
+
+@api.delete("/admin/merchandise/{product_id}")
+async def delete_merchandise(product_id: str, user: dict = Depends(require_admin)):
+    res = await db.merchandise.delete_one({"id": product_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Produk merchandise tidak ditemukan")
     return {"ok": True}
 
 
@@ -735,6 +791,52 @@ async def seed():
         ]
         for p in seeds:
             await db.portfolio.insert_one({"id": str(uuid.uuid4()), **p, "created_at": now_iso()})
+
+    if await db.merchandise.count_documents({}) == 0:
+        merchandise_defaults = [
+            {
+                "name": "T-Shirt", "basePrice": 75000, "stock": 100,
+                "sizes": ["XS", "S", "M", "L", "XL", "XXL"],
+                "colors": ["Midnight Blue", "Steel Gray", "Frost White", "Sky Blue"],
+                "printMethods": [
+                    {"name": "Screen Print", "price": 25000, "minOrder": 10},
+                    {"name": "Embroidery", "price": 35000, "minOrder": 5},
+                    {"name": "Direct Print", "price": 30000, "minOrder": 1},
+                ],
+                "description": "Kaos berkualitas tinggi dengan material premium", "image": "👕", "active": True,
+            },
+            {
+                "name": "Hoodie", "basePrice": 150000, "stock": 60,
+                "sizes": ["XS", "S", "M", "L", "XL", "XXL"],
+                "colors": ["Midnight Blue", "Steel Gray", "Black"],
+                "printMethods": [
+                    {"name": "Embroidery", "price": 45000, "minOrder": 5},
+                    {"name": "Screen Print", "price": 35000, "minOrder": 10},
+                ],
+                "description": "Hoodie premium dengan desain modern", "image": "🧥", "active": True,
+            },
+            {
+                "name": "Cap", "basePrice": 45000, "stock": 45,
+                "sizes": ["One Size"], "colors": ["Niuva Blue", "Black", "White"],
+                "printMethods": [
+                    {"name": "Embroidery", "price": 20000, "minOrder": 5},
+                    {"name": "Screen Print", "price": 15000, "minOrder": 10},
+                ],
+                "description": "Topi dengan logo NIUVA minimalis", "image": "🧢", "active": True,
+            },
+            {
+                "name": "Tote Bag", "basePrice": 65000, "stock": 80,
+                "sizes": ["One Size"], "colors": ["Natural", "Midnight Blue", "Black"],
+                "printMethods": [
+                    {"name": "Screen Print", "price": 25000, "minOrder": 10},
+                    {"name": "Embroidery", "price": 30000, "minOrder": 5},
+                ],
+                "description": "Tas tote berkualitas untuk branding", "image": "🛍️", "active": True,
+            },
+        ]
+        for item in merchandise_defaults:
+            ts = now_iso()
+            await db.merchandise.insert_one({"id": str(uuid.uuid4()), **item, "created_at": ts, "updated_at": ts})
 
     await get_settings()
     logger.info("Seed complete")

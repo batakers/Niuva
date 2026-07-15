@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
-function MerchandiseForm({ product, onSave, onCancel }) {
+function MerchandiseForm({ product, onSave, onCancel, saving = false }) {
   const [formData, setFormData] = useState(
     product || {
       name: "",
       basePrice: 0,
+      stock: 0,
       description: "",
       image: "👕",
       sizes: [],
       colors: [],
       printMethods: [],
+      active: true,
     }
   );
 
@@ -18,10 +20,10 @@ function MerchandiseForm({ product, onSave, onCancel }) {
   const [newMethod, setNewMethod] = useState({ name: "", price: 0, minOrder: 1 });
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: name === "basePrice" ? parseInt(value) || 0 : value,
+      [name]: type === "checkbox" ? checked : ["basePrice", "stock"].includes(name) ? parseInt(value, 10) || 0 : value,
     });
   };
 
@@ -86,7 +88,7 @@ function MerchandiseForm({ product, onSave, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Product Name */}
         <div>
           <label className="block text-sm font-semibold text-text-primary mb-2">
@@ -116,6 +118,20 @@ function MerchandiseForm({ product, onSave, onCancel }) {
             required
           />
         </div>
+        <div>
+          <label className="block text-sm font-semibold text-text-primary mb-2">
+            Stok tersedia *
+          </label>
+          <input
+            type="number"
+            name="stock"
+            value={formData.stock}
+            onChange={handleInputChange}
+            min="0"
+            className="w-full px-4 py-2 border border-surface-border rounded-control focus:outline-none focus:ring-2 focus:ring-action-primary"
+            required
+          />
+        </div>
       </div>
 
       {/* Description */}
@@ -131,6 +147,17 @@ function MerchandiseForm({ product, onSave, onCancel }) {
           rows="3"
         />
       </div>
+
+      <label className="flex items-center gap-3 rounded-control border border-surface-border bg-surface-elevated p-4 text-sm font-semibold text-text-primary">
+        <input
+          type="checkbox"
+          name="active"
+          checked={formData.active}
+          onChange={handleInputChange}
+          className="h-4 w-4 accent-action-primary"
+        />
+        Tampilkan produk ini di katalog publik
+      </label>
 
       {/* Icon/Emoji */}
       <div>
@@ -296,13 +323,15 @@ function MerchandiseForm({ product, onSave, onCancel }) {
       <div className="flex gap-3">
         <button
           type="submit"
+          disabled={saving}
           className="flex-1 min-h-11 rounded-control bg-action-primary text-text-inverse font-semibold hover:bg-action-primary-hover"
         >
-          {product ? "Update Produk" : "Tambah Produk"}
+          {saving ? "Menyimpan..." : product ? "Update Produk" : "Tambah Produk"}
         </button>
         <button
           type="button"
           onClick={onCancel}
+          disabled={saving}
           className="flex-1 min-h-11 rounded-control bg-surface-elevated text-text-primary font-semibold hover:bg-surface-hover"
         >
           Batal

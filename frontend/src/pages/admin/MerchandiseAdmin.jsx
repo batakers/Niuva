@@ -1,247 +1,110 @@
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { useMerchandiseCatalog } from "@/hooks/useMerchandiseCatalog";
 import MerchandiseForm from "@/components/admin/MerchandiseForm";
+import { formatApiError } from "@/lib/api";
+import { AdminLayout } from "./AdminLayout";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function MerchandiseAdmin() {
-  const { catalog, addProduct, updateProduct, deleteProduct, resetToDefault } =
-    useMerchandiseCatalog();
+  const { catalog, loading, error, addProduct, updateProduct, deleteProduct } = useMerchandiseCatalog({ admin: true });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = (formData) => {
-    if (editingId) {
-      updateProduct(editingId, formData);
-    } else {
-      addProduct(formData);
-    }
+  const closeForm = () => {
     setShowForm(false);
     setEditingId(null);
   };
 
-  const handleEdit = (product) => {
-    setEditingId(product.id);
-    setShowForm(true);
-  };
-
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingId(null);
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus produk ini?")) {
-      deleteProduct(id);
+  const handleSave = async (formData) => {
+    setSaving(true);
+    try {
+      if (editingId) await updateProduct(editingId, formData);
+      else await addProduct(formData);
+      toast.success(editingId ? "Produk diperbarui" : "Produk ditambahkan");
+      closeForm();
+    } catch (requestError) {
+      toast.error(formatApiError(requestError.response?.data?.detail));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const filteredCatalog = catalog.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleDelete = async (id) => {
+    if (!window.confirm("Hapus produk ini dari katalog?")) return;
+    try {
+      await deleteProduct(id);
+      toast.success("Produk dihapus");
+    } catch (requestError) {
+      toast.error(formatApiError(requestError.response?.data?.detail));
+    }
+  };
 
-  const editingProduct = catalog.find((p) => p.id === editingId);
+  const filteredCatalog = catalog.filter((product) => product.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const editingProduct = catalog.find((product) => product.id === editingId);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary">
-            Management Merchandise
-          </h2>
-          <p className="text-text-secondary mt-1">
-            Kelola katalog produk apparel dan merchandise
-          </p>
+    <AdminLayout title="Merchandise" subtitle="Katalog publik, harga, stok, dan metode cetak">
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">Perubahan tersimpan di server dan langsung digunakan oleh katalog publik.</p>
+          <button
+            type="button"
+            onClick={() => { setEditingId(null); setShowForm((visible) => !visible); }}
+            className="min-h-11 rounded-control bg-action-primary px-5 py-3 text-sm font-semibold text-text-inverse hover:bg-action-primary-hover"
+          >
+            {showForm ? "Tutup form" : "+ Tambah produk"}
+          </button>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className={`min-h-11 rounded-control px-6 py-3 font-semibold text-sm transition-colors ${
-            showForm
-              ? "bg-surface-elevated text-text-primary hover:bg-surface-hover"
-              : "bg-action-primary text-text-inverse hover:bg-action-primary-hover"
-          }`}
-        >
-          {showForm ? "Tutup Form" : "+ Tambah Produk"}
-        </button>
-      </div>
 
-      {/* Form Section */}
-      {showForm && (
-        <div className="rounded-panel bg-surface-elevated p-6 border border-surface-border">
-          <h3 className="text-lg font-bold text-text-primary mb-6">
-            {editingId ? "Edit Produk" : "Tambah Produk Baru"}
-          </h3>
-          <MerchandiseForm
-            product={editingProduct}
-            onSave={handleSave}
-            onCancel={handleCancel}
+        {showForm && (
+          <div className="rounded-panel border border-surface-border bg-surface-elevated p-6">
+            <h2 className="mb-6 text-lg font-bold text-text-primary">{editingId ? "Edit produk" : "Produk baru"}</h2>
+            <MerchandiseForm product={editingProduct} onSave={handleSave} onCancel={closeForm} saving={saving} />
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            placeholder="Cari produk..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="min-h-11 flex-1 rounded-control border border-surface-border px-4 focus:outline-none focus:ring-2 focus:ring-action-primary"
           />
+          <span className="text-sm font-semibold text-text-secondary">Total: {filteredCatalog.length}</span>
         </div>
-      )}
 
-      {/* Search & Filter */}
-      <div className="flex items-center gap-4">
-        <input
-          type="text"
-          placeholder="Cari produk..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 px-4 py-3 border border-surface-border rounded-control focus:outline-none focus:ring-2 focus:ring-action-primary"
-        />
-        <button
-          onClick={() => {
-            if (window.confirm("Reset ke katalog default?")) {
-              resetToDefault();
-            }
-          }}
-          className="min-h-11 rounded-control px-6 py-3 text-sm font-semibold bg-surface-elevated text-text-secondary hover:bg-surface-hover"
-        >
-          Reset
-        </button>
-        <span className="text-sm font-semibold text-text-secondary">
-          Total: {filteredCatalog.length}
-        </span>
-      </div>
-
-      {/* Products Table */}
-      <div className="rounded-panel border border-surface-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-surface-elevated border-b border-surface-border">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">
-                  Produk
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">
-                  Harga Dasar
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">
-                  Ukuran
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">
-                  Warna
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">
-                  Metode Cetak
-                </th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-text-primary">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCatalog.length > 0 ? (
-                filteredCatalog.map((product, idx) => (
-                  <tr
-                    key={product.id}
-                    className={`border-b border-surface-border ${
-                      idx % 2 === 0 ? "bg-surface-page" : "bg-surface-elevated/30"
-                    }`}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="text-3xl">{product.image}</div>
-                        <div>
-                          <div className="font-semibold text-text-primary">
-                            {product.name}
-                          </div>
-                          <div className="text-xs text-text-secondary line-clamp-1">
-                            {product.description}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-text-primary">
-                      Rp {product.basePrice?.toLocaleString("id-ID")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {product.sizes?.slice(0, 2).map((size, i) => (
-                          <span
-                            key={i}
-                            className="text-xs bg-action-primary/20 text-action-primary px-2 py-1 rounded"
-                          >
-                            {size}
-                          </span>
-                        ))}
-                        {product.sizes?.length > 2 && (
-                          <span className="text-xs text-text-secondary">
-                            +{product.sizes.length - 2} lagi
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {product.colors?.slice(0, 2).map((color, i) => (
-                          <span
-                            key={i}
-                            className="text-xs bg-surface-elevated text-text-secondary px-2 py-1 rounded"
-                          >
-                            {color}
-                          </span>
-                        ))}
-                        {product.colors?.length > 2 && (
-                          <span className="text-xs text-text-secondary">
-                            +{product.colors.length - 2} lagi
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="space-y-1">
-                        {product.printMethods?.slice(0, 2).map((method, i) => (
-                          <div key={i} className="text-xs text-text-secondary">
-                            <span className="font-semibold">{method.name}</span>
-                            <span className="ml-1">Rp {method.price?.toLocaleString("id-ID")}</span>
-                          </div>
-                        ))}
-                        {product.printMethods?.length > 2 && (
-                          <div className="text-xs text-text-secondary">
-                            +{product.printMethods.length - 2} metode lagi
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="px-3 py-2 rounded-control bg-action-primary text-text-inverse text-xs font-semibold hover:bg-action-primary-hover"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="px-3 py-2 rounded-control bg-error text-text-inverse text-xs font-semibold hover:bg-error/80"
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </td>
+        {loading ? (
+          <EmptyState frame="solid">[ MEMUAT_KATALOG... ]</EmptyState>
+        ) : error ? (
+          <EmptyState frame="dashed">{error}</EmptyState>
+        ) : (
+          <div className="overflow-x-auto rounded-panel border border-surface-border">
+            <table className="w-full min-w-[760px]">
+              <thead className="border-b border-surface-border bg-surface-elevated text-left text-sm text-text-primary">
+                <tr><th className="px-4 py-3">Produk</th><th className="px-4 py-3">Harga</th><th className="px-4 py-3">Stok</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Variasi</th><th className="px-4 py-3 text-center">Aksi</th></tr>
+              </thead>
+              <tbody>
+                {filteredCatalog.map((product) => (
+                  <tr key={product.id} className="border-b border-surface-border last:border-0">
+                    <td className="px-4 py-3"><div className="flex items-center gap-3"><span className="text-2xl">{product.image}</span><div><p className="font-semibold text-text-primary">{product.name}</p><p className="max-w-xs truncate text-xs text-text-secondary">{product.description}</p></div></div></td>
+                    <td className="px-4 py-3 text-sm font-semibold">Rp {product.basePrice.toLocaleString("id-ID")}</td>
+                    <td className="px-4 py-3 text-sm">{product.stock} pcs</td>
+                    <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs font-semibold ${product.active ? "bg-success/10 text-success" : "bg-surface-elevated text-text-secondary"}`}>{product.active ? "Tayang" : "Disembunyikan"}</span></td>
+                    <td className="px-4 py-3 text-xs text-text-secondary">{product.sizes.length} ukuran · {product.colors.length} warna · {product.printMethods.length} metode</td>
+                    <td className="px-4 py-3"><div className="flex justify-center gap-2"><button type="button" onClick={() => { setEditingId(product.id); setShowForm(true); }} className="rounded-control bg-action-primary px-3 py-2 text-xs font-semibold text-text-inverse">Edit</button><button type="button" onClick={() => handleDelete(product.id)} className="rounded-control bg-error px-3 py-2 text-xs font-semibold text-text-inverse">Hapus</button></div></td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-4 py-6 text-center text-text-secondary">
-                    Tidak ada produk ditemukan
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+                {!filteredCatalog.length && <tr><td colSpan="6"><EmptyState frame="dashed">BELUM_ADA_PRODUK</EmptyState></td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-
-      {/* Info Box */}
-      <div className="rounded-panel bg-action-primary/10 border border-action-primary/20 p-4">
-        <p className="text-sm text-text-secondary">
-          <span className="font-semibold text-action-primary">💡 Info:</span> Data katalog
-          merchandise disimpan di browser Anda menggunakan localStorage. Perubahan akan
-          langsung terlihat di halaman merchandise pelanggan.
-        </p>
-      </div>
-    </div>
+    </AdminLayout>
   );
 }
 
