@@ -158,6 +158,12 @@ class InventoryService:
         return None
 
     async def apply_operation(self, *, actor: dict, payload: dict) -> dict:
+        if payload.get("movement_type") in {"reserve", "release"}:
+            raise InventoryError(
+                409,
+                "reservation_endpoint_required",
+                "Reserve dan release wajib melalui lifecycle reservation.",
+            )
         return await self._apply_operation(actor=actor, payload=dict(payload))
 
     async def _apply_operation(
@@ -652,6 +658,24 @@ class InventoryService:
         values = await self.db.stock_movements.find(query, {"_id": 0}).sort(
             "created_at", -1
         ).limit(min(limit, 500)).to_list(min(limit, 500))
+        return serialize_inventory(values)
+
+    async def list_reservations(
+        self, *, subject_type=None, subject_id=None, status=None, limit=200
+    ) -> list[dict]:
+        query = {
+            key: value
+            for key, value in {
+                "subject_type": subject_type,
+                "subject_id": subject_id,
+                "status": status,
+            }.items()
+            if value is not None
+        }
+        bounded_limit = min(limit, 500)
+        values = await self.db.inventory_reservations.find(
+            query, {"_id": 0}
+        ).sort("updated_at", -1).limit(bounded_limit).to_list(bounded_limit)
         return serialize_inventory(values)
 
     async def list_alerts(self, *, status=None, limit=200) -> list[dict]:

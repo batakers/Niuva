@@ -197,9 +197,10 @@ Real transaction test memerlukan Mongo 7 single-node replica set, polling `db.he
 | Pemeriksaan | Hasil |
 |---|---|
 | Unit/in-memory backend terfokus Tasks 1–8 | Lulus pada setiap checkpoint |
-| Frontend Jest | 14 test lulus |
+| Regresi backend lengkap setelah code review | 85 test lulus, 2 test integrasi eksternal dilewati |
+| Frontend Jest | 16 test lulus |
 | Frontend optimized build | Lulus; sitemap dilewati bila public site URL tidak dikonfigurasi |
-| Migration isolated-data test | Dry-run/apply/collision/no-op lulus |
+| Migration isolated-data test | Dry-run/apply/collision/unique-index preflight/no-op lulus |
 | URL-dependent external API | Otomatis skip tanpa `REACT_APP_BACKEND_URL` |
 | Real Mongo replica-set | Tertunda: Docker daemon belum ready setelah polling lokal |
 | Browser role/workflow QA | Tertunda sampai API non-produksi transactional tersedia |

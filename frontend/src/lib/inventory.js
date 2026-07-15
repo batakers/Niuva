@@ -2,11 +2,11 @@ import { api } from "./api";
 
 
 export const MATERIAL_MOVEMENTS = Object.freeze([
-  "receive", "reserve", "release", "consume", "damage", "adjustment",
+  "receive", "reserve", "consume", "damage", "adjustment",
   "plan_incoming", "cancel_incoming", "plan_demand", "cancel_demand",
 ]);
 export const PRODUCT_VARIANT_MOVEMENTS = Object.freeze([
-  "produce", "reserve", "release", "ship", "damage", "adjustment",
+  "produce", "reserve", "ship", "damage", "adjustment",
   "plan_incoming", "cancel_incoming", "plan_demand", "cancel_demand",
 ]);
 
@@ -63,6 +63,28 @@ export function buildOperationPayload(form) {
   return payload;
 }
 
+export function reservationActions(reservation, permissions = []) {
+  const allowed = permissions.includes("*") || permissions.includes("inventory.write");
+  return allowed && reservation?.status === "active" ? ["release", "consume"] : [];
+}
+
+export function reservationTransitionDefaults(reservationId = "", action = "release") {
+  return {
+    reservation_id: reservationId,
+    action,
+    operation_id: globalThis.crypto?.randomUUID?.() || fallbackUuid(),
+    reason: "",
+  };
+}
+
+
+export function buildReservationTransitionPayload(form) {
+  return {
+    operation_id: form.operation_id,
+    reason: String(form.reason || "").trim(),
+  };
+}
+
 export function validInventoryReason(reason) {
   const length = String(reason || "").trim().length;
   return length >= 3 && length <= 500;
@@ -97,6 +119,7 @@ export const inventoryApi = {
   movements: (filters = {}) => data(api.get("/admin/inventory/movements", query(filters))),
   apply: (payload) => data(api.post("/admin/inventory/movements", payload)),
   reserve: (payload) => data(api.post("/admin/inventory/reservations", payload)),
+  reservations: (filters = {}) => data(api.get("/admin/inventory/reservations", query(filters))),
   release: (id, payload) => data(api.post(`/admin/inventory/reservations/${id}/release`, payload)),
   consume: (id, payload) => data(api.post(`/admin/inventory/reservations/${id}/consume`, payload)),
   alerts: (filters = {}) => data(api.get("/admin/inventory/restock-alerts", query(filters))),

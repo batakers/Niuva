@@ -226,21 +226,45 @@ class CatalogService:
     async def replace_variants(
         self, product_id: str, variants: list[dict], actor: dict
     ) -> list[dict]:
+        self._require_transactions()
         await self._product_document(product_id)
         incoming_skus = [item["sku"].strip().upper() for item in variants]
         if len(incoming_skus) != len(set(incoming_skus)):
             raise CatalogError(409, "sku_conflict", "SKU varian harus unik.")
+        submitted_ids = [item["id"] for item in variants if item.get("id")]
+        if len(submitted_ids) != len(set(submitted_ids)):
+            raise CatalogError(
+                409,
+                "child_identity_conflict",
+                "ID varian tidak boleh digunakan lebih dari sekali.",
+            )
         existing = await self.db.product_variants.find(
             {"product_id": product_id}, {"_id": 0}
         ).to_list(500)
+        existing_by_id = {item["id"]: item for item in existing}
         existing_by_sku = {item["sku"]: item for item in existing}
-        saved = []
-        saved_ids = set()
         timestamp = now_iso()
+        prepared = []
         for payload in variants:
             sku = payload["sku"].strip().upper()
-            current = existing_by_sku.get(sku)
-            variant_id = payload.get("id") or (current or {}).get("id") or str(uuid.uuid4())
+            submitted_id = payload.get("id")
+            if submitted_id:
+                foreign = await self.db.product_variants.find_one(
+                    {"id": submitted_id, "product_id": {"$ne": product_id}},
+                    {"_id": 0},
+                )
+                if foreign:
+                    raise CatalogError(
+                        409,
+                        "child_identity_conflict",
+                        "ID varian dimiliki produk lain.",
+                    )
+            current = (
+                existing_by_id.get(submitted_id)
+                if submitted_id
+                else existing_by_sku.get(sku)
+            )
+            variant_id = submitted_id or (current or {}).get("id") or str(uuid.uuid4())
             conflict = await self.db.product_variants.find_one(
                 {"sku": sku, "id": {"$ne": variant_id}}
             )
@@ -255,51 +279,112 @@ class CatalogService:
                 "updated_at": timestamp,
                 "updated_by": actor.get("id"),
             }
-            if current:
-                await self.db.product_variants.update_one(
-                    {"id": variant_id}, {"$set": value}
-                )
-            else:
+            if not current:
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
-                await self.db.product_variants.insert_one(value)
-            saved.append(clean_document(value))
-            saved_ids.add(variant_id)
-        for current in existing:
-            if current["id"] not in saved_ids and current.get("status") != "archived":
-                await self.db.product_variants.update_one(
-                    {"id": current["id"]},
-                    {"$set": {"status": "archived", "updated_at": timestamp}},
+            prepared.append((current, value))
+
+        resolved_ids = [value["id"] for _current, value in prepared]
+        if len(resolved_ids) != len(set(resolved_ids)):
+            raise CatalogError(
+                409,
+                "child_identity_conflict",
+                "Setiap varian harus memiliki ID yang berbeda.",
+            )
+        saved = [clean_document(value) for _current, value in prepared]
+        saved_ids = {value["id"] for _current, value in prepared}
+        session = await self.client.start_session()
+        async with session:
+            async with session.start_transaction():
+                for current, value in prepared:
+                    if current:
+                        await self.db.product_variants.update_one(
+                            {"id": value["id"]},
+                            {"$set": value},
+                            **_write_options(session),
+                        )
+                    else:
+                        await self.db.product_variants.insert_one(
+                            value, **_write_options(session)
+                        )
+                for current in existing:
+                    if current["id"] not in saved_ids and current.get("status") != "archived":
+                        await self.db.product_variants.update_one(
+                            {"id": current["id"]},
+                            {"$set": {
+                                "status": "archived",
+                                "updated_at": timestamp,
+                                "updated_by": actor.get("id"),
+                            }},
+                            **_write_options(session),
+                        )
+                await self.db.products.update_one(
+                    {"id": product_id},
+                    {"$set": {"workflow_status": "draft", "updated_at": timestamp}},
+                    **_write_options(session),
                 )
-        await self.db.products.update_one(
-            {"id": product_id},
-            {"$set": {"workflow_status": "draft", "updated_at": timestamp}},
-        )
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="catalog.variants_replaced",
-            target_type="product",
-            target_id=product_id,
-            after={"variants": saved},
-        )
+                await append_audit_event(
+                    self.db,
+                    actor=actor,
+                    action="catalog.variants_replaced",
+                    target_type="product",
+                    target_id=product_id,
+                    after={"variants": saved},
+                    session=session,
+                )
         return saved
 
     async def replace_options(
         self, product_id: str, options: list[dict], actor: dict
     ) -> list[dict]:
+        self._require_transactions()
         await self._product_document(product_id)
+        incoming_codes = [item["code"].strip().lower() for item in options]
+        if len(incoming_codes) != len(set(incoming_codes)):
+            raise CatalogError(
+                409, "option_code_conflict", "Kode opsi harus unik dalam produk."
+            )
+        submitted_ids = [item["id"] for item in options if item.get("id")]
+        if len(submitted_ids) != len(set(submitted_ids)):
+            raise CatalogError(
+                409,
+                "child_identity_conflict",
+                "ID opsi tidak boleh digunakan lebih dari sekali.",
+            )
         existing = await self.db.configuration_options.find(
             {"product_id": product_id}, {"_id": 0}
         ).to_list(500)
+        existing_by_id = {item["id"]: item for item in existing}
         existing_by_code = {item["code"]: item for item in existing}
-        saved = []
-        saved_ids = set()
         timestamp = now_iso()
+        prepared = []
         for payload in options:
             code = payload["code"].strip().lower()
-            current = existing_by_code.get(code)
-            option_id = payload.get("id") or (current or {}).get("id") or str(uuid.uuid4())
+            submitted_id = payload.get("id")
+            if submitted_id:
+                foreign = await self.db.configuration_options.find_one(
+                    {"id": submitted_id, "product_id": {"$ne": product_id}},
+                    {"_id": 0},
+                )
+                if foreign:
+                    raise CatalogError(
+                        409,
+                        "child_identity_conflict",
+                        "ID opsi dimiliki produk lain.",
+                    )
+            current = (
+                existing_by_id.get(submitted_id)
+                if submitted_id
+                else existing_by_code.get(code)
+            )
+            option_id = submitted_id or (current or {}).get("id") or str(uuid.uuid4())
+            conflict = await self.db.configuration_options.find_one(
+                {"product_id": product_id, "code": code, "id": {"$ne": option_id}}
+            )
+            if conflict:
+                raise CatalogError(
+                    409, "option_code_conflict", "Kode opsi sudah digunakan."
+                )
             value = {
                 **(current or {}),
                 **payload,
@@ -309,34 +394,59 @@ class CatalogService:
                 "updated_at": timestamp,
                 "updated_by": actor.get("id"),
             }
-            if current:
-                await self.db.configuration_options.update_one(
-                    {"id": option_id}, {"$set": value}
-                )
-            else:
+            if not current:
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
-                await self.db.configuration_options.insert_one(value)
-            saved.append(clean_document(value))
-            saved_ids.add(option_id)
-        for current in existing:
-            if current["id"] not in saved_ids and current.get("active", True):
-                await self.db.configuration_options.update_one(
-                    {"id": current["id"]},
-                    {"$set": {"active": False, "updated_at": timestamp}},
+            prepared.append((current, value))
+
+        resolved_ids = [value["id"] for _current, value in prepared]
+        if len(resolved_ids) != len(set(resolved_ids)):
+            raise CatalogError(
+                409,
+                "child_identity_conflict",
+                "Setiap opsi harus memiliki ID yang berbeda.",
+            )
+        saved = [clean_document(value) for _current, value in prepared]
+        saved_ids = {value["id"] for _current, value in prepared}
+        session = await self.client.start_session()
+        async with session:
+            async with session.start_transaction():
+                for current, value in prepared:
+                    if current:
+                        await self.db.configuration_options.update_one(
+                            {"id": value["id"]},
+                            {"$set": value},
+                            **_write_options(session),
+                        )
+                    else:
+                        await self.db.configuration_options.insert_one(
+                            value, **_write_options(session)
+                        )
+                for current in existing:
+                    if current["id"] not in saved_ids and current.get("active", True):
+                        await self.db.configuration_options.update_one(
+                            {"id": current["id"]},
+                            {"$set": {
+                                "active": False,
+                                "updated_at": timestamp,
+                                "updated_by": actor.get("id"),
+                            }},
+                            **_write_options(session),
+                        )
+                await self.db.products.update_one(
+                    {"id": product_id},
+                    {"$set": {"workflow_status": "draft", "updated_at": timestamp}},
+                    **_write_options(session),
                 )
-        await self.db.products.update_one(
-            {"id": product_id},
-            {"$set": {"workflow_status": "draft", "updated_at": timestamp}},
-        )
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="catalog.options_replaced",
-            target_type="product",
-            target_id=product_id,
-            after={"options": saved},
-        )
+                await append_audit_event(
+                    self.db,
+                    actor=actor,
+                    action="catalog.options_replaced",
+                    target_type="product",
+                    target_id=product_id,
+                    after={"options": saved},
+                    session=session,
+                )
         return saved
 
     async def _load_aggregate(self, product_id: str) -> dict:
@@ -363,7 +473,7 @@ class CatalogService:
             raise CatalogError(
                 503,
                 "transaction_unavailable",
-                "Publikasi aman tidak tersedia karena database belum mendukung transaksi.",
+                "Operasi katalog aman tidak tersedia karena database belum mendukung transaksi.",
             )
 
     async def _next_revision(self, product_id: str) -> int:

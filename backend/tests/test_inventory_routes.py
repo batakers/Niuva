@@ -24,6 +24,13 @@ class StubInventoryService:
         self.calls.append(("list_movements", filters))
         return []
 
+    async def list_reservations(self, **filters):
+        self.calls.append(("list_reservations", filters))
+        return [{
+            "id": "reservation-1", "subject_type": "material",
+            "subject_id": "mat-1", "quantity": "2", "status": "active",
+        }]
+
     async def apply_operation(self, *, actor, payload):
         self.calls.append(("apply_operation", actor, payload))
         if payload["operation_id"] == "00000000-0000-0000-0000-000000000503":
@@ -256,3 +263,54 @@ async def run_reservation_and_alert_routes():
 
 def test_reservation_and_restock_alert_routes():
     asyncio.run(run_reservation_and_alert_routes())
+
+
+async def run_reservation_listing_and_generic_movement_guard():
+    app, service = build_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        listed = await api.get(
+            "/api/admin/inventory/reservations?subject_type=material&subject_id=mat-1&status=active&limit=20",
+            headers=headers("inventory.read"),
+        )
+        assert listed.status_code == 200
+        assert listed.json()[0]["id"] == "reservation-1"
+        list_call = [call for call in service.calls if call[0] == "list_reservations"][-1]
+        assert list_call[1] == {
+            "subject_type": "material",
+            "subject_id": "mat-1",
+            "status": "active",
+            "limit": 20,
+        }
+
+        generic_reserve = await api.post(
+            "/api/admin/inventory/movements",
+            json=movement(
+                "77777777-7777-7777-7777-777777777777",
+                movement_type="reserve",
+            ),
+            headers=headers("inventory.write"),
+        )
+        assert generic_reserve.status_code == 409
+        assert generic_reserve.json()["detail"]["code"] == "reservation_endpoint_required"
+
+        generic_release = await api.post(
+            "/api/admin/inventory/movements",
+            json=movement(
+                "88888888-8888-8888-8888-888888888888",
+                movement_type="release",
+            ),
+            headers=headers("inventory.write"),
+        )
+        assert generic_release.status_code == 409
+        assert generic_release.json()["detail"]["code"] == "reservation_endpoint_required"
+        guarded_calls = [
+            call for call in service.calls
+            if call[0] == "apply_operation"
+            and call[2]["movement_type"] in {"reserve", "release"}
+        ]
+        assert guarded_calls == []
+
+
+def test_reservations_can_be_listed_and_cannot_bypass_lifecycle_routes():
+    asyncio.run(run_reservation_listing_and_generic_movement_guard())

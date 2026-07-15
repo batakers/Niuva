@@ -1,5 +1,48 @@
 import { api } from "./api";
 
+export function emptyCategoryDraft() {
+  return {
+    name: "",
+    slug: "",
+    description: "",
+    sort_order: 0,
+    status: "active",
+  };
+}
+
+
+export function categoryDraftFrom(category = {}) {
+  return {
+    name: category.name || "",
+    slug: category.slug || "",
+    description: category.description || "",
+    sort_order: Number(category.sort_order || 0),
+    status: category.status || "active",
+  };
+}
+
+
+export function buildCategoryPayload(form) {
+  return {
+    name: String(form.name || "").trim(),
+    slug: String(form.slug || "").trim(),
+    description: String(form.description || "").trim(),
+    sort_order: Number(form.sort_order || 0),
+    status: form.status || "active",
+  };
+}
+
+
+export function validCategoryDraft(form) {
+  const payload = buildCategoryPayload(form);
+  return payload.name.length >= 2
+    && payload.name.length <= 200
+    && payload.slug.length <= 200
+    && payload.description.length <= 2000
+    && Number.isInteger(payload.sort_order)
+    && payload.sort_order >= 0;
+}
+
 export function emptyProductDraft() {
   return {
     category_id: "", name: "", slug: "", short_description: "", description: "",

@@ -1,6 +1,10 @@
 import {
+  buildCategoryPayload,
+  categoryDraftFrom,
+  emptyCategoryDraft,
   emptyProductDraft,
   normalizeValidationErrors,
+  validCategoryDraft,
   visibleCatalogActions,
 } from "./catalog";
 
@@ -38,4 +42,40 @@ test("catalog actions follow exact permissions", () => {
     "publish",
   ]);
   expect(visibleCatalogActions(["catalog.archive"])).toEqual(["archive"]);
+});
+
+
+test("category drafts support safe create and edit payloads", () => {
+  expect(emptyCategoryDraft()).toEqual({
+    name: "",
+    slug: "",
+    description: "",
+    sort_order: 0,
+    status: "active",
+  });
+  const draft = categoryDraftFrom({
+    id: "category-1",
+    name: " Ready Stock ",
+    slug: "ready-stock",
+    description: " Products available now ",
+    sort_order: 4,
+    status: "active",
+    created_at: "ignored",
+  });
+  expect(draft).toEqual({
+    name: " Ready Stock ",
+    slug: "ready-stock",
+    description: " Products available now ",
+    sort_order: 4,
+    status: "active",
+  });
+  expect(buildCategoryPayload(draft)).toEqual({
+    name: "Ready Stock",
+    slug: "ready-stock",
+    description: "Products available now",
+    sort_order: 4,
+    status: "active",
+  });
+  expect(validCategoryDraft({ ...draft, name: "R" })).toBe(false);
+  expect(validCategoryDraft(draft)).toBe(true);
 });

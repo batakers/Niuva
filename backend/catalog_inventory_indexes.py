@@ -15,6 +15,21 @@ INDEX_DECLARATIONS = (
         "options": {"name": "uq_product_variant_sku", "unique": True},
     },
     {
+        "collection": "product_variants",
+        "keys": "id",
+        "options": {"name": "uq_product_variant_id", "unique": True},
+    },
+    {
+        "collection": "configuration_options",
+        "keys": "id",
+        "options": {"name": "uq_configuration_option_id", "unique": True},
+    },
+    {
+        "collection": "configuration_options",
+        "keys": [("product_id", 1), ("code", 1)],
+        "options": {"name": "uq_product_configuration_option_code", "unique": True},
+    },
+    {
         "collection": "materials",
         "keys": "sku",
         "options": {

@@ -361,3 +361,144 @@ async def run_draft_isolation_and_rollback():
 
 def test_catalog_draft_isolation_and_rollback_as_new_revision():
     asyncio.run(run_draft_isolation_and_rollback())
+
+
+async def run_variant_and_option_identity_are_stable():
+    app, _db, _capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        _category, product = await create_publishable_product(api)
+        aggregate = await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        variant = aggregate.json()["variants"][0]
+        renamed_variant = await api.put(
+            f"/api/admin/products/{product['id']}/variants",
+            json={"variants": [{**variant, "id": variant["id"], "sku": "SIGN-AZURE", "name": "Azure"}]},
+            headers=headers(),
+        )
+        assert renamed_variant.status_code == 200
+        after_variant = await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        matching_variants = [item for item in after_variant.json()["variants"] if item["id"] == variant["id"]]
+        assert len(matching_variants) == 1
+        assert matching_variants[0]["sku"] == "SIGN-AZURE"
+
+        created_options = await api.put(
+            f"/api/admin/products/{product['id']}/options",
+            json={"options": [{"code": "finish", "label": "Finish", "type": "select", "allowed_values": ["matte", "glossy"], "required": True}]},
+            headers=headers(),
+        )
+        assert created_options.status_code == 200
+        option = created_options.json()[0]
+        renamed_option = await api.put(
+            f"/api/admin/products/{product['id']}/options",
+            json={"options": [{**option, "id": option["id"], "code": "surface_finish", "label": "Surface finish"}]},
+            headers=headers(),
+        )
+        assert renamed_option.status_code == 200
+        after_option = await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        matching_options = [item for item in after_option.json()["options"] if item["id"] == option["id"]]
+        assert len(matching_options) == 1
+        assert matching_options[0]["code"] == "surface_finish"
+
+
+def test_variant_and_option_renames_preserve_child_identity():
+    asyncio.run(run_variant_and_option_identity_are_stable())
+
+
+async def run_variant_conflicts_are_preflighted_before_writes():
+    app, _db, _capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        category, product = await create_publishable_product(api)
+        original = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()["variants"][0]
+        other_product = await api.post(
+            "/api/admin/products",
+            json={
+                "category_id": category["id"], "name": "Other Sign", "slug": "other-sign",
+                "short_description": "Other custom sign", "description": "Other printed sign",
+                "media": [{"storage_path": "catalog/other.webp", "alt": "Other sign"}],
+                "pricing_mode": "fixed", "price_from": 60000, "currency": "IDR",
+                "pricing_rule_reference": None, "retail_cta_enabled": True,
+                "b2b_cta_enabled": True, "stock_visibility": "status_only",
+            },
+            headers=headers(),
+        )
+        assert other_product.status_code == 201
+        other_variant = await api.put(
+            f"/api/admin/products/{other_product.json()['id']}/variants",
+            json={"variants": [{
+                "sku": "OTHER-BLACK", "name": "Black", "fixed_price": 60000,
+                "currency": "IDR", "production_type": "ready_stock",
+                "inventory_tracking_enabled": True, "reorder_point": "1", "status": "active",
+            }]},
+            headers=headers(),
+        )
+        assert other_variant.status_code == 200
+        conflicted = await api.put(
+            f"/api/admin/products/{product['id']}/variants",
+            json={"variants": [
+                {**original, "id": original["id"], "sku": "SIGN-RENAMED"},
+                {"sku": "OTHER-BLACK", "name": "Conflicting", "fixed_price": 60000,
+                 "currency": "IDR", "production_type": "ready_stock",
+                 "inventory_tracking_enabled": True, "reorder_point": "1", "status": "active"},
+            ]},
+            headers=headers(),
+        )
+        assert conflicted.status_code == 409
+        own_variants = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()["variants"]
+        matching = [item for item in own_variants if item["id"] == original["id"]]
+        assert len(matching) == 1
+        assert matching[0]["sku"] == "SIGN-BLUE"
+
+
+def test_variant_conflicts_do_not_partially_replace_children():
+    asyncio.run(run_variant_conflicts_are_preflighted_before_writes())
+
+
+async def run_resolved_child_ids_must_remain_unique():
+    app, _db, _capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        _category, product = await create_publishable_product(api)
+        aggregate = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()
+        variant = aggregate["variants"][0]
+        variant_conflict = await api.put(
+            f"/api/admin/products/{product['id']}/variants",
+            json={"variants": [
+                {**variant, "id": variant["id"], "sku": "SIGN-RENAMED"},
+                {"sku": "SIGN-BLUE", "name": "Reused old SKU", "fixed_price": 50000,
+                 "currency": "IDR", "production_type": "ready_stock",
+                 "inventory_tracking_enabled": True, "reorder_point": "2", "status": "active"},
+            ]},
+            headers=headers(),
+        )
+        assert variant_conflict.status_code == 409
+        assert variant_conflict.json()["detail"]["code"] == "child_identity_conflict"
+        unchanged_variants = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()["variants"]
+        assert [(item["id"], item["sku"]) for item in unchanged_variants] == [(variant["id"], "SIGN-BLUE")]
+
+        created_options = await api.put(
+            f"/api/admin/products/{product['id']}/options",
+            json={"options": [{
+                "code": "finish", "label": "Finish", "type": "select",
+                "allowed_values": ["matte", "glossy"], "required": True,
+            }]},
+            headers=headers(),
+        )
+        assert created_options.status_code == 200
+        option = created_options.json()[0]
+        option_conflict = await api.put(
+            f"/api/admin/products/{product['id']}/options",
+            json={"options": [
+                {**option, "id": option["id"], "code": "surface_finish"},
+                {"code": "finish", "label": "Reused old code", "type": "text", "required": False},
+            ]},
+            headers=headers(),
+        )
+        assert option_conflict.status_code == 409
+        assert option_conflict.json()["detail"]["code"] == "child_identity_conflict"
+        unchanged_options = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()["options"]
+        assert [(item["id"], item["code"]) for item in unchanged_options] == [(option["id"], "finish")]
+
+
+def test_resolved_variant_and_option_ids_cannot_be_reused_in_one_replacement():
+    asyncio.run(run_resolved_child_ids_must_remain_unique())
