@@ -4,6 +4,9 @@ import {
   movementTypesForSubject,
   operationDefaults,
   parseInventoryConflict,
+  buildReservationTransitionPayload,
+  reservationActions,
+  reservationTransitionDefaults,
   statusTone,
   validInventoryReason,
   visibleMovementTypes,
@@ -25,6 +28,8 @@ test("movement types follow subject and adjustment permission", () => {
   expect(movementTypesForSubject("material")).toContain("receive");
   expect(movementTypesForSubject("material")).not.toContain("ship");
   expect(movementTypesForSubject("product_variant")).toContain("produce");
+  expect(movementTypesForSubject("material")).not.toContain("release");
+  expect(movementTypesForSubject("product_variant")).not.toContain("release");
   expect(visibleMovementTypes("material", ["inventory.write"])).not.toContain("damage");
   expect(visibleMovementTypes("material", ["inventory.write", "inventory.adjust"])).toEqual(
     expect.arrayContaining(["damage", "adjustment"]),
@@ -47,4 +52,22 @@ test("reason and alert actions follow permissions", () => {
   expect(validInventoryReason("Stock count verified")).toBe(true);
   expect(alertActions(["restock_alerts.read"])).toEqual([]);
   expect(alertActions(["restock_alerts.manage"])).toEqual(["resolve"]);
+});
+
+
+test("active reservations expose dedicated transitions with idempotent payloads", () => {
+  expect(reservationActions({ status: "active" }, ["inventory.write"])).toEqual([
+    "release",
+    "consume",
+  ]);
+  expect(reservationActions({ status: "released" }, ["inventory.write"])).toEqual([]);
+  expect(reservationActions({ status: "active" }, ["inventory.read"])).toEqual([]);
+
+  const form = reservationTransitionDefaults("reservation-1", "release");
+  expect(form.reservation_id).toBe("reservation-1");
+  expect(form.operation_id).toMatch(/^[0-9a-f-]{36}$/);
+  expect(buildReservationTransitionPayload({
+    ...form,
+    reason: "  Customer cancelled order  ",
+  })).toEqual({ operation_id: form.operation_id, reason: "Customer cancelled order" });
 });

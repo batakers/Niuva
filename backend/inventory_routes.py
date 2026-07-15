@@ -130,6 +130,14 @@ def build_inventory_router(
         payload: MovementPayload,
         actor: dict = Depends(require_permission("inventory.write")),
     ):
+        if payload.movement_type in {"reserve", "release"}:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "reservation_endpoint_required",
+                    "message": "Reserve dan release wajib melalui endpoint lifecycle reservation.",
+                },
+            )
         if payload.movement_type in {"damage", "adjustment"} and not has_permission(
             actor, "inventory.adjust"
         ):
@@ -141,6 +149,25 @@ def build_inventory_router(
             get_service().apply_operation(
                 actor=actor,
                 payload=payload.model_dump(mode="json", exclude_none=True),
+            )
+        )
+
+    @router.get("/reservations")
+    async def list_reservations(
+        subject_type: SubjectType | None = None,
+        subject_id: str | None = Query(default=None, max_length=200),
+        reservation_status: Literal["active", "released", "consumed", "expired"] | None = Query(
+            default=None, alias="status"
+        ),
+        limit: int = Query(default=200, ge=1, le=500),
+        _actor: dict = Depends(require_permission("inventory.read")),
+    ):
+        return await invoke(
+            get_service().list_reservations(
+                subject_type=subject_type,
+                subject_id=subject_id,
+                status=reservation_status,
+                limit=limit,
             )
         )
 

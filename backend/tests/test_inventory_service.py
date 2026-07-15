@@ -355,6 +355,53 @@ def test_reservation_transitions_and_expiry_are_exactly_once():
     asyncio.run(run_reservation_lifecycle_and_expiry())
 
 
+async def run_generic_reservation_movements_are_rejected():
+    service, db = build_service()
+    await service.apply_operation(
+        actor=WAREHOUSE,
+        payload=operation("46666666-6666-6666-6666-666666666666"),
+    )
+    for movement_type in ("reserve", "release"):
+        with pytest.raises(InventoryError) as guarded:
+            await service.apply_operation(
+                actor=WAREHOUSE,
+                payload=operation(
+                    f"47777777-7777-7777-7777-77777777777{1 if movement_type == 'reserve' else 2}",
+                    movement_type=movement_type,
+                    quantity="2",
+                ),
+            )
+        assert guarded.value.status_code == 409
+        assert guarded.value.code == "reservation_endpoint_required"
+    assert len(db.stock_movements.items) == 1
+    assert db.inventory_balances.items[0]["reserved"].to_decimal() == 0
+
+    reservation = await service.create_reservation(
+        actor=WAREHOUSE,
+        payload={
+            "operation_id": "48888888-8888-8888-8888-888888888888",
+            "subject_type": "material",
+            "subject_id": "mat-1",
+            "quantity": "2",
+            "reference_type": "order",
+            "reference_id": "order-guard",
+            "reason": "Reserve through lifecycle endpoint",
+        },
+    )
+    listed = await service.list_reservations(
+        subject_type="material",
+        subject_id="mat-1",
+        status="active",
+        limit=20,
+    )
+    assert [item["id"] for item in listed] == [reservation["reservation"]["id"]]
+    assert listed[0]["quantity"] == "2"
+
+
+def test_generic_reservation_movements_are_rejected_and_active_rows_are_listed():
+    asyncio.run(run_generic_reservation_movements_are_rejected())
+
+
 async def run_restock_dedup_resolution_and_email_isolation():
     emailer = FailingEmailer()
     service, db = build_service(emailer=emailer)

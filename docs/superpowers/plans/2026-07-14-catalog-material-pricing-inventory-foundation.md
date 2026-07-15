@@ -1067,3 +1067,19 @@ git commit -m "feat: complete catalog material pricing inventory foundation"
 ```
 
 Do not push, merge, delete a branch, or remove the implementation worktree without separate user direction.
+
+## Code Review Remediation — 2026-07-15
+
+- [x] Preserve variant and configuration-option identity across SKU/code renames by resolving submitted IDs first.
+- [x] Reject foreign, duplicate submitted, and duplicate resolved child IDs before any write.
+- [x] Preflight SKU/option-code conflicts and replace children, archive omissions, mark the product draft, and append audit in one transaction.
+- [x] Add unique variant ID, option ID, and per-product option-code indexes.
+- [x] Preflight every unique index during migration dry-run/apply and block all writes when existing data violates a constraint.
+- [x] Use database-side aggregation for production index preflight so large collections are not truncated at the test-fixture batch limit.
+- [x] Add permission-controlled active-reservation listing and dedicated Release/Consume transitions.
+- [x] Reject generic Reserve/Release movements at both route and service boundaries.
+- [x] Add permission-aware category create/edit/archive workflows so a clean installation can create its first product.
+- [x] Add Indonesian/English labels, empty states, validation, conflict handling, and reload behavior for the new workflows.
+- [x] Verify remediation with 85 passing backend tests, 16 passing frontend tests, successful compile/dependency checks, optimized frontend build, and `git diff --check`.
+
+Real Mongo replica-set verification and browser role/workflow QA remain deliberately unchecked in Steps 4 and 7 until the required external environment is available.

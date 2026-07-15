@@ -21,15 +21,26 @@ class FakeCollection:
     def __init__(self, items=None):
         self.items = deepcopy(items or [])
         self.indexes = []
+        self.aggregate_calls = []
 
-    @staticmethod
-    def matches(item, query):
+    @classmethod
+    def matches(cls, item, query):
         for key, expected in query.items():
+            if key == "$and" and not all(cls.matches(item, branch) for branch in expected):
+                return False
+            if key == "$or" and not any(cls.matches(item, branch) for branch in expected):
+                return False
+            if key in {"$and", "$or"}:
+                continue
             actual = item.get(key)
             if isinstance(expected, dict):
                 if "$ne" in expected and actual == expected["$ne"]:
                     return False
                 if "$exists" in expected and (key in item) != expected["$exists"]:
+                    return False
+                if "$type" in expected and expected["$type"] == "string" and not isinstance(actual, str):
+                    return False
+                if "$gt" in expected and not actual > expected["$gt"]:
                     return False
                 continue
             if actual != expected:
@@ -59,6 +70,35 @@ class FakeCollection:
                 values.append(value)
         return FakeCursor(values)
 
+    def aggregate(self, pipeline):
+        self.aggregate_calls.append(deepcopy(pipeline))
+        values = deepcopy(self.items)
+        for stage in pipeline:
+            if "$match" in stage:
+                values = [item for item in values if self.matches(item, stage["$match"])]
+            elif "$group" in stage:
+                group_spec = stage["$group"]["_id"]
+                grouped = {}
+                for item in values:
+                    if isinstance(group_spec, dict):
+                        key = tuple(
+                            (name, item.get(source.removeprefix("$")))
+                            for name, source in group_spec.items()
+                        )
+                    else:
+                        key = item.get(group_spec.removeprefix("$"))
+                    grouped[key] = grouped.get(key, 0) + 1
+                values = [
+                    {"_id": key, "count": count}
+                    for key, count in grouped.items()
+                ]
+            elif "$count" in stage:
+                field = stage["$count"]
+                values = [{field: len(values)}] if values else []
+            else:
+                raise AssertionError(f"Unsupported aggregate stage: {stage}")
+        return FakeCursor(values)
+
     async def update_one(self, query, update):
         for item in self.items:
             if self.matches(item, query):
@@ -76,6 +116,7 @@ class FakeDatabase:
         "categories",
         "products",
         "product_variants",
+        "configuration_options",
         "materials",
         "catalog_publications",
         "material_price_versions",
@@ -209,6 +250,45 @@ def test_deterministic_sku_collision_blocks_every_write():
     asyncio.run(run_collision_preflight())
 
 
+async def run_child_identity_index_preflight():
+    db, _active_id, _inactive_id = legacy_fixture()
+    db.product_variants.items.extend([
+        {"id": "duplicate-child", "sku": "VAR-A", "product_id": "product-1"},
+        {"id": "duplicate-child", "sku": "VAR-B", "product_id": "product-1"},
+    ])
+    db.configuration_options.items.extend([
+        {"id": "option-a", "product_id": "product-1", "code": "finish"},
+        {"id": "option-b", "product_id": "product-1", "code": "finish"},
+    ])
+    before = deepcopy(db.materials.items)
+
+    dry_run = await migration.migrate(db, dry_run=True)
+    failed_indexes = {item["index"] for item in dry_run["index_preflight_failures"]}
+    assert failed_indexes == {
+        "uq_product_variant_id",
+        "uq_product_configuration_option_code",
+    }
+    assert db.product_variants.aggregate_calls
+    assert db.configuration_options.aggregate_calls
+    assert dry_run["failures"] == 2
+    assert dry_run["changed"] == 0
+    assert db.materials.items == before
+
+    applied = await migration.migrate(db, dry_run=False)
+    assert applied["failures"] == 2
+    assert applied["changed"] == 0
+    assert db.materials.items == before
+    assert all(
+        not collection.indexes
+        for collection in vars(db).values()
+        if isinstance(collection, FakeCollection)
+    )
+
+
+def test_child_identity_index_conflicts_block_dry_run_and_apply_before_writes():
+    asyncio.run(run_child_identity_index_preflight())
+
+
 async def run_index_declarations():
     db = FakeDatabase()
     await ensure_catalog_inventory_indexes(db)
@@ -223,6 +303,9 @@ async def run_index_declarations():
         "uq_category_slug",
         "uq_product_slug",
         "uq_product_variant_sku",
+        "uq_product_variant_id",
+        "uq_configuration_option_id",
+        "uq_product_configuration_option_code",
         "uq_material_sku",
         "uq_catalog_publication_revision",
         "uq_material_price_effective_from",
