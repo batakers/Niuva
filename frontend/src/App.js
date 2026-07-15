@@ -11,6 +11,8 @@ const About = lazy(() => import("@/pages/marketing/AboutPage"));
 const Capabilities = lazy(() => import("@/pages/marketing/CapabilitiesPage"));
 const Projects = lazy(() => import("@/pages/marketing/ProjectsPage"));
 const Contact = lazy(() => import("@/pages/marketing/ContactPage"));
+const Shop = lazy(() => import("@/pages/marketing/ShopPage"));
+const Merchandise = lazy(() => import("@/pages/marketing/MerchandisePage"));
 const AdminLogin = lazy(() => import("@/pages/admin/AdminLogin"));
 const ClientDashboard = lazy(() => import("@/pages/operational/ClientDashboard"));
 const NewOrder = lazy(() => import("@/pages/operational/NewOrder"));
@@ -23,6 +25,7 @@ const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminInternships = lazy(() => import("@/pages/admin/Internships"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
+const AdminMerchandise = lazy(() => import("@/pages/admin/MerchandiseAdmin"));
 
 function RouteFallback() {
   return (
@@ -101,6 +104,10 @@ function App() {
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/portfolio" element={<Projects />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/merchandise" element={<Merchandise />} />
+                <Route path="/apparel" element={<Merchandise />} />
+                <Route path="/store" element={<Shop />} />
                 <Route path="/dashboard" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
                 <Route path="/order" element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
                 <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
@@ -108,6 +115,7 @@ function App() {
                 <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
                 <Route path="/admin/orders" element={<ProtectedRoute adminOnly><AdminOrders /></ProtectedRoute>} />
                 <Route path="/admin/materials" element={<ProtectedRoute adminOnly><AdminMaterials /></ProtectedRoute>} />
+                <Route path="/admin/merchandise" element={<ProtectedRoute adminOnly><AdminMerchandise /></ProtectedRoute>} />
                 <Route path="/admin/portfolio" element={<ProtectedRoute adminOnly><AdminPortfolio /></ProtectedRoute>} />
                 <Route path="/admin/internships" element={<ProtectedRoute adminOnly><AdminInternships /></ProtectedRoute>} />
                 <Route path="/admin/contacts" element={<ProtectedRoute adminOnly><AdminContacts /></ProtectedRoute>} />

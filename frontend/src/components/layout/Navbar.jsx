@@ -23,6 +23,7 @@ export function Navbar() {
     { to: "/about", labelKey: "nav.about" },
     { to: "/capabilities", labelKey: "nav.services", aliases: ["/services"] },
     { to: "/projects", labelKey: "nav.portfolio", aliases: ["/portfolio"] },
+    { to: "/shop", labelKey: "nav.shop", aliases: ["/store"] },
     { to: "/contact", labelKey: "nav.contact" },
   ];
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutGrid, Package, Layers, Image as ImageIcon, GraduationCap, Mail, Users, Settings as SettingsIcon, TerminalSquare } from "lucide-react";
+import { LayoutGrid, Package, Layers, Image as ImageIcon, GraduationCap, Mail, Users, Settings as SettingsIcon, TerminalSquare, Shirt } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { OperationalLayout } from "@/components/layout/Layout";
 import { useAuth } from "../../context/AuthContext";
@@ -11,6 +11,7 @@ const ADMIN_ROUTES = [
   { path: "/admin", label: "admin.overview", icon: LayoutGrid },
   { path: "/admin/orders", label: "admin.orders", icon: Package },
   { path: "/admin/materials", label: "admin.materials", icon: Layers },
+  { path: "/admin/merchandise", label: "Merchandise", icon: Shirt },
   { path: "/admin/portfolio", label: "admin.portfolio", icon: ImageIcon },
   { path: "/admin/internships", label: "admin.internships", icon: GraduationCap },
   { path: "/admin/contacts", label: "admin.contacts", icon: Mail },
