@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 const translations = {
   id: {
@@ -10,11 +10,18 @@ const translations = {
     "nav.internship": "Magang",
     "nav.contact": "Contact",
     "nav.order": "Pesan 3D Printing",
-    "nav.login": "Masuk",
-    "nav.register": "Daftar",
     "nav.dashboard": "Dashboard",
     "nav.logout": "Keluar",
     "nav.admin": "Admin",
+    "nav.primaryLabel": "Navigasi utama",
+    "nav.mobileLabel": "Navigasi seluler",
+    "nav.homeAria": "Niuva Inovasi Utama - Beranda",
+    "nav.openMenu": "Buka menu",
+    "nav.closeMenu": "Tutup menu",
+    "nav.switchToEnglish": "Ganti bahasa ke English",
+    "nav.switchToIndonesian": "Ganti bahasa ke Bahasa Indonesia",
+    "nav.discussProject": "Diskusikan Project",
+    "common.skipToContent": "Lewati ke konten",
 
     "common.learnMore": "Selengkapnya",
     "common.send": "Kirim",
@@ -101,14 +108,6 @@ const translations = {
     "contact.message": "Pesan",
     "contact.success": "Pesan berhasil dikirim. Tim Niuva akan meninjau permintaan Anda.",
 
-    "auth.loginTitle": "Masuk ke Akun",
-    "auth.registerTitle": "Buat Akun Klien",
-    "auth.noAccount": "Belum punya akun?",
-    "auth.haveAccount": "Sudah punya akun?",
-    "auth.company": "Perusahaan",
-    "auth.loginBtn": "Masuk",
-    "auth.registerBtn": "Daftar Sekarang",
-
     "dash.title": "Pesanan Saya",
     "dash.newOrder": "Pesanan Baru",
     "dash.noOrders": "Belum ada pesanan. Mulai pesanan 3D printing pertama Anda!",
@@ -180,11 +179,18 @@ const translations = {
     "nav.internship": "Internship",
     "nav.contact": "Contact",
     "nav.order": "Order 3D Printing",
-    "nav.login": "Sign In",
-    "nav.register": "Sign Up",
     "nav.dashboard": "Dashboard",
     "nav.logout": "Logout",
     "nav.admin": "Admin",
+    "nav.primaryLabel": "Primary navigation",
+    "nav.mobileLabel": "Mobile navigation",
+    "nav.homeAria": "Niuva Inovasi Utama - Home",
+    "nav.openMenu": "Open menu",
+    "nav.closeMenu": "Close menu",
+    "nav.switchToEnglish": "Switch language to English",
+    "nav.switchToIndonesian": "Switch language to Bahasa Indonesia",
+    "nav.discussProject": "Discuss Your Project",
+    "common.skipToContent": "Skip to content",
 
     "common.learnMore": "Learn more",
     "common.send": "Send",
@@ -271,14 +277,6 @@ const translations = {
     "contact.message": "Message",
     "contact.success": "Message sent. The Niuva team will review your request.",
 
-    "auth.loginTitle": "Sign In to Your Account",
-    "auth.registerTitle": "Create a Client Account",
-    "auth.noAccount": "Don't have an account?",
-    "auth.haveAccount": "Already have an account?",
-    "auth.company": "Company",
-    "auth.loginBtn": "Sign In",
-    "auth.registerBtn": "Sign Up Now",
-
     "dash.title": "My Orders",
     "dash.newOrder": "New Order",
     "dash.noOrders": "No orders yet. Start your first 3D printing order!",
@@ -345,17 +343,96 @@ const translations = {
 
 const I18nContext = createContext(null);
 
+export const DEFAULT_LOCALE = "id";
+export const SUPPORTED_LOCALES = ["id", "en"];
+
+const missingKeyWarnings = new Set();
+
+function normalizeLocale(locale) {
+  return SUPPORTED_LOCALES.includes(locale) ? locale : DEFAULT_LOCALE;
+}
+
+function readTranslation(source, key) {
+  if (!source || !key) return undefined;
+  if (Object.prototype.hasOwnProperty.call(source, key)) return source[key];
+  return key.split(".").reduce((value, segment) => value?.[segment], source);
+}
+
+function interpolate(value, variables = {}) {
+  if (typeof value !== "string") return value;
+  return value.replace(/\{\{(\w+)\}\}/g, (match, name) =>
+    Object.prototype.hasOwnProperty.call(variables, name) ? String(variables[name]) : match
+  );
+}
+
+export function getLocalizedField(object, fieldName, locale = DEFAULT_LOCALE) {
+  if (!object) return "";
+  const activeLocale = normalizeLocale(locale);
+  return object[`${fieldName}_${activeLocale}`] || object[`${fieldName}_${DEFAULT_LOCALE}`] || object[fieldName] || "";
+}
+
+function intlLocale(locale) {
+  return normalizeLocale(locale) === "en" ? "en-US" : "id-ID";
+}
+
+export function formatDate(value, locale = DEFAULT_LOCALE, options = {}) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat(intlLocale(locale), options).format(new Date(value));
+}
+
+export function formatNumber(value, locale = DEFAULT_LOCALE, options = {}) {
+  return new Intl.NumberFormat(intlLocale(locale), options).format(value);
+}
+
+export function formatCurrency(value, locale = DEFAULT_LOCALE, currency = "IDR") {
+  return formatNumber(value, locale, { style: "currency", currency, maximumFractionDigits: 0 });
+}
+
 export function I18nProvider({ children }) {
-  const [lang, setLang] = useState(localStorage.getItem("niuva_lang") || "id");
-  const changeLang = useCallback((l) => {
-    setLang(l);
-    localStorage.setItem("niuva_lang", l);
+  const [locale, setLocale] = useState(() => {
+    const urlLocale = new URLSearchParams(window.location.search).get("lang");
+    return normalizeLocale(urlLocale || localStorage.getItem("niuva_lang"));
+  });
+  const setLanguage = useCallback((nextLocale) => {
+    const normalizedLocale = normalizeLocale(nextLocale);
+    setLocale(normalizedLocale);
+    localStorage.setItem("niuva_lang", normalizedLocale);
+    const url = new URL(window.location.href);
+    url.searchParams.set("lang", normalizedLocale);
+    window.history.replaceState({}, "", url);
   }, []);
-  const t = useCallback((key) => translations[lang][key] || translations.id[key] || key, [lang]);
-  return <I18nContext.Provider value={{ lang, setLang: changeLang, t }}>{children}</I18nContext.Provider>;
+  const t = useCallback((key, variables) => {
+    const localizedValue = readTranslation(translations[locale], key);
+    const fallbackValue = readTranslation(translations[DEFAULT_LOCALE], key);
+    const value = localizedValue ?? fallbackValue;
+
+    if (value == null) {
+      if (process.env.NODE_ENV !== "production" && !missingKeyWarnings.has(key)) {
+        missingKeyWarnings.add(key);
+        console.warn(`[i18n] Missing translation key: ${key}`);
+      }
+      return key;
+    }
+
+    return interpolate(value, variables);
+  }, [locale]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  return (
+    <I18nContext.Provider
+      value={{ locale, setLanguage, t, lang: locale, setLang: setLanguage }}
+    >
+      {children}
+    </I18nContext.Provider>
+  );
 }
 
 export function useI18n() {
-  return useContext(I18nContext);
+  const context = useContext(I18nContext);
+  if (!context) throw new Error("useI18n must be used within I18nProvider");
+  return context;
 }
 

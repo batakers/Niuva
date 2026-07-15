@@ -68,6 +68,30 @@ def create_token(user_id: str, email: str, role: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
 
 
+async def get_user_from_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGO],
+            options={"require": ["sub", "exp", "type"]},
+        )
+        if payload.get("type") != "access":
+            raise jwt.InvalidTokenError("Invalid token type")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = await db.users.find_one(
+        {"id": payload["sub"]},
+        {"_id": 0, "password_hash": 0},
+    )
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
 async def get_current_user(request: Request) -> dict:
     token = None
     auth_header = request.headers.get("Authorization", "")
@@ -77,16 +101,7 @@ async def get_current_user(request: Request) -> dict:
         token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password_hash": 0})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
+    return await get_user_from_token(token)
 
 
 async def require_admin(user: dict = Depends(get_current_user)) -> dict:
@@ -96,7 +111,7 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
 
 
 # ----------------------------- Models -----------------------------
-class RegisterReq(BaseModel):
+class ClientProvisionReq(BaseModel):
     name: str
     email: EmailStr
     password: str = Field(min_length=6)
@@ -167,6 +182,46 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def auth_response(user: dict) -> dict:
+    token = create_token(user["id"], user["email"], user["role"])
+    return {
+        "token": token,
+        "user": {
+            key: user.get(key)
+            for key in ("id", "name", "email", "role", "phone", "company")
+        },
+    }
+
+
+async def authenticate_credentials(req: LoginReq) -> dict:
+    user = await db.users.find_one({"email": req.email.lower()})
+    if not user or not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return user
+
+
+async def provision_client(req: ClientProvisionReq) -> dict:
+    email = req.email.lower()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = {
+        "id": str(uuid.uuid4()),
+        "name": req.name,
+        "email": email,
+        "password_hash": hash_password(req.password),
+        "phone": req.phone or "",
+        "company": req.company or "",
+        "role": "client",
+        "created_at": now_iso(),
+    }
+    await db.users.insert_one(user)
+    return {
+        key: user[key]
+        for key in ("id", "name", "email", "role", "phone", "company", "created_at")
+    }
+
+
 _rate_buckets: dict = {}
 
 
@@ -207,33 +262,25 @@ def request_client_host(request: Request) -> str:
 
 # ----------------------------- Auth routes -----------------------------
 @api.post("/auth/register")
-async def register(req: RegisterReq):
-    email = req.email.lower()
-    if await db.users.find_one({"email": email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
-    user = {
-        "id": str(uuid.uuid4()),
-        "name": req.name,
-        "email": email,
-        "password_hash": hash_password(req.password),
-        "phone": req.phone or "",
-        "company": req.company or "",
-        "role": "client",
-        "created_at": now_iso(),
-    }
-    await db.users.insert_one(user)
-    token = create_token(user["id"], email, "client")
-    return {"token": token, "user": {k: user[k] for k in ("id", "name", "email", "role", "phone", "company")}}
+async def register():
+    raise HTTPException(
+        status_code=403,
+        detail="Public registration is disabled. Client accounts must be provisioned by an administrator.",
+    )
 
 
 @api.post("/auth/login")
 async def login(req: LoginReq):
-    email = req.email.lower()
-    user = await db.users.find_one({"email": email})
-    if not user or not verify_password(req.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_token(user["id"], email, user["role"])
-    return {"token": token, "user": {k: user.get(k) for k in ("id", "name", "email", "role", "phone", "company")}}
+    user = await authenticate_credentials(req)
+    return auth_response(user)
+
+
+@api.post("/auth/admin/login")
+async def admin_login(req: LoginReq):
+    user = await authenticate_credentials(req)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return auth_response(user)
 
 
 @api.get("/auth/me")
@@ -466,13 +513,7 @@ async def download_file(path: str, request: Request):
     token = h[7:] if h.startswith("Bearer ") else None
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+    user = await get_user_from_token(token)
     # access control: admins can fetch anything; clients only their own paths
     if user["role"] != "admin" and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -520,14 +561,19 @@ async def contact(req: ContactReq, request: Request):
     rate_limit(f"contact:{request_client_host(request)}", limit=5, window=600)
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.contacts.insert_one(dict(doc))
-    await emailer.send_email(
-        HRD_EMAIL,
-        f"Inquiry Baru: {html.escape(req.subject)}",
-        "Pesan Kontak Baru",
-        f"<p>Dari <strong>{html.escape(req.name)}</strong> ({html.escape(str(req.email))})</p>"
-        f"<p>{html.escape(req.message).replace(chr(10), '<br>')}</p>",
-        db=db,
-    )
+    try:
+        email_result = await emailer.send_email(
+            HRD_EMAIL,
+            f"Inquiry Baru: {req.subject}",
+            "Pesan Kontak Baru",
+            f"<p>Dari <strong>{html.escape(req.name)}</strong> ({html.escape(str(req.email))})</p>"
+            f"<p>{html.escape(req.message).replace(chr(10), '<br>')}</p>",
+            db=db,
+        )
+        if email_result.get("status") == "error":
+            logger.error("Contact inquiry stored, but notification email failed (contact_id=%s)", doc["id"])
+    except Exception:
+        logger.exception("Contact inquiry stored, but notification email failed (contact_id=%s)", doc["id"])
     return {"ok": True, "message": "Pesan berhasil dikirim"}
 
 
@@ -582,6 +628,11 @@ async def list_users(user: dict = Depends(require_admin)):
     return await db.users.find({"role": "client"}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
 
 
+@api.post("/admin/users", status_code=201)
+async def create_client_user(req: ClientProvisionReq, user: dict = Depends(require_admin)):
+    return await provision_client(req)
+
+
 @api.get("/admin/stats")
 async def admin_stats(user: dict = Depends(require_admin)):
     total_orders = await db.orders.count_documents({})
@@ -609,7 +660,11 @@ async def root():
 
 app.include_router(api)
 
-cors_origins = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",") if origin.strip()]
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
 if "*" in cors_origins:
     raise RuntimeError("CORS_ORIGINS must contain exact trusted origins when credentials are enabled")
 

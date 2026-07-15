@@ -407,13 +407,16 @@ Use:
 Approximate color tokens:
 
 ```txt
-Primary Blue: #6692BC
-Secondary Blue: #90AFCD
-Light Blue Background: #E8F1F8
-Off White: #F8FAFC
-Deep Text: #243241
-Muted Text: #5F7285
-Border/Subtle Line: #D8E6F1
+Niuva Blue: #6390BB
+Sky Blue: #8AAECF
+Blue Dark: #4A72A0
+Midnight: #1C2B3A
+Steel: #3D5266
+Smoke: #6B7A8D
+Silver: #E2E8EE
+Frost: #EBF1F7
+Cloud: #F8F9FB
+Pure White: #FFFFFF
 ```
 
 Do not introduce unrelated palettes.
