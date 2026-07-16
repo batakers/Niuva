@@ -1,1 +1,1 @@
-"""Explicit database migrations for the NIUVA backend."""
+"""Idempotent NIUVA data migrations."""

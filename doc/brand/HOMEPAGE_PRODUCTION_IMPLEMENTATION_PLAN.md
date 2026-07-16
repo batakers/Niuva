@@ -170,8 +170,6 @@ Selectors and contracts to preserve:
 - `#projects`.
 - `#why-niuva`.
 - `data-marketing-section="cta"` on the final CTA.
-- `HOME.emergentLink` in `constants/testIds/home.js` remains untouched even though the current Home does not consume it.
-
 No current production Home-specific `data-testid` is rendered. New tests should prefer role, heading, link, and list semantics. Add test IDs only if an existing end-to-end runner cannot select an element semantically.
 
 ### 3.11 Source-to-target matrix

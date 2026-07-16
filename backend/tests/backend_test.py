@@ -255,8 +255,8 @@ class TestOrderFlow:
         # get path from order
         ord_ = requests.get(f"{API}/orders/{TestOrderFlow.order_id}", headers=hh(client_user["token"]), timeout=20).json()
         path = ord_["file"]["storage_path"]
-        # owner with token in query
-        r = requests.get(f"{API}/files/{path}?auth={client_user['token']}", timeout=30)
+        # owner with Authorization header
+        r = requests.get(f"{API}/files/{path}", headers={"Authorization": f"Bearer {client_user['token']}"}, timeout=30)
         assert r.status_code == 200
         # unauthenticated
         r2 = requests.get(f"{API}/files/{path}", timeout=20)
@@ -356,3 +356,201 @@ class TestSettingsUsersStats:
         d = r.json()
         for k in ("total_orders", "pending_estimate", "awaiting_payment", "in_process", "completed", "clients", "internships"):
             assert k in d
+
+# ---------- Catalog / material pricing / inventory foundation ----------
+def _provision_staff(admin_token, role):
+    suffix = uuid.uuid4().hex[:8]
+    email = f"TEST_{role}_{suffix}@test.com"
+    password = "StaffTest123"
+    created = requests.post(
+        f"{API}/admin/users",
+        json={"name": f"Test {role}", "email": email, "password": password},
+        headers=hh(admin_token),
+        timeout=30,
+    )
+    assert created.status_code == 201, created.text
+    access = requests.put(
+        f"{API}/admin/users/{created.json()['id']}/access",
+        json={"roles": [role], "status": "active", "reason": "Foundation external API verification"},
+        headers=hh(admin_token),
+        timeout=30,
+    )
+    assert access.status_code == 200, access.text
+    login = requests.post(
+        f"{API}/auth/login",
+        json={"email": email, "password": password},
+        timeout=30,
+    )
+    assert login.status_code == 200, login.text
+    return login.json()["token"]
+
+
+def _all_keys(value):
+    if isinstance(value, dict):
+        return set(value) | set().union(*(_all_keys(item) for item in value.values()), set())
+    if isinstance(value, list):
+        return set().union(*(_all_keys(item) for item in value), set())
+    return set()
+
+
+def test_catalog_material_inventory_external_workflow(admin_token, client_user):
+    health = requests.get(f"{API}/health", timeout=20)
+    assert health.status_code == 200
+    if not health.json().get("transactions"):
+        pytest.skip("External foundation workflow requires MongoDB transaction capability")
+
+    catalog_token = _provision_staff(admin_token, "catalog_manager")
+    warehouse_token = _provision_staff(admin_token, "warehouse")
+    manager_token = _provision_staff(admin_token, "manager_approver")
+    suffix = uuid.uuid4().hex[:8]
+
+    category = requests.post(
+        f"{API}/admin/categories",
+        json={
+            "name": f"TEST Category {suffix}",
+            "slug": f"test-category-{suffix}",
+            "description": "External verification category",
+            "sort_order": 999,
+            "status": "active",
+        },
+        headers=hh(catalog_token),
+        timeout=30,
+    )
+    assert category.status_code == 201, category.text
+    product_slug = f"test-product-{suffix}"
+    product = requests.post(
+        f"{API}/admin/products",
+        json={
+            "category_id": category.json()["id"],
+            "name": f"TEST Product {suffix}",
+            "slug": product_slug,
+            "short_description": "Safe public summary",
+            "description": "Safe public catalog description",
+            "media": [{"storage_path": f"tests/{suffix}.webp", "alt": "Test product preview"}],
+            "pricing_mode": "fixed",
+            "price_from": 150000,
+            "currency": "IDR",
+            "retail_cta_enabled": True,
+            "b2b_cta_enabled": True,
+            "stock_visibility": "status_only",
+        },
+        headers=hh(catalog_token),
+        timeout=30,
+    )
+    assert product.status_code == 201, product.text
+    product_id = product.json()["id"]
+    variant = requests.put(
+        f"{API}/admin/products/{product_id}/variants",
+        json={"variants": [{
+            "sku": f"TEST-VAR-{suffix}", "name": "Default", "option_values": {},
+            "fixed_price": 150000, "currency": "IDR", "production_type": "ready_stock",
+            "inventory_tracking_enabled": True, "reorder_point": "2", "status": "active",
+        }]},
+        headers=hh(catalog_token),
+        timeout=30,
+    )
+    assert variant.status_code == 200, variant.text
+    validation = requests.post(
+        f"{API}/admin/products/{product_id}/validate",
+        headers=hh(catalog_token),
+        timeout=30,
+    )
+    assert validation.status_code == 200
+    assert validation.json()["errors"] == []
+    publication = requests.post(
+        f"{API}/admin/products/{product_id}/publish",
+        json={"reason": "External catalog publication verification"},
+        headers=hh(catalog_token),
+        timeout=30,
+    )
+    assert publication.status_code == 200, publication.text
+
+    public_product = requests.get(f"{API}/catalog/products/{product_slug}", timeout=30)
+    assert public_product.status_code == 200, public_product.text
+    forbidden_public_keys = {
+        "supplier_reference", "on_hand", "reserved", "available", "incoming",
+        "planned_demand", "projected", "reorder_point", "published_by",
+        "publish_reason", "created_by", "updated_by", "request_fingerprint",
+        "pricing_rule_reference", "reason", "audit_events",
+    }
+    assert not (_all_keys(public_product.json()) & forbidden_public_keys)
+    assert public_product.json()["variants"][0]["stock_status"] in {
+        "out_of_stock", "low_stock", "in_stock", "made_to_order",
+    }
+
+    material = requests.post(
+        f"{API}/admin/materials",
+        json={"name": f"TEST Material {suffix}", "description": "Legacy compatible", "color": "Natural", "active": True},
+        headers=hh(warehouse_token),
+        timeout=30,
+    )
+    assert material.status_code == 200, material.text
+    material_id = material.json()["id"]
+    material_ready = requests.put(
+        f"{API}/admin/materials/{material_id}",
+        json={
+            "sku": f"TEST-MAT-{suffix}", "name": material.json()["name"], "description": "Ready material",
+            "color": "Natural", "base_unit": "kg", "supplier_reference": "INTERNAL-SUPPLIER-TEST",
+            "waste_percentage": "2.5", "reorder_point": "5", "lead_time_days": 7,
+            "inventory_tracking_enabled": True, "setup_status": "ready", "status": "active",
+        },
+        headers=hh(manager_token),
+        timeout=30,
+    )
+    assert material_ready.status_code == 200, material_ready.text
+    for amount, effective_from, reason in (
+        (100000, "2020-01-01T00:00:00+00:00", "Initial external verification price"),
+        (125000, "2999-01-01T00:00:00+00:00", "Future external verification price"),
+    ):
+        price = requests.post(
+            f"{API}/admin/materials/{material_id}/price-versions",
+            json={"amount": amount, "currency": "IDR", "price_unit": "kg", "effective_from": effective_from, "reason": reason},
+            headers=hh(manager_token),
+            timeout=30,
+        )
+        assert price.status_code == 201, price.text
+    effective = requests.get(
+        f"{API}/admin/materials/{material_id}/effective-price",
+        headers=hh(manager_token), timeout=30,
+    )
+    assert effective.status_code == 200
+    assert effective.json()["current"]["amount"] == 100000
+    assert effective.json()["next_scheduled"]["amount"] == 125000
+    public_materials = requests.get(f"{API}/materials", timeout=30).json()
+    public_material = next(item for item in public_materials if item["id"] == material_id)
+    assert "supplier_reference" not in public_material
+    assert "price" not in public_material
+    assert "reorder_point" not in public_material
+
+    receive_payload = {
+        "operation_id": str(uuid.uuid4()), "subject_type": "material", "subject_id": material_id,
+        "movement_type": "receive", "quantity": "10", "reference_type": "external_test",
+        "reference_id": f"receipt-{suffix}", "reason": "External warehouse receive verification",
+    }
+    received = requests.post(f"{API}/admin/inventory/movements", json=receive_payload, headers=hh(warehouse_token), timeout=30)
+    assert received.status_code == 200, received.text
+    replay = requests.post(f"{API}/admin/inventory/movements", json=receive_payload, headers=hh(warehouse_token), timeout=30)
+    assert replay.status_code == 200
+    assert replay.json()["replayed"] is True
+    assert replay.json()["movement"]["id"] == received.json()["movement"]["id"]
+
+    warehouse_damage = requests.post(
+        f"{API}/admin/inventory/movements",
+        json={**receive_payload, "operation_id": str(uuid.uuid4()), "movement_type": "damage", "quantity": "1"},
+        headers=hh(warehouse_token), timeout=30,
+    )
+    assert warehouse_damage.status_code == 403
+    adjustment = requests.post(
+        f"{API}/admin/inventory/movements",
+        json={
+            **receive_payload, "operation_id": str(uuid.uuid4()), "movement_type": "adjustment",
+            "quantity": None, "on_hand_delta": "-1", "reason": "Manager stock count correction",
+        },
+        headers=hh(manager_token), timeout=30,
+    )
+    assert adjustment.status_code == 200, adjustment.text
+    customer_admin = requests.get(
+        f"{API}/admin/inventory/balances",
+        headers=hh(client_user["token"]), timeout=30,
+    )
+    assert customer_admin.status_code == 403
