@@ -95,7 +95,9 @@ Catatan operasional:
 - Filesystem lokal di `LOCAL_STORAGE_ROOT` hanya untuk development/demo. Jangan deploy portal upload ke production sebelum persistent object storage, backup, recovery, retention, dan capacity limit disetujui.
 - Jangan mengirim form uji ke production tanpa persetujuan stakeholder. Gunakan staging atau request terkontrol dan hapus data uji sesuai kebijakan retensi.
 
-Risiko residual sebelum perluasan fitur operasional: download file autentikasi lama masih membawa access token pada query URL. Link sudah memakai `noreferrer`, tetapi query dapat tercatat di history atau access log. Untuk deployment yang membuka portal client/admin ke pengguna nyata, migrasikan ke authenticated blob download atau signed URL singkat dan sanitasi access log. Public marketing release tidak mengekspos link ini tanpa login, tetapi risiko tersebut harus masuk backlog keamanan operasional.
+Download file terautentikasi saat ini menggunakan header `Authorization: Bearer <token>` pada request ke `/api/files/{path}`. Endpoint tidak membaca token dari URL dan menolak URL dengan `?auth=` (tanpa header Authorization request akan dikembalikan sebagai `401`). Frontend mengambil response sebagai blob sehingga token tidak masuk ke browser history atau URL access log.
+
+Riwayat legacy (untuk audit): implementasi sebelum migrasi pernah membawa access token pada query URL. Pola tersebut tidak lagi didukung dan tidak boleh digunakan kembali. Jika menemukan link lama di bookmark, dokumentasi, atau log operasional, cabut dan buat ulang menggunakan alur download berbasis header di atas.
 
 ## 7. Pre-deploy and post-deploy checklist
 
