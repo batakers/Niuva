@@ -1,7 +1,8 @@
 # Addendum BRD v2.1 — Satu Platform Niuva untuk Retail dan B2B
 
 Tanggal: 14 Juli 2026  
-Status: Draft untuk review stakeholder  
+Status: Approved Baseline
+Approval record: `doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
 Dokumen induk: `doc/BRD_Website_Niuva.md`  
 Supersedes: `doc/BRD_Platform_Niuva_v2_addendum.md`  
 Design source: `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
@@ -190,4 +191,3 @@ Foundation dapat direncanakan sebelum keputusan ini. Implementasi surface yang b
 - Update harga/katalog tidak mengubah histori paid order atau accepted quote.
 - Customer tidak menerima internal cost, margin, supplier, atau notes.
 - CMS dan operasi tetap dapat digunakan setelah handover terdokumentasi.
-
