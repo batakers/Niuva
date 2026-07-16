@@ -834,6 +834,9 @@ async def seed():
     await db.users.create_index("id", unique=True)
     await db.orders.create_index("id", unique=True)
     await db.orders.create_index("order_number", unique=True)
+    await db.merchandise.create_index("id", unique=True)
+    await db.merchandise_orders.create_index("id", unique=True)
+    await db.merchandise_orders.create_index("order_number", unique=True)
     admin_email = os.environ["ADMIN_EMAIL"].lower()
     admin_password = os.environ["ADMIN_PASSWORD"]
     existing = await db.users.find_one({"email": admin_email})
