@@ -38,6 +38,22 @@ def test_store_upload_persists_relative_logical_path(tmp_path, monkeypatch):
     assert (tmp_path / "uploads" / metadata["storage_path"]).read_bytes() == b"solid part"
 
 
+def test_store_upload_does_not_trust_client_content_type(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOCAL_STORAGE_ROOT", str(tmp_path / "uploads"))
+
+    async def run():
+        upload = UploadFile(
+            filename="proof.png",
+            file=io.BytesIO(b"png proof"),
+            headers={"content-type": "text/html"},
+        )
+        return await server.store_upload(upload, "payments/customer-1", {"png"})
+
+    metadata = asyncio.run(run())
+    assert metadata["content_type"] == "image/png"
+    assert storage.get_object(metadata["storage_path"])[1] == "image/png"
+
+
 def test_store_upload_maps_storage_failure_to_controlled_http_error(monkeypatch):
     def fail_store(*_args, **_kwargs):
         raise storage.StorageError("disk details must stay private")
@@ -54,7 +70,7 @@ def test_store_upload_maps_storage_failure_to_controlled_http_error(monkeypatch)
     assert caught.value.detail == "File storage unavailable"
 
 
-def test_file_download_enforces_owner_permission_and_missing_file(tmp_path, monkeypatch):
+def test_file_download_requires_authorization_header_and_safe_media_type(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCAL_STORAGE_ROOT", str(tmp_path / "uploads"))
     path = "niuva/orders/customer-1/model.stl"
     storage.put_object(path, b"solid part", "model/stl")
@@ -73,22 +89,49 @@ def test_file_download_enforces_owner_permission_and_missing_file(tmp_path, monk
         transport = httpx.ASGITransport(app=server.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
             owner = await api.get(f"/api/files/{path}", params={"auth": "owner"})
-            other = await api.get(f"/api/files/{path}", params={"auth": "other"})
-            staff = await api.get(f"/api/files/{path}", params={"auth": "staff"})
+            owner_header = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer owner"})
+            other = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer other"})
+            staff = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer staff"})
             missing = await api.get(
                 "/api/files/niuva/orders/customer-1/missing.stl",
-                params={"auth": "owner"},
+                headers={"Authorization": "Bearer owner"},
             )
-            return owner, other, staff, missing
+            return owner, owner_header, other, staff, missing
 
-    owner, other, staff, missing = asyncio.run(run())
-    assert owner.status_code == 200
-    assert owner.content == b"solid part"
-    assert owner.headers["content-type"] == "model/stl"
+    owner, owner_header, other, staff, missing = asyncio.run(run())
+    assert owner.status_code == 401
+    assert owner_header.status_code == 200
+    assert owner_header.content == b"solid part"
+    assert owner_header.headers["content-type"] == "model/stl"
+    assert owner_header.headers["x-content-type-options"] == "nosniff"
     assert other.status_code == 403
     assert staff.status_code == 200
     assert missing.status_code == 404
     assert missing.json() == {"detail": "File not found"}
+
+
+def test_file_download_forces_active_metadata_to_binary(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOCAL_STORAGE_ROOT", str(tmp_path / "uploads"))
+    path = "niuva/orders/customer-1/payload.html"
+    storage.put_object(path, b"<script>alert(1)</script>", "text/html")
+
+    async def fake_user(_token):
+        return {"id": "customer-1", "email": "owner@example.com", "role": "client"}
+
+    monkeypatch.setattr(server, "get_user_from_token", fake_user)
+
+    async def run():
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+            return await api.get(
+                f"/api/files/{path}",
+                headers={"Authorization": "Bearer owner"},
+            )
+
+    response = asyncio.run(run())
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/octet-stream"
+    assert response.headers["x-content-type-options"] == "nosniff"
 
 
 def test_payment_proof_upload_uses_local_storage(tmp_path, monkeypatch):

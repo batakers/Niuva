@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Eye, Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../../i18n";
-import { api, fileUrl, formatApiError } from "../../lib/api";
+import { api, downloadFile, fetchFile, formatApiError } from "../../lib/api";
 import { fmtDay } from "../../lib/format";
 import { AdminLayout } from "./AdminLayout";
 import { StatusBadge } from "@/components/operational/StatusStepper";
@@ -85,6 +85,14 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const downloadStoredFile = async (path, filename) => {
+    try {
+      await downloadFile(path, filename);
+    } catch {
+      toast.error("FILE_DOWNLOAD_FAILED");
+    }
+  };
+
   const act = async (fn) => {
     setBusy(true);
     try { 
@@ -129,11 +137,9 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
               <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2">PAYLOAD_FILE</p>
               <div className="flex items-center justify-between gap-3">
                 <span className="font-mono text-sm text-foreground truncate">{order.file?.original_filename}</span>
-                <a href={fileUrl(order.file?.storage_path)} target="_blank" rel="noreferrer" download data-testid="admin-download-design">
-                  <Button size="sm" variant="outline" className="rounded-none border-border hover:border-primary uppercase tracking-widest font-mono text-[10px] h-8 px-3">
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                </a>
+                <Button type="button" onClick={() => downloadStoredFile(order.file?.storage_path, order.file?.original_filename)} data-testid="admin-download-design" size="sm" variant="outline" className="rounded-none border-border hover:border-primary uppercase tracking-widest font-mono text-[10px] h-8 px-3">
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           </div>
@@ -179,9 +185,10 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
           {order.payment && (
             <div className="border border-border p-6 bg-surface-2">
               <p className="font-mono text-[10px] text-primary uppercase tracking-widest mb-4 border-b border-border/50 pb-2">TRANSACTION_VERIFICATION</p>
-              <a href={fileUrl(order.payment.proof?.storage_path)} target="_blank" rel="noreferrer" className="block mb-4 border border-border bg-background p-2 group hover:border-primary/50 transition-colors">
-                <img src={fileUrl(order.payment.proof?.storage_path)} alt="proof" className="max-h-48 w-full object-contain mix-blend-luminosity group-hover:mix-blend-normal transition-all" />
-              </a>
+              <AuthenticatedFilePreview
+                path={order.payment.proof?.storage_path}
+                filename={order.payment.proof?.original_filename || "payment-proof"}
+              />
               
               {order.payment.verified ? (
                 <div className="flex justify-center items-center gap-2 p-3 border border-status-success/30 bg-status-success/10 text-status-success font-mono text-xs uppercase tracking-widest">
@@ -207,5 +214,32 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AuthenticatedFilePreview({ path, filename }) {
+  const [source, setSource] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = "";
+    if (!path) return undefined;
+
+    fetchFile(path).then((blob) => {
+      objectUrl = URL.createObjectURL(blob);
+      if (!cancelled) setSource(objectUrl);
+    }).catch(() => setSource(""));
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [path]);
+
+  if (!source) return null;
+  return (
+    <button type="button" onClick={() => downloadFile(path, filename)} className="block w-full mb-4 border border-border bg-background p-2 group hover:border-primary/50 transition-colors">
+      <img src={source} alt="proof" className="max-h-48 w-full object-contain mix-blend-luminosity group-hover:mix-blend-normal transition-all" />
+    </button>
   );
 }
