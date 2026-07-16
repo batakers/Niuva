@@ -62,6 +62,21 @@ def test_put_and_get_object_preserve_bytes_and_metadata(local_root):
     assert storage.get_object(result["path"]) == (b"solid niuva", "model/stl")
 
 
+def test_duplicate_write_preserves_existing_object_and_metadata(local_root):
+    path = "niuva/orders/user-1/model.stl"
+    storage.put_object(path, b"original", "model/stl")
+    target = local_root / path
+    metadata_target = target.with_name(f"{target.name}.metadata.json")
+    original_metadata = metadata_target.read_bytes()
+
+    with pytest.raises(storage.StorageError, match="already exists"):
+        storage.put_object(path, b"replacement", "application/octet-stream")
+
+    assert target.read_bytes() == b"original"
+    assert metadata_target.read_bytes() == original_metadata
+    assert storage.get_object(path) == (b"original", "model/stl")
+
+
 @pytest.mark.parametrize(
     "unsafe_path",
     [
@@ -90,6 +105,29 @@ def test_missing_metadata_uses_extension_fallback(local_root):
     target.write_bytes(b"png")
 
     assert storage.get_object("niuva/payments/user-1/proof.png") == (b"png", "image/png")
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        [],
+        {},
+        {"content_type": ""},
+        {"content_type": "   "},
+        {"content_type": 42},
+    ],
+)
+def test_unusable_metadata_uses_extension_fallback(local_root, metadata):
+    path = "niuva/payments/user-1/proof.png"
+    target = local_root / path
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"png")
+    target.with_name(f"{target.name}.metadata.json").write_text(
+        json.dumps(metadata),
+        encoding="utf-8",
+    )
+
+    assert storage.get_object(path) == (b"png", "image/png")
 
 
 def test_metadata_write_failure_removes_partial_object(local_root, monkeypatch):

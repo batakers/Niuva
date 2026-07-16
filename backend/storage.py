@@ -90,6 +90,9 @@ def _atomic_write(target: Path, payload: bytes) -> None:
 def put_object(path: str, data: bytes, content_type: str) -> dict:
     target, normalized = _resolve_path(path)
     metadata_target = _metadata_path(target)
+    if target.exists() or metadata_target.exists():
+        raise StorageError("Stored object already exists")
+
     metadata = {
         "version": 1,
         "content_type": content_type or "application/octet-stream",
@@ -120,7 +123,10 @@ def get_object(path: str) -> tuple[bytes, str]:
     content_type = None
     try:
         metadata = json.loads(_metadata_path(target).read_text(encoding="utf-8"))
-        content_type = metadata.get("content_type")
+        if isinstance(metadata, dict):
+            metadata_content_type = metadata.get("content_type")
+            if isinstance(metadata_content_type, str) and metadata_content_type.strip():
+                content_type = metadata_content_type
     except (FileNotFoundError, OSError, ValueError, TypeError):
         content_type = None
 
