@@ -5,7 +5,7 @@ import { ArrowLeft, Download, Upload, Clock, CheckCircle2, FileBox, Banknote, Te
 import { useI18n } from "../../i18n";
 import { OperationalLayout } from "@/components/layout/Layout";
 import { StatusStepper, StatusBadge } from "@/components/operational/StatusStepper";
-import { api, fileUrl, formatApiError } from "../../lib/api";
+import { api, downloadFile, formatApiError } from "../../lib/api";
 import { rupiah, fmtDate } from "../../lib/format";
 import { Button } from "../../components/ui/button";
 
@@ -27,6 +27,14 @@ export default function OrderDetail() {
     load();
     api.get("/settings").then((r) => setSettings(r.data)).catch(() => {});
   }, [id, load]);
+
+  const downloadDesign = async () => {
+    try {
+      await downloadFile(order.file?.storage_path, order.file?.original_filename);
+    } catch {
+      toast.error("File tidak dapat diunduh");
+    }
+  };
 
   const uploadProof = async (f) => {
     if (!f) return;
@@ -113,11 +121,9 @@ export default function OrderDetail() {
                     <FileBox className="h-5 w-5 text-muted-foreground flex-shrink-0" strokeWidth={1.5} />
                     <span className="font-mono text-sm text-foreground truncate">{order.file?.original_filename}</span>
                   </div>
-                  <a href={fileUrl(order.file?.storage_path)} target="_blank" rel="noreferrer" download data-testid="download-design">
-                    <Button size="sm" variant="outline" className="rounded-none border-border hover:border-primary uppercase tracking-widest font-mono text-[10px] px-3 h-8">
-                      <Download className="h-3.5 w-3.5 mr-2" /> DL
-                    </Button>
-                  </a>
+                  <Button type="button" onClick={downloadDesign} data-testid="download-design" size="sm" variant="outline" className="rounded-none border-border hover:border-primary uppercase tracking-widest font-mono text-[10px] px-3 h-8">
+                    <Download className="h-3.5 w-3.5 mr-2" /> DL
+                  </Button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

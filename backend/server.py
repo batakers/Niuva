@@ -14,7 +14,7 @@ from typing import List, Optional
 
 import jwt
 import bcrypt
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Query, Header, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Header, Response
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field
@@ -46,6 +46,16 @@ APP_NAME = os.environ.get("APP_NAME", "niuva")
 MAX_FILE_SIZE = 50 * 1024 * 1024
 DESIGN_EXTS = {"stl", "obj"}
 IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "gif", "pdf"}
+SAFE_FILE_CONTENT_TYPES = {
+    "stl": "model/stl",
+    "obj": "text/plain",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+    "gif": "image/gif",
+    "pdf": "application/pdf",
+}
 
 ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "completed", "cancelled"]
 
@@ -260,6 +270,11 @@ def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terla
     _rate_buckets[key] = bucket
 
 
+def safe_file_content_type(path: str) -> str:
+    ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+    return SAFE_FILE_CONTENT_TYPES.get(ext, "application/octet-stream")
+
+
 async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict:
     ext = (file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin").lower()
     if ext not in allowed_exts:
@@ -268,12 +283,9 @@ async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File exceeds 50MB limit")
     path = f"{APP_NAME}/{prefix}/{uuid.uuid4()}.{ext}"
+    content_type = safe_file_content_type(path)
     try:
-        result = storage.put_object(
-            path,
-            data,
-            file.content_type or "application/octet-stream",
-        )
+        result = storage.put_object(path, data, content_type)
     except storage.InvalidStoragePathError as exc:
         logger.warning("Rejected generated storage path")
         raise HTTPException(status_code=400, detail="Invalid file storage path") from exc
@@ -284,7 +296,7 @@ async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict
         "id": str(uuid.uuid4()),
         "storage_path": result["path"],
         "original_filename": file.filename,
-        "content_type": file.content_type or "application/octet-stream",
+        "content_type": content_type,
         "size": result.get("size", len(data)),
     }
 
@@ -514,12 +526,9 @@ async def update_status(
 
 # ----------------------------- File download -----------------------------
 @api.get("/files/{path:path}")
-async def download_file(path: str, request: Request, auth: Optional[str] = Query(None)):
-    token = auth
-    if not token:
-        h = request.headers.get("Authorization", "")
-        if h.startswith("Bearer "):
-            token = h[7:]
+async def download_file(path: str, request: Request):
+    authorization = request.headers.get("Authorization", "")
+    token = authorization[7:] if authorization.startswith("Bearer ") else None
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user = await get_user_from_token(token)
@@ -527,7 +536,7 @@ async def download_file(path: str, request: Request, auth: Optional[str] = Query
     if not has_permission(user, "files.read") and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
     try:
-        data, content_type = storage.get_object(path)
+        data, _stored_content_type = storage.get_object(path)
     except storage.InvalidStoragePathError as exc:
         raise HTTPException(status_code=400, detail="Invalid file path") from exc
     except storage.StorageNotFoundError as exc:
@@ -535,7 +544,14 @@ async def download_file(path: str, request: Request, auth: Optional[str] = Query
     except storage.StorageError as exc:
         logger.exception("Unable to read stored file")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
-    return Response(content=data, media_type=content_type)
+    return Response(
+        content=data,
+        media_type=safe_file_content_type(path),
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+        },
+    )
 
 
 # ----------------------------- Internship -----------------------------
