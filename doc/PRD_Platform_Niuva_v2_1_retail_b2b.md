@@ -6,6 +6,11 @@ Business source: `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
 Product scope source: `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`  
 Design source: `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`  
 Baseline lama: `memory/PRD.md`
+Approved architecture pointers:
+- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+- `doc/decisions/ADR-002-production-file-storage-architecture.md`
+- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+- `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## 1. Ringkasan Produk
 
@@ -175,6 +180,8 @@ Rollback membuat versi publik baru berdasarkan versi lama dan tetap tercatat di 
 | FR-SH-06 | Seluruh protected operation memakai backend authorization |
 | FR-SH-07 | Aksi sensitif dan perubahan penting tercatat di audit |
 
+Shared platform clarification: shared foundations do not mean that Retail Order and B2B Quote/Project use the same aggregate or state machine. Identity, organization, catalog, inventory, payment infrastructure, audit, CMS, and operational foundations may be shared, while Retail and B2B customer lifecycles and projections remain separate.
+
 ### 9.2 Retail
 
 | Kode | Requirement |
@@ -320,6 +327,36 @@ Model detail ditetapkan dalam implementation plan dan schema design, tetapi haru
 - Secret, kredensial, dan API key hanya disimpan melalui environment/secret management, bukan dokumentasi atau repository.
 - Data personal dan financial tidak boleh muncul di log aplikasi secara berlebihan.
 
+## 12.1 Approved Architecture Boundaries
+
+### Transaction capability — `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+
+- MongoDB replica-set multi-document transaction adalah baseline yang disetujui untuk cross-collection mutation yang membutuhkan atomicity.
+- Local mutation development menggunakan single-node replica set; CI menggunakan isolated replica set.
+- Staging dan production wajib memiliki transaction capability sebelum mutation flags yang terdampak diaktifkan.
+- MongoDB standalone terbatas pada read-only atau operasi yang terbukti aman sebagai single-document atomic write.
+- Operasi yang membutuhkan transaction harus fail closed dengan `503 transaction_unavailable`; silent fallback ke non-atomic writes dilarang.
+- Boundary meliputi catalog publication snapshot/active pointer, inventory balance/movement/reservation, multi-line checkout plus reservations, reservation consume/release/expiry lintas record, payment/order transitions yang juga memutasi inventory, dan reconciliation writes yang membutuhkan atomic consistency.
+
+### Persistent storage — `doc/decisions/ADR-002-production-file-storage-architecture.md`
+
+- Application architecture memakai stable provider-neutral storage port dengan private persistent object storage sebagai production adapter class.
+- Local filesystem hanya untuk development/demo. Production objects private by default; backend authorization adalah access model default.
+- Signed access hanya setelah authorization backend, short-lived, dan scoped ke satu object serta satu action. Database-backed ownership menggantikan path-substring authorization.
+- Public bucket dan public static directory dilarang.
+- Boundary mencakup seluruh persistent uploads Retail, B2B, design, operational, QC, fulfillment, dan payment proof bila transitional manual-transfer adapter kelak disetujui.
+- Provider, RPO/RTO, retention, quota, operational owners, backup/restore ownership, malware/quarantine ownership, Emergent migration/decommission, dan production readiness tetap open.
+- Production upload tetap disabled sampai query-string access tokens dihapus, database-backed ownership dan MIME/signature validation diterapkan, malware scanning/quarantine serta backup/restore diuji, metadata/object reconciliation diuji, dan operational readiness disetujui.
+
+### Payment orchestration — `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+
+- Retail production target tetap online payment dengan provider-neutral core orchestration dan provider adapters di luar core order/payment domain.
+- Provider events/webhooks harus idempotent; refund dan reconciliation memiliki boundary eksplisit; customer responses memakai customer-safe payment projections.
+- Gateway provider tetap deferred dan tidak dipilih oleh PRD ini.
+- Manual transfer bukan Retail production baseline. Legacy manual-transfer records tetap readable; tidak ada transitional adapter baru yang diaktifkan. Adapter masa depan memerlukan written decision terpisah, Finance owner, feature flag, SLA, expiry, exit criteria, storage approval, refund/late-payment handling, audit, dan rollback controls.
+
+ADR approval scope tetap terbatas pada internal architecture, documentation, dan future implementation planning; bukan production authorization.
+
 ## 13. Reliability dan Failure Handling
 
 - Dua checkout pada stok terakhir: hanya satu reservasi atomik berhasil.
@@ -330,7 +367,7 @@ Model detail ditetapkan dalam implementation plan dan schema design, tetapi haru
 - Upload retry: tidak membuat file/design version ganda.
 - Stale quote/design/content approval: ditolak sebagai conflict.
 - Notification failure: core transaction tetap berhasil dan notifikasi dapat di-retry.
-- MongoDB standalone menggunakan single-document atomic update dan idempotent workflow untuk operasi lintas entitas.
+- Transaction-required operations fail closed with `503 transaction_unavailable`; silent fallback to non-atomic writes is prohibited. See `doc/decisions/ADR-001-mongodb-transaction-capability.md`.
 
 ## 14. Non-Functional Requirements
 

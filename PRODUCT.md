@@ -18,6 +18,12 @@ The approved v2.1 source documents are:
 
 These documents supersede the earlier v2 addenda for new planning. Website v1 brand and public-page requirements remain applicable where they do not conflict with v2.1.
 
+Approved architecture records:
+- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+- `doc/decisions/ADR-002-production-file-storage-architecture.md`
+- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+- `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
+
 ## Users
 
 ### Retail Customers
@@ -60,6 +66,8 @@ The voice is confident and clear without sounding overly promotional. Technical 
 ### Two Journeys, One Platform
 
 Make Retail and B2B explicit. Retail should feel fast and self-service; B2B should feel consultative, governed, and evidence-led. They share data and operations but must not collapse into one ambiguous flow.
+
+Shared foundations do not imply a shared Retail Order and B2B Quote/Project aggregate or state machine. Identity, organization, catalog, inventory, payment infrastructure, audit, CMS, and operational foundations may be shared, while Retail and B2B customer lifecycles and projections remain separate.
 
 ### Show Capability Through Evidence
 
@@ -125,11 +133,28 @@ Retail can be transaction-oriented without making merchandise appear to be Niuva
 - Material prices and commercial records use versions or snapshots.
 - Referenced materials are archived rather than hard-deleted.
 
+### Approved Architecture Directions
+
+- Transaction-dependent cross-collection mutations use MongoDB replica-set multi-document transactions. Local mutation development uses a single-node replica set; CI uses an isolated replica set; staging/production require capability before affected mutation flags.
+- Standalone MongoDB is limited to read-only or proven-safe single-document atomic writes. Transaction-required operations fail closed with `503 transaction_unavailable`; silent fallback is prohibited.
+- Persistent storage uses a stable provider-neutral storage port and private persistent object storage as the production adapter class. Local filesystem is development/demo only; private-by-default access, backend authorization, scoped short-lived signed access, database-backed ownership, and no public bucket/static directory are required.
+- Retail production payment architecture is provider-neutral online payment orchestration with separate adapters, idempotent provider events, explicit refund/reconciliation boundaries, and customer-safe projections. The gateway provider remains deferred.
+- Manual transfer is not the Retail production baseline; legacy compatibility remains readable and no new transitional adapter is enabled.
+- See the ADR pointers above for open provider, operations, storage, payment, and production-readiness decisions.
+
 ## Deferred Decisions
 
 - Homepage pattern: split gateway, unified homepage, or retail-first.
 - Payment gateway provider.
 - Detailed visual treatment for Retail/B2B navigation.
+- Production storage provider.
+- Shipping and pickup policy.
+- Tax treatment.
+- Reservation duration.
+- Cancellation, refund, and return policy.
+- Transitional manual-transfer adapter.
+- Protected-scope implementation permission.
+- Production readiness and go-live.
 
 Foundation work must not silently decide these items. A surface that depends directly on one of them waits for the related decision.
 
@@ -147,3 +172,6 @@ Text must be readable, contrast sufficient, and controls clear. The site must wo
 - Stock reservation, payment webhook, workflow retry, and approval operations must be atomic or idempotent as appropriate.
 - Credentials, secret values, and API keys must not be written in product documents or committed to the repository.
 - Backup and restore must be tested as part of handover readiness.
+- Persistent uploads use the storage boundary in `doc/decisions/ADR-002-production-file-storage-architecture.md`: query-string access tokens must be removed, MIME/signature validation and malware quarantine must be implemented, ownership must be database-backed, metadata/object reconciliation must be tested, and production upload remains disabled until operational readiness is approved.
+- Payment follows `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`: online payment is the Retail production target, provider selection is deferred, and no new manual-transfer adapter is enabled.
+- Transaction-required operations follow `doc/decisions/ADR-001-mongodb-transaction-capability.md` and fail closed when transaction capability is unavailable.

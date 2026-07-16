@@ -27,7 +27,13 @@ Catatan: `Recorded by` berasal dari metadata commit yang menyimpan approval reco
 
 ## Canonical Document Register
 
-Only documents with Approved Baseline status are authoritative requirements for implementation planning. Candidate, open-decision, historical, guardrail, and superseded entries are listed for governance and traceability only.
+Documents with Approved Baseline status are authoritative within their approved scope.
+
+Documents with Approved with Open Decisions status are authoritative only for the decisions explicitly recorded as approved. Their listed open decisions remain non-authoritative and must not be inferred.
+
+Historical Active Baseline and Active Implementation Guardrail documents remain applicable only according to their documented authority and override rules.
+
+Candidate and Superseded documents are not implementation authority.
 
 | Source | Status | Canonical role | Approval / authority evidence |
 |---|---|---|---|
@@ -43,10 +49,10 @@ Only documents with Approved Baseline status are authoritative requirements for 
 | `doc/BRD_Platform_Niuva_v2_addendum.md` | Superseded | Historical v2 business requirements | Superseded by BRD v2.1 |
 | `doc/PRS_Platform_Niuva_v2_addendum.md` | Superseded | Historical v2 product scope | Superseded by PRS v2.1 |
 | `docs/superpowers/specs/2026-07-14-integrated-operations-marketplace-design.md` | Superseded | Historical integrated marketplace design | Superseded by unified Retail–B2B design |
-| `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md` | Active Decision Register | Business, operational, and technical decision index | Created by this governance pass; entries remain pending until approved |
-| `doc/decisions/ADR-001-mongodb-transaction-capability.md` | Technical Design Candidate | Transaction-capability authority candidate | Not approved |
-| `doc/decisions/ADR-002-production-file-storage-architecture.md` | Technical Design Candidate | Production persistent-storage authority candidate | Not approved |
-| `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md` | Technical Design Candidate | Provider-neutral Retail payment authority candidate | Not approved |
+| `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md` | Active Decision Register | Business, operational, and technical decision index | Active register; approved ADR directions recorded in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; unresolved entries remain open |
+| `doc/decisions/ADR-001-mongodb-transaction-capability.md` | Approved Baseline | Transaction-capability authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; internal architecture direction only |
+| `doc/decisions/ADR-002-production-file-storage-architecture.md` | Approved with Open Decisions | Production persistent-storage authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; operational decisions remain open |
+| `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md` | Approved with Open Decisions | Provider-neutral Retail payment authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; provider and operational decisions remain open |
 
 ## Known Branch-Local Candidate Documents
 
@@ -73,7 +79,18 @@ Catatan persetujuan ini menggantikan label `Draft untuk review stakeholder` atau
 
 ## Scope Approval
 
-Implementation planning yang dicakup record ini dibatasi pada **Foundation**:
+### Original Six-Document Stakeholder Approval
+
+The original stakeholder approval record covers only the following six documents, and this scope remains unchanged:
+
+1. `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+2. `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+3. `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
+4. `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+5. `PRODUCT.md`
+6. `AGENTS.md`
+
+Implementation planning yang dicakup original record ini dibatasi pada **Foundation**:
 
 - Identity, organization, role, permission, dan audit.
 - CMS dan publish workflow foundation.
@@ -82,9 +99,33 @@ Implementation planning yang dicakup record ini dibatasi pada **Foundation**:
 - Shared order/project foundation.
 - Migration compatibility, privacy boundary, testing, dan handover foundation.
 
-Approval ini tidak mengubah status kandidat teknis yang dibuat setelah record ini dan tidak memberi approval otomatis untuk implementasi Retail MVP, B2B MVP, payment-provider integration, atau homepage-dependent UI.
+Original approval ini tidak otomatis mencakup ADR yang dibuat kemudian, implementasi Retail MVP, B2B MVP, payment-provider integration, atau homepage-dependent UI.
 
-## Keputusan dan Dokumen yang Tidak Termasuk Approval
+### Later Role-Based Internal ADR Approval
+
+Approval internal berbasis role yang direkam dalam commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e` mencakup:
+
+- `doc/decisions/ADR-001-mongodb-transaction-capability.md` — **Approved Baseline**
+- `doc/decisions/ADR-002-production-file-storage-architecture.md` — **Approved with Open Decisions**
+- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md` — **Approved with Open Decisions**
+
+Scope approval later ADR ini hanya:
+
+- internal architecture;
+- documentation;
+- future implementation planning.
+
+Approval later ADR ini tidak mengotorisasi:
+
+- production infrastructure changes;
+- Finance operational activation;
+- payment gateway activation;
+- production upload enablement;
+- production go-live.
+
+ADR-002 dan ADR-003 authoritative hanya untuk direction yang secara eksplisit disetujui; seluruh listed open decisions tetap non-authoritative dan harus menunggu keputusan terpisah.
+
+## Keputusan dan Dokumen yang Tetap Deferred atau Tidak Termasuk Approval
 
 Keputusan berikut tetap deferred dan tidak disetujui oleh record ini:
 
@@ -92,15 +133,12 @@ Keputusan berikut tetap deferred dan tidak disetujui oleh record ini:
 - Provider payment gateway.
 - Detail visual navigasi/switch Retail dan B2B.
 
-Dokumen berikut tidak tercantum sebagai dokumen approved dalam record ini:
+Dokumen berikut tetap berada di luar approval requirements dan/atau tetap menjadi guardrail atau candidate:
 
 - `AGENTS.brand-baseline-v1.md` — tetap menjadi Active Implementation Guardrail.
-- `docs/superpowers/specs/2026-07-14-catalog-material-pricing-inventory-foundation-design.md` — Approved with Open Decisions.
-- `docs/superpowers/specs/2026-07-16-remove-emergent-local-storage-design.md` — Approved with Open Decisions untuk development/demo saja.
-- `docs/superpowers/specs/2026-07-16-retail-order-checkout-foundation-design.md` — Technical Design Candidate.
-- `doc/decisions/ADR-001-mongodb-transaction-capability.md` — Technical Design Candidate.
-- `doc/decisions/ADR-002-production-file-storage-architecture.md` — Technical Design Candidate.
-- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md` — Technical Design Candidate.
+- `docs/superpowers/specs/2026-07-14-catalog-material-pricing-inventory-foundation-design.md` — branch-local candidate.
+- `docs/superpowers/specs/2026-07-16-remove-emergent-local-storage-design.md` — branch-local candidate untuk development/demo.
+- `docs/superpowers/specs/2026-07-16-retail-order-checkout-foundation-design.md` — branch-local Technical Design Candidate.
 
 ## Supersession Map
 
