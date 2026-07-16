@@ -40,6 +40,7 @@ DESIGN_EXTS = {"stl", "obj"}
 IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "gif", "pdf"}
 
 ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "completed", "cancelled"]
+MERCHANDISE_ORDER_STATUSES = ["submitted", "confirmed", "in_process", "completed", "cancelled"]
 
 app = FastAPI(title="NIUVA API")
 api = APIRouter(prefix="/api")
@@ -193,6 +194,23 @@ class MerchandiseReq(BaseModel):
     colors: List[str] = Field(default_factory=list, max_length=30)
     printMethods: List[MerchandisePrintMethodReq] = Field(default_factory=list, max_length=20)
     active: bool = True
+
+
+class MerchandiseOrderReq(BaseModel):
+    product_id: str = Field(min_length=1)
+    quantity: int = Field(ge=1, le=100000)
+    color: str = Field(default="", max_length=120)
+    size: str = Field(default="", max_length=60)
+    print_method: str = Field(min_length=1, max_length=120)
+    customer_name: str = Field(min_length=2, max_length=120)
+    customer_email: EmailStr
+    customer_phone: str = Field(min_length=6, max_length=40)
+    notes: str = Field(default="", max_length=3000)
+
+
+class MerchandiseOrderStatusReq(BaseModel):
+    status: str
+    note: str = Field(default="", max_length=1000)
 
 
 # ----------------------------- Helpers -----------------------------
@@ -376,6 +394,83 @@ async def delete_merchandise(product_id: str, user: dict = Depends(require_admin
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Produk merchandise tidak ditemukan")
     return {"ok": True}
+
+
+@api.post("/merchandise/orders", status_code=201)
+async def create_merchandise_order(req: MerchandiseOrderReq, request: Request):
+    """Save a merchandise order before opening the WhatsApp confirmation flow."""
+    rate_limit(f"merchandise-order:{request_client_host(request)}", limit=5, window=600)
+    product = await db.merchandise.find_one({"id": req.product_id, "active": True}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Produk tidak tersedia")
+    if product.get("sizes") and req.size not in product["sizes"]:
+        raise HTTPException(status_code=400, detail="Ukuran produk tidak valid")
+    if product.get("colors") and req.color not in product["colors"]:
+        raise HTTPException(status_code=400, detail="Warna produk tidak valid")
+    print_method = next((item for item in product.get("printMethods", []) if item["name"] == req.print_method), None)
+    if not print_method:
+        raise HTTPException(status_code=400, detail="Metode cetak tidak valid")
+    if req.quantity < print_method.get("minOrder", 1):
+        raise HTTPException(status_code=400, detail=f"Minimal pesanan {print_method.get('minOrder', 1)} pcs")
+
+    # Reserve stock atomically so two customers cannot order the same final units.
+    reserved = await db.merchandise.find_one_and_update(
+        {"id": req.product_id, "active": True, "stock": {"$gte": req.quantity}},
+        {"$inc": {"stock": -req.quantity}, "$set": {"updated_at": now_iso()}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not reserved:
+        raise HTTPException(status_code=400, detail="Stok tidak mencukupi")
+
+    subtotal = (product["basePrice"] + print_method["price"]) * req.quantity
+    discount = round(subtotal * 0.1) if req.quantity >= 50 else 0
+    tax = round(subtotal * 0.1)
+    period = datetime.now(timezone.utc).strftime("%y%m")
+    counter = await db.counters.find_one_and_update(
+        {"_id": f"merchandise_order_number:{period}"},
+        {"$inc": {"value": 1}}, upsert=True, return_document=ReturnDocument.AFTER,
+    )
+    ts = now_iso()
+    order = {
+        "id": str(uuid.uuid4()), "order_number": f"MRCH-{period}-{counter['value']:04d}",
+        "product_id": product["id"], "product_name": product["name"], "product_image": product.get("image", "🛍️"),
+        "quantity": req.quantity, "color": req.color, "size": req.size,
+        "print_method": {"name": print_method["name"], "price": print_method["price"], "minOrder": print_method.get("minOrder", 1)},
+        "pricing": {"base_price": product["basePrice"], "subtotal": subtotal, "discount": discount, "tax": tax, "total": subtotal - discount + tax, "currency": "IDR"},
+        "customer_name": req.customer_name, "customer_email": str(req.customer_email).lower(), "customer_phone": req.customer_phone,
+        "notes": req.notes, "status": "submitted",
+        "status_history": [{"status": "submitted", "at": ts, "note": "Pesanan dikirim dari katalog"}],
+        "created_at": ts, "updated_at": ts,
+    }
+    await db.merchandise_orders.insert_one(dict(order))
+    return {k: v for k, v in order.items() if k != "_id"}
+
+
+@api.get("/admin/merchandise/orders")
+async def list_merchandise_orders(user: dict = Depends(require_admin)):
+    return await db.merchandise_orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+@api.put("/admin/merchandise/orders/{order_id}/status")
+async def update_merchandise_order_status(order_id: str, req: MerchandiseOrderStatusReq, user: dict = Depends(require_admin)):
+    if req.status not in MERCHANDISE_ORDER_STATUSES:
+        raise HTTPException(status_code=400, detail="Status pesanan tidak valid")
+    order = await db.merchandise_orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan merchandise tidak ditemukan")
+    if order["status"] == "cancelled" and req.status != "cancelled":
+        raise HTTPException(status_code=400, detail="Pesanan yang dibatalkan tidak dapat diaktifkan kembali")
+
+    ts = now_iso()
+    res = await db.merchandise_orders.update_one(
+        {"id": order_id, "status": order["status"]},
+        {"$set": {"status": req.status, "updated_at": ts}, "$push": {"status_history": {"status": req.status, "at": ts, "note": req.note}}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=409, detail="Status pesanan baru saja berubah. Muat ulang data.")
+    if req.status == "cancelled" and order["status"] != "cancelled":
+        await db.merchandise.update_one({"id": order["product_id"]}, {"$inc": {"stock": order["quantity"]}, "$set": {"updated_at": ts}})
+    return await db.merchandise_orders.find_one({"id": order_id}, {"_id": 0})
 
 
 # ----------------------------- Orders -----------------------------
