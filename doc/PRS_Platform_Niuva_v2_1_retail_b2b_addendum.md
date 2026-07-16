@@ -1,7 +1,8 @@
 # Addendum PRS v2.1 — Satu Platform Niuva untuk Retail dan B2B
 
 Tanggal: 14 Juli 2026  
-Status: Draft untuk review stakeholder  
+Status: Approved Baseline
+Approval record: `doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
 Dokumen induk: `doc/PRS_Website_Niuva.md`  
 Supersedes: `doc/PRS_Platform_Niuva_v2_addendum.md`  
 Business source: `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`  
@@ -363,4 +364,3 @@ Out of scope:
 - Stock/payment/approval retry tidak membuat operasi ganda.
 - Customer tidak menerima data internal.
 - Handover memungkinkan kegiatan rutin tanpa developer.
-

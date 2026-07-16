@@ -4,6 +4,11 @@ PRS — Website Niuva Inovasi Utama
 
 ## **Website Niuva Inovasi Utama** 
 
+Status: Historical Active Baseline
+Approval evidence: Not recorded
+Applicability: Public brand, company pages, portfolio, and lead generation
+Override rule: Approved v2.1 requirements win when conflicts exist
+
 _Product Requirements Summary — Bagian yang Dikunci_ 
 
 **Product Goals · Target Users · Scope** 
@@ -724,4 +729,3 @@ _**Diskusikan Project**_
 _**Dengan ini, bagian Product Goals, Target Users, dan Scope sudah cukup kuat untuk menjadi dasar pembuatan BRD dan PRD.**_ 
 
 Halaman 16 dari 16 
-
