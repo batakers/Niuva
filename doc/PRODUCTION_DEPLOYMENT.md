@@ -97,6 +97,19 @@ Catatan operasional:
 
 Risiko residual sebelum perluasan fitur operasional: download file autentikasi lama masih membawa access token pada query URL. Link sudah memakai `noreferrer`, tetapi query dapat tercatat di history atau access log. Untuk deployment yang membuka portal client/admin ke pengguna nyata, migrasikan ke authenticated blob download atau signed URL singkat dan sanitasi access log. Public marketing release tidak mengekspos link ini tanpa login, tetapi risiko tersebut harus masuk backlog keamanan operasional.
 
+## Approved Architecture Gates
+
+Architecture references:
+- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+- `doc/decisions/ADR-002-production-file-storage-architecture.md`
+- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+
+- MongoDB replica-set transaction capability is required before transaction-dependent mutation flags in staging/production. Standalone MongoDB is limited to read-only or proven-safe single-document atomic writes. Transaction-required operations must fail closed with `503 transaction_unavailable`; silent fallback is prohibited.
+- Production storage uses a stable provider-neutral storage port and private persistent object storage. Local filesystem is development/demo only; production upload remains disabled until provider selection, database-backed ownership, token removal, MIME/signature validation, malware/quarantine, backup/restore, reconciliation, and operational readiness are approved.
+- Retail production payment remains provider-neutral online payment orchestration. Gateway provider selection is deferred and required for provider integration/go-live, not for this architectural boundary. No new manual-transfer adapter is enabled.
+
+These gates record approved architecture direction only. They do not authorize production infrastructure changes, Finance operational activation, payment gateway activation, production upload enablement, or production go-live.
+
 ## 7. Pre-deploy and post-deploy checklist
 
 Pre-deploy:
