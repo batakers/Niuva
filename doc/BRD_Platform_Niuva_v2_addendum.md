@@ -1,7 +1,9 @@
 # Addendum BRD v2.0 — Integrated Operations, Customer Portal, dan Hybrid Marketplace
 
 Tanggal: 14 Juli 2026  
-Status: Draft untuk review stakeholder  
+Status: Superseded
+Superseded by: `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+Do not use for new planning. Historical content is preserved for traceability.
 Dokumen induk: `doc/BRD_Website_Niuva.md`  
 Referensi desain: `docs/superpowers/specs/2026-07-14-integrated-operations-marketplace-design.md`
 

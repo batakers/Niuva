@@ -1,7 +1,8 @@
 # Desain Satu Platform Niuva dengan Journey Retail dan B2B
 
 Tanggal: 14 Juli 2026  
-Status: Desain brainstorming disetujui; menunggu review dokumen  
+Status: Approved Baseline
+Approval record: `doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
 Supersedes: `2026-07-14-integrated-operations-marketplace-design.md`  
 Stack saat ini: React, FastAPI, MongoDB standalone
 
@@ -551,4 +552,3 @@ Deferred item harus diselesaikan sebelum implementasi surface yang bergantung pa
 - Customer tidak menerima data internal.
 - Retry dan concurrency tidak menghasilkan transaksi atau stok ganda.
 - CMS serta back-office dapat dioperasikan staf melalui handover yang terdokumentasi.
-
