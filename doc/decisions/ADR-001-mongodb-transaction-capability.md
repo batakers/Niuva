@@ -1,10 +1,14 @@
 # ADR-001 — MongoDB Transaction Capability
 
-Status: Technical Design Candidate — not approved
+Status: Approved Baseline
 Decision ID: `DEC-DATA-01`
-Decision owner: Backend / Platform technical owner — Not assigned
-Technical approver: Not recorded
-Decision date: Pending
+Decision owner: Project Manager / Product Owner
+Technical approver: Acting Technical Owner
+Operations acknowledgement: Acting Operations Owner
+Decision date: 16 July 2026
+Approval source: Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
+Recorded by: Project documentation owner
+Approval scope: Internal architecture direction, documentation, and future implementation planning.
 Related baseline: `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 Decision log: `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
@@ -12,7 +16,7 @@ Decision log: `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 Niuva menggunakan MongoDB dan membutuhkan atomicity untuk operasi yang menyentuh lebih dari satu collection. Baseline platform masih membahas MongoDB standalone dengan single-document atomic update dan idempotent workflow, sementara catalog/inventory dan Retail checkout candidate memerlukan transaction capability untuk menjaga balance, movement, reservation, publication pointer, order, dan reservation tetap konsisten.
 
-ADR ini menjadi central technical decision record sebelum wording transaction capability dipropagasikan ke PRD, PRODUCT, AGENTS, unified design, atau catalog spec. ADR ini tidak memberi approval implementasi.
+ADR ini menjadi central technical decision record sebelum wording transaction capability dipropagasikan ke PRD, PRODUCT, AGENTS, unified design, atau catalog spec. Approval ini terbatas pada internal architecture direction dan future implementation planning; approval ini bukan production authorization, infrastructure procurement approval, atau production go-live approval.
 
 ## Decision Question
 
@@ -64,9 +68,9 @@ Jika operation membutuhkan transaction tetapi capability tidak tersedia:
 - readiness/observability harus mencatat capability failure tanpa membocorkan secret atau data customer;
 - read-only/public safe projection dapat tetap berjalan bila boundary-nya tidak memerlukan mutation transaction.
 
-## Recommended Baseline
+## Approved Architecture Direction
 
-**Option A — Replica-set multi-document transaction** direkomendasikan untuk operasi lintas collection. Rekomendasi ini belum disetujui dan tidak boleh diperlakukan sebagai final technical authority sebelum ADR direview serta memiliki technical approver dan decision date.
+**Option A — Replica-set multi-document transaction** disetujui sebagai internal architecture direction untuk operasi lintas collection. Exact implementation modules, deployment topology details, readiness implementation, monitoring implementation, dan production infrastructure authorization tetap open.
 
 ## Migration and Deployment Impact
 
@@ -94,7 +98,12 @@ Jika operation membutuhkan transaction tetapi capability tidak tersedia:
 
 ## Approval Record
 
-- **Technical approver:** Not recorded
-- **Decision date:** Pending
-- **Approval source:** Not recorded
-- **Final decision:** Pending review; recommendation is not approved.
+- **Decision owner:** Project Manager / Product Owner
+- **Technical approver:** Acting Technical Owner
+- **Operations acknowledgement:** Acting Operations Owner
+- **Decision date:** 16 July 2026
+- **Approval source:** Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
+- **Recorded by:** Project documentation owner
+- **Approval scope:** Internal architecture, documentation, and future implementation planning.
+- **Excluded from this approval:** Company-wide production authorization, infrastructure procurement approval, Finance operational sign-off, payment gateway activation approval, and production go-live approval.
+- **Final decision:** Approved Baseline.
