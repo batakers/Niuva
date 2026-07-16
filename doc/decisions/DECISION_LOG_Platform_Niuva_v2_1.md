@@ -5,6 +5,20 @@ Authority: Index keputusan bisnis, operasional, dan teknis
 Baseline source: `doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
 Created in: Governance Register Pass
 
+## Recorded Approval Context
+
+- **Approval date:** 16 July 2026
+- **Approval source:** Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
+- **Decision owner:** Project Manager / Product Owner
+- **Technical approver:** Acting Technical Owner
+- **Operations acknowledgement:** Acting Operations Owner
+- **Business/Finance approver:** Acting Business and Finance Owner
+- **Recorded by:** Project documentation owner
+- **Approval scope:** Internal architecture, documentation, and future implementation planning.
+- **Excluded from this approval:** Company-wide production authorization, infrastructure procurement approval, Finance operational sign-off, payment gateway activation approval, and production go-live approval.
+
+Approved ADR directions do not automatically close operational, provider, infrastructure, Finance, or production-readiness decisions listed as open.
+
 ## Cara Membaca
 
 Setiap entry harus memiliki status, owner, approver, tanggal, options, recommended baseline, rationale, impact, dependencies, related ADR, dan final decision. `Pending`, `Not assigned`, atau `Not recorded` berarti keputusan belum dapat dipakai sebagai approval. Decision log ini tidak mempropagasikan requirement ke baseline approved; ADR menjadi authority teknis hanya setelah direview dan disetujui.
@@ -26,12 +40,13 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
 - **Related ADR:** `doc/decisions/ADR-001-mongodb-transaction-capability.md`, `doc/decisions/ADR-002-production-file-storage-architecture.md`, `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`.
 - **Final decision:** Pending stakeholder decision.
 
-## DEC-PAY-01 — Temporary Manual-Transfer Adapter
+## DEC-PAY-01 — Retail Payment Orchestration and Manual-Transfer Policy
 
-- **Status:** Open
-- **Decision owner:** Finance / Operations — Not assigned
-- **Approver:** Not recorded
-- **Decision date:** Pending
+- **Status:** Approved with Open Decisions
+- **Decision owner:** Project Manager / Product Owner
+- **Approver:** Acting Technical Owner; Business/Finance approver: Acting Business and Finance Owner
+- **Operations acknowledgement:** Acting Operations Owner
+- **Decision date:** 16 July 2026
 - **Options:**
   1. Provider-neutral online payment tanpa manual-transfer adapter.
   2. Provider-neutral online payment dengan manual transfer sebagai transitional adapter yang dibatasi dan disetujui secara eksplisit.
@@ -40,11 +55,13 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
 
   This alternative conflicts with the approved v2.1 online-payment direction and is not selectable through DEC-PAY-01. It would require an explicit amendment to the approved v2.1 baseline.
 - **Recommended baseline:** Option 1 untuk production; Option 2 hanya jika disetujui eksplisit dengan Finance owner, reconciliation SLA, expiry date, dan exit criteria.
+- **Approval scope:** Internal architecture direction, documentation, and future implementation planning.
+- **Open decision categories:** Gateway provider, payment state machine, Finance operations, reconciliation SLA, refund policy, event retention, webhook authentication, and production readiness.
 - **Rationale:** v2.1 mengunci online payment sebagai target production, sementara provider tetap deferred.
 - **Impact:** Payment lifecycle, payment proof storage, reconciliation queue, inventory hold, customer messaging, finance operations, dan go-live gate.
 - **Dependencies:** `DEC-STOR-01`, `DEC-READY-01`, payment contract ADR.
 - **Related ADR:** `doc/decisions/ADR-002-production-file-storage-architecture.md`, `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`.
-- **Final decision:** Pending explicit stakeholder and Finance approval.
+- **Final decision:** Approved with Open Decisions. No new transitional manual-transfer adapter is enabled by this approval; gateway provider, reconciliation SLA, refund policy, payment event retention, and production go-live remain open.
 
 ## DEC-FUL-01 — Shipping and Pickup Policy
 
@@ -133,37 +150,43 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
 
 ## DEC-DATA-01 — Transaction Capability Policy
 
-- **Status:** Open
-- **Decision owner:** Backend / Platform technical owner — Not assigned
-- **Approver:** Not recorded
-- **Decision date:** Pending
+- **Status:** Approved Baseline
+- **Decision owner:** Project Manager / Product Owner
+- **Approver:** Acting Technical Owner
+- **Operations acknowledgement:** Acting Operations Owner
+- **Decision date:** 16 July 2026
 - **Options:**
   1. Replica-set MongoDB multi-document transaction.
   2. Single-document redesign untuk aggregate dan reservation writes.
   3. Saga/compensation dengan idempotent workflow, reconciliation, dan recovery.
 - **Recommended baseline:** Option 1 untuk catalog publication pointer, inventory balance/movement/reservation, dan checkout order-plus-reservation writes. Single-node replica set dapat digunakan untuk local development.
+- **Approval scope:** Internal architecture direction, documentation, and future implementation planning.
+- **Open decision categories:** Exact implementation modules, deployment topology, readiness implementation, monitoring implementation, and production infrastructure authorization.
 - **Rationale:** Menjaga atomicity dan mencegah partial order/reservation atau overselling.
 - **Impact:** Local/dev, CI, staging, production, startup/readiness diagnostics, deployment topology, mutation feature flags, dan test environment.
 - **Dependencies:** `DEC-RT-01`, `DEC-INV-01`, `DEC-SCOPE-01`, `DEC-READY-01`.
 - **Related ADR:** `doc/decisions/ADR-001-mongodb-transaction-capability.md`.
-- **Final decision:** Pending technical review and approval; recommendation is not approved.
+- **Final decision:** Approved Baseline. Silent fallback to non-atomic writes is prohibited and transaction-required operations fail closed with `503 transaction_unavailable`.
 
 ## DEC-STOR-01 — Production File Storage Architecture
 
-- **Status:** Open
-- **Decision owner:** Operations / Platform owner — Not assigned
-- **Approver:** Not recorded
-- **Decision date:** Pending
+- **Status:** Approved with Open Decisions
+- **Decision owner:** Project Manager / Product Owner
+- **Approver:** Acting Technical Owner
+- **Operations acknowledgement:** Acting Operations Owner
+- **Decision date:** 16 July 2026
 - **Options:**
   1. Private persistent object storage dengan backend authorization atau short-lived signed URL.
   2. Persistent shared volume dengan private backend-proxied access.
   3. Hybrid storage dengan provider abstraction dan explicit migration boundary.
-- **Recommended baseline:** Option 1, provider-neutral pada level contract, dengan private access, validation/quarantine, backup/restore, retention, quota, encryption, multi-instance support, reconciliation, dan RPO/RTO.
+- **Recommended baseline:** Option C sebagai application architecture dan Option A sebagai production adapter class: stable provider-neutral storage port dengan private persistent object storage. Production upload tetap blocked sampai provider, ownership, token removal, validation, quarantine, backup/restore, retention/quota, reconciliation, operational owners, dan production readiness disetujui.
+- **Approval scope:** Internal architecture direction, documentation, and future implementation planning.
+- **Open decision categories:** Provider, operations, production readiness, RPO/RTO, retention, quota, ownership, backup/restore, malware handling, and Emergent migration.
 - **Rationale:** Local filesystem hanya aman untuk development/demo dan tidak memenuhi production persistence.
 - **Impact:** Retail design files, B2B/RFQ attachments, design versions, operational files, QC/fulfillment evidence, dan payment proof jika manual-transfer adapter disetujui.
 - **Dependencies:** `DEC-RT-01`, `DEC-PAY-01`, `DEC-SCOPE-01`, `DEC-READY-01`.
 - **Related ADR:** `doc/decisions/ADR-002-production-file-storage-architecture.md`.
-- **Final decision:** Pending storage architecture review, owner assignment, dan approval date.
+- **Final decision:** Approved with Open Decisions. Actual provider, RPO, RTO, retention duration, quota values, storage/backup/restore/malware/incident owners, dan Emergent migration/decommission policy tetap open.
 
 ## DEC-READY-01 — Production Readiness Criteria
 

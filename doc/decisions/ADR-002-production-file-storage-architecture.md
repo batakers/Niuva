@@ -1,10 +1,14 @@
 # ADR-002 — Production File Storage Architecture
 
-Status: Technical Design Candidate — not approved
+Status: Approved with Open Decisions
 Decision ID: `DEC-STOR-01`
-Decision owner: Operations / Platform owner — Not assigned
-Technical approver: Not recorded
-Decision date: Pending
+Decision owner: Project Manager / Product Owner
+Technical approver: Acting Technical Owner
+Operations acknowledgement: Acting Operations Owner
+Decision date: 16 July 2026
+Approval source: Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
+Recorded by: Project documentation owner
+Open decision categories: Provider, operations, production readiness, RPO/RTO, retention, quota, ownership, backup/restore, malware handling, and Emergent migration.
 Related baseline: `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 Decision log: `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
@@ -20,7 +24,7 @@ This ADR covers **all persistent uploads**, not only payment proof:
 - Operational files, QC evidence, fulfillment evidence, and customer-approved files.
 - Payment proof if the manual-transfer adapter is explicitly approved.
 
-The ADR defines a provider-neutral production contract. It does not choose a storage vendor or write credentials.
+The ADR defines a provider-neutral production contract. It does not choose a storage vendor or write credentials. Approval is limited to internal architecture, documentation, and future implementation planning; production upload remains blocked by the open operational decisions and readiness gates below.
 
 ## Decision Question
 
@@ -40,9 +44,13 @@ Application instances use a shared persistent volume with backend-proxied access
 
 Use a stable storage port with local development implementation and a production object/volume adapter. The production adapter is selected and tested before persistent uploads are enabled.
 
-## Recommended Baseline
+## Approved Architecture Direction
 
-**Option A with the stable logical storage contract from Option C** is recommended: private persistent object storage behind backend authorization or short-lived signed access, with provider-neutral application contracts. This is a recommendation only and is not approved.
+- **Application architecture:** Option C — stable provider-neutral storage port.
+- **Production adapter class:** Option A — private persistent object storage.
+- **Access policy:** Production objects are private by default; backend authorization is the default access model; short-lived signed URLs require prior backend authorization and must be scoped to one object and one action.
+- **Ownership policy:** Database-backed ownership must replace path-substring authorization.
+- **Environment policy:** Local filesystem storage remains development/demo only; public buckets and public static directories are prohibited.
 
 ## Access and Authorization Model
 
@@ -133,7 +141,17 @@ No automatic deletion policy is implied by this ADR.
 | Staging | Persistent storage candidate only after validation, access, backup, and restore checks |
 | Production | Approved private persistent storage only; local filesystem is prohibited |
 
-Production upload enablement must be blocked until this ADR and the corresponding operational readiness criteria are approved.
+Production upload enablement remains blocked until all of the following are complete and approved:
+
+- actual production storage provider is selected;
+- database-backed ownership is implemented;
+- query-string access tokens are removed;
+- MIME/signature validation is implemented;
+- malware scanning and quarantine are implemented;
+- backup and restore are tested;
+- retention and quota policies are approved;
+- metadata/object reconciliation is tested;
+- operational owners and production readiness are approved.
 
 ## Consequences
 
@@ -151,7 +169,13 @@ Production upload enablement must be blocked until this ADR and the correspondin
 
 ## Approval Record
 
-- **Technical approver:** Not recorded
-- **Decision date:** Pending
-- **Approval source:** Not recorded
-- **Final decision:** Pending review; recommendation is not approved.
+- **Decision owner:** Project Manager / Product Owner
+- **Technical approver:** Acting Technical Owner
+- **Operations acknowledgement:** Acting Operations Owner
+- **Decision date:** 16 July 2026
+- **Approval source:** Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
+- **Recorded by:** Project documentation owner
+- **Approval scope:** Internal architecture, documentation, and future implementation planning.
+- **Open operational decisions:** Actual provider, RPO, RTO, retention duration, quota values, storage/backup/restore/malware/incident owners, and Emergent migration/decommission policy.
+- **Excluded from this approval:** Company-wide production authorization, infrastructure procurement approval, Finance operational sign-off, payment gateway activation approval, and production go-live approval.
+- **Final decision:** Approved with Open Decisions.

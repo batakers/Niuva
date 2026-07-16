@@ -1,11 +1,15 @@
 # ADR-003 — Retail Payment Orchestration Boundary
 
-Status: Technical Design Candidate — not approved
+Status: Approved with Open Decisions
 Decision ID: `DEC-PAY-01`
-Decision owner: Finance / Product / Platform — Not assigned
-Technical approver: Not recorded
-Business approver: Not recorded
-Decision date: Pending
+Decision owner: Project Manager / Product Owner
+Technical approver: Acting Technical Owner
+Business/Finance approver: Acting Business and Finance Owner
+Operations acknowledgement: Acting Operations Owner
+Decision date: 16 July 2026
+Approval source: Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
+Recorded by: Project documentation owner
+Open decision categories: Gateway provider, payment state machine, Finance operations, reconciliation SLA, refund policy, event retention, webhook authentication, and production readiness.
 Related baseline: `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 Decision log: `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
@@ -13,7 +17,7 @@ Decision log: `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 Approved v2.1 requirements establish **online payment as the Retail production target**, while the payment gateway provider remains deferred. The Retail checkout candidate currently describes manual transfer and payment proof as its primary slice. That is not an acceptable production baseline without an explicit transitional decision.
 
-This ADR defines the boundary between the Retail payment experience, a provider-neutral payment contract, provider adapters, and exceptional manual-transfer handling. It does not select a gateway provider or approve implementation.
+This ADR defines the boundary between the Retail payment experience, a provider-neutral payment contract, provider adapters, and exceptional manual-transfer handling. It does not select a gateway provider or authorize production go-live.
 
 ## Proposed Boundary
 
@@ -72,6 +76,8 @@ It may be enabled only as a transitional adapter after all of the following are 
 
 Manual transfer must not change the provider-neutral core contract or silently become the default payment experience.
 
+No new transitional manual-transfer adapter is enabled by this approval.
+
 ## Options
 
 ### Option A — Provider-neutral online payment contract with deferred adapter selection
@@ -86,9 +92,9 @@ Keep the same core contract, but enable a separate proof/reconciliation adapter 
 
 Rejected as a baseline because it locks gateway choice, couples domain data to vendor semantics, and conflicts with the deferred-provider decision.
 
-## Recommended Baseline
+## Approved Architecture Direction
 
-Use **Option A** as the production architecture. Permit **Option B** only as an explicitly approved transitional adapter. Do not use Option C. This recommendation is not approved until the ADR and related decision log entry are reviewed.
+**Option A — provider-neutral online-payment orchestration** is approved as the Retail production architecture. Option B is not enabled by this approval and would require a separate written decision. Option C remains rejected. The gateway provider remains deferred.
 
 ## Dependencies and Impact
 
@@ -98,11 +104,28 @@ Use **Option A** as the production architecture. Permit **Option B** only as an 
 - Checkout/order/reservation mutation requires the transaction-capability decision from `ADR-001`.
 - Refund, shipping, tax, reservation, protected-scope, and production-readiness decisions remain separate entries in the central decision log.
 - Payment provider integration is not authorized by this ADR.
+- Gateway provider selection is required for provider integration and production go-live, but not for approval of this architecture.
+
+## Open Decisions After Approval
+
+- Payment gateway provider.
+- Exact payment state machine.
+- Reconciliation SLA.
+- Refund policy.
+- Payment event retention.
+- Provider-specific webhook authentication.
+- Production go-live approval.
 
 ## Approval Record
 
-- **Technical approver:** Not recorded
-- **Business approver:** Not recorded
-- **Decision date:** Pending
-- **Approval source:** Not recorded
-- **Final decision:** Pending review; recommendation is not approved.
+- **Decision owner:** Project Manager / Product Owner
+- **Technical approver:** Acting Technical Owner
+- **Business/Finance approver:** Acting Business and Finance Owner
+- **Operations acknowledgement:** Acting Operations Owner
+- **Decision date:** 16 July 2026
+- **Approval source:** Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
+- **Recorded by:** Project documentation owner
+- **Approval scope:** Internal architecture, documentation, and future implementation planning.
+- **Open provider and operational decisions:** Gateway provider, exact payment state machine, reconciliation SLA, refund policy, payment event retention, provider-specific webhook authentication, and production go-live approval.
+- **Excluded from this approval:** Company-wide production authorization, infrastructure procurement approval, Finance operational sign-off for future payment operations, payment gateway activation approval, and production go-live approval.
+- **Final decision:** Approved with Open Decisions.
