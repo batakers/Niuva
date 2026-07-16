@@ -54,15 +54,15 @@ Candidate and Superseded documents are not implementation authority.
 | `doc/decisions/ADR-002-production-file-storage-architecture.md` | Approved with Open Decisions | Production persistent-storage authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; operational decisions remain open |
 | `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md` | Approved with Open Decisions | Provider-neutral Retail payment authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; provider and operational decisions remain open |
 
-## Known Branch-Local Candidate Documents
+## Known Branch-Local Documents
 
-The following documents are available only in the catalog worktree and are not part of the primary/integration branch register:
+Branch or worktree availability and approval status are separate dimensions. A branch-local document may be approved within its documented scope but cannot govern a clean primary checkout until the reviewed file is available on that branch.
 
-| Document | Branch | Availability | Authority |
-|---|---|---|---|
-| `docs/superpowers/specs/2026-07-14-catalog-material-pricing-inventory-foundation-design.md` | `design/catalog-material-inventory-foundation` | Not present on primary/integration branch | Does not apply to primary until reviewed and merged |
-| `docs/superpowers/specs/2026-07-16-remove-emergent-local-storage-design.md` | `design/catalog-material-inventory-foundation` | Not present on primary/integration branch | Does not apply to primary until reviewed and merged |
-| `docs/superpowers/specs/2026-07-16-retail-order-checkout-foundation-design.md` | `design/catalog-material-inventory-foundation` | Not present on primary/integration branch | Does not apply to primary until reviewed and merged |
+| Document | Status | Approved scope / open decision | Availability | Authority | Primary applicability |
+|---|---|---|---|---|---|
+| `docs/superpowers/specs/2026-07-14-catalog-material-pricing-inventory-foundation-design.md` | Approved with Open Decisions | Open: transaction-capability alignment and any other decisions explicitly listed in the spec | Branch-local; not yet available on primary/integration | Approved technical direction within its documented scope | Does not apply to primary implementation until the reviewed document is merged or otherwise made available there |
+| `docs/superpowers/specs/2026-07-16-remove-emergent-local-storage-design.md` | Approved with Open Decisions | Approved scope: development/demo storage only. Open blocker: production storage architecture and readiness | Branch-local; not yet available on primary/integration | Approved only for its documented development/demo scope | Does not apply to primary implementation until the reviewed document is merged or otherwise made available there |
+| `docs/superpowers/specs/2026-07-16-retail-order-checkout-foundation-design.md` | Technical Design Candidate | Not approved | Branch-local | Not approved for implementation | Does not apply to primary implementation |
 
 ## Dokumen yang Disetujui Secara Eksplisit
 
@@ -136,9 +136,9 @@ Keputusan berikut tetap deferred dan tidak disetujui oleh record ini:
 Dokumen berikut tetap berada di luar approval requirements dan/atau tetap menjadi guardrail atau candidate:
 
 - `AGENTS.brand-baseline-v1.md` — tetap menjadi Active Implementation Guardrail.
-- `docs/superpowers/specs/2026-07-14-catalog-material-pricing-inventory-foundation-design.md` — branch-local candidate.
-- `docs/superpowers/specs/2026-07-16-remove-emergent-local-storage-design.md` — branch-local candidate untuk development/demo.
-- `docs/superpowers/specs/2026-07-16-retail-order-checkout-foundation-design.md` — branch-local Technical Design Candidate.
+- `docs/superpowers/specs/2026-07-14-catalog-material-pricing-inventory-foundation-design.md` — Approved with Open Decisions; branch-local and unavailable to primary implementation until merged or otherwise made available there.
+- `docs/superpowers/specs/2026-07-16-remove-emergent-local-storage-design.md` — Approved with Open Decisions untuk development/demo storage only; branch-local and unavailable to primary implementation until merged or otherwise made available there.
+- `docs/superpowers/specs/2026-07-16-retail-order-checkout-foundation-design.md` — branch-local Technical Design Candidate; not approved for implementation.
 
 ## Supersession Map
 
