@@ -14,14 +14,20 @@ from typing import List, Optional
 
 import jwt
 import bcrypt
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Query, Header, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Header, Response
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field
 
 import storage
 import emailer
+from catalog_inventory_indexes import ensure_catalog_inventory_indexes
+from catalog_routes import build_catalog_router
+from database_capabilities import DatabaseCapabilities, probe_transaction_capability
 from identity_routes import build_identity_router
+from inventory_routes import build_inventory_router
+from inventory_service import InventoryService
+from material_routes import build_material_router
 from organization_routes import build_organization_router
 from permissions import canonical_roles, has_permission, permissions_for
 
@@ -40,10 +46,22 @@ APP_NAME = os.environ.get("APP_NAME", "niuva")
 MAX_FILE_SIZE = 50 * 1024 * 1024
 DESIGN_EXTS = {"stl", "obj"}
 IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "gif", "pdf"}
+SAFE_FILE_CONTENT_TYPES = {
+    "stl": "model/stl",
+    "obj": "text/plain",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+    "gif": "image/gif",
+    "pdf": "application/pdf",
+}
 
 ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "completed", "cancelled"]
 
 app = FastAPI(title="NIUVA API")
+app.state.database_capabilities = DatabaseCapabilities(transactions=False)
+app.state.reservation_expiry_task = None
 api = APIRouter(prefix="/api")
 
 
@@ -135,13 +153,6 @@ class ClientProvisionReq(BaseModel):
 class LoginReq(BaseModel):
     email: EmailStr
     password: str
-
-
-class MaterialReq(BaseModel):
-    name: str
-    description: Optional[str] = ""
-    color: Optional[str] = ""
-    active: bool = True
 
 
 class EstimateReq(BaseModel):
@@ -259,6 +270,11 @@ def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terla
     _rate_buckets[key] = bucket
 
 
+def safe_file_content_type(path: str) -> str:
+    ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+    return SAFE_FILE_CONTENT_TYPES.get(ext, "application/octet-stream")
+
+
 async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict:
     ext = (file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin").lower()
     if ext not in allowed_exts:
@@ -267,12 +283,20 @@ async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File exceeds 50MB limit")
     path = f"{APP_NAME}/{prefix}/{uuid.uuid4()}.{ext}"
-    result = storage.put_object(path, data, file.content_type or "application/octet-stream")
+    content_type = safe_file_content_type(path)
+    try:
+        result = storage.put_object(path, data, content_type)
+    except storage.InvalidStoragePathError as exc:
+        logger.warning("Rejected generated storage path")
+        raise HTTPException(status_code=400, detail="Invalid file storage path") from exc
+    except storage.StorageError as exc:
+        logger.exception("Unable to store uploaded file")
+        raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     return {
         "id": str(uuid.uuid4()),
         "storage_path": result["path"],
         "original_filename": file.filename,
-        "content_type": file.content_type or "application/octet-stream",
+        "content_type": content_type,
         "size": result.get("size", len(data)),
     }
 
@@ -306,50 +330,6 @@ async def admin_login(req: LoginReq):
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
     return safe_user(user)
-
-
-# ----------------------------- Materials -----------------------------
-@api.get("/materials")
-async def list_materials():
-    q = {"active": True}
-    items = await db.materials.find(q, {"_id": 0}).sort("name", 1).to_list(200)
-    return items
-
-
-@api.get("/admin/materials")
-async def admin_materials(user: dict = Depends(require_permission("materials.read"))):
-    return await db.materials.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
-
-
-@api.post("/admin/materials")
-async def create_material(
-    req: MaterialReq,
-    user: dict = Depends(require_permission("materials.write")),
-):
-    mat = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
-    await db.materials.insert_one(mat)
-    return {k: v for k, v in mat.items() if k != "_id"}
-
-
-@api.put("/admin/materials/{mid}")
-async def update_material(
-    mid: str,
-    req: MaterialReq,
-    user: dict = Depends(require_permission("materials.write")),
-):
-    res = await db.materials.update_one({"id": mid}, {"$set": req.model_dump()})
-    if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Material not found")
-    return await db.materials.find_one({"id": mid}, {"_id": 0})
-
-
-@api.delete("/admin/materials/{mid}")
-async def delete_material(
-    mid: str,
-    user: dict = Depends(require_permission("materials.write")),
-):
-    await db.materials.delete_one({"id": mid})
-    return {"ok": True}
 
 
 # ----------------------------- Orders -----------------------------
@@ -546,20 +526,32 @@ async def update_status(
 
 # ----------------------------- File download -----------------------------
 @api.get("/files/{path:path}")
-async def download_file(path: str, request: Request, auth: Optional[str] = Query(None)):
-    token = auth
-    if not token:
-        h = request.headers.get("Authorization", "")
-        if h.startswith("Bearer "):
-            token = h[7:]
+async def download_file(path: str, request: Request):
+    authorization = request.headers.get("Authorization", "")
+    token = authorization[7:] if authorization.startswith("Bearer ") else None
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user = await get_user_from_token(token)
     # Staff with file-read access can fetch shared files; customers remain path-scoped.
     if not has_permission(user, "files.read") and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
-    data, content_type = storage.get_object(path)
-    return Response(content=data, media_type=content_type)
+    try:
+        data, _stored_content_type = storage.get_object(path)
+    except storage.InvalidStoragePathError as exc:
+        raise HTTPException(status_code=400, detail="Invalid file path") from exc
+    except storage.StorageNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="File not found") from exc
+    except storage.StorageError as exc:
+        logger.exception("Unable to read stored file")
+        raise HTTPException(status_code=500, detail="File storage unavailable") from exc
+    return Response(
+        content=data,
+        media_type=safe_file_content_type(path),
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+        },
+    )
 
 
 # ----------------------------- Internship -----------------------------
@@ -704,6 +696,11 @@ async def my_notifications(user: dict = Depends(get_current_user)):
     return await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
 
 
+@api.get("/health")
+async def health():
+    return {"status": "ok", "transactions": app.state.database_capabilities.transactions}
+
+
 @api.get("/")
 async def root():
     return {"message": "NIUVA API", "status": "ok"}
@@ -721,6 +718,32 @@ api.include_router(
         get_db=lambda: db,
         require_permission=require_permission,
         get_current_user=get_current_user,
+    )
+)
+api.include_router(
+    build_catalog_router(
+        get_db=lambda: db,
+        get_client=lambda: client,
+        get_capabilities=lambda: app.state.database_capabilities,
+        require_permission=require_permission,
+    )
+)
+api.include_router(
+    build_material_router(
+        get_db=lambda: db,
+        require_permission=require_permission,
+    )
+)
+api.include_router(
+    build_inventory_router(
+        get_service=lambda: InventoryService(
+            db=db,
+            client=client,
+            capabilities=app.state.database_capabilities,
+            emailer=emailer,
+        ),
+        require_permission=require_permission,
+        has_permission=has_permission,
     )
 )
 
@@ -835,16 +858,45 @@ async def auto_delete_loop():
         await asyncio.sleep(6 * 3600)
 
 
+async def reservation_expiry_loop():
+    system_actor = {
+        "id": "system:reservation-expiry",
+        "email": "system@niuva.local",
+        "roles": ["system"],
+    }
+    while True:
+        try:
+            service = InventoryService(
+                db=db,
+                client=client,
+                capabilities=app.state.database_capabilities,
+                emailer=emailer,
+            )
+            await service.expire_due_reservations(actor=system_actor)
+        except Exception as exc:
+            logger.error("reservation_expiry_loop error: %s", exc)
+        await asyncio.sleep(60)
+
+
 @app.on_event("startup")
 async def startup():
-    try:
-        storage.init_storage()
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
+    storage.init_storage()
     await seed()
+    app.state.database_capabilities = DatabaseCapabilities(
+        transactions=await probe_transaction_capability(client)
+    )
+    await ensure_catalog_inventory_indexes(db)
     asyncio.create_task(auto_delete_loop())
+    app.state.reservation_expiry_task = asyncio.create_task(reservation_expiry_loop())
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    expiry_task = app.state.reservation_expiry_task
+    if expiry_task is not None:
+        expiry_task.cancel()
+        try:
+            await expiry_task
+        except asyncio.CancelledError:
+            pass
     client.close()

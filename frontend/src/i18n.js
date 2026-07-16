@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { domainTranslations } from "./lib/domain-translations";
 
 const translations = {
   id: {
+    ...domainTranslations.id,
     "nav.home": "Home",
     "nav.about": "About",
     "nav.services": "Capabilities",
@@ -164,6 +166,7 @@ const translations = {
     "admin.addProject": "Tambah Proyek",
   },
   en: {
+    ...domainTranslations.en,
     "nav.home": "Home",
     "nav.about": "About",
     "nav.services": "Capabilities",

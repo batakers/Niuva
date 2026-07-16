@@ -1,68 +1,135 @@
-"""Emergent S3-compatible object storage helpers for NIUVA."""
+"""Safe local object storage for NIUVA development and demonstrations."""
+
+import json
+import mimetypes
 import os
-import time
-import logging
-import requests
-
-logger = logging.getLogger(__name__)
-
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
-EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
-APP_NAME = os.environ.get("APP_NAME", "niuva")
-
-_storage_key = None
+import tempfile
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 
-def init_storage():
-    global _storage_key
-    if _storage_key:
-        return _storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    _storage_key = resp.json()["storage_key"]
-    logger.info("Object storage initialized")
-    return _storage_key
+BACKEND_DIR = Path(__file__).resolve().parent
+DEFAULT_STORAGE_ROOT = BACKEND_DIR / ".local-storage"
 
 
-def _reset_key():
-    global _storage_key
-    _storage_key = None
+class StorageError(RuntimeError):
+    """Base error for local storage failures."""
+
+
+class StorageNotFoundError(StorageError):
+    """Raised when a logical storage path has no local object."""
+
+
+class InvalidStoragePathError(StorageError):
+    """Raised when a logical path could escape the configured root."""
+
+
+def _storage_root() -> Path:
+    configured = os.environ.get("LOCAL_STORAGE_ROOT", "").strip()
+    root = Path(configured) if configured else DEFAULT_STORAGE_ROOT
+    if not root.is_absolute():
+        root = BACKEND_DIR / root
+    return root.resolve()
+
+
+def init_storage() -> Path:
+    root = _storage_root()
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise StorageError("Unable to initialize local storage") from exc
+    if not root.is_dir():
+        raise StorageError("Local storage root is not a directory")
+    return root
+
+
+def _resolve_path(storage_path: str) -> tuple[Path, str]:
+    if not isinstance(storage_path, str) or not storage_path or "\x00" in storage_path:
+        raise InvalidStoragePathError("Invalid storage path")
+
+    normalized = storage_path.replace("\\", "/")
+    windows_path = PureWindowsPath(storage_path)
+    parts = normalized.split("/")
+    if (
+        PurePosixPath(normalized).is_absolute()
+        or windows_path.drive
+        or any(part in {"", ".", ".."} for part in parts)
+    ):
+        raise InvalidStoragePathError("Invalid storage path")
+
+    root = init_storage()
+    candidate = root.joinpath(*parts).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise InvalidStoragePathError("Invalid storage path") from exc
+    return candidate, "/".join(parts)
+
+
+def _metadata_path(target: Path) -> Path:
+    return target.with_name(f"{target.name}.metadata.json")
+
+
+def _atomic_write(target: Path, payload: bytes) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{target.name}.",
+        suffix=".tmp",
+        dir=target.parent,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    for attempt in range(3):
-        key = init_storage()
-        resp = requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
-            data=data,
-            timeout=120,
+    target, normalized = _resolve_path(path)
+    metadata_target = _metadata_path(target)
+    if target.exists() or metadata_target.exists():
+        raise StorageError("Stored object already exists")
+
+    metadata = {
+        "version": 1,
+        "content_type": content_type or "application/octet-stream",
+        "size": len(data),
+    }
+    try:
+        _atomic_write(target, data)
+        _atomic_write(
+            metadata_target,
+            json.dumps(metadata, sort_keys=True).encode("utf-8"),
         )
-        if resp.status_code == 403:
-            _reset_key()
-            continue
-        if resp.status_code == 429:
-            time.sleep(2 ** attempt)
-            continue
-        resp.raise_for_status()
-        return resp.json()
-    raise RuntimeError("Failed to upload object after retries")
+    except OSError as exc:
+        target.unlink(missing_ok=True)
+        metadata_target.unlink(missing_ok=True)
+        raise StorageError("Unable to store object") from exc
+    return {"path": normalized, "size": len(data), "content_type": metadata["content_type"]}
 
 
-def get_object(path: str):
-    for attempt in range(3):
-        key = init_storage()
-        resp = requests.get(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key},
-            timeout=60,
-        )
-        if resp.status_code == 403:
-            _reset_key()
-            continue
-        if resp.status_code == 429:
-            time.sleep(2 ** attempt)
-            continue
-        resp.raise_for_status()
-        return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
-    raise RuntimeError("Failed to download object after retries")
+def get_object(path: str) -> tuple[bytes, str]:
+    target, _normalized = _resolve_path(path)
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError as exc:
+        raise StorageNotFoundError("Stored file not found") from exc
+    except OSError as exc:
+        raise StorageError("Unable to read stored file") from exc
+
+    content_type = None
+    try:
+        metadata = json.loads(_metadata_path(target).read_text(encoding="utf-8"))
+        if isinstance(metadata, dict):
+            metadata_content_type = metadata.get("content_type")
+            if isinstance(metadata_content_type, str) and metadata_content_type.strip():
+                content_type = metadata_content_type
+    except (FileNotFoundError, OSError, ValueError, TypeError):
+        content_type = None
+
+    if not content_type:
+        content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    return data, content_type

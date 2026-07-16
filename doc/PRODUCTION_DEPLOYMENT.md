@@ -17,9 +17,8 @@ Konfigurasi pihak ketiga bersifat opt-in:
 - `REACT_APP_ENABLE_ANALYTICS=true` dan `REACT_APP_POSTHOG_KEY` mengaktifkan PostHog hanya pada production build.
 - `REACT_APP_POSTHOG_HOST` menetapkan host ingestion.
 - `REACT_APP_ENABLE_SESSION_RECORDING=true` hanya boleh diaktifkan setelah persetujuan privasi. Default release adalah `false`. Form contact memakai exclusion attribute, seluruh input dimasking, dan cross-origin iframe recording dimatikan.
-- `REACT_APP_ENABLE_EMERGENT_RUNTIME=true` hanya jika host memang membutuhkan runtime Emergent. Untuk deployment independen, biarkan `false`.
 
-Backend memakai `backend/.env.example`. Nilai `JWT_SECRET`, kredensial admin, MongoDB, Resend, dan storage adalah secret server-side; jangan memakai prefix `REACT_APP_`, jangan menyimpannya di Git, dan rotasi jika pernah terpapar.
+Backend memakai `backend/.env.example`. Nilai `JWT_SECRET`, kredensial admin, MongoDB, dan Resend adalah secret server-side; jangan memakai prefix `REACT_APP_`, jangan menyimpannya di Git, dan rotasi jika pernah terpapar. `LOCAL_STORAGE_ROOT` hanya untuk development/demo dan bukan rancangan storage production.
 
 ## 2. Build and release gate
 
@@ -72,7 +71,7 @@ Jangan memberi cache immutable pada `index.html`; deployment baru harus dapat me
 Terapkan lewat host/CDN dan uji di staging. Ganti placeholder API/PostHog sesuai host final. `unsafe-inline` masih diperlukan oleh template dan beberapa inline style saat ini; hardening lanjutan sebaiknya memakai nonce/hash sebelum menghapusnya.
 
 ```txt
-Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://assets.emergent.sh https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://API_HOST.example https://us.i.posthog.com; frame-src https://www.google.com https://maps.google.com; worker-src 'self' blob:; upgrade-insecure-requests
+Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://API_HOST.example https://us.i.posthog.com; frame-src https://www.google.com https://maps.google.com; worker-src 'self' blob:; upgrade-insecure-requests
 Referrer-Policy: strict-origin-when-cross-origin
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
@@ -81,7 +80,7 @@ Cross-Origin-Opener-Policy: same-origin
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 ```
 
-Aktifkan HSTS hanya setelah HTTPS dan seluruh subdomain dipastikan siap. Bila analytics dan Emergent dimatikan, hapus domainnya dari CSP.
+Aktifkan HSTS hanya setelah HTTPS dan seluruh subdomain dipastikan siap. Bila analytics dimatikan, hapus domain PostHog dari CSP.
 
 ## 6. Contact and backend readiness
 
@@ -93,9 +92,12 @@ Catatan operasional:
 - Rate limiter saat ini in-memory dan berlaku per process. Deployment multi-instance perlu rate limiter bersama (misalnya Redis atau gateway/CDN rate limit).
 - `TRUST_PROXY_HEADERS=true` hanya jika reverse proxy tepercaya menimpa `X-Forwarded-For`; jika tidak, biarkan `false`.
 - Pastikan MongoDB persisten, index startup berhasil, `HRD_EMAIL` benar, domain pengirim Resend terverifikasi, dan admin dapat melihat fallback notification.
+- Filesystem lokal di `LOCAL_STORAGE_ROOT` hanya untuk development/demo. Jangan deploy portal upload ke production sebelum persistent object storage, backup, recovery, retention, dan capacity limit disetujui.
 - Jangan mengirim form uji ke production tanpa persetujuan stakeholder. Gunakan staging atau request terkontrol dan hapus data uji sesuai kebijakan retensi.
 
-Risiko residual sebelum perluasan fitur operasional: download file autentikasi lama masih membawa access token pada query URL. Link sudah memakai `noreferrer`, tetapi query dapat tercatat di history atau access log. Untuk deployment yang membuka portal client/admin ke pengguna nyata, migrasikan ke authenticated blob download atau signed URL singkat dan sanitasi access log. Public marketing release tidak mengekspos link ini tanpa login, tetapi risiko tersebut harus masuk backlog keamanan operasional.
+Download file terautentikasi saat ini menggunakan header `Authorization: Bearer <token>` pada request ke `/api/files/{path}`. Endpoint tidak membaca token dari URL dan menolak URL dengan `?auth=` (tanpa header Authorization request akan dikembalikan sebagai `401`). Frontend mengambil response sebagai blob sehingga token tidak masuk ke browser history atau URL access log.
+
+Riwayat legacy (untuk audit): implementasi sebelum migrasi pernah membawa access token pada query URL. Pola tersebut tidak lagi didukung dan tidak boleh digunakan kembali. Jika menemukan link lama di bookmark, dokumentasi, atau log operasional, cabut dan buat ulang menggunakan alur download berbasis header di atas.
 
 ## 7. Pre-deploy and post-deploy checklist
 
@@ -104,6 +106,7 @@ Pre-deploy:
 - Domain utama dan redirect `www`/apex telah diputuskan.
 - DNS, sertifikat TLS, frontend origin, backend origin, CORS, dan secret backend telah diisi.
 - Backup database terbaru tersedia dan proses restore pernah diuji.
+- Production yang menerima upload telah memakai persistent storage yang disetujui; jangan memakai `backend/.local-storage/`.
 - Analytics/session recording memiliki keputusan eksplisit dan consent/privacy copy bila diwajibkan.
 - Build commit dicatat sebagai release commit; working tree release bersih.
 
