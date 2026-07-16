@@ -268,7 +268,18 @@ async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File exceeds 50MB limit")
     path = f"{APP_NAME}/{prefix}/{uuid.uuid4()}.{ext}"
-    result = storage.put_object(path, data, file.content_type or "application/octet-stream")
+    try:
+        result = storage.put_object(
+            path,
+            data,
+            file.content_type or "application/octet-stream",
+        )
+    except storage.InvalidStoragePathError as exc:
+        logger.warning("Rejected generated storage path")
+        raise HTTPException(status_code=400, detail="Invalid file storage path") from exc
+    except storage.StorageError as exc:
+        logger.exception("Unable to store uploaded file")
+        raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     return {
         "id": str(uuid.uuid4()),
         "storage_path": result["path"],
@@ -515,7 +526,15 @@ async def download_file(path: str, request: Request, auth: Optional[str] = Query
     # Staff with file-read access can fetch shared files; customers remain path-scoped.
     if not has_permission(user, "files.read") and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
-    data, content_type = storage.get_object(path)
+    try:
+        data, content_type = storage.get_object(path)
+    except storage.InvalidStoragePathError as exc:
+        raise HTTPException(status_code=400, detail="Invalid file path") from exc
+    except storage.StorageNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="File not found") from exc
+    except storage.StorageError as exc:
+        logger.exception("Unable to read stored file")
+        raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     return Response(content=data, media_type=content_type)
 
 
@@ -845,10 +864,7 @@ async def reservation_expiry_loop():
 
 @app.on_event("startup")
 async def startup():
-    try:
-        storage.init_storage()
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
+    storage.init_storage()
     await seed()
     app.state.database_capabilities = DatabaseCapabilities(
         transactions=await probe_transaction_capability(client)
