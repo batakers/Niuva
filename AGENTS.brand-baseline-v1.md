@@ -16,6 +16,10 @@ The website is not just a visual company profile. It is a **B2B company profile 
 
 Primary conversion goal: **Diskusikan Project**.
 
+Status: Active Implementation Guardrail
+Stakeholder approval evidence: Not separately recorded
+Authority: Subordinate to approved v2.1 requirements
+
 ---
 
 ## 2. Source of Truth Hierarchy
@@ -101,6 +105,8 @@ Main navigation:
 ```txt
 Home | About | Capabilities | Projects | Contact | Diskusikan Project
 ```
+
+This exact five-page navigation remains the protected v1 public baseline until an approved Retail/B2B information-architecture decision replaces it. Deferred Retail/B2B navigation visuals must not be treated as approval to silently change this v1 navigation.
 
 If the current implementation uses `Services`, rename or reposition it as **Capabilities**.
 

@@ -2,7 +2,10 @@
 
 **Website Niuva Inovasi Utama** _Company Profile & Lead Generation Website_ 
 
-**Draft v0.1** 
+Status: Historical Active Baseline
+Approval evidence: Not recorded
+Applicability: Public brand, company pages, portfolio, and lead generation
+Override rule: Approved v2.1 requirements win when conflicts exist
 
 Business Requirement Document (BRD) 
 
@@ -485,4 +488,3 @@ _**Website Niuva Inovasi Utama dibutuhkan sebagai aset bisnis digital untuk memb
 
 
 **Langkah berikutnya:** _Menyusun PRD (Product Requirement Document), yaitu menerjemahkan kebutuhan bisnis ini menjadi kebutuhan produk dan fitur website secara lebih konkret._ 
-
