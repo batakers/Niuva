@@ -10,13 +10,14 @@ capability foundation for transaction-required platform mutations.
 
 **Architecture:** Extend the existing asynchronous Motor integration with a read-only capability probe, a centralized transaction executor, and a thin mutation guard composed in `backend/server.py`. Keep liveness available when transaction capability is degraded, expose a separate safe readiness projection, and provide deterministic MongoDB 7 replica-set topology for local development and isolated CI without changing catalog or inventory business rules.
 
-**Tech Stack:** Python; FastAPI `0.110.1`; Motor `3.3.1`; PyMongo `4.6.3`; pytest `>=8.0.0`; pytest-xdist `>=3.6.0`; MongoDB `7`; Docker Compose; Windows PowerShell.
+**Tech Stack:** CPython `3.14.3`; FastAPI `0.110.1`; Motor `3.3.1`; PyMongo `4.6.3`; pytest `>=8.0.0`; pytest-xdist `>=3.6.0`; MongoDB `7`; Docker Compose; Windows PowerShell.
 
 ## Global Constraints
 
 - MongoDB replica-set multi-document transactions are required for cross-collection mutations that require atomicity.
 - Local mutation development uses a single-node replica set.
 - CI uses an isolated replica set.
+- The dedicated transaction CI job pins CPython `3.14.3`; it must not float to another patch release without new baseline evidence.
 - Staging and production require transaction capability before affected mutation functionality may be enabled.
 - Standalone MongoDB is permitted only for read-only behavior or operations proven safe as single-document atomic writes.
 - Transaction-required requests fail closed with `503 transaction_unavailable`.
@@ -40,7 +41,7 @@ capability foundation for transaction-required platform mutations.
 ### Verified baseline
 
 - Planning baseline is `origin/main` at `983d1206592b38989aafa8379e074db2f251f81e`; merged PR #3 and PR #4 are present and `92913ef74555ffe91b7383bed52965250e030cad` is an ancestor.
-- Backend setup used an isolated `backend/.venv` and the declared `backend/requirements.txt`. `python -m compileall -q backend` passed, `pip check` reported no broken requirements, and the complete backend suite reported `111 passed, 2 skipped`.
+- Backend setup used an isolated `backend/.venv` and the declared `backend/requirements.txt`. The environment reported CPython `3.14.3`, FastAPI `0.110.1`, Motor `3.3.1`, PyMongo `4.6.3`, and pytest `9.1.1`; `python -m compileall -q backend` passed, `pip check` reported no broken requirements, and the complete backend suite reported `111 passed, 2 skipped`. The official `actions/python-versions` manifest marks `3.14.3` stable and provides Linux x64 artifacts for Ubuntu 22.04 and 24.04.
 - Frontend setup used `npm ci` from `frontend/package-lock.json`. Jest reported `28 passed`, and `npm run build` compiled successfully.
 - `backend/tests/test_inventory_transactions.py` is skipped when `MONGO_TRANSACTION_TEST_URL` is absent (`backend/tests/test_inventory_transactions.py:6-12`). The verified planning environment had no such variable and the Docker daemon was unavailable, so the focused real-transaction run reported one skipped module. Task 6 closes this topology and CI evidence gap.
 
@@ -1515,7 +1516,7 @@ git commit -m "chore: configure local mongodb replica set"
 **Interfaces:**
 - Produces: ephemeral `rs-test` endpoint `mongodb://127.0.0.1:27018/?replicaSet=rs-test`; `transaction_database_name(request) -> str`; mandatory CI command for real probe/commit/abort tests.
 - Isolation: MongoDB data uses container `tmpfs`; every test database includes sanitized xdist worker ID plus UUID; every integration test drops only its generated database in `finally`.
-- CI boundary: no developer-local MongoDB is read. Missing `MONGO_TRANSACTION_TEST_URL` remains a local skip, but the dedicated workflow always defines it and must not use `continue-on-error`.
+- CI boundary: no developer-local MongoDB is read. The dedicated workflow pins CPython `3.14.3`, always defines `MONGO_TRANSACTION_TEST_URL`, and must not use `continue-on-error`. Missing `MONGO_TRANSACTION_TEST_URL` remains a local skip only.
 
 - [ ] **Step 1: Write the failing integration and topology tests**
 
@@ -1536,6 +1537,7 @@ def test_ci_replica_set_is_ephemeral_mandatory_and_isolated():
     assert "MONGO_TRANSACTION_TEST_URL" in workflow
     assert "test_transaction_integration.py" in workflow
     assert "test_inventory_transactions.py" in workflow
+    assert 'python-version: "3.14.3"' in workflow
     assert "continue-on-error" not in workflow
     assert "PYTEST_XDIST_WORKER" in fixture
     assert "uuid.uuid4" in fixture
@@ -1628,7 +1630,7 @@ def test_real_probe_commit_abort_and_cleanup(transaction_database_name):
 
 Run: `git diff -- backend/tests/conftest.py backend/tests/test_transaction_integration.py backend/tests/test_transaction_topology_files.py`
 
-Expected: unique worker/node/UUID database naming, real probe/commit/abort assertions, and `finally` cleanup are explicit.
+Expected: unique worker/node/UUID database naming, real probe/commit/abort assertions, `finally` cleanup, and the exact grounded CPython `3.14.3` CI pin are explicit.
 
 - [ ] **Step 3: Run the static focused test to verify RED**
 
@@ -1737,7 +1739,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.14.3"
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - name: Install backend dependencies
@@ -3009,7 +3011,7 @@ git commit -m "docs: finalize transaction verification and rollback"
 |---:|---|---:|---|---|---|
 | 1 | Capability is detected without business-data mutation | 1 | `backend/tests/test_database_capabilities.py` | `test_probe_proves_read_only_session_and_transaction_capability` | `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_database_capabilities.py::test_probe_proves_read_only_session_and_transaction_capability` |
 | 2 | Local mutation development uses a single-node replica set | 5 | `backend/tests/test_transaction_topology_files.py` | `test_local_replica_set_topology_is_persistent_and_non_destructive` | `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py::test_local_replica_set_topology_is_persistent_and_non_destructive` |
-| 3 | CI transaction tests use an isolated replica set | 6 | `backend/tests/test_transaction_topology_files.py` and `backend/tests/test_transaction_integration.py` | `test_ci_replica_set_is_ephemeral_mandatory_and_isolated`; `test_real_probe_commit_abort_and_cleanup` | `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py::test_ci_replica_set_is_ephemeral_mandatory_and_isolated backend\tests\test_transaction_integration.py::test_real_probe_commit_abort_and_cleanup` |
+| 3 | CI transaction tests use an isolated replica set on grounded CPython `3.14.3` | 6 | `backend/tests/test_transaction_topology_files.py` and `backend/tests/test_transaction_integration.py` | `test_ci_replica_set_is_ephemeral_mandatory_and_isolated`; `test_real_probe_commit_abort_and_cleanup` | `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py::test_ci_replica_set_is_ephemeral_mandatory_and_isolated backend\tests\test_transaction_integration.py::test_real_probe_commit_abort_and_cleanup` |
 | 4 | Unavailable transaction requests return `503 transaction_unavailable` | 3 | `backend/tests/test_transaction_error_contract.py` | `test_transaction_unavailable_response_uses_stable_existing_envelope` | `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_error_contract.py::test_transaction_unavailable_response_uses_stable_existing_envelope` |
 | 5 | No mutation callback executes after capability rejection | 2 | `backend/tests/test_transaction_execution.py` | `test_unavailable_capability_fails_closed_before_callback` | `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_execution.py::test_unavailable_capability_fails_closed_before_callback` |
 | 6 | No transaction-required write falls back to non-atomic behavior | 7 | `backend/tests/test_transaction_guard.py` | `test_runtime_disable_does_not_invoke_callback_or_fallback` | `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_guard.py::test_runtime_disable_does_not_invoke_callback_or_fallback` |
