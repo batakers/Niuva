@@ -1,77 +1,87 @@
 # Retail Order & Checkout Foundation — Design Spec
 
 Tanggal: 16 Juli 2026  
-Status: Technical design candidate — belum disetujui untuk implementasi
-Scope kandidat: Retail ready-stock, fixed-price, multi-item checkout, transfer manual; bukan keputusan platform-wide
+Status: Technical Design Candidate — not approved for implementation
+Scope kandidat: Retail ready-stock, fixed-price, guest-first checkout, authoritative server preview, atomic reservation, provider-neutral payment orchestration, dan customer-safe tracking; bukan implementation approval
+Approved architecture pointers:
+- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+- `doc/decisions/ADR-002-production-file-storage-architecture.md`
+- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+- `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 Dokumen ini merevisi candidate spec pada commit `a433141` berdasarkan review stakeholder. BRD/PRS v2.1, PRD v2.1, `PRODUCT.md`, `AGENTS.md`, dan keputusan stakeholder terbaru menjadi sumber kebenaran. Revision pass ini hanya mengubah dokumen desain; tidak ada production code yang diubah.
 
 ## 1. Tujuan dan Posisi Produk
 
-Membangun vertical slice commerce Retail yang menghubungkan katalog publik, harga fixed, inventory, reservasi stok, checkout guest, pembayaran transfer manual, dan tracking order dalam satu alur yang dapat diuji.
+Candidate ini mendefinisikan vertical slice commerce Retail yang menghubungkan active catalog publication, fixed-price authoritative snapshots, atomic inventory reservation, guest-first checkout, provider-neutral online-payment orchestration, dan customer-safe order tracking.
 
-Slice ini menjadi dasar untuk pembayaran online, konfigurasi custom, fulfillment, dan B2B tanpa mengubah histori order 3D-printing yang sudah ada. Dokumen ini tidak menggantikan jalur B2B: B2B tetap memakai capabilities, portfolio, consultation/inquiry, RFQ, quotation, approval, project, dan milestone.
+Online payment adalah Retail production target. Gateway provider tetap deferred, dan candidate ini tidak memilih provider, SDK, schema, webhook signature, atau provider-specific API. Existing legacy manual-transfer records tetap readable, tetapi manual transfer bukan production baseline dan tidak ada transitional adapter baru yang diaktifkan.
+
+Dokumen ini tidak menggantikan jalur B2B. Retail Order dan B2B Quote/Project tetap merupakan aggregate dan state machine terpisah walaupun menggunakan shared identity, catalog, inventory, payment infrastructure, audit, CMS, dan operational foundations.
 
 ### Posisi dalam satu website
 
-- Retail dan B2B berbagi brand, public website shell, CMS, katalog, inventory, produksi, pembayaran, shipment, notification, audit, dan Admin Studio.
-- Entry point dan conversion flow berbeda: Retail memakai katalog → cart → checkout → payment → order tracking; B2B memakai capability/portfolio → consultation atau project inquiry/RFQ → quotation → approval → project delivery.
-- Retail order adalah catatan transaksi standar. B2B project/quotation adalah catatan eksekusi kompleks dan governance; keduanya tidak dicampur menjadi satu checkout.
-- Public discovery untuk kedua journey wajib tersedia saat release. Visual redesign homepage tetap dapat deferred, tetapi route tidak boleh orphaned.
+- Retail dan B2B sama-sama harus discoverable.
+- Label, placement, ordering, serta visual switch treatment untuk journey Retail/B2B tetap deferred.
+- Exact v1 navigation tetap protected sampai approved Retail/B2B information-architecture decision menggantikannya.
+- Retail memakai catalog → cart → authoritative preview → checkout → provider-neutral payment → tracking.
+- B2B tetap memakai capability/portfolio → inquiry/RFQ → quotation → approval → project delivery.
 
 ## 2. Decision Gate dan Baseline Teknis
 
-### 2.1 Keputusan bisnis/product yang memerlukan konfirmasi stakeholder
+### 2.1 Candidate scope dan keputusan yang tetap open
 
-Technical brainstorming tidak boleh dianggap sebagai approval bisnis. Nilai di bawah adalah scope kandidat atau usulan operasional sampai stakeholder mengonfirmasi secara eksplisit.
+Status document ini tetap candidate dan tidak memberi implementation approval.
 
-| Keputusan | Kandidat untuk slice ini | Status |
+| Keputusan | Candidate / approved direction | Status |
 |---|---|---|
-| Produk dan pricing mode | `ready_stock` + `pricing_mode=fixed` | Requires stakeholder confirmation; tidak mengubah dukungan platform terhadap `calculated`/`quote_required` |
-| Keranjang | Multi-item; browser hanya menyimpan variant ID dan quantity | Requires stakeholder confirmation |
-| Checkout identity | Guest-first; tidak membangun customer auth baru | Requires stakeholder confirmation; reuse account yang sudah ada bila kontraknya terbukti |
-| Fulfillment | Pickup gratis dan shipping flat-rate | Requires stakeholder confirmation |
-| Wilayah/alamat shipping | Wilayah, field alamat minimum, dan unsupported-address behavior ditentukan bisnis | Requires stakeholder confirmation |
-| Pajak | Harga ditampilkan tax-inclusive tanpa baris pajak terpisah | Requires stakeholder confirmation/finance review |
-| Reservation | Durasi awal 24 jam | Requires stakeholder confirmation |
-| Pembayaran | Transfer manual + payment proof; gateway provider ditunda | Requires stakeholder confirmation dan finance approval |
-| Guest tracking | Magic-link email yang ditukar menjadi session order-scoped | Requires stakeholder confirmation dan kesiapan email boundary |
-| Payment review | SLA admin, review hold, grace period, dan absolute deadline | Requires stakeholder confirmation; usulan teknis ada di §7 |
-| Cancellation/refund/return | Operational handling wajib ada, customer-facing scope dapat ditunda | Requires stakeholder confirmation/finance policy |
+| Produk dan pricing mode | `ready_stock` + `pricing_mode=fixed` | Candidate initial slice; protected-scope permission tetap diperlukan |
+| Keranjang | Multi-item; browser hanya menyimpan variant ID dan quantity | Candidate; atomic multi-line reservation contract adalah foundation prerequisite |
+| Checkout identity | Guest-first; tidak membangun customer auth baru | Candidate; reuse account yang sudah ada bila contract-nya approved |
+| Checkout preview | Server authoritative untuk publication, price, stock, fulfillment input, dan total | Candidate invariant |
+| Fulfillment | Shipping dan pickup | Policy tetap open |
+| Pajak | Treatment dan display | Tetap open; memerlukan Finance decision |
+| Reservation duration | Tidak ditetapkan oleh candidate ini | Tetap open |
+| Payment architecture | Provider-neutral online-payment orchestration | Approved architecture direction melalui ADR-003; provider tetap deferred |
+| Manual transfer | Bukan Retail production baseline; tidak ada adapter baru yang enabled | Transitional adapter tetap open dan memerlukan written approval terpisah |
+| Cancellation/refund/return | Boundary wajib ada; policy detail belum dipilih | Tetap open |
+| Protected scope | Implementation permission | Tetap open |
 
 ### 2.2 Baseline teknis yang tetap berlaku
 
-- Backend authoritative untuk harga, publication revision, ketersediaan, total, dan status.
-- Line item serta pricing snapshot immutable setelah order dibuat.
-- Idempotency, conflict handling, audit, legacy compatibility, dan concurrency safety adalah invariant teknis.
-- Implementasi target tetap modular monolith React, FastAPI, dan MongoDB, dengan guard transaction capability.
-- Slice ini tidak mengunci provider payment gateway, courier, shipping zone, atau pola visual homepage.
+- Backend authoritative untuk active catalog publication, product/variant eligibility, price snapshot, availability, total, dan state.
+- Line item dan pricing snapshot immutable setelah order dibuat.
+- Checkout memakai inventory reservation service; checkout tidak langsung memutasi inventory balance, stock movement, atau reservation collections.
+- Foundation reservation lifecycle tetap `active → consumed | released | expired`. Payment review atau cancellation adalah order/payment state, bukan inventory reservation state baru.
+- Cross-collection checkout/order/reservation mutation mengikuti `doc/decisions/ADR-001-mongodb-transaction-capability.md`, fail closed dengan `503 transaction_unavailable`, dan tidak memiliki silent non-atomic fallback.
+- Upload-dependent flows mengikuti `doc/decisions/ADR-002-production-file-storage-architecture.md`; production upload tetap blocked sampai readiness conditions disetujui.
+- Payment lifecycle mengikuti `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`: core provider-neutral, adapter terpisah, event/webhook idempotent, serta refund/reconciliation boundary eksplisit.
+- Idempotency, conflict handling, audit, legacy compatibility, customer-safe projection, dan concurrency safety tetap invariant.
 
 ## 3. Batas Scope
 
-### Termasuk
+### Termasuk dalam candidate
 
-- Public Retail catalog dan product detail untuk variant yang lolos publication dan fixed ready-stock policy.
+- Public Retail catalog dan product detail untuk variant pada active publication yang memenuhi fixed-price ready-stock policy.
 - Cart lokal multi-item.
-- Guest-first checkout. Customer account path hanya memakai identity/account contract yang sudah ada; pembuatan auth customer baru tidak termasuk.
-- Snapshot harga dan katalog pada order.
-- Pickup atau flat-rate shipping setelah wilayah dan tarif disetujui.
-- Atomic inventory reservation untuk seluruh line item bila MongoDB transaction capability tersedia.
-- Manual transfer instructions dan payment-proof upload sebagai baseline provider-neutral.
-- Guest tracking session dan customer tracking dengan customer-safe projection.
-- Admin order/payment verification, reconciliation queue, dan permitted fulfillment transition.
-- Customer-safe milestone tracking, audit, idempotency, expiry, conflict, dan retry handling.
+- Guest-first checkout dan authoritative server checkout preview.
+- Immutable product, variant, publication, dan pricing snapshots pada order.
+- Atomic reservation untuk seluruh line item melalui inventory reservation service.
+- Provider-neutral payment orchestration boundary, idempotent provider-event handling contract, refund/reconciliation boundary, dan customer-safe payment projection.
+- Guest/customer-safe tracking serta permitted fulfillment transition.
+- Audit, idempotency, expiry, conflict, retry, dan legacy compatibility.
 
-### Tidak termasuk
+### Tidak termasuk atau belum enabled
 
-- Produk `calculated` atau `quote_required` dalam checkout langsung; konfigurasi kompleks dialihkan ke quote flow pada slice berikutnya.
-- Custom configuration atau file upload pada checkout Retail ready-stock.
-- Payment gateway online, webhook provider, atau automatic courier integration.
-- Live shipping rate, courier label, resi otomatis, atau shipping zone policy yang belum disetujui.
-- B2B quotation, organization approval, atau project workflow.
+- Produk `calculated` atau `quote_required` dalam direct checkout.
+- Custom configuration atau design-file upload pada ready-stock checkout.
+- Provider selection atau provider-specific SDK, schema, webhook signature, dan API.
+- New manual-transfer adapter, payment-proof upload pada primary production path, atau manual-payment review flow.
+- Live shipping rate, courier integration, shipping-zone policy, tax policy, reservation duration, cancellation/refund/return policy, atau production go-live.
 - Supplier purchase automation.
+- B2B quotation, organization approval, atau project workflow.
 - Pembuatan customer authentication baru.
-- Visual redesign homepage yang masih deferred; namun minimum discovery integration pada §11 tetap wajib sebelum release.
+- Homepage/navigation visual redesign atau perubahan terhadap protected exact v1 navigation.
 
 ### Protected-scope approval
 
@@ -81,11 +91,10 @@ Implementasi Retail memerlukan izin eksplisit sebelum menyentuh:
 - inventory reservation serta release/consume operation;
 - backend route/service/repository dan API lama;
 - authentication, customer access, dan guest session;
-- admin order view, payment verification, reconciliation, dan refund operation;
+- admin order view, payment, reconciliation, dan refund operation;
 - dashboard, fulfillment, production, notification, atau operational flow terkait.
 
-Existing 3D-printing orders, auth flow, dashboard, dan API lama harus tetap backward compatible. Tidak ada perubahan pada area protected dalam revision pass ini.
-
+Existing 3D-printing orders, auth flow, dashboard, dan API lama harus tetap backward compatible. Tidak ada perubahan pada area protected dalam synchronization pass ini.
 
 ## 4. Arsitektur
 
@@ -94,13 +103,13 @@ Fitur menggunakan modular monolith. Route hanya memvalidasi request dan mengemba
 ### Backend modules
 
 - `backend/retail_checkout_routes.py`: endpoint public/customer/guest/admin dan Pydantic payload.
-- `backend/retail_checkout_service.py`: preview, checkout transaction, state transition, expiry, payment proof, reconciliation, dan idempotency.
-- `backend/retail_checkout_repository.py`: query order, catalog publication, inventory balance, reservation, payment attempt, shipping config, dan guest session.
+- `backend/retail_checkout_service.py`: preview, checkout orchestration, order/payment state transition, expiry, reconciliation, dan idempotency.
+- `backend/retail_checkout_repository.py`: query order, active catalog publication, authoritative pricing snapshot, payment attempt, fulfillment config, dan guest session. Inventory mutation tetap melalui foundation reservation service.
 - `backend/retail_checkout_domain.py`: fungsi murni untuk validasi cart, snapshot, subtotal, ongkir, total, expiry, exception projection, dan status transition.
 - `backend/retail_checkout_indexes.py`: index order, idempotency, payment, reconciliation, dan guest-session.
 - `backend/server.py`: hanya memasang router dan dependency yang sudah ada.
 
-Perubahan tidak merombak modul katalog, material, atau inventory yang sudah merged. Service checkout memanggil kontrak inventory/reservation yang sudah ada dan mengembalikan `503 transaction_unavailable` bila mutation transaction tidak dapat dijamin.
+Perubahan tidak merombak foundation catalog, material, atau inventory. Checkout membaca active catalog publication, memakai authoritative product/variant pricing snapshots, dan memanggil inventory reservation service. Checkout tidak langsung memutasi inventory balance, stock movement, atau reservation collections. Jika atomic multi-line reservation contract belum tersedia, contract tersebut dicatat sebagai foundation prerequisite dan tidak didefinisikan ulang di candidate ini. Missing transaction capability mengembalikan `503 transaction_unavailable` tanpa silent fallback.
 
 ### Frontend modules
 
@@ -108,28 +117,28 @@ Perubahan tidak merombak modul katalog, material, atau inventory yang sudah merg
 - `frontend/src/pages/retail/RetailProduct.jsx`: detail, varian, availability, dan add-to-cart.
 - `frontend/src/pages/retail/RetailCart.jsx`: cart localStorage.
 - `frontend/src/pages/retail/RetailCheckout.jsx`: kontak, fulfillment, preview, dan submit.
-- `frontend/src/pages/retail/RetailTracking.jsx`: tracking customer/guest, payment proof, dan exception message.
+- `frontend/src/pages/retail/RetailTracking.jsx`: customer-safe tracking, payment state/action, reconciliation guidance, dan exception message.
 - `frontend/src/lib/retailCart.js`: validasi, normalisasi, add/update/remove, dan migration key cart.
 - `frontend/src/lib/retailCheckout.js`: API adapter dan response mapping.
 
-Route public baru harus dipasang di public navigation dengan feature flag; pemasangan route tidak memilih pola homepage yang masih deferred.
+Retail dan B2B harus sama-sama discoverable, tetapi candidate ini tidak mengunci label, placement, ordering, atau visual switch treatment. Exact v1 navigation tetap protected sampai approved Retail/B2B IA decision menggantikannya.
 
 ## 5. Alur Data
 
 ```text
-Public catalog
+active catalog publication
   → local cart (variant_id, quantity)
-  → checkout preview + shipping validation
-  → server revalidation
-  → transaction: order + line snapshots + reservations
-  → payment instructions + guest magic-link dispatch
-  → payment proof
-  → payment review or reconciliation queue
-  → admin verification / exception resolution
-  → processing / QC / ready / completed or after-sales exception
+  → authoritative server checkout preview
+  → server revalidation of publication, price, and availability
+  → ADR-001 transaction: order + immutable line snapshots
+  → atomic multi-line reservation service contract
+  → provider-neutral payment action/state
+  → idempotent provider event or customer retry
+  → paid | failed | expired | reconciliation | refund boundary
+  → customer-safe tracking and fulfillment
 ```
 
-Browser tidak pernah menjadi sumber kebenaran untuk harga, stok, publication revision, total, shipping config revision, atau order status.
+Browser tidak pernah menjadi sumber kebenaran untuk harga, stok, publication revision, total, payment state, atau order status. Provider-specific details remain inside a future adapter and are not defined by this candidate.
 
 ## 6. Model Data
 
@@ -182,9 +191,6 @@ Collection lama tetap dipakai. Order baru memiliki field berikut:
   },
   "status": "awaiting_payment",
   "reservation_expires_at": "2026-07-17T12:00:00Z",
-  "payment_review_expires_at": null,
-  "absolute_payment_deadline_at": "2026-07-18T12:00:00Z",
-  "payment_attempt_count": 0,
   "milestones": [],
   "status_history": [],
   "created_at": "...",
@@ -196,39 +202,43 @@ Line items, publication revision, shipping fee, dan pricing snapshot immutable. 
 
 `customer_id` hanya diisi bila customer account contract yang sudah ada digunakan. Guest tetap `null`. Existing legacy orders keep their current shape and are read through a compatibility projection.
 
-### 6.2 `inventory_reservations`
+### 6.2 Foundation reservation contract
 
-Setiap line item memiliki satu reservation reference:
+Checkout calls the inventory reservation service and stores only the returned reservation references on the order boundary. It does not directly write inventory balance, immutable movement, or reservation collections.
 
-- `reference_type=retail_order`.
-- `reference_id=order.id`.
-- `subject_type=product_variant`.
-- `subject_id=variant.id`.
-- `quantity` sebagai normalized Decimal string.
-- `status`: `active`, `payment_review`, `consumed`, `released`, `expired`, atau `cancelled`.
-- `expires_at`, `created_at`, `updated_at`, dan operation metadata.
+The foundation lifecycle remains:
 
-Checkout menulis semua reservation atomically. Jika satu line tidak cukup, tidak ada order/reservation partial yang boleh tersimpan.
+```text
+active → consumed
+active → released
+active → expired
+```
 
-### 6.3 `payment_attempts`
+Payment review, reconciliation, cancellation, and refund remain order/payment states. They must not introduce new inventory reservation states. The multi-line reservation operation is atomic: if one line cannot be reserved, neither the order nor any partial reservation is committed. If this service contract does not yet exist, it is a foundation prerequisite rather than a checkout-owned inventory redesign.
 
-Payment proofs adalah append-only records:
+### 6.3 Provider-neutral `payment_attempts`
 
-- `id`, `order_id`, `proof` metadata, `submitted_at`.
-- `status`: `pending_review`, `verified`, `rejected`, `needs_reconciliation`, `duplicate`, atau `expired`.
-- `reviewed_by`, `reviewed_at`, `rejection_reason`.
-- `audit_reference`, `notification_state`, dan idempotency/reference metadata.
+The core payment attempt stores provider-neutral data only:
 
-Existing embedded payment fields tetap readable untuk legacy orders.
+- order reference, authoritative amount/currency snapshot, and idempotency key;
+- safe correlation reference and adapter reference without exposing provider secrets;
+- customer action requirement in provider-neutral form;
+- lifecycle state such as pending, processing, succeeded, failed, expired, cancelled, review, refunded, or reconciliation as approved later;
+- provider-event deduplication reference;
+- customer-safe projection, audit reference, and notification state.
+
+Provider credentials, raw payloads, vendor field names, signature details, and provider retry semantics stay inside a separate adapter. Exact provider schema and state-machine detail remain open.
+
+Existing embedded/manual-transfer payment records and payment-proof metadata remain readable through legacy compatibility. No new proof upload or transitional manual-transfer adapter is enabled by this candidate.
 
 ### 6.4 `payment_reconciliation_cases`
 
-Operational queue untuk pembayaran yang tidak dapat diverifikasi langsung:
+Reconciliation is an explicit provider-neutral boundary for conflicting, duplicate, late, uncertain, underpaid, overpaid, or otherwise unresolved payment outcomes.
 
-- `id`, `order_id`, `payment_attempt_id`, `reason_code`, `status`, `owner_role`, `notes`, `created_at`, `updated_at`.
-- `reason_code`: `underpaid`, `overpaid`, `duplicate_proof`, `late_payment`, `wrong_destination`, `sender_mismatch`, atau `needs_clarification`.
-- `status`: `open`, `awaiting_customer`, `awaiting_finance`, `resolved`, atau `closed`.
-- Resolution wajib menyimpan actor, waktu, keputusan, nominal yang diakui, dan audit reference.
+- Resolution stores actor, time, reason, recognized amount, result, and audit reference.
+- Replayed provider events do not create duplicate cases or repeat order, inventory, refund, or notification effects.
+- Finance policy, owner, SLA, and exact reason taxonomy remain open.
+- Manual-proof-specific reconciliation applies only to readable legacy records or a future separately approved transitional adapter.
 
 ### 6.5 `refund_records`
 
@@ -280,83 +290,50 @@ Indexes ditambahkan melalui existing startup/migration mechanism dan diverifikas
 
 ## 7. Order, Payment, dan Reservation Lifecycle
 
-### 7.1 Customer-facing projection
+### 7.1 Customer-safe projection
 
 ```text
 awaiting_payment
-→ payment_review
+→ payment_pending | payment_processing
 → paid
 → processing
 → ready_for_pickup | ready_to_ship
 → completed
 ```
 
-Exception projection:
+Failure, expiry, cancellation, reconciliation, refund, hold, and fulfillment exceptions use customer-safe states and next actions. Raw provider payloads, internal Finance notes, credentials, and sensitive reconciliation details are never exposed.
 
-```text
-awaiting_payment → expired | cancelled
-payment_review → awaiting_payment | payment_reconciliation
-paid/processing → on_hold | fulfilment_exception | cancelled
-ready_for_pickup → pickup_expired | completed
-ready_to_ship → shipping_exception | completed
-cancelled/fulfilment_exception → refund_pending → refunded
-```
+### 7.2 Reservation lifecycle and transaction gate
 
-Internal state boleh lebih rinci, tetapi customer hanya menerima state dan next action yang aman.
+- Reservation duration remains an open decision and is not fixed by this candidate.
+- Checkout creates the order and all line-item reservations through the foundation multi-line reservation service within the ADR-001 transaction boundary.
+- Missing transaction capability returns `503 transaction_unavailable`; no order or partial reservation is treated as successful.
+- Silent fallback to non-atomic writes is prohibited.
+- Payment success may consume or retain the active reservation according to the later-approved fulfillment contract; cancellation or expiry releases it exactly once.
+- Payment review, reconciliation, refund, and cancellation do not create additional inventory reservation states.
 
-### 7.2 Bounded payment hold
+### 7.3 Provider events, refund, and reconciliation
 
-Angka berikut adalah **usulan baseline teknis yang memerlukan konfirmasi stakeholder**, bukan business approval:
+- Provider events/webhooks require stable deduplication identity and idempotent handling.
+- Replayed events return the prior result and do not duplicate payment, order, inventory, refund, or notification effects.
+- Refund is a separate idempotent boundary with permission, actor, time, reason, amount, and result.
+- Conflicting or uncertain payment outcomes enter reconciliation without silently changing inventory or customer-visible paid state.
+- Notification failure does not roll back an otherwise successful core payment transition.
+- Exact payment state machine, event retention, webhook authentication, Finance operations, reconciliation SLA, and refund policy remain open.
 
-| Parameter | Usulan baseline | Aturan |
-|---|---:|---|
-| Initial reservation | 24 jam sejak checkout | Expire bila tidak ada proof yang diterima |
-| `payment_review_expires_at` | 12 jam sejak proof diterima | Review hold tidak boleh melewati absolute deadline |
-| Absolute payment deadline | 48 jam sejak checkout | Setelah ini proof baru masuk reconciliation, tidak otomatis menghidupkan reservation |
-| Maksimal payment attempt | 3 attempt per order | Attempt ke-4 ditolak dan diarahkan ke finance queue |
-| Grace period setelah rejection | 6 jam | Tidak me-reset 24 jam; tetap dibatasi absolute deadline |
-| Admin extension | Satu kali, maksimal 24 jam | Wajib role/permission, alasan, actor, dan audit; tidak otomatis |
-| Review SLA | Maksimal 1 hari kerja | Pelanggaran SLA masuk at-risk queue/notification |
+### 7.4 Manual-transfer policy
 
-Aturan mutasi:
+- Manual transfer is not the Retail production baseline.
+- Existing legacy manual-transfer records and proof metadata remain readable.
+- No new transitional manual-transfer adapter or payment-proof upload is enabled.
+- Payment proof is not part of the primary production path.
+- A future transitional adapter requires a separate written decision, Finance owner, feature flag, SLA, expiry date, exit criteria, approved production storage, refund and late-payment handling, audit, and rollback controls.
 
-1. Checkout membuat order dan seluruh reservation dalam satu MongoDB transaction capability check.
-2. Proof yang diterima sebelum initial expiry mengubah order ke `payment_review`, reservation ke `payment_review`, dan mengisi `payment_review_expires_at`.
-3. Rejected proof mengembalikan `awaiting_payment` dengan grace period tersisa; tidak pernah memberikan reset 24 jam berulang.
-4. Review hold atau absolute deadline yang lewat me-release seluruh reservation tepat satu kali.
-5. Verified payment mempertahankan reservation sampai fulfillment consume.
-6. Admin extension memperpanjang deadline yang tercatat, bukan menghapus expiry.
-7. Retry dengan idempotency key yang sama mengembalikan hasil lama; payload berbeda mengembalikan `409 idempotency_conflict`.
+### 7.5 Fulfillment and after-sales boundary
 
-### 7.3 Payment exception dan reconciliation
+Shipping/pickup, cancellation, refund, return, pickup grace, and fulfillment-exception policies remain open. The candidate requires explicit order/payment boundaries and auditable customer-safe projections without selecting the final policy.
 
-| Kondisi | State awal | Penanganan minimum |
-|---|---|---|
-| Transfer kurang | `needs_reconciliation` | Finance menandai nominal diterima, minta pelunasan atau cancel/refund; tidak boleh auto-verify penuh |
-| Transfer lebih | `needs_reconciliation` | Finance memilih credit, refund selisih, atau klarifikasi; simpan keputusan dan nominal |
-| Bukti duplikat | `duplicate` | Link ke attempt canonical; tidak membuat reservation/payment operation baru |
-| Pembayaran setelah order expired | `expired` + reconciliation case | Jangan re-reserve otomatis; finance memilih refund atau order recreation dengan audit |
-| Rekening tujuan salah | `needs_reconciliation` | Finance mengonfirmasi dana; order tidak dianggap paid sebelum keputusan |
-| Nama pengirim berbeda | `needs_reconciliation` | Minta klarifikasi atau verifikasi manual; customer response tidak membuka data internal |
-| Bukti tidak jelas | `awaiting_customer`/`needs_reconciliation` | Minta upload ulang atau klarifikasi; attempt tetap append-only |
-
-Notification failure tidak me-roll back order/payment record. Queue reconciliation memiliki retry dan idempotency sendiri.
-
-### 7.4 Fulfillment dan after-sales exception
-
-| Kondisi | Operational handling | Customer projection |
-|---|---|---|
-| Cancellation sebelum paid | Release reservation tepat satu kali; tutup order | `cancelled` |
-| Cancellation setelah paid | Hold fulfillment, buat refund case sesuai policy, audit actor/reason | `cancelled` → `refund_pending` |
-| Refund | Finance approval dan idempotent refund record | `refund_pending`/`refunded` |
-| Pickup tidak diambil | Set pickup grace policy; setelah lewat pindah ke `pickup_expired` dan buat queue follow-up | `pickup_expired` |
-| Shipping exception | Set `shipping_exception`, simpan carrier/manual note, retry atau return-to-origin decision | `shipping_exception` |
-| Barang rusak atau stok tidak terpenuhi setelah paid | `fulfilment_exception`, manager decision untuk replacement/refund, audit | `on_hold`/`refund_pending` |
-| Admin salah verifikasi | Reopen reconciliation/verification case; reversal tidak menghapus history; manager approval untuk correction | Status aman sesuai hasil koreksi |
-
-Cancellation, refund, return, pickup grace, dan shipping exception policy masih memerlukan konfirmasi stakeholder/finance. Operational queue tetap wajib ada sebelum real checkout traffic.
-
-## 8. API Contract
+## 8. Candidate Core API Boundary
 
 ### Customer/public
 
@@ -366,30 +343,31 @@ GET  /api/catalog/products/{slug}
 POST /api/retail/checkout/preview
 POST /api/retail/orders
 GET  /api/retail/orders/{order_id}
-POST /api/retail/orders/{order_id}/payment-proof
 POST /api/retail/guest-sessions/exchange
 ```
 
-`checkout/preview` menerima variant IDs, quantities, fulfillment method, dan address bila shipping dipilih. Response authoritative mencakup snapshot, item subtotal, shipping fee, tax-included indicator, shipping config revision, grand total, conflict code bila ada, dan preview timestamp. Preview tidak me-reserve stock.
+`checkout/preview` accepts variant IDs, quantities, and only the fulfillment inputs permitted by the later-approved policy. The response is authoritative for active publication, product/variant eligibility, price snapshot, availability, total, conflicts, and preview time. Preview does not reserve stock.
 
-`POST /api/retail/orders` membutuhkan `Idempotency-Key`, contact data, line items, fulfillment data, dan optional customer bearer token hanya bila account contract yang ada dipakai. Endpoint me-revalidate semua nilai, membuat order/reservations transactionally, dan mengembalikan order summary, payment instructions, serta dispatch status tanpa menampilkan internal data.
+`POST /api/retail/orders` revalidates every authoritative value and invokes the atomic multi-line reservation service inside the ADR-001 transaction boundary. It returns customer-safe order and provider-neutral payment action/state data.
 
-Guest order lookup tidak boleh menggunakan email saja. Guest harus menukar magic token menjadi order-scoped session.
+Guest order lookup never uses email alone. A guest exchanges a short-lived magic token for an order-scoped session.
 
-### Admin
+### Payment adapter boundary
+
+No provider-specific endpoint, SDK, schema, webhook signature, or API is selected by this candidate. A future provider adapter translates external payment actions/events into the provider-neutral core lifecycle and idempotency contract. Gateway selection and activation remain separate decisions.
+
+Payment-proof upload is absent from the primary API boundary. Legacy proof records remain readable; a new proof endpoint requires a separately approved transitional adapter and ADR-002 production storage readiness.
+
+### Admin API boundary
 
 ```text
 GET  /api/admin/retail/orders
-POST /api/admin/retail/orders/{id}/payment/verify
-POST /api/admin/retail/orders/{id}/payment/reject
 POST /api/admin/retail/orders/{id}/payment/reconcile
 POST /api/admin/retail/orders/{id}/refund
 POST /api/admin/retail/orders/{id}/status
-GET  /api/admin/retail/shipping-config
-PUT  /api/admin/retail/shipping-config
 ```
 
-Admin transitions memerlukan permission yang sesuai, memvalidasi allowed state transition, menulis audit event, dan tidak mengubah immutable line/pricing snapshot. Refund, payment reconciliation, shipping config, dan correction mengikuti least privilege/manager approval.
+Admin transitions require least privilege, allowed-state validation, audit, and immutable commercial snapshots. Exact Finance operations, reconciliation SLA, refund policy, and provider operations remain open and are not approved by these candidate routes.
 
 ## 9. Customer Authentication dan Security
 
@@ -403,57 +381,44 @@ Admin transitions memerlukan permission yang sesuai, memvalidasi allowed state t
 
 ### Security/privacy
 
-- Pydantic payloads reject unknown fields dan validate email, quantity, fulfillment method, shipping address, serta proof metadata.
+- Pydantic payloads reject unknown fields and validate email, quantity, permitted fulfillment inputs, and provider-neutral payment action/state inputs.
 - Hanya published, active, retail-enabled, fixed-price, ready-stock variants yang boleh masuk checkout slice.
 - Exact internal stock, material cost, supplier, margin, planned demand, profit, dan internal notes tidak pernah muncul pada customer response.
 - Customer APIs enforce `customer_id` ownership; guest APIs enforce order-scoped session ownership.
 - Magic links adalah hashed, short-lived, single-use exchange credentials dan tidak dipakai sebagai bearer URL berulang.
 - Guest session HttpOnly, Secure in production, SameSite, order-scoped, dan dilindungi dari CSRF/origin abuse.
-- Payment proof memakai existing validated local storage boundary dan controlled download headers.
-- Rate limits berlaku untuk checkout, magic-link issuance, token exchange, proof upload, dan reconciliation-sensitive actions.
+- ADR-002 applies to design files and every upload-dependent flow. Payment proof remains legacy-readable only and cannot be enabled for new production orders without a separately approved transitional adapter and production storage readiness.
+- Rate limits apply to checkout, magic-link issuance, token exchange, payment retries, and reconciliation-sensitive actions.
 - Sensitive events mencatat actor, timestamp, target, before/after, reason, dan correlation/idempotency reference.
 
 
-## 10. UX dan Admin States
+## 10. Customer and Admin States
 
 ### Customer
 
-- `/shop`: product list, category filter, public stock status, dan entry yang jelas ke Retail.
-- `/shop/:slug`: variant selection, fixed price, availability, dan add-to-cart.
-- `/cart`: multi-item cart, quantity changes, remove, dan stale-data warning.
-- `/checkout`: guest contact, pickup/shipping, address, flat fee, tax-inclusive total, shipping unsupported state, dan consent.
-- `/track`: milestone timeline, payment state, ETA, next action, upload proof, reconciliation instruction, pickup/shipping status, dan exception-safe message.
+- Product discovery shows only active-publication, fixed-price, ready-stock variants eligible for this candidate.
+- Cart and checkout handle loading, empty, validation, stale publication/price, stock conflict, retry, and transaction-unavailable states.
+- Checkout preview remains server-authoritative.
+- Tracking shows customer-safe order, provider-neutral payment state/action, reconciliation guidance, milestone, ETA, fulfillment, and exception states.
+- Payment-proof upload is not part of the primary production experience.
 
-Setiap page menangani loading, empty, validation, server error, retry, price conflict, stock conflict, shipping quote conflict, reservation expiry, reconciliation, dan permission/session expiry.
+### Admin states
 
-### Admin
+Admin order detail may show immutable line/pricing snapshots, reservation references, customer-safe payment state, reconciliation cases, refund records, status history, and audit events according to role. UI controls are not an authorization boundary. Exact Finance/payment operations remain open.
 
-Admin order detail menampilkan line snapshots, reservation state, deadline/hold, payment attempts, reconciliation cases, refund records, status history, dan audit events. Finance dapat verify/reject/reconcile/refund sesuai policy; Warehouse dapat mengelola fulfillment; Order Admin dapat mengelola permitted status transitions. UI controls bukan authorization boundary; backend permissions wajib.
+## 11. Feature Flags and Public Discovery
 
-## 11. Feature Flag dan Public Discovery
+Candidate feature flags remain provider-neutral:
 
-Feature flags minimum:
+- `RETAIL_CATALOG_ENABLED` — read-only catalog discovery.
+- `RETAIL_CART_ENABLED` — local cart.
+- `RETAIL_CHECKOUT_ENABLED` — authoritative preview and protected order/reservation mutation.
+- `RETAIL_PAYMENT_ENABLED` — provider-neutral payment orchestration only after dependencies and provider activation are approved.
+- `RETAIL_ADMIN_ENABLED` — permitted Retail operations.
 
-- `RETAIL_CATALOG_ENABLED` — mengaktifkan public catalog.
-- `RETAIL_CART_ENABLED` — mengaktifkan local cart.
-- `RETAIL_CHECKOUT_ENABLED` — mengaktifkan preview/order mutation.
-- `RETAIL_PAYMENT_PROOF_ENABLED` — mengaktifkan upload dan review proof.
-- `RETAIL_ADMIN_ENABLED` — mengaktifkan admin Retail operations.
+Disabling mutation flags must preserve readable order, reservation, payment, audit, and tracking history.
 
-Rollout bertahap dimulai dari read-only catalog. Bila checkout dinonaktifkan:
-
-- katalog boleh tetap tersedia;
-- order yang sudah dibuat tetap dapat dilacak;
-- admin tetap dapat menyelesaikan order aktif melalui controlled operational path;
-- order, reservation, payment history, dan audit data tidak dihapus.
-
-Minimum public discovery requirement sebelum production release:
-
-- entry `Retail/Shop` pada navigasi;
-- entry `For Business` atau B2B;
-- CTA Retail dan B2B yang berbeda;
-- link Retail support di Footer;
-- `/shop` tidak orphaned walaupun homepage visual pattern masih deferred.
+Retail and B2B must both remain discoverable, but this candidate does not lock the labels `Retail/Shop`, `For Business`, placement, ordering, or visual switch treatment. Exact v1 navigation remains protected until an approved Retail/B2B information-architecture decision replaces it. New routes must not become orphaned, and no homepage/navigation pattern is selected here.
 
 ## 12. Migration dan Compatibility
 
@@ -467,45 +432,74 @@ Minimum public discovery requirement sebelum production release:
 
 ## 13. Testing dan Acceptance
 
-### Backend
+### Backend and integration
 
-- Unit test cart normalization, price snapshot, flat shipping, tax-inclusive total, shipping region validation, deadline calculation, token hashing, exception projection, dan state transitions.
-- Integration test successful checkout, stale price, unavailable product, insufficient stock, shipping quote conflict, duplicate idempotency, reservation release, payment rejection, payment hold expiry, max attempts, reconciliation cases, refund idempotency, guest session ownership, customer projection, dan feature flags.
-- Concurrency test dua checkout yang berebut unit terakhir; hanya satu atomic reservation berhasil.
-- Migration/index test memverifikasi unique keys dan mempertahankan legacy orders.
-- Regression test memastikan existing order/auth/admin APIs tidak berubah secara breaking.
+- Authoritative preview rejects stale publication, price, availability, and disallowed fulfillment inputs.
+- Checkout calls the foundation atomic multi-line reservation contract and never writes inventory collections directly.
+- Missing transaction capability returns `503 transaction_unavailable` without partial order/reservation data or fallback.
+- Concurrency test for the final available unit allows only one successful reservation.
+- Provider-event replay is idempotent and does not duplicate order, inventory, refund, reconciliation, or notification effects.
+- Customer projections exclude provider secrets, raw events, internal stock, supplier, cost, margin, profit, and Finance notes.
+- Legacy manual-transfer orders/proofs remain readable without enabling a new proof flow.
+- Upload-dependent tests remain blocked from production assumptions until ADR-002 readiness is approved.
+- Existing order/auth/admin compatibility tests remain green.
 
-### Frontend
+### Customer experience
 
-- Cart add/update/remove dan localStorage migration.
-- Preview dan checkout success/error/conflict paths.
-- Pickup/shipping address validation dan unsupported-region state.
-- Reservation timer, payment-review deadline, stale-price/stock conflict, dan retry.
-- Guest tracking exchange, proof upload, reconciliation instruction, milestone, refund-pending, pickup-expired, dan shipping-exception states.
-- Feature-flag rollout dan public navigation/orphan route check.
+- Guest-first cart, preview, checkout, and tracking handle loading, empty, validation, conflict, retry, permission/session expiry, and `transaction_unavailable` states.
+- Payment UI consumes provider-neutral action/state and does not assume a gateway vendor.
+- Tracking shows customer-safe payment, reconciliation, refund, fulfillment, milestone, and next-action states.
+- Retail and B2B discovery can be tested without asserting deferred labels, placement, order, or visual treatment.
 
-### Acceptance criteria untuk slice kandidat
+### Acceptance criteria untuk candidate
 
-- Guest dapat memilih beberapa fixed-price ready-stock variants, preview total authoritative, dan membuat satu order setelah keputusan bisnis terkait dikonfirmasi.
-- Checkout me-reserve seluruh stock secara atomic atau mengembalikan conflict yang jelas tanpa partial data.
-- Price, stock, publication revision, dan shipping config direvalidasi server-side saat order creation.
-- Pickup/shipping hanya tersedia sesuai policy wilayah dan tarif yang dikonfirmasi.
-- Payment proof membuat payment attempt yang dapat direview, tetapi tidak menghentikan expiry tanpa batas.
-- Under/overpayment, duplicate proof, late payment, wrong destination, sender mismatch, dan unclear proof masuk reconciliation path yang dapat diaudit.
-- Guest tracking tidak pernah membuka order lain dan raw magic token tidak tersisa di final URL.
-- Customer responses tidak mengandung internal stock, supplier, cost, margin, profit, atau audit data.
-- Retry tidak membuat duplicate order, reservation, payment attempt, refund, reconciliation case, atau notification record.
-- Cancellation, refund, pickup, shipping, dan paid-fulfillment exception memiliki operational handling meskipun sebagian customer-facing action deferred.
-- Existing legacy order/auth/admin tests tetap green.
-
+- Candidate remains not approved for implementation.
+- Guest can preview fixed-price ready-stock items using an authoritative server response.
+- Order creation and every line-item reservation succeed atomically or fail without partial writes.
+- Active catalog publication and authoritative product/variant pricing snapshots are reused.
+- Foundation reservation lifecycle remains `active → consumed | released | expired`.
+- Provider-neutral payment lifecycle, adapter separation, idempotent events, refund/reconciliation boundary, and customer-safe projection are preserved.
+- No provider-specific SDK, schema, webhook signature, or API is selected.
+- No new manual-transfer adapter or payment-proof production path is enabled.
+- Retail Order and B2B Quote/Project remain separate aggregates and state machines.
+- All listed business, provider, storage, protected-scope, and readiness decisions remain open.
 
 ## 14. Operational Constraints dan Deferred Decisions
 
-- Checkout/reservation mutation membutuhkan MongoDB transaction capability. Standalone MongoDB dapat melayani read-only/public catalog tetapi mengembalikan controlled `503 transaction_unavailable` untuk checkout mutation.
-- Email delivery menggunakan existing emailer boundary; notification failure di-retry dan tidak me-roll back core order creation.
-- Payment gateway provider, courier provider, shipping zones, customer account contract detail, payment SLA, cancellation/refund/return policy, pickup grace, dan homepage visual navigation tetap deferred sampai stakeholder approval.
-- Production local-file storage tetap membutuhkan persistent volume, backup, retention, dan recovery policy sebelum go-live.
-- Operational monitoring minimum: checkout conflict rate, reservation expiry/release, payment review age, reconciliation queue age, refund failure, notification failure, dan feature-flag state.
+### Transaction gate — `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+
+- Checkout/order/reservation cross-collection mutation requires replica-set transaction capability.
+- Local mutation development uses a single-node replica set; CI uses an isolated replica set; staging/production require capability before affected mutation flags.
+- Standalone MongoDB is limited to read-only or proven-safe single-document atomic operations.
+- Missing capability returns `503 transaction_unavailable`; silent non-atomic fallback is prohibited.
+
+### Storage gate — `doc/decisions/ADR-002-production-file-storage-architecture.md`
+
+- ADR-002 applies to design files and every upload-dependent flow.
+- Production upload remains blocked by provider, authorization/ownership, validation, malware/quarantine, backup/restore, reconciliation, ownership, and readiness conditions.
+- Manual payment proof cannot be enabled without a separately approved transitional adapter and approved production storage.
+- Local development storage does not satisfy production persistence.
+
+### Payment gate — `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+
+- Online payment remains the Retail production target.
+- Provider-neutral core, separate adapters, idempotent events, refund/reconciliation boundaries, and customer-safe projections are required.
+- Gateway provider selection is required for provider integration and production go-live, not for this candidate architecture.
+- Manual transfer remains disabled as a new path.
+
+The following remain open:
+
+- shipping and pickup policy;
+- tax treatment;
+- reservation duration;
+- cancellation, refund, and return policy;
+- transitional manual-transfer adapter;
+- protected-scope implementation permission;
+- payment provider;
+- production storage provider;
+- production readiness and go-live.
+
+No open item is silently resolved by this candidate.
 
 ## 15. Boundary untuk Implementation Plan Berikutnya
 
@@ -519,7 +513,7 @@ Setelah spec ini disetujui stakeholder, implementation plan harus dipisah menjad
 | Phase 3 | Local cart and authoritative checkout preview |
 | Phase 4 | Transactional order and stock reservation |
 | Phase 5 | Guest access and tracking |
-| Phase 6 | Manual payment review |
+| Phase 6 | Provider-neutral payment orchestration boundary; provider integration remains gated |
 | Phase 7 | Fulfillment and admin operations |
 | Phase 8 | Retail/B2B public website integration |
 | Phase 9 | Production hardening and operational readiness |
@@ -533,18 +527,32 @@ BFRI dihapus karena tidak ditemukan sebagai framework project yang disepakati pa
 | Risiko | Dampak | Mitigasi/gate | Owner/approval |
 |---|---|---|---|
 | Keputusan bisnis belum dikonfirmasi | Implementasi salah arah atau rework | Phase 0 decision log; jangan enable mutation flags | Stakeholder/Product |
-| MongoDB transaction capability tidak tersedia | Partial order/reservation atau overselling | Capability preflight; controlled `503`; atomic/idempotent fallback hanya bila disetujui | Backend/Platform |
-| Payment review hold tidak berbatas | Stok tertahan tanpa batas | Review hold, absolute deadline, max attempt, grace, extension audit | Finance/Operations |
+| MongoDB transaction capability tidak tersedia | Partial order/reservation atau overselling | Capability preflight; controlled `503 transaction_unavailable`; no non-atomic fallback | Backend/Platform |
+| Payment/reservation timing belum disetujui | Stok dapat tertahan atau dilepas tidak konsisten | Keep duration open; do not enable mutation until policy is approved | Finance/Operations |
 | Payment exception tidak ter-reconcile | Salah status, refund, atau laporan keuangan | Reconciliation queue, idempotent case, SLA/age monitoring | Finance |
 | Legacy order/auth/API regression | Operasi lama terhenti | Compatibility projection dan regression suite | Backend/Order Admin |
 | Customer data leakage | Pelanggaran privasi | Ownership query, guest session, safe projection, forbidden-field tests | Security/Backend |
 | Shipping policy belum jelas | Total dan eligibility tidak konsisten | Versioned shipping config dan stale-preview conflict | Operations/Stakeholder |
 | Feature flag rollback tidak aman | Order aktif kehilangan akses | Disable mutation only; retain tracking/admin reconciliation | Release owner |
-| Retail mengaburkan B2B | Positioning dan conversion B2B turun | Dua entry point, CTA, dan public discovery minimum | Product/Brand |
-| Local file storage tidak siap production | Bukti pembayaran/file hilang | Persistent volume, backup, retention, recovery gate | Operations |
+| Retail mengaburkan B2B | Positioning dan conversion B2B turun | Preserve discoverability without locking deferred IA labels or visual treatment | Product/Brand |
+| Production storage belum siap | Design/upload data dapat hilang atau tidak aman | Block production upload until ADR-002 provider and readiness gates are approved | Operations |
 
 ## 17. Unresolved Risks dan Approval Checklist
 
-Sebelum implementation plan dibuat, stakeholder perlu mengonfirmasi: scope ready-stock/fixed untuk slice, multi-item cart, guest/account behavior, pickup/shipping region dan flat fee, tax treatment, reservation/hold numbers, manual transfer, payment review SLA, cancellation/refund/return policy, customer account availability, protected-scope access, dan minimum Retail/B2B navigation release requirement.
+Before a Retail Order & Checkout implementation plan, Retail checkout implementation, or related production enablement, the following written decisions are still required:
 
-Status dokumen tetap **candidate** sampai checklist tersebut memiliki keputusan tertulis. Setelah itu pengguna diminta meninjau file spec ini kembali; tidak ada coding workflow atau production change yang boleh dimulai dari dokumen candidate.
+- shipping and pickup policy;
+- tax treatment;
+- reservation duration;
+- cancellation, refund, and return policy;
+- any transitional manual-transfer adapter and its Finance controls;
+- protected-scope implementation permission;
+- payment gateway provider and provider activation;
+- production storage provider and ADR-002 readiness;
+- production readiness and go-live.
+
+This gate does not block separate Foundation implementation planning and coding for approved transaction capability, catalog publication, inventory movement/balance/reservation contracts, or development/demo storage work, provided the work remains within approved scope and does not modify protected areas without permission.
+
+The atomic multi-line inventory reservation service contract is a foundation prerequisite. If it is unavailable, checkout must not redefine inventory collections or proceed with a non-atomic fallback.
+
+Status remains **Technical Design Candidate — not approved for implementation**. This synchronization records approved architecture constraints but does not approve coding, migrations, infrastructure, payment activation, uploads, or production release.
