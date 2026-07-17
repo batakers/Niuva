@@ -1,9 +1,11 @@
 # Remove Emergent and Add Local Development Storage Design
 
 **Date:** 2026-07-16
-**Status:** Approved through collaborative brainstorming
+**Status:** Approved with Open Decisions
 **Base:** `design/catalog-material-inventory-foundation` at `f00c662`
+**Approved scope:** Development/demo storage only
 **Related requirements:** `AGENTS.md`, `PRODUCT.md`, `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`, and `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+**Approved architecture pointers:** `doc/decisions/ADR-002-production-file-storage-architecture.md` and `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## 1. Context
 
@@ -14,7 +16,7 @@ The current application depends on Emergent in two separate areas:
 
 This dependency causes the backend to make an external storage initialization request during startup. Without an Emergent key, startup logs an external-storage error even though the rest of the application can continue. The project must no longer depend on Emergent.
 
-For the current development and demonstration phase, uploaded files will use local filesystem storage. This decision does not define the production storage architecture. Production persistence, backup, capacity, recovery, and multi-instance behavior remain a separate design decision.
+For the current development and demonstration phase, uploaded files use local filesystem storage. This approved scope does not make the local adapter production-ready. `doc/decisions/ADR-002-production-file-storage-architecture.md` separately approves a stable provider-neutral storage port with private persistent object storage as the production adapter class; production provider and operational readiness remain open.
 
 ## 2. Goals
 
@@ -41,7 +43,7 @@ For the current development and demonstration phase, uploaded files will use loc
 ## 4. Locked Decisions
 
 1. Local filesystem storage is limited to development and demonstration environments.
-2. `backend/storage.py` remains the storage boundary and keeps the existing `init_storage`, `put_object`, and `get_object` responsibilities.
+2. `backend/storage.py` remains the stable provider-neutral storage port for this application and keeps the existing `init_storage`, `put_object`, and `get_object` responsibilities; local filesystem is only its development/demo adapter.
 3. The default storage root is `backend/.local-storage/`.
 4. `LOCAL_STORAGE_ROOT` may override the default with an absolute or backend-relative directory.
 5. Stored database values remain relative storage paths such as `niuva/orders/<user-id>/<uuid>.stl`; absolute server paths are never persisted or returned.
@@ -243,7 +245,7 @@ The `requests` Python dependency is not removed solely as part of this change be
 - Do not log file bytes, authentication tokens, payment-proof content, or full local paths in client-facing errors.
 - Development data inside `.local-storage` must not be committed.
 
-Content signature inspection and malware scanning remain future production hardening work.
+Content signature inspection, malware scanning, and quarantine are mandatory production blockers under ADR-002; they are not solved by this development/demo adapter.
 
 ## 12. Testing Strategy
 
@@ -294,16 +296,33 @@ The run documentation must explicitly warn that this storage mode is unsuitable 
 
 ## 15. Future Production Transition
 
-Before production, Niuva must select and design a persistent storage solution that covers:
+`doc/decisions/ADR-002-production-file-storage-architecture.md` defines the approved production direction:
 
-- Provider and regional hosting.
-- Private object access and signed or backend-proxied downloads.
-- Backup and recovery objectives.
-- Retention and deletion rules.
-- Capacity and upload quotas.
-- Malware and file-signature inspection.
-- Encryption, audit, and credential rotation.
-- Migration from local development data when necessary.
-- Multi-instance consistency and deployment volume behavior.
+- application storage uses a stable provider-neutral storage port;
+- the production adapter class is private persistent object storage;
+- production objects are private by default;
+- backend authorization is the default access model;
+- signed access requires prior authorization, is short-lived, and is scoped to one object and one action;
+- database-backed ownership replaces path-substring authorization;
+- public buckets and public static directories are prohibited.
 
-The stable logical `storage_path` contract is intentionally preserved so a future production provider can be introduced without changing order and payment database schemas.
+The following remain explicitly open:
+
+- actual production provider;
+- RPO and RTO;
+- retention and quota;
+- storage, backup, restore, malware, and incident owners;
+- Emergent migration/decommission policy;
+- production readiness.
+
+Production upload remains blocked until:
+
+- query-string access tokens are removed;
+- database-backed ownership is implemented;
+- MIME/signature validation is implemented;
+- malware scanning and quarantine are implemented;
+- backup and restore are tested;
+- metadata/object reconciliation is tested;
+- operational readiness is approved.
+
+The stable logical `storage_path` contract is preserved so the approved production adapter can be introduced without changing order and payment database schemas. This document does not select a provider, approve production uploads, or claim that the local adapter solves production persistence.
