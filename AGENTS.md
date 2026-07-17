@@ -13,6 +13,8 @@ Build and maintain one Niuva website and one operational platform with two custo
 
 Both journeys share CMS, customer/organization, catalog, material, inventory, production, payment, shipment, notification, audit, and Admin Studio foundations.
 
+Shared foundations do not mean Retail Order and B2B Quote/Project use the same aggregate or state machine. Identity, organization, catalog, inventory, payment infrastructure, audit, CMS, and operational foundations may be shared, while Retail and B2B customer lifecycles and projections remain separate.
+
 Niuva's main brand positioning remains a strategic partner for R&D, design engineering, and prototyping. Retail must not turn the entire website into a commodity-only marketplace.
 
 ## 2. Source of Truth Hierarchy
@@ -35,6 +37,14 @@ The approved v2.1 addenda are:
 - `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
 
 They supersede earlier v2 addenda for new planning. Do not implement from a superseded draft when v2.1 addresses the same requirement.
+
+Approved architecture decisions are recorded in:
+- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+- `doc/decisions/ADR-002-production-file-storage-architecture.md`
+- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+- `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
+
+These pointers govern transaction, persistent-storage, and Retail payment boundaries. Their approval scope is internal architecture, documentation, and future implementation planning; open provider, operational, infrastructure, Finance, and production-readiness decisions remain open.
 
 Do not invent a new business direction, journey, pricing promise, role model, page structure, or visual identity.
 
@@ -60,6 +70,14 @@ Do not silently decide:
 - Homepage pattern: split gateway, unified homepage, or retail-first.
 - Payment gateway provider.
 - Detailed visual treatment of Retail/B2B navigation.
+- Production storage provider.
+- Shipping and pickup policy.
+- Tax treatment.
+- Reservation duration.
+- Cancellation, refund, and return policy.
+- Transitional manual-transfer adapter.
+- Protected-scope implementation permission.
+- Production readiness and go-live.
 
 Foundation work may proceed. A public or payment surface that directly depends on one of these choices must wait for the decision or remain provider/pattern-neutral.
 
@@ -203,6 +221,26 @@ Use milestone state rather than invented progress percentages. ETA changes retai
 - Do not place credentials, secret values, or API keys in source files or product documentation.
 - Avoid logging unnecessary personal, financial, or file data.
 
+## 12.1 Approved Architecture Boundaries
+
+### Persistent storage — `doc/decisions/ADR-002-production-file-storage-architecture.md`
+
+- Use a stable provider-neutral storage port with private persistent object storage as the production adapter class.
+- Local filesystem is development/demo only. Production objects are private by default and backend authorization is the default access model.
+- Short-lived signed access requires prior backend authorization and is scoped to one object and one action. Database-backed ownership replaces path-substring authorization.
+- Public buckets and public static directories are prohibited.
+- This boundary applies to all persistent Retail, B2B, design, operational, QC, fulfillment, and conditionally approved payment-proof uploads.
+- Provider, RPO/RTO, retention, quota, operational ownership, backup/restore ownership, malware/quarantine ownership, Emergent migration/decommission, and production readiness remain open.
+- Production upload remains disabled until query-string access tokens are removed, ownership and MIME/signature validation are implemented, malware scanning/quarantine and backup/restore are tested, metadata/object reconciliation is tested, and readiness is approved.
+
+### Payment orchestration — `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+
+- Retail production target is online payment with provider-neutral core orchestration, separate provider adapters, idempotent events/webhooks, explicit refund/reconciliation boundaries, and customer-safe projections.
+- Gateway provider remains deferred; no provider-specific API, schema, webhook signature, or SDK is selected here.
+- Manual transfer is not the Retail production baseline. Legacy records remain readable; no new transitional adapter is enabled. A future adapter requires a separate written decision, Finance owner, feature flag, SLA, expiry, exit criteria, storage approval, refund/late-payment handling, audit, and rollback controls.
+
+ADR approval scope remains internal architecture, documentation, and future implementation planning; it does not authorize production infrastructure changes, Finance activation, payment gateway activation, production upload enablement, or production go-live.
+
 ## 13. Failure Handling
 
 Explicitly handle:
@@ -219,7 +257,7 @@ Explicitly handle:
 
 Notification failure must not roll back an otherwise successful core transaction.
 
-MongoDB standalone does not provide the same transaction assumptions as a replica set. Prefer single-document atomic updates, unique operation IDs, explicit state transitions, and idempotent workflow jobs.
+MongoDB replica-set multi-document transactions are the approved baseline for cross-collection mutation requiring atomicity. Local mutation development uses a single-node replica set; CI uses an isolated replica set; staging and production require transaction capability before affected mutation flags are enabled. Standalone MongoDB is limited to read-only or proven-safe single-document atomic writes. Transaction-required operations fail closed with `503 transaction_unavailable`; silent fallback to non-atomic writes is prohibited. See `doc/decisions/ADR-001-mongodb-transaction-capability.md`.
 
 ## 14. Migration Rules
 

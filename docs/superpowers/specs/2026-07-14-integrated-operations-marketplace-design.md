@@ -1,7 +1,9 @@
 # Desain Platform Operasional, Portal B2B, dan Marketplace Niuva
 
 Tanggal: 14 Juli 2026  
-Status: Desain brainstorming disetujui; menunggu review dokumen oleh pengguna  
+Status: Superseded
+Superseded by: `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+Do not use for new planning. Historical content is preserved for traceability.
 Stack saat ini: React, FastAPI, MongoDB standalone
 
 ## 1. Ringkasan
@@ -424,4 +426,3 @@ Setiap fase harus dapat dirilis dan diuji tanpa menunggu fase berikutnya.
 - Produk kembali tersedia dapat memicu notifikasi pelanggan yang sudah berlangganan.
 - Semua approval dan perubahan sensitif memiliki audit trail.
 - Implementasi mempertahankan posisi R&D/prototyping sebagai fokus utama website publik.
-
