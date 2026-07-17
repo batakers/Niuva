@@ -1,6 +1,6 @@
 # Retail Order & Checkout Foundation — Design Spec
 
-Tanggal: 16 Juli 2026  
+Tanggal: 16 Juli 2026
 Status: Technical Design Candidate — not approved for implementation
 Scope kandidat: Retail ready-stock, fixed-price, guest-first checkout, authoritative server preview, atomic reservation, provider-neutral payment orchestration, dan customer-safe tracking; bukan implementation approval
 Approved architecture pointers:
