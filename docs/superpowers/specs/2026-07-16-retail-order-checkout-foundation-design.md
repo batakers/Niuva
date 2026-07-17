@@ -144,7 +144,8 @@ Browser tidak pernah menjadi sumber kebenaran untuk harga, stok, publication rev
 
 ### 6.1 `orders`
 
-Collection lama tetap dipakai. Order baru memiliki field berikut:
+Collection lama tetap dipakai. Contoh struktur berikut hanya normatif untuk field dan authoritative snapshots yang sudah disetujui.
+Nilai dalam angle brackets adalah illustrative placeholders, bukan approved defaults; unresolved fulfillment, tax, dan policy-dependent fields sengaja dihilangkan.
 
 ```json
 {
@@ -153,7 +154,8 @@ Collection lama tetap dipakai. Order baru memiliki field berikut:
   "channel": "retail_web",
   "id": "uuid",
   "order_number": "NIV-2607-0001",
-  "checkout_idempotency_key": "key-hash",
+  "checkout_idempotency_key": "opaque-key",
+  "checkout_request_fingerprint": "canonical-request-fingerprint",
   "customer_id": null,
   "guest_email": "buyer@example.com",
   "contact_snapshot": {
@@ -161,14 +163,9 @@ Collection lama tetap dipakai. Order baru memiliki field berikut:
     "email": "buyer@example.com",
     "phone": "..."
   },
-  "fulfillment": {
-    "method": "pickup",
-    "address_snapshot": null,
-    "shipping_fee": 0,
-    "shipping_config_revision": 4
-  },
   "line_items": [
     {
+      "order_line_id": "stable-line-id",
       "product_id": "uuid",
       "variant_id": "uuid",
       "publication_id": "uuid",
@@ -177,20 +174,23 @@ Collection lama tetap dipakai. Order baru memiliki field berikut:
       "name": "Mug Black",
       "option_values": {},
       "quantity": 2,
-      "unit_price": 75000,
-      "subtotal": 150000,
-      "currency": "IDR"
+      "unit_price": "<authoritative-unit-price>",
+      "subtotal": "<authoritative-line-subtotal>",
+      "currency": "<authoritative-pricing-currency>"
+    }
+  ],
+  "reservation_references": [
+    {
+      "order_line_id": "stable-line-id",
+      "reservation_id": "returned-reservation-id"
     }
   ],
   "pricing_snapshot": {
-    "items_subtotal": 150000,
-    "shipping_fee": 0,
-    "tax_included": true,
-    "grand_total": 150000,
-    "currency": "IDR"
+    "items_subtotal": "<authoritative-items-subtotal>",
+    "currency": "<authoritative-pricing-currency>"
   },
   "status": "awaiting_payment",
-  "reservation_expires_at": "2026-07-17T12:00:00Z",
+  "reservation_expires_at": "<later-policy-derived-expiry>",
   "milestones": [],
   "status_history": [],
   "created_at": "...",
@@ -198,13 +198,28 @@ Collection lama tetap dipakai. Order baru memiliki field berikut:
 }
 ```
 
-Line items, publication revision, shipping fee, dan pricing snapshot immutable. Perubahan katalog, tarif, pajak, atau material tidak mengubah order yang sudah dibuat.
+Line items, publication revision, dan setiap later-approved authoritative commercial atau fulfillment snapshot yang dicatat pada order bersifat immutable. Perubahan katalog, tarif, pajak, atau material tidak mengubah order yang sudah dibuat.
+
+Fulfillment method, address/config revision, shipping fee, tax treatment, dan fulfillment-dependent grand total sengaja tidak muncul pada contoh. Field tersebut hanya boleh dicatat dari authoritative preview setelah policy terkait disetujui. Contoh ini tidak memilih pickup, shipping, zero fee, tax inclusion, currency, atau reservation duration.
 
 `customer_id` hanya diisi bila customer account contract yang sudah ada digunakan. Guest tetap `null`. Existing legacy orders keep their current shape and are read through a compatibility projection.
 
+Checkout idempotency mengikuti contract berikut:
+
+- Setiap `checkout_idempotency_key` terikat pada canonical request fingerprint yang mencakup normalized cart-line identities dan quantities, normalized contact input, serta hanya fulfillment input yang diizinkan oleh policy yang disetujui kemudian.
+- Browser-generated price, stock, payment state, atau total tidak masuk sebagai authoritative fingerprint input; backend selalu menghitung ulang nilai authoritative tersebut.
+- Key yang sama dengan fingerprint yang sama mengembalikan original customer-safe checkout result. Key yang sama dengan fingerprint berbeda mengembalikan `409 idempotency_conflict` dan tidak menjalankan mutation.
+- Persisted key, fingerprint, dan stable original order/result reference di-commit secara atomic bersama order dan seluruh applicable reservation references dalam ADR-001 transaction boundary. Retry tidak boleh membuat order atau reservation tambahan.
+- Exact fingerprint encoding, hash algorithm, dan implementation library tetap implementation detail dan tidak dipilih oleh candidate ini.
+
+
 ### 6.2 Foundation reservation contract
 
-Checkout calls the inventory reservation service and stores only the returned reservation references on the order boundary. It does not directly write inventory balance, immutable movement, or reservation collections.
+Checkout calls the foundation multi-line inventory reservation service and stores stable returned reservation associations on the order boundary.
+
+Cardinality is exactly one association for each inventory-reserved order line. Every association records the stable `order_line_id` and returned `reservation_id`. Consume, release, expiry, reconciliation, tracking, dan permitted admin workflows must use this same association.
+
+Checkout tidak menulis inventory balance, immutable movement, atau reservation collections secara langsung. Foundation reservation service tetap menjadi owner reservation records dan lifecycle; checkout hanya memanggil contract service tersebut dan menyimpan reference yang dikembalikan.
 
 The foundation lifecycle remains:
 
@@ -224,10 +239,13 @@ The core payment attempt stores provider-neutral data only:
 - safe correlation reference and adapter reference without exposing provider secrets;
 - customer action requirement in provider-neutral form;
 - lifecycle state such as pending, processing, succeeded, failed, expired, cancelled, review, refunded, or reconciliation as approved later;
-- provider-event deduplication reference;
+- provider-neutral event-claim reference bound to `(adapter_key, provider_event_id)`;
 - customer-safe projection, audit reference, and notification state.
 
 Provider credentials, raw payloads, vendor field names, signature details, and provider retry semantics stay inside a separate adapter. Exact provider schema and state-machine detail remain open.
+Provider-neutral event claims use an adapter-scoped unique identity `(adapter_key, provider_event_id)`. `adapter_key` adalah internal stable adapter identifier, bukan vendor credential.
+
+Sebelum core effect diterapkan, handler wajib melakukan atomic claim/insert terhadap unique identity tersebut. Event claim dan resulting core transition mengikuti approved transaction/idempotency boundary; application-level read-then-write check tanpa unique atomic claim dilarang.
 
 Existing embedded/manual-transfer payment records and payment-proof metadata remain readable through legacy compatibility. No new proof upload or transitional manual-transfer adapter is enabled by this candidate.
 
@@ -275,12 +293,13 @@ Wilayah, alamat minimum, pemilik konfigurasi, dan kemampuan menonaktifkan shippi
 ### 6.8 Indexes
 
 - Unique partial `orders.order_number`.
-- Unique partial `orders.checkout_idempotency_key`.
+- Unique partial `orders.checkout_idempotency_key`; persisted idempotency boundary juga menyimpan canonical request fingerprint dan stable original order/result reference.
 - `orders.customer_id + created_at`.
 - `orders.status + updated_at`.
 - `orders.guest_email + created_at` untuk internal lookup only; tidak menjadi authorization.
 - Unique `guest_order_access.token_hash` dan TTL pada `expires_at`.
 - `payment_attempts.order_id + created_at`.
+- Unique provider-event claim `(adapter_key, provider_event_id)`.
 - `payment_reconciliation_cases.status + updated_at`.
 - `refund_records.order_id + created_at`.
 - Existing reservation operation dan reference indexes.
@@ -309,13 +328,38 @@ Failure, expiry, cancellation, reconciliation, refund, hold, and fulfillment exc
 - Checkout creates the order and all line-item reservations through the foundation multi-line reservation service within the ADR-001 transaction boundary.
 - Missing transaction capability returns `503 transaction_unavailable`; no order or partial reservation is treated as successful.
 - Silent fallback to non-atomic writes is prohibited.
-- Payment success may consume or retain the active reservation according to the later-approved fulfillment contract; cancellation or expiry releases it exactly once.
+- Payment success may consume or retain eligible active reservations only according to a later-approved fulfillment contract; this candidate does not choose that policy.
 - Payment review, reconciliation, refund, and cancellation do not create additional inventory reservation states.
+
+The following provider-neutral race matrix is normative. Every winner is selected by conditional state checks inside the same ADR-001 transaction; an application-level ordering assumption is insufficient.
+
+| Competing transitions | Atomic eligibility and winner | Losing request or retry |
+|---|---|---|
+| Payment success vs reservation expiry | Payment success is eligible only while every required reservation reference is still eligible; expiry is eligible only before payment success has been accepted. Exactly one transaction wins. | Losing expiry is an idempotent no-op; losing or late payment enters reconciliation without marking the order paid. |
+| Payment success vs cancellation | Payment success is eligible only before cancellation is accepted; cancellation is eligible only before payment success is accepted and releases through the foundation service. | Loser becomes an idempotent no-op or enters reconciliation as applicable; no second release occurs. |
+| Payment success vs explicit release | Payment success is eligible only before release and while every required reservation reference remains eligible; release is eligible only before payment success is accepted. | Loser is a no-op or reconciliation case; released stock is not silently recreated. |
+| Repeated expiry or release | The first valid foundation lifecycle transition wins. | Every repeated expiry/release is an idempotent no-op and cannot emit another release effect. |
+| Duplicate payment-success event | The unique provider-event claim and accepted core transition may succeed once. | Duplicate events replay the recorded outcome without another payment, order, reservation, or notification effect. |
+| Payment after release or expiry | Released or expired reservation references make automatic payment-success transition ineligible. | The event enters provider-neutral reconciliation; it does not mark the order paid, recreate reservation, or imply a refund policy. |
+
+Normative invariants:
+
+- Payment success may succeed only when every required order-line reservation reference is still eligible under the same atomic transaction.
+- Expiry, release, atau cancellation may succeed only when the order/payment state has not accepted payment success.
+- Exactly one competing transition wins; losing retries are idempotent no-ops or reconciliation cases as stated above.
+- Release occurs at most once through the foundation reservation service.
+- Late or conflicting payment never recreates reservation and enters provider-neutral reconciliation.
+- The system must never produce a paid order backed only by released or expired reservations.
+- Exact reservation duration and post-payment fulfillment policy remain open.
 
 ### 7.3 Provider events, refund, and reconciliation
 
-- Provider events/webhooks require stable deduplication identity and idempotent handling.
-- Replayed events return the prior result and do not duplicate payment, order, inventory, refund, or notification effects.
+- Provider events/webhooks require adapter-scoped unique identity `(adapter_key, provider_event_id)`; adapter key adalah internal stable identifier dan bukan credential.
+- Atomic claim/insert wajib berhasil sebelum payment, order, reservation, refund, reconciliation, notification, atau audit effect diterapkan.
+- Duplicate claims menjadi replay-safe no-op atau mengembalikan previously recorded outcome tanpa mengulang effect.
+- Application-level read-then-write deduplication tanpa unique atomic claim dilarang.
+- Event claim dan resulting core transition memakai approved transaction/idempotency boundary.
+- Raw provider payloads, credentials, dan signatures tetap berada di adapter boundary dan tidak masuk core domain.
 - Refund is a separate idempotent boundary with permission, actor, time, reason, amount, and result.
 - Conflicting or uncertain payment outcomes enter reconciliation without silently changing inventory or customer-visible paid state.
 - Notification failure does not roll back an otherwise successful core payment transition.
@@ -348,7 +392,7 @@ POST /api/retail/guest-sessions/exchange
 
 `checkout/preview` accepts variant IDs, quantities, and only the fulfillment inputs permitted by the later-approved policy. The response is authoritative for active publication, product/variant eligibility, price snapshot, availability, total, conflicts, and preview time. Preview does not reserve stock.
 
-`POST /api/retail/orders` revalidates every authoritative value and invokes the atomic multi-line reservation service inside the ADR-001 transaction boundary. It returns customer-safe order and provider-neutral payment action/state data.
+`POST /api/retail/orders` revalidates every authoritative value and invokes the atomic multi-line reservation service inside the ADR-001 transaction boundary. Setiap request membawa checkout idempotency key. Identical key/fingerprint retries replay the original customer-safe result; reuse dengan fingerprint berbeda mengembalikan `409 idempotency_conflict`; dan retry tidak membuat order atau reservation tambahan. Response mengembalikan customer-safe order dan server-produced provider-neutral payment action/state data.
 
 Guest order lookup never uses email alone. A guest exchanges a short-lived magic token for an order-scoped session.
 
@@ -381,7 +425,9 @@ Admin transitions require least privilege, allowed-state validation, audit, and 
 
 ### Security/privacy
 
-- Pydantic payloads reject unknown fields and validate email, quantity, permitted fulfillment inputs, and provider-neutral payment action/state inputs.
+- Pydantic payloads reject unknown fields and validate email, quantity, permitted fulfillment inputs, serta permitted provider-neutral payment intent/action inputs.
+- Customer/browser payloads tidak pernah menerima payment state field; browser tidak dapat submit, override, atau transition payment state.
+- Payment state hanya diproduksi oleh trusted server logic atau provider adapter. Backend tetap authoritative untuk payment lifecycle dan customer-safe projection.
 - Hanya published, active, retail-enabled, fixed-price, ready-stock variants yang boleh masuk checkout slice.
 - Exact internal stock, material cost, supplier, margin, planned demand, profit, dan internal notes tidak pernah muncul pada customer response.
 - Customer APIs enforce `customer_id` ownership; guest APIs enforce order-scoped session ownership.
@@ -404,7 +450,7 @@ Admin transitions require least privilege, allowed-state validation, audit, and 
 
 ### Admin states
 
-Admin order detail may show immutable line/pricing snapshots, reservation references, customer-safe payment state, reconciliation cases, refund records, status history, and audit events according to role. UI controls are not an authorization boundary. Exact Finance/payment operations remain open.
+Admin order detail may show immutable line/pricing snapshots, the same order-line reservation associations used by lifecycle workflows, customer-safe payment state, reconciliation cases, refund records, status history, and audit events according to role. UI controls are not an authorization boundary. Exact Finance/payment operations remain open.
 
 ## 11. Feature Flags and Public Discovery
 
@@ -435,11 +481,14 @@ Retail and B2B must both remain discoverable, but this candidate does not lock t
 ### Backend and integration
 
 - Authoritative preview rejects stale publication, price, availability, and disallowed fulfillment inputs.
-- Checkout calls the foundation atomic multi-line reservation contract and never writes inventory collections directly.
+- Checkout idempotency tests prove same-key/same-fingerprint replay, `409 idempotency_conflict` untuk same-key/different-fingerprint, atomic persistence of the original result, dan tidak ada duplicate order atau reservation pada retry.
+- Checkout calls the foundation atomic multi-line reservation contract, persists exactly one stable order-line/reservation association for every reserved line, and never writes inventory collections directly.
 - Missing transaction capability returns `503 transaction_unavailable` without partial order/reservation data or fallback.
 - Concurrency test for the final available unit allows only one successful reservation.
-- Provider-event replay is idempotent and does not duplicate order, inventory, refund, reconciliation, or notification effects.
+- Atomic race-matrix tests cover payment success versus expiry, cancellation, and explicit release; repeated expiry/release; duplicate payment-success events; and late payment after release/expiry.
+- Provider-event concurrency tests prove only one atomic `(adapter_key, provider_event_id)` claim can apply payment, order, reservation, refund, reconciliation, notification, atau audit effects; duplicate claims are no-ops or replay the recorded outcome.
 - Customer projections exclude provider secrets, raw events, internal stock, supplier, cost, margin, profit, and Finance notes.
+- Customer payload tests reject payment state and unknown fields while accepting only permitted payment intent/action inputs; trusted server logic or provider adapter remains the sole payment-state producer.
 - Legacy manual-transfer orders/proofs remain readable without enabling a new proof flow.
 - Upload-dependent tests remain blocked from production assumptions until ADR-002 readiness is approved.
 - Existing order/auth/admin compatibility tests remain green.
@@ -522,7 +571,7 @@ Setiap fase di implementation plan wajib memiliki exact file scope, dependency, 
 
 ## 16. Risk Register
 
-BFRI dihapus karena tidak ditemukan sebagai framework project yang disepakati pada source-of-truth project. Risiko dicatat dengan risk register berikut:
+Tabel berikut mencatat risiko candidate, dampak, mitigation gate, serta owner atau approval boundary yang masih diperlukan:
 
 | Risiko | Dampak | Mitigasi/gate | Owner/approval |
 |---|---|---|---|
