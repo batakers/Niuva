@@ -1,9 +1,10 @@
 # Catalog, Material Pricing, and Inventory Foundation Design
 
 **Date:** 2026-07-14
-**Status:** Approved through collaborative brainstorming
+**Status:** Approved with Open Decisions
 **Base:** `main` at `09de876`
 **Related requirements:** `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` and `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+**Approved architecture pointers:** `doc/decisions/ADR-001-mongodb-transaction-capability.md` and `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## 1. Context
 
@@ -455,10 +456,23 @@ Movement history is read-only and filterable by subject, type, reference, actor,
 
 ## 13. Transaction, Concurrency, and Availability
 
-Inventory writes and catalog publication-pointer changes require MongoDB multi-document transactions. Non-production and production databases accepting these writes must run as replica sets.
+`doc/decisions/ADR-001-mongodb-transaction-capability.md` is the approved authority for transaction capability. MongoDB replica-set multi-document transactions are approved for cross-collection mutations requiring atomicity.
 
-Startup or readiness diagnostics expose transaction capability. A stock-write request returns `503 Service Unavailable` when transactions are unavailable; the application never silently falls back to a non-atomic write.
+Environment policy:
 
+- Local mutation development uses a single-node replica set.
+- CI uses an isolated replica set.
+- Staging and production require transaction capability before affected mutation flags are enabled.
+- Standalone MongoDB is limited to read-only or operations proven safe as single-document atomic writes.
+
+Transaction-required boundaries include, where applicable:
+
+- publication snapshot and active-publication pointer writes;
+- inventory balance, immutable movement, and reservation writes;
+- reservation release, consume, and expiry across records;
+- the atomic multi-line reservation contract consumed by checkout.
+
+When transaction capability is unavailable, a transaction-required request fails closed with `503 transaction_unavailable`. Silent fallback to non-atomic writes is prohibited. Read-only catalog projection and operations proven safe as single-document atomic writes may remain available.
 Defense-in-depth indexes and versions:
 
 - Unique operation ID prevents duplicate application.
