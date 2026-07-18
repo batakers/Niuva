@@ -16,11 +16,12 @@ FIXED_TIME = datetime(2026, 7, 17, 9, 0, tzinfo=timezone.utc)
 
 
 class FakeSession:
-    def __init__(self):
+    def __init__(self, *, cleanup_fails=False):
         self.started = False
         self.committed = False
         self.aborted = False
         self.ended = False
+        self.cleanup_fails = cleanup_fails
 
     def start_transaction(self):
         self.started = True
@@ -33,6 +34,10 @@ class FakeSession:
 
     async def end_session(self):
         self.ended = True
+        if self.cleanup_fails:
+            raise ServerSelectionTimeoutError(
+                "mongodb://user:cleanup-secret@private.invalid"
+            )
 
 
 class FakeDatabase:
@@ -66,9 +71,9 @@ class FakeAdmin:
 
 
 class FakeClient:
-    def __init__(self, hello, *, transaction_fails=False):
+    def __init__(self, hello, *, transaction_fails=False, cleanup_fails=False):
         self.admin = FakeAdmin(hello)
-        self.session = FakeSession()
+        self.session = FakeSession(cleanup_fails=cleanup_fails)
         self.database = FakeDatabase(self.session, fail=transaction_fails)
         self.requested_database = None
 
@@ -148,6 +153,40 @@ def test_probe_aborts_and_returns_safe_reason_when_transaction_read_fails():
     assert client.session.ended is True
     assert "secret" not in str(result.transaction_diagnostic())
 
+
+def test_probe_returns_safe_reason_when_successful_probe_cleanup_fails():
+    client = FakeClient(
+        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30},
+        cleanup_fails=True,
+    )
+    result = asyncio.run(
+        probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
+    )
+    assert result.transactions is False
+    assert result.transaction_reason is TransactionCapabilityReason.PROBE_FAILED
+    assert result.transaction_diagnostic() == {
+        "available": False,
+        "reason": "probe_failed",
+        "checked_at": "2026-07-17T09:00:00+00:00",
+    }
+    assert "cleanup-secret" not in str(result.transaction_diagnostic())
+    assert client.session.ended is True
+
+
+def test_probe_preserves_read_failure_when_cleanup_also_fails():
+    client = FakeClient(
+        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30},
+        transaction_fails=True,
+        cleanup_fails=True,
+    )
+    result = asyncio.run(
+        probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
+    )
+    assert result.transactions is False
+    assert result.transaction_reason is TransactionCapabilityReason.PROBE_FAILED
+    assert "cleanup-secret" not in str(result.transaction_diagnostic())
+    assert client.session.aborted is True
+    assert client.session.ended is True
 
 def test_legacy_boolean_probe_remains_compatible_until_startup_migrates():
     client = FakeClient(
