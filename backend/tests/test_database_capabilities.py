@@ -11,7 +11,6 @@ from database_capabilities import (
     supports_transactions,
 )
 
-
 FIXED_TIME = datetime(2026, 7, 17, 9, 0, tzinfo=timezone.utc)
 
 
@@ -86,17 +85,13 @@ class FakeClient:
 
 
 def test_transaction_support_requires_replica_set_and_sessions():
-    assert supports_transactions(
-        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30}
-    )
+    assert supports_transactions({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
     assert not supports_transactions({"logicalSessionTimeoutMinutes": 30})
     assert not supports_transactions({"setName": "rs0"})
 
 
 def test_probe_proves_read_only_session_and_transaction_capability():
-    client = FakeClient(
-        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30}
-    )
+    client = FakeClient({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
     result = asyncio.run(
         probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
     )
@@ -188,8 +183,7 @@ def test_probe_preserves_read_failure_when_cleanup_also_fails():
     assert client.session.aborted is True
     assert client.session.ended is True
 
+
 def test_legacy_boolean_probe_remains_compatible_until_startup_migrates():
-    client = FakeClient(
-        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30}
-    )
+    client = FakeClient({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
     assert asyncio.run(probe_transaction_capability(client)) is True
