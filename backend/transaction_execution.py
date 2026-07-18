@@ -140,4 +140,7 @@ class TransactionExecutor:
             raise
         finally:
             if session is not None:
-                await session.end_session()
+                try:
+                    await session.end_session()
+                except PyMongoError:
+                    pass

@@ -13,8 +13,9 @@ from transaction_execution import (
 
 
 class FakeSession:
-    def __init__(self, commit_errors=None):
+    def __init__(self, commit_errors=None, cleanup_error=None):
         self.commit_errors = list(commit_errors or [])
+        self.cleanup_error = cleanup_error
         self.in_transaction = False
         self.starts = 0
         self.commits = 0
@@ -37,6 +38,8 @@ class FakeSession:
 
     async def end_session(self):
         self.ends += 1
+        if self.cleanup_error:
+            raise self.cleanup_error
 
 
 class FakeClient:
@@ -93,6 +96,29 @@ def test_success_commits_once_and_closes_session():
         async def callback(received_session):
             assert received_session is session
             assert received_session.in_transaction is True
+            return "committed"
+
+        operation_name = "inventory.apply"
+        return await executor.execute(callback, operation_name=operation_name)
+
+    assert asyncio.run(run()) == "committed"
+    assert (session.starts, session.commits, session.aborts, session.ends) == (
+        1,
+        1,
+        0,
+        1,
+    )
+
+
+def test_cleanup_failure_does_not_replace_committed_return():
+    cleanup_message = "mongodb://user:cleanup-secret@db.internal"
+    cleanup_error = ConnectionFailure(cleanup_message)
+    session = FakeSession(cleanup_error=cleanup_error)
+
+    async def run():
+        executor = TransactionExecutor(FakeClient(session), capabilities)
+
+        async def callback(_session):
             return "committed"
 
         operation_name = "inventory.apply"
@@ -257,6 +283,58 @@ def test_exhausted_unknown_commit_result_does_not_rerun_or_abort():
     assert str(error) == expected_message
     assert error.__cause__ is None
     for forbidden in ("secret", "db.internal", "must-not-be-carried"):
+        assert forbidden not in str(error)
+
+
+def test_cleanup_failure_preserves_unknown_commit_outcome():
+    cleanup_message = "mongodb://user:cleanup-secret@db.internal"
+    cleanup_error = ConnectionFailure(cleanup_message)
+    session = FakeSession(
+        [
+            transient_error(
+                "UnknownTransactionCommitResult",
+                message="mongodb://user:commit-secret@db.internal",
+            )
+            for _attempt in range(2)
+        ],
+        cleanup_error=cleanup_error,
+    )
+    callback_calls = 0
+
+    async def run():
+        executor = TransactionExecutor(
+            FakeClient(session),
+            capabilities,
+            max_commit_attempts=2,
+        )
+
+        async def callback(_session):
+            nonlocal callback_calls
+            callback_calls += 1
+            return {"customer": "must-not-be-carried"}
+
+        with pytest.raises(TransactionCommitOutcomeUnknownError) as caught:
+            await executor.execute(callback, operation_name="catalog.publish")
+        return caught.value
+
+    error = asyncio.run(run())
+    assert callback_calls == 1
+    assert (session.starts, session.commits, session.aborts, session.ends) == (
+        1,
+        2,
+        0,
+        1,
+    )
+    assert error.code == "transaction_commit_outcome_unknown"
+    assert error.reconciliation_required is True
+    assert error.attempts == 2
+    assert error.__cause__ is None
+    for forbidden in (
+        "cleanup-secret",
+        "commit-secret",
+        "db.internal",
+        "must-not-be-carried",
+    ):
         assert forbidden not in str(error)
 
 
