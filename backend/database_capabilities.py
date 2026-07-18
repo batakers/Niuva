@@ -133,6 +133,6 @@ async def probe_database_capabilities(
 async def probe_transaction_capability(client) -> bool:
     try:
         hello = await client.admin.command("hello")
-    except PyMongoError:
+        return supports_transactions(hello)
+    except Exception:
         return False
-    return supports_transactions(hello)

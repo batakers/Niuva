@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
+import pytest
 from pymongo.errors import ServerSelectionTimeoutError
 
 from database_capabilities import (
@@ -72,8 +73,15 @@ class FakeAdmin:
 
 
 class FakeClient:
-    def __init__(self, hello, *, transaction_fails=False, cleanup_fails=False):
-        self.admin = FakeAdmin(hello)
+    def __init__(
+        self,
+        hello,
+        *,
+        hello_error=None,
+        transaction_fails=False,
+        cleanup_fails=False,
+    ):
+        self.admin = FakeAdmin(hello, hello_error)
         self.session = FakeSession(cleanup_fails=cleanup_fails)
         self.database = FakeDatabase(self.session, fail=transaction_fails)
         self.requested_database = None
@@ -199,3 +207,46 @@ def test_probe_preserves_read_failure_when_cleanup_also_fails():
 def test_legacy_boolean_probe_remains_compatible_until_startup_migrates():
     client = FakeClient({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
     assert asyncio.run(probe_transaction_capability(client)) is True
+
+
+def test_legacy_boolean_probe_returns_false_for_unsupported_topology():
+    client = FakeClient({"logicalSessionTimeoutMinutes": 30})
+    assert asyncio.run(probe_transaction_capability(client)) is False
+
+
+def test_legacy_boolean_probe_returns_false_for_driver_failure():
+    client = FakeClient(
+        None,
+        hello_error=ServerSelectionTimeoutError(
+            "mongodb://user:driver-secret@private.invalid"
+        ),
+    )
+    assert asyncio.run(probe_transaction_capability(client)) is False
+
+
+def test_legacy_boolean_probe_returns_false_for_runtime_failure():
+    error_message = "mongodb://user:runtime-secret@private.invalid"
+    client = FakeClient(
+        None,
+        hello_error=RuntimeError(error_message),
+    )
+    assert asyncio.run(probe_transaction_capability(client)) is False
+
+
+def test_legacy_boolean_probe_returns_false_for_malformed_client():
+    class MalformedClient:
+        pass
+
+    result = asyncio.run(probe_transaction_capability(MalformedClient()))
+    assert result is False
+
+
+def test_legacy_boolean_probe_returns_false_for_malformed_response():
+    assert asyncio.run(probe_transaction_capability(FakeClient(None))) is False
+
+
+@pytest.mark.parametrize("fatal_error", [KeyboardInterrupt(), SystemExit()])
+def test_legacy_boolean_probe_does_not_swallow_base_exceptions(fatal_error):
+    client = FakeClient(None, hello_error=fatal_error)
+    with pytest.raises(type(fatal_error)):
+        asyncio.run(probe_transaction_capability(client))
