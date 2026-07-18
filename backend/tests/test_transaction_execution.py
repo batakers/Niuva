@@ -67,8 +67,10 @@ def test_unavailable_capability_fails_closed_before_callback():
     callback_calls = 0
 
     async def run():
-        nonlocal callback_calls
-        executor = TransactionExecutor(FakeClient(), lambda: capabilities(False))
+        def capability_provider():
+            return capabilities(False)
+
+        executor = TransactionExecutor(FakeClient(), capability_provider)
 
         async def callback(_session):
             nonlocal callback_calls
@@ -86,14 +88,15 @@ def test_success_commits_once_and_closes_session():
     session = FakeSession()
 
     async def run():
-        executor = TransactionExecutor(FakeClient(session), lambda: capabilities())
+        executor = TransactionExecutor(FakeClient(session), capabilities)
 
         async def callback(received_session):
             assert received_session is session
             assert received_session.in_transaction is True
             return "committed"
 
-        return await executor.execute(callback, operation_name="inventory.apply")
+        operation_name = "inventory.apply"
+        return await executor.execute(callback, operation_name=operation_name)
 
     assert asyncio.run(run()) == "committed"
     assert (session.starts, session.commits, session.aborts, session.ends) == (
@@ -109,8 +112,7 @@ def test_domain_exception_aborts_and_is_not_retried():
     calls = 0
 
     async def run():
-        nonlocal calls
-        executor = TransactionExecutor(FakeClient(session), lambda: capabilities())
+        executor = TransactionExecutor(FakeClient(session), capabilities)
 
         async def callback(_session):
             nonlocal calls
@@ -135,8 +137,7 @@ def test_transient_callback_is_not_retried_by_default():
     calls = 0
 
     async def run():
-        nonlocal calls
-        executor = TransactionExecutor(FakeClient(session), lambda: capabilities())
+        executor = TransactionExecutor(FakeClient(session), capabilities)
 
         async def callback(_session):
             nonlocal calls
@@ -156,7 +157,6 @@ def test_explicit_retry_safe_callback_retries_transient_transaction():
     calls = 0
 
     async def run():
-        nonlocal calls
         executor = TransactionExecutor(
             FakeClient(session),
             lambda: capabilities(),
@@ -189,7 +189,6 @@ def test_unknown_commit_result_retries_commit_not_callback():
     callback_calls = 0
 
     async def run():
-        nonlocal callback_calls
         executor = TransactionExecutor(
             FakeClient(session),
             lambda: capabilities(),
@@ -201,7 +200,8 @@ def test_unknown_commit_result_retries_commit_not_callback():
             callback_calls += 1
             return "committed"
 
-        return await executor.execute(callback, operation_name="catalog.publish")
+        operation_name = "catalog.publish"
+        return await executor.execute(callback, operation_name=operation_name)
 
     assert asyncio.run(run()) == "committed"
     assert callback_calls == 1
@@ -227,7 +227,6 @@ def test_exhausted_unknown_commit_result_does_not_rerun_or_abort():
     callback_calls = 0
 
     async def run():
-        nonlocal callback_calls
         executor = TransactionExecutor(
             FakeClient(session),
             lambda: capabilities(),
@@ -254,7 +253,8 @@ def test_exhausted_unknown_commit_result_does_not_rerun_or_abort():
     assert error.code == "transaction_commit_outcome_unknown"
     assert error.reconciliation_required is True
     assert error.attempts == 2
-    assert str(error) == "Commit outcome is unknown; reconciliation is required."
+    expected_message = "Commit outcome is unknown; reconciliation is required."
+    assert str(error) == expected_message
     assert error.__cause__ is None
     for forbidden in ("secret", "db.internal", "must-not-be-carried"):
         assert forbidden not in str(error)
