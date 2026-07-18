@@ -23,10 +23,8 @@ class DatabaseCapabilities:
     checked_at: str | None = None
 
     def __post_init__(self):
-        if (
-            self.transactions
-            and self.transaction_reason is TransactionCapabilityReason.NOT_CHECKED
-        ):
+        expected_reason = TransactionCapabilityReason.NOT_CHECKED
+        if self.transactions and self.transaction_reason is expected_reason:
             object.__setattr__(
                 self,
                 "transaction_reason",
@@ -72,7 +70,11 @@ async def probe_database_capabilities(
     try:
         hello = await client.admin.command("hello")
     except PyMongoError:
-        return _capabilities(False, TransactionCapabilityReason.PROBE_FAILED, clock)
+        return _capabilities(
+            False,
+            TransactionCapabilityReason.PROBE_FAILED,
+            clock,
+        )
 
     if not hello.get("setName"):
         return _capabilities(
@@ -105,9 +107,17 @@ async def probe_database_capabilities(
                 await session.abort_transaction()
             except PyMongoError:
                 pass
-        result = _capabilities(False, TransactionCapabilityReason.PROBE_FAILED, clock)
+        result = _capabilities(
+            False,
+            TransactionCapabilityReason.PROBE_FAILED,
+            clock,
+        )
     else:
-        result = _capabilities(True, TransactionCapabilityReason.AVAILABLE, clock)
+        result = _capabilities(
+            True,
+            TransactionCapabilityReason.AVAILABLE,
+            clock,
+        )
 
     if session is not None:
         try:

@@ -53,7 +53,9 @@ class FakeDatabase:
         assert kwargs["limit"] == 1
         assert kwargs["session"] is self.session
         if self.fail:
-            raise ServerSelectionTimeoutError("mongodb://user:secret@private.invalid")
+            raise ServerSelectionTimeoutError(
+                "mongodb://user:secret@private.invalid",
+            )
         return {"cursor": {"firstBatch": []}}
 
 
@@ -85,7 +87,12 @@ class FakeClient:
 
 
 def test_transaction_support_requires_replica_set_and_sessions():
-    assert supports_transactions({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
+    assert supports_transactions(
+        {
+            "setName": "rs0",
+            "logicalSessionTimeoutMinutes": 30,
+        }
+    )
     assert not supports_transactions({"logicalSessionTimeoutMinutes": 30})
     assert not supports_transactions({"setName": "rs0"})
 
@@ -120,7 +127,8 @@ def test_probe_rejects_standalone_without_starting_callback_capability():
         probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
     )
     assert result.transactions is False
-    assert result.transaction_reason is TransactionCapabilityReason.REPLICA_SET_REQUIRED
+    expected_reason = TransactionCapabilityReason.REPLICA_SET_REQUIRED
+    assert result.transaction_reason is expected_reason
     assert client.session.started is False
 
 
@@ -130,7 +138,8 @@ def test_probe_rejects_replica_set_without_logical_sessions():
         probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
     )
     assert result.transactions is False
-    assert result.transaction_reason is TransactionCapabilityReason.SESSIONS_REQUIRED
+    expected_reason = TransactionCapabilityReason.SESSIONS_REQUIRED
+    assert result.transaction_reason is expected_reason
     assert client.session.started is False
 
 
@@ -143,7 +152,8 @@ def test_probe_aborts_and_returns_safe_reason_when_transaction_read_fails():
         probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
     )
     assert result.transactions is False
-    assert result.transaction_reason is TransactionCapabilityReason.PROBE_FAILED
+    expected_reason = TransactionCapabilityReason.PROBE_FAILED
+    assert result.transaction_reason is expected_reason
     assert client.session.aborted is True
     assert client.session.ended is True
     assert "secret" not in str(result.transaction_diagnostic())
@@ -158,7 +168,8 @@ def test_probe_returns_safe_reason_when_successful_probe_cleanup_fails():
         probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
     )
     assert result.transactions is False
-    assert result.transaction_reason is TransactionCapabilityReason.PROBE_FAILED
+    expected_reason = TransactionCapabilityReason.PROBE_FAILED
+    assert result.transaction_reason is expected_reason
     assert result.transaction_diagnostic() == {
         "available": False,
         "reason": "probe_failed",
@@ -178,7 +189,8 @@ def test_probe_preserves_read_failure_when_cleanup_also_fails():
         probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
     )
     assert result.transactions is False
-    assert result.transaction_reason is TransactionCapabilityReason.PROBE_FAILED
+    expected_reason = TransactionCapabilityReason.PROBE_FAILED
+    assert result.transaction_reason is expected_reason
     assert "cleanup-secret" not in str(result.transaction_diagnostic())
     assert client.session.aborted is True
     assert client.session.ended is True
