@@ -846,8 +846,15 @@ async def seed():
             "password_hash": hash_password(admin_password), "phone": "", "company": "PT Niuva Inovasi Utama",
             "role": "admin", "created_at": now_iso(),
         })
-    elif not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
+    else:
+        admin_updates = {
+            "name": "NIUVA Admin",
+            "role": "admin",
+            "company": "PT Niuva Inovasi Utama",
+        }
+        if not verify_password(admin_password, existing["password_hash"]):
+            admin_updates["password_hash"] = hash_password(admin_password)
+        await db.users.update_one({"email": admin_email}, {"$set": admin_updates})
 
     if await db.materials.count_documents({}) == 0:
         defaults = [
