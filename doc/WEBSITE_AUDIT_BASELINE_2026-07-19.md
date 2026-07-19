@@ -89,7 +89,7 @@ Recommended batch size:
 
 All findings start as `Open` unless their dependency makes `Decision required` more accurate. No finding was remediated during the audit.
 
-| ID | Severity | Category | Finding | Primary evidence | Initial status | Safe independently |
+| ID | Severity | Category | Finding | Primary evidence | Status | Safe independently |
 |---|---|---|---|---|---|---|
 | NIV-001 | P0 | Security | Administrator credential is stored in tracked test/report files | `backend/tests/backend_test.py:32`; `test_reports/iteration_1.json:35` | Implemented, verification pending | No |
 | NIV-002 | P1 | Functional integration | Contact form fails when backend URL or `/api` proxy is absent | `frontend/src/lib/api.js:3`; `frontend/src/pages/marketing/ContactPage.jsx:67` | Decision required | Partially |

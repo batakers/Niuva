@@ -24,7 +24,7 @@
 
 ## Root-Cause Record
 
-- The same audited literal occurs exactly twice in the current tracked tree: `backend/tests/backend_test.py:32` and `test_reports/iteration_1.json:35`.
+- The same audited literal occurs exactly twice in the pre-remediation base tree at `0b22d979e2db8c41c175545b70927ec11dc3583c`: `backend/tests/backend_test.py:32` and `test_reports/iteration_1.json:35`.
 - Both occurrences were introduced by commit `a75dc92b46e6d0f6f1820a4d1123c17bffdcca84` on 28 June 2026.
 - The integration suite already uses an environment-driven module skip when `REACT_APP_BACKEND_URL` is absent, but administrator credentials were hardcoded instead of following an environment/fixture boundary.
 - `test_reports/iteration_1.json` is a stale generated report and `test_reports/iteration_*.json` is not ignored.
@@ -261,7 +261,7 @@ Expected: output points to the new `test_reports/iteration_*.json` rule in `.git
 - Verify: `test_reports/iteration_1.json`
 
 **Interfaces:**
-- Consumes: the audited literal extracted in memory from the parent commit without printing it.
+- Consumes: the audited literal extracted in memory from the immutable pre-remediation base commit without printing it.
 - Produces: a count-only current-tree scan and a list of paths/line numbers only if a residual match exists.
 
 - [x] **Step 1: Run a value-redacted exact-literal scan**
@@ -269,7 +269,8 @@ Expected: output points to the new `test_reports/iteration_*.json` rule in `.git
 Run from the repository root. This command extracts the previous literal in memory, scans current tracked files, and prints only match count plus path/line metadata:
 
 ```powershell
-$previous = git show HEAD:backend/tests/backend_test.py
+$preRemediationSha = '0b22d979e2db8c41c175545b70927ec11dc3583c'
+$previous = git show "${preRemediationSha}:backend/tests/backend_test.py"
 $sourceLine = $previous | Where-Object { $_ -match '^ADMIN_PASSWORD\s*=' } | Select-Object -First 1
 $match = [regex]::Match($sourceLine, 'ADMIN_PASSWORD\s*=\s*["''](?<value>[^"'']+)["'']')
 if (-not $match.Success) { throw 'Unable to load the audited literal for a redacted scan' }

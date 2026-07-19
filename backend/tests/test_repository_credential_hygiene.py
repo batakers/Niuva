@@ -10,25 +10,50 @@ GITIGNORE = REPOSITORY_ROOT / ".gitignore"
 
 
 class RepositoryCredentialHygieneTests(unittest.TestCase):
-    def test_integration_admin_password_is_not_a_string_literal(self):
+    def test_integration_admin_credentials_use_required_environment_contract(self):
         tree = ast.parse(INTEGRATION_TEST.read_text(encoding="utf-8"))
-        literal_assignments = [
-            node.lineno
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Assign)
-            and any(
-                isinstance(target, ast.Name) and target.id == "ADMIN_PASSWORD"
-                for target in node.targets
-            )
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-        ]
+        expected_environment = {
+            "ADMIN_EMAIL": "NIUVA_TEST_ADMIN_EMAIL",
+            "ADMIN_PASSWORD": "NIUVA_TEST_ADMIN_PASSWORD",
+        }
+        assignments = {name: [] for name in expected_environment}
 
-        self.assertEqual(
-            literal_assignments,
-            [],
-            "Integration administrator credentials must come from the test environment.",
-        )
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in assignments:
+                    assignments[target.id].append(node.value)
+
+        for credential_name, environment_name in expected_environment.items():
+            self.assertEqual(
+                len(assignments[credential_name]),
+                1,
+                f"{credential_name} must have exactly one repository-level assignment.",
+            )
+            value = assignments[credential_name][0]
+
+            if credential_name == "ADMIN_EMAIL":
+                self.assertIsInstance(value, ast.Call)
+                self.assertIsInstance(value.func, ast.Attribute)
+                self.assertEqual(value.func.attr, "strip")
+                self.assertEqual(value.args, [])
+                self.assertEqual(value.keywords, [])
+                value = value.func.value
+
+            self.assertIsInstance(value, ast.Call)
+            self.assertIsInstance(value.func, ast.Attribute)
+            self.assertEqual(value.func.attr, "get")
+            self.assertIsInstance(value.func.value, ast.Attribute)
+            self.assertEqual(value.func.value.attr, "environ")
+            self.assertIsInstance(value.func.value.value, ast.Name)
+            self.assertEqual(value.func.value.value.id, "os")
+            self.assertEqual(len(value.args), 2)
+            self.assertIsInstance(value.args[0], ast.Constant)
+            self.assertEqual(value.args[0].value, environment_name)
+            self.assertIsInstance(value.args[1], ast.Constant)
+            self.assertEqual(value.args[1].value, "")
+            self.assertEqual(value.keywords, [])
 
     def test_stale_iteration_report_is_not_present(self):
         self.assertFalse(
