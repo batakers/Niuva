@@ -89,9 +89,9 @@ Recommended batch size:
 
 All findings start as `Open` unless their dependency makes `Decision required` more accurate. No finding was remediated during the audit.
 
-| ID | Severity | Category | Finding | Primary evidence | Initial status | Safe independently |
+| ID | Severity | Category | Finding | Primary evidence | Status | Safe independently |
 |---|---|---|---|---|---|---|
-| NIV-001 | P0 | Security | Administrator credential is stored in tracked test/report files | `backend/tests/backend_test.py:32`; `test_reports/iteration_1.json:35` | Open | No |
+| NIV-001 | P0 | Security | Administrator credential is stored in tracked test/report files | `backend/tests/backend_test.py:32`; `test_reports/iteration_1.json:35` | Implemented, verification pending | No |
 | NIV-002 | P1 | Functional integration | Contact form fails when backend URL or `/api` proxy is absent | `frontend/src/lib/api.js:3`; `frontend/src/pages/marketing/ContactPage.jsx:67` | Decision required | Partially |
 | NIV-003 | P1 | Deployment | Repository has no executable provider configuration for SPA fallback | `doc/PRODUCTION_DEPLOYMENT.md:43` | Decision required | No |
 | NIV-004 | P1 | Accessibility | Admin Login fields are not associated with accessible labels | `frontend/src/pages/admin/AdminLogin.jsx:82,97` | Open | Technically yes; protected-scope approval required |
@@ -120,6 +120,15 @@ All findings start as `Open` unless their dependency makes `Decision required` m
 - Replace tracked literals with an approved secret/fixture mechanism.
 - Decide whether Git history and downstream clones require remediation.
 - Verification requires a secret scan and a controlled admin authentication check using a newly provisioned credential.
+
+Repository containment progress recorded on 19 July 2026:
+
+- The current branch no longer stores the audited administrator value in the live integration test or generated iteration report.
+- Authenticated integration tests now require test-only environment variables and skip admin-dependent coverage when they are absent.
+- A repository-hygiene regression test and targeted ignore rule guard the current-tree pattern.
+- Credential rotation/invalidation remains an external owner action.
+- Git-history remediation remains open because the introducing commit is present on multiple local and remote branches.
+- NIV-001 remains P0 and must not be marked `Verified` until both outstanding gates are recorded.
 
 ### NIV-002 and NIV-003 - Public staging path
 
@@ -349,6 +358,7 @@ Minimum evidence by category:
 
 | Date | Change | Recorded by |
 |---|---|---|
+| 19 July 2026 | Recorded NIV-001 current-tree containment; external credential rotation and Git-history decision remain open | Codex, pending stakeholder verification |
 | 19 July 2026 | Initial baseline created from the comprehensive read-only website audit | Codex, at user request |
 
 ## 14. Current Recommended First Three Actions
