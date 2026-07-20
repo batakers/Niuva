@@ -82,3 +82,32 @@ def test_transaction_database_names_stay_safe_and_unique(monkeypatch):
     assert re.fullmatch(r"[a-zA-Z0-9_]+", first)
     assert len(first.rsplit("_", 1)[-1]) == 32
     assert first != second
+
+
+def test_ci_initializer_waits_for_mongo_with_bounded_retry():
+    compose = read("docker-compose.transaction-test.yml")
+
+    assert "for attempt in {1..30}; do" in compose
+    assert "db.runCommand({ ping: 1 })" in compose
+    assert "sleep 1" in compose
+    assert "exit 1" in compose
+
+    retry_position = compose.index("for attempt in {1..30}; do")
+    ping_position = compose.index("db.runCommand({ ping: 1 })")
+    initializer_position = compose.index(
+        "exec mongosh --quiet", ping_position
+    )
+    failure_position = compose.index("exit 1", initializer_position)
+    assert retry_position < ping_position < initializer_position < failure_position
+
+
+def test_real_inventory_test_uses_shared_isolated_database_fixture():
+    inventory_test = read("backend/tests/test_inventory_transactions.py")
+
+    assert "import uuid" not in inventory_test
+    assert "async def run_transaction_evidence(database_name):" in inventory_test
+    assert "transaction_database_name" in inventory_test
+    assert (
+        "asyncio.run(run_transaction_evidence(transaction_database_name))"
+        in inventory_test
+    )

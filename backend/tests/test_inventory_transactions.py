@@ -1,6 +1,5 @@
 import asyncio
 import os
-import uuid
 
 import pytest
 
@@ -33,9 +32,8 @@ def operation(operation_id, quantity, movement_type="receive"):
     }
 
 
-async def run_transaction_evidence():
+async def run_transaction_evidence(database_name):
     client = AsyncIOMotorClient(MONGO_TRANSACTION_TEST_URL)
-    database_name = f"niuva_inventory_test_{uuid.uuid4().hex}"
     db = client[database_name]
     try:
         await db.inventory_balances.create_index(
@@ -115,5 +113,7 @@ async def run_transaction_evidence():
         client.close()
 
 
-def test_real_replica_set_commit_rollback_replay_and_concurrency():
-    asyncio.run(run_transaction_evidence())
+def test_real_replica_set_commit_rollback_replay_and_concurrency(
+    transaction_database_name,
+):
+    asyncio.run(run_transaction_evidence(transaction_database_name))
