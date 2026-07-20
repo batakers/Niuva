@@ -305,7 +305,7 @@ class TestPublicForms:
     def test_contact_submit(self):
         r = requests.post(f"{API}/contact",
                           json={"name": "TEST", "email": "TEST_c@t.com",
-                                "subject": "Hello", "message": "Hi"}, timeout=20)
+                                "subject": "Hello", "message": "Valid test message"}, timeout=20)
         assert r.status_code == 200
 
     def test_admin_contacts(self, admin_token):
