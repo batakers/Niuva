@@ -76,3 +76,15 @@ def test_commit_outcome_unknown_remains_internal_without_public_retry_mapping():
     assert error.code == "transaction_commit_outcome_unknown"
     assert error.reconciliation_required is True
     assert "retry" not in str(error).lower()
+
+
+def test_server_composes_one_shared_transaction_guard_and_handler():
+    from tests.test_identity_foundation import server
+    from transaction_guard import TransactionMutationGuard
+
+    assert isinstance(server.app.state.transaction_guard, TransactionMutationGuard)
+    assert (
+        server.app.exception_handlers[TransactionUnavailableError]
+        is transaction_unavailable_handler
+    )
+    assert TransactionCommitOutcomeUnknownError not in server.app.exception_handlers

@@ -30,6 +30,9 @@ from inventory_service import InventoryService
 from material_routes import build_material_router
 from organization_routes import build_organization_router
 from permissions import canonical_roles, has_permission, permissions_for
+from transaction_api import transaction_unavailable_handler
+from transaction_execution import TransactionExecutor, TransactionUnavailableError
+from transaction_guard import TransactionMutationGuard
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("niuva")
@@ -63,6 +66,20 @@ ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "complet
 app = FastAPI(title="NIUVA API")
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
 app.state.reservation_expiry_task = None
+app.state.transaction_executor = TransactionExecutor(
+    client,
+    lambda: app.state.database_capabilities,
+)
+app.state.transaction_guard = TransactionMutationGuard(
+    app.state.transaction_executor,
+    lambda: os.environ.get(
+        "TRANSACTION_MUTATIONS_ENABLED", "false"
+    ).strip().lower() == "true",
+)
+app.add_exception_handler(
+    TransactionUnavailableError,
+    transaction_unavailable_handler,
+)
 api = APIRouter(prefix="/api")
 
 
