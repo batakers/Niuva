@@ -37,13 +37,13 @@ async def request_error_response():
 
 def test_transaction_unavailable_response_uses_stable_existing_envelope():
     response = asyncio.run(request_error_response())
+    expected_message = "Operasi sementara tidak tersedia karena transaksi "
+    expected_message += "database belum siap."
     assert response.status_code == 503
     assert response.json() == {
         "detail": {
             "code": "transaction_unavailable",
-            "message": (
-                "Operasi sementara tidak tersedia karena transaksi database belum siap."
-            ),
+            "message": expected_message,
         }
     }
 
@@ -62,7 +62,7 @@ def test_transaction_unavailable_response_leaks_no_internal_detail():
         assert forbidden not in text
 
 
-def test_commit_outcome_unknown_remains_internal_without_public_retry_mapping():
+def test_unknown_commit_stays_internal_without_public_retry_mapping():
     app = FastAPI()
     app.add_exception_handler(
         TransactionUnavailableError,
@@ -82,9 +82,9 @@ def test_server_composes_one_shared_transaction_guard_and_handler():
     from tests.test_identity_foundation import server
     from transaction_guard import TransactionMutationGuard
 
-    assert isinstance(server.app.state.transaction_guard, TransactionMutationGuard)
-    assert (
-        server.app.exception_handlers[TransactionUnavailableError]
-        is transaction_unavailable_handler
-    )
-    assert TransactionCommitOutcomeUnknownError not in server.app.exception_handlers
+    guard = server.app.state.transaction_guard
+    handlers = server.app.exception_handlers
+    expected_handler = transaction_unavailable_handler
+    assert isinstance(guard, TransactionMutationGuard)
+    assert handlers[TransactionUnavailableError] is expected_handler
+    assert TransactionCommitOutcomeUnknownError not in handlers

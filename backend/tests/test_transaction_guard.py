@@ -3,7 +3,10 @@ import asyncio
 import pytest
 
 from database_capabilities import DatabaseCapabilities
-from transaction_execution import TransactionExecutor, TransactionUnavailableError
+from transaction_execution import (
+    TransactionExecutor,
+    TransactionUnavailableError,
+)
 from transaction_guard import TransactionMutationGuard
 
 
@@ -51,7 +54,6 @@ def test_guard_does_not_invoke_callback_when_capability_is_unavailable():
     calls = 0
 
     async def run():
-        nonlocal calls
         guard, _session = build_guard(capability=False)
 
         async def callback(_session):
@@ -69,7 +71,6 @@ def test_runtime_disable_does_not_invoke_callback_or_fallback():
     calls = 0
 
     async def run():
-        nonlocal calls
         guard, _session = build_guard(enabled=False)
 
         async def callback(_session):

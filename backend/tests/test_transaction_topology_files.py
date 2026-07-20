@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 from backend.tests import conftest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -52,7 +51,9 @@ def test_ci_replica_set_is_ephemeral_mandatory_and_isolated():
     assert "mongo:7.0" in compose
     assert "--replSet" in compose and "rs-test" in compose
     assert "127.0.0.1:27018:27018" in compose
-    assert "mongodb://mongodb-test:27018/admin?directConnection=true" in compose
+    host = "mongodb-test:27018"
+    direct_connection = f"mongodb://{host}/admin?directConnection=true"
+    assert direct_connection in compose
     assert "tmpfs" in compose and "/data/db" in compose
     assert "rs.initiate" in initializer
     assert "MONGO_TRANSACTION_TEST_URL" in workflow
@@ -94,18 +95,19 @@ def test_ci_initializer_waits_for_mongo_with_bounded_retry():
 
     retry_position = compose.index("for attempt in {1..30}; do")
     ping_position = compose.index("db.runCommand({ ping: 1 })")
-    initializer_position = compose.index(
-        "exec mongosh --quiet", ping_position
-    )
+    initializer_position = compose.index("exec mongosh --quiet", ping_position)
     failure_position = compose.index("exit 1", initializer_position)
-    assert retry_position < ping_position < initializer_position < failure_position
+    assert retry_position < ping_position
+    assert ping_position < initializer_position
+    assert initializer_position < failure_position
 
 
 def test_real_inventory_test_uses_shared_isolated_database_fixture():
     inventory_test = read("backend/tests/test_inventory_transactions.py")
+    helper_signature = "async def run_transaction_evidence(database_name):"
 
     assert "import uuid" not in inventory_test
-    assert "async def run_transaction_evidence(database_name):" in inventory_test
+    assert helper_signature in inventory_test
     assert "transaction_database_name" in inventory_test
     assert (
         "asyncio.run(run_transaction_evidence(transaction_database_name))"

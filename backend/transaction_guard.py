@@ -6,7 +6,6 @@ from transaction_execution import (
     TransactionUnavailableError,
 )
 
-
 T = TypeVar("T")
 MutationCallback = Callable[[object], Awaitable[T]]
 EnabledProvider = Callable[[], bool]
@@ -31,9 +30,9 @@ class TransactionMutationGuard:
     ) -> T:
         if not self.enabled_provider():
             raise TransactionUnavailableError()
-        retry_mode = (
-            RetryMode.DRIVER_TRANSIENT if retry_safe else RetryMode.NEVER
-        )
+        retry_mode = RetryMode.NEVER
+        if retry_safe:
+            retry_mode = RetryMode.DRIVER_TRANSIENT
         return await self.executor.execute(
             callback,
             operation_name=operation_name,

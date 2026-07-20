@@ -25,7 +25,8 @@ async def run_real_transaction_contract(database_name):
         collections_after_probe = await database.list_collection_names()
         assert capabilities.transactions is True
         assert collections_after_probe == collections_before_probe
-        assert "__transaction_capability_probe__" not in collections_after_probe
+        probe_collection = "__transaction_capability_probe__"
+        assert probe_collection not in collections_after_probe
         executor = TransactionExecutor(client, lambda: capabilities)
 
         async def committed(session):
@@ -35,9 +36,10 @@ async def run_real_transaction_contract(database_name):
             )
             return "committed"
 
-        assert await executor.execute(
-            committed, operation_name="test.commit"
-        ) == "committed"
+        assert (
+            await executor.execute(committed, operation_name="test.commit")
+            == "committed"
+        )
         assert await database.transaction_evidence.count_documents({}) == 1
 
         async def aborted(session):
@@ -49,7 +51,10 @@ async def run_real_transaction_contract(database_name):
 
         with pytest.raises(RuntimeError, match="force abort"):
             await executor.execute(aborted, operation_name="test.abort")
-        assert await database.transaction_evidence.find_one({"_id": "aborted"}) is None
+        aborted_document = await database.transaction_evidence.find_one(
+            {"_id": "aborted"}
+        )
+        assert aborted_document is None
         assert await database.transaction_evidence.count_documents({}) == 1
     finally:
         await client.drop_database(database_name)

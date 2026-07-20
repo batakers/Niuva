@@ -16,7 +16,6 @@ from transaction_observability import (
     safe_correlation_id,
 )
 
-
 VALID_CORRELATION_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479"
 UNTRUSTED_REQUEST_VALUES = {
     "authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.private.signature",
@@ -109,7 +108,8 @@ def test_safe_correlation_id_retains_canonical_uuid():
 
 
 def test_safe_correlation_id_canonicalizes_uppercase_uuid():
-    assert safe_correlation_id(VALID_CORRELATION_ID.upper()) == VALID_CORRELATION_ID
+    normalized = safe_correlation_id(VALID_CORRELATION_ID.upper())
+    assert normalized == VALID_CORRELATION_ID
 
 
 def test_untrusted_request_values_are_never_sourced_as_correlation_ids():
@@ -176,9 +176,8 @@ def test_executor_emits_start_and_commit_without_payload():
         "transaction_commit",
     ]
     assert all("customer_payload" not in fields for _event, fields in events)
-    assert all(
-        fields["correlation_id"] == VALID_CORRELATION_ID for _event, fields in events
-    )
+    correlation_ids = [fields["correlation_id"] for _event, fields in events]
+    assert all(value == VALID_CORRELATION_ID for value in correlation_ids)
 
 
 def test_executor_emits_abort_with_safe_error_class():
@@ -256,8 +255,6 @@ def test_executor_emits_commit_unknown_without_abort_or_driver_detail():
     )
 
     async def run():
-        nonlocal callback_calls
-
         async def callback(_session):
             nonlocal callback_calls
             callback_calls += 1

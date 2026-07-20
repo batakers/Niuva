@@ -11,7 +11,6 @@ from pymongo.errors import (
 
 from database_capabilities import DatabaseCapabilities
 
-
 T = TypeVar("T")
 TransactionCallback = Callable[[object], Awaitable[T]]
 CapabilityProvider = Callable[[], DatabaseCapabilities]
@@ -26,7 +25,8 @@ class RetryMode(str, Enum):
 class TransactionUnavailableError(RuntimeError):
     status_code = 503
     code = "transaction_unavailable"
-    message = "Operasi sementara tidak tersedia karena transaksi database belum siap."
+    message = "Operasi sementara tidak tersedia karena transaksi "
+    message += "database belum siap."
 
     def __init__(self):
         super().__init__(self.message)
@@ -70,7 +70,8 @@ class TransactionExecutor:
         event_sink: EventSink = _noop_event_sink,
     ):
         if max_transaction_attempts < 1 or max_commit_attempts < 1:
-            raise ValueError("transaction and commit attempts must be positive")
+            message = "transaction and commit attempts must be positive"
+            raise ValueError(message)
         self.client = client
         self.capability_provider = capability_provider
         self.max_transaction_attempts = max_transaction_attempts
@@ -188,9 +189,7 @@ class TransactionExecutor:
                         raise TransactionUnavailableError() from exc
                     retry_allowed = (
                         retry_mode is RetryMode.DRIVER_TRANSIENT
-                        and _has_error_label(
-                            exc, "TransientTransactionError"
-                        )
+                        and _has_error_label(exc, "TransientTransactionError")
                         and attempt < self.max_transaction_attempts
                     )
                     if retry_allowed:
@@ -217,9 +216,8 @@ class TransactionExecutor:
                         error_class="application_error",
                     )
                     raise
-            raise AssertionError(
-                "transaction attempt loop exited unexpectedly"
-            )
+            message = "transaction attempt loop exited unexpectedly"
+            raise AssertionError(message)
         except PyMongoError as exc:
             if _is_unavailable(exc):
                 raise TransactionUnavailableError() from exc

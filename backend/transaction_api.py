@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 
 from transaction_execution import TransactionUnavailableError
 
-
 TRANSACTION_UNAVAILABLE_DETAIL = {
     "code": TransactionUnavailableError.code,
     "message": TransactionUnavailableError.message,
