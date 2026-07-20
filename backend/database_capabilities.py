@@ -112,7 +112,10 @@ async def probe_database_capabilities(
         )
     finally:
         if session is not None:
-            await session.end_session()
+            try:
+                await session.end_session()
+            except PyMongoError:
+                pass
 
     return _capabilities(
         True, TransactionCapabilityReason.AVAILABLE, clock

@@ -11,7 +11,6 @@ from database_capabilities import (
     supports_transactions,
 )
 
-
 FIXED_TIME = datetime(2026, 7, 17, 9, 0, tzinfo=timezone.utc)
 
 
@@ -81,17 +80,13 @@ class FakeClient:
 
 
 def test_transaction_support_requires_replica_set_and_sessions():
-    assert supports_transactions(
-        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30}
-    )
+    assert supports_transactions({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
     assert not supports_transactions({"logicalSessionTimeoutMinutes": 30})
     assert not supports_transactions({"setName": "rs0"})
 
 
 def test_probe_proves_read_only_session_and_transaction_capability():
-    client = FakeClient(
-        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30}
-    )
+    client = FakeClient({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
     result = asyncio.run(
         probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
     )
@@ -149,8 +144,39 @@ def test_probe_aborts_and_returns_safe_reason_when_transaction_read_fails():
     assert "secret" not in str(result.transaction_diagnostic())
 
 
-def test_legacy_boolean_probe_remains_compatible_until_startup_migrates():
+def test_probe_returns_safe_result_when_abort_and_session_cleanup_fail():
+    class CleanupFailingSession(FakeSession):
+        async def abort_transaction(self):
+            raise ServerSelectionTimeoutError("mongodb://user:secret@private.invalid")
+
+        async def end_session(self):
+            raise ServerSelectionTimeoutError("mongodb://user:secret@private.invalid")
+
     client = FakeClient(
-        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30}
+        {"setName": "rs0", "logicalSessionTimeoutMinutes": 30},
+        transaction_fails=True,
     )
+    client.session = CleanupFailingSession()
+    client.database.session = client.session
+
+    result = asyncio.run(
+        probe_database_capabilities(client, "niuva", clock=lambda: FIXED_TIME)
+    )
+
+    assert result.transactions is False
+    assert result.transaction_reason is TransactionCapabilityReason.PROBE_FAILED
+    assert "secret" not in str(result.transaction_diagnostic())
+
+
+def test_legacy_boolean_probe_remains_compatible_until_startup_migrates():
+    client = FakeClient({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
     assert asyncio.run(probe_transaction_capability(client)) is True
+
+
+def test_legacy_probe_returns_false_when_hello_raises_pymongo_error():
+    client = FakeClient({"setName": "rs0", "logicalSessionTimeoutMinutes": 30})
+    client.admin = FakeAdmin(
+        error=ServerSelectionTimeoutError("mongodb://user:secret@private.invalid")
+    )
+
+    assert asyncio.run(probe_transaction_capability(client)) is False
