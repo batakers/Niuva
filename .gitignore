@@ -86,6 +86,9 @@ backend/.local-storage/
 # Build caches
 .cache/
 
+# Generated test-agent reports can contain environment-specific details.
+test_reports/iteration_*.json
+
 memory/test_credentials.md
 
 # Mobile development

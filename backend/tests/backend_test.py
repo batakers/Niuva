@@ -2,6 +2,14 @@
 NIUVA backend integration tests (pytest).
 Covers: auth, materials, orders, payment, admin order flow,
 portfolio, internship/contact, settings, users, stats, notifications.
+
+Required environment for authenticated integration tests:
+- REACT_APP_BACKEND_URL
+- NIUVA_TEST_ADMIN_EMAIL
+- NIUVA_TEST_ADMIN_PASSWORD
+
+Credentials must belong to an approved non-production test environment and
+must never be stored in this repository or generated test reports.
 """
 import os
 import io
@@ -28,12 +36,19 @@ if not BASE_URL:
     )
 
 API = f"{BASE_URL}/api"
-ADMIN_EMAIL = "admin@niuva.com"
-ADMIN_PASSWORD = "__REMOVED_NIV_001__"
+ADMIN_EMAIL = os.environ.get("NIUVA_TEST_ADMIN_EMAIL", "").strip()
+ADMIN_PASSWORD = os.environ.get("NIUVA_TEST_ADMIN_PASSWORD", "")
 
 # ---------- Helpers / fixtures ----------
 @pytest.fixture(scope="session")
 def admin_token():
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        pytest.skip(
+            "Integration administrator credentials are not configured; set "
+            "NIUVA_TEST_ADMIN_EMAIL and NIUVA_TEST_ADMIN_PASSWORD for an approved "
+            "non-production test environment."
+        )
+
     r = requests.post(f"{API}/auth/admin/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}, timeout=30)
     assert r.status_code == 200, f"admin login failed: {r.status_code} {r.text}"
     data = r.json()
@@ -292,7 +307,7 @@ class TestPublicForms:
     def test_contact_submit(self):
         r = requests.post(f"{API}/contact",
                           json={"name": "TEST", "email": "TEST_c@t.com",
-                                "subject": "Hello", "message": "Hi"}, timeout=20)
+                                "subject": "Hello", "message": "Valid test message"}, timeout=20)
         assert r.status_code == 200
 
     def test_admin_contacts(self, admin_token):
