@@ -4,7 +4,7 @@
 
 **Goal:** Remove the audited administrator credential from reachable Git history while preserving approved repository content, preventing recontamination, and collecting redacted evidence required to close `AUD-DEC-01`.
 
-**Architecture:** Perform all destructive work in two new, isolated copies on an approved encrypted volume: one immutable recovery mirror and one disposable rewrite mirror. Freeze repository writes, inventory every ref, run a redacted full-history scan, replace only the audited value in `backend/tests/backend_test.py`, remove `test_reports/iteration_1.json` from every reachable ref, verify the rewritten graph, then publish all mutable refs atomically with explicit leases. Treat GitHub pull-request refs, cached views, forks, old clones, and existing worktrees as separate contamination surfaces.
+**Architecture:** Perform all destructive work in two new, isolated copies on an approved encrypted volume: one immutable recovery mirror and one disposable rewrite mirror. Freeze repository writes, inventory every ref, run a redacted full-history scan, replace only the audited value in `backend/tests/backend_test.py` and `memory/PRD.md`, remove `test_reports/iteration_1.json` from every reachable ref, verify the rewritten graph, then publish all mutable refs atomically with explicit leases. Treat GitHub pull-request refs, cached views, forks, old clones, and existing worktrees as separate contamination surfaces.
 
 **Tech Stack:** Git 2.53 or newer, GitHub CLI, `git-filter-repo` 2.47 or newer, Gitleaks, PowerShell 7, GitHub Support.
 
@@ -166,7 +166,7 @@ Abort without pushing if any of these occurs:
 - the old credential has not been revoked/rotated;
 - a collaborator pushes after the freeze snapshot;
 - a new branch, tag, PR, or fork appears;
-- pre-rewrite exact scan finds a path other than the two approved paths;
+- pre-rewrite exact scan finds a path other than the three approved paths;
 - the rewrite removes or renames an unexpected ref;
 - current branch-tip trees change beyond the intended credential/report removal;
 - any required matrix check fails, except a separately evidenced and approved `environment_blocked_preexisting` dependency condition;
@@ -422,8 +422,16 @@ function Invoke-Niv001ExactHistoryScan {
         }
         if ($paths.Count -gt 0) {
             $hitCommitCount += 1
-            foreach ($path in $paths) {
-                [void] $hitPaths.Add($path)
+            $commitPrefix = "${commit}:"
+            foreach ($pathResult in $paths) {
+                if (-not $pathResult.StartsWith(
+                    $commitPrefix,
+                    [System.StringComparison]::Ordinal
+                )) {
+                    throw "Unexpected redacted git grep result format for commit $commit."
+                }
+                $normalizedPath = $pathResult.Substring($commitPrefix.Length)
+                [void] $hitPaths.Add($normalizedPath)
             }
         }
     }
@@ -455,6 +463,7 @@ Invoke-Niv001ExactHistoryScan `
 Expected unique paths:
 
 - `backend/tests/backend_test.py`
+- `memory/PRD.md`
 - `test_reports/iteration_1.json`
 
 If any other path is reported, stop and revise the filter scope. Do not print the matching content.
@@ -483,14 +492,17 @@ The exact scan is authoritative for the audited literal. Gitleaks provides broad
 
 ### 7.1 Define a value-free, path-scoped callback
 
-The generated report is removed from every reachable ref by the path filter. The file callback processes only `backend/tests/backend_test.py` and replaces only exact bytes equal to the audited value. It does not match assignment names, email literals, other password values, or any other path. The replacement marker remains inside the existing quoted literal, so the rewritten historical Python remains syntactically valid. The callback source contains no credential.
+The generated report is removed from every reachable ref by the path filter. The file callback processes only `backend/tests/backend_test.py` and `memory/PRD.md`, and replaces only exact bytes equal to the audited value. It does not match assignment names, email literals, other password values, or any other path. The replacement marker remains inside the existing quoted literal in the historical Python file, so that rewritten file remains syntactically valid. The callback source contains no credential.
 
 ```powershell
 $FileInfoCallback = @'
 import os
 
-target_path = b"backend/tests/backend_test.py"
-if filename != target_path:
+target_paths = {
+    b"backend/tests/backend_test.py",
+    b"memory/PRD.md",
+}
+if filename not in target_paths:
     return (filename, mode, blob_id)
 
 blob_cache_key = (b"niv001-rewritten-blob", blob_id)
@@ -527,7 +539,10 @@ $CallbackHash = [System.Convert]::ToHexString(
 
 [pscustomobject]@{
     callback_sha256 = $CallbackHash
-    included_path = 'backend/tests/backend_test.py'
+    included_paths = @(
+        'backend/tests/backend_test.py',
+        'memory/PRD.md'
+    )
     removed_path = 'test_reports/iteration_1.json'
     replacement_kind = 'exact_audited_value_only'
 } |
@@ -689,11 +704,12 @@ if ($RefDiff) {
 
 ### 8.4 Tree-diff verification for every branch and tag
 
-For every frozen branch and tag, require identical tree entries outside the two approved paths. The report path must be absent. The target test path may have a different blob ID, but its mode, object type, and path must be unchanged. This catches unrelated path, content, or mode changes without printing file contents.
+For every frozen branch and tag, require identical tree entries outside the three approved paths. The report path must be absent. Either replacement target may have a different blob ID, but its mode, object type, and path must be unchanged. This catches unrelated path, content, or mode changes without printing file contents.
 
 ```powershell
 $ApprovedPaths = @(
     'backend/tests/backend_test.py',
+    'memory/PRD.md',
     'test_reports/iteration_1.json'
 )
 $TreeResults = @()
@@ -738,16 +754,22 @@ foreach ($row in $BeforeRefRows) {
         throw "Unexpected tree change outside the approved paths: $refName"
     }
 
-    $OldTarget = @(git -C $BackupMirror ls-tree $oldSha -- backend/tests/backend_test.py)
-    $NewTarget = @(git -C $RewriteMirror ls-tree $newSha -- backend/tests/backend_test.py)
-    if ($OldTarget.Count -ne $NewTarget.Count) {
-        throw "Target path presence changed unexpectedly: $refName"
-    }
-    if ($OldTarget.Count -eq 1) {
-        $OldTargetShape = $OldTarget[0] -replace ' [0-9a-f]+\t', "`t"
-        $NewTargetShape = $NewTarget[0] -replace ' [0-9a-f]+\t', "`t"
-        if ($OldTargetShape -ne $NewTargetShape) {
-            throw "Target path mode/type changed unexpectedly: $refName"
+    $ReplacementPaths = @(
+        'backend/tests/backend_test.py',
+        'memory/PRD.md'
+    )
+    foreach ($targetPath in $ReplacementPaths) {
+        $OldTarget = @(git -C $BackupMirror ls-tree $oldSha -- $targetPath)
+        $NewTarget = @(git -C $RewriteMirror ls-tree $newSha -- $targetPath)
+        if ($OldTarget.Count -ne $NewTarget.Count) {
+            throw "Target path presence changed unexpectedly: $refName / $targetPath"
+        }
+        if ($OldTarget.Count -eq 1) {
+            $OldTargetShape = $OldTarget[0] -replace ' [0-9a-f]+\t', "`t"
+            $NewTargetShape = $NewTarget[0] -replace ' [0-9a-f]+\t', "`t"
+            if ($OldTargetShape -ne $NewTargetShape) {
+                throw "Target path mode/type changed unexpectedly: $refName / $targetPath"
+            }
         }
     }
 
@@ -1266,7 +1288,8 @@ GitHub's guidance requires revocation/rotation first, warns that old clones can 
 ## 17. Planning Record
 
 - Prepared: 19 July 2026; execution snapshot revised 20 July 2026.
-- Review revision: the credential replacement is path-scoped and exact-value-only; the generated report remains a full-history path removal; the test matrix is explicit by branch tier; audited-memory recording and cleanup controls are mandatory.
+- Review revision: the credential replacement is path-scoped to the two observed source paths and exact-value-only; the generated report remains a full-history path removal; redacted `git grep` results are normalized to repository-relative paths before scope comparison; the test matrix is explicit by branch tier; audited-memory recording and cleanup controls are mandatory.
 - Read-only snapshot revalidated before this documentation revision: 20 remote heads, 0 remote tags, 17 affected local branches, 13 affected registered worktrees, 0 open PRs, 0 forks, and 3 collaborators; documented remote-head diff count is zero.
-- Current state: the old local/manual credential environment is decommissioned, controlled non-production authentication and regression passed, the runbook PR was merged, and pinned rehearsal tools are provisioned. No write freeze, mirror creation, history scan, rehearsal rewrite, force-push, branch/tag deletion, or publication was performed.
-- Next authorized action: merge this snapshot revision, then obtain explicit write-freeze acknowledgements and uncommitted-work dispositions before creating any mirror.
+- Aborted rehearsal record: on 20 July 2026, the isolated pre-rewrite exact scan examined 84 commits and found 77 hit commits. After normalizing `git grep` output, three unique repository paths were identified; the additional `memory/PRD.md` path triggered the documented scope stop. Gitleaks, `git-filter-repo`, rewrite, and publication were not started; remote-ref drift was zero and the temporary write freeze was lifted.
+- Current state: the old local/manual credential environment is decommissioned, controlled non-production authentication and regression passed, the runbook PR was merged, pinned rehearsal tools are provisioned, and the first rehearsal stopped safely at the scope gate. No history rewrite, force-push, branch/tag deletion, or publication was performed.
+- Next authorized action: merge the two preparation PRs, refresh the branch/PR/worktree inventory and explicit test matrix, then request separate approval for a new isolated rewrite rehearsal.
