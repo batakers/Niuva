@@ -75,7 +75,7 @@ async def run_transaction_evidence():
         assert replayed["movement"]["id"] == committed["movement"]["id"]
         assert await db.stock_movements.count_documents({}) == 1
 
-        with pytest.raises(InventoryError, match="different") as mismatch:
+        with pytest.raises(InventoryError, match="berbeda") as mismatch:
             await service.apply_operation(
                 actor=ACTOR,
                 payload={**first_payload, "quantity": "11"},

@@ -1,0 +1,52 @@
+name: transaction-tests
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "scripts/mongodb/**"
+      - "docker-compose.transaction-test.yml"
+      - ".github/workflows/transaction-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  transaction-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.3"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Start isolated MongoDB replica set
+        run: docker compose -f docker-compose.transaction-test.yml up -d
+      - name: Wait for writable primary
+        shell: bash
+        run: |
+          for attempt in $(seq 1 60); do
+            if docker compose -f docker-compose.transaction-test.yml exec -T mongodb-test \
+              mongosh --quiet --port 27018 \
+              --eval 'quit(db.hello().isWritablePrimary ? 0 : 1)'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose -f docker-compose.transaction-test.yml logs
+          exit 1
+      - name: Run mandatory transaction integration tests
+        env:
+          MONGO_TRANSACTION_TEST_URL: mongodb://127.0.0.1:27018/?replicaSet=rs-test&directConnection=true
+        run: >-
+          python -m pytest -n 0 -q
+          backend/tests/test_transaction_integration.py
+          backend/tests/test_inventory_transactions.py
+      - name: Stop isolated MongoDB replica set
+        if: always()
+        run: docker compose -f docker-compose.transaction-test.yml down --volumes --remove-orphans
