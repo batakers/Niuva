@@ -77,6 +77,29 @@ class TransactionExecutor:
         self.max_commit_attempts = max_commit_attempts
         self.event_sink = event_sink
 
+    def _emit(
+        self,
+        event: str,
+        *,
+        operation_name: str,
+        outcome: str,
+        attempt: int,
+        retry_mode: RetryMode,
+        correlation_id: str | None,
+        error_class: str | None = None,
+    ) -> None:
+        self.event_sink(
+            event,
+            {
+                "operation_name": operation_name,
+                "outcome": outcome,
+                "attempt": attempt,
+                "retry_mode": retry_mode.value,
+                "correlation_id": correlation_id,
+                "error_class": error_class,
+            },
+        )
+
     async def _abort_if_active(self, session) -> None:
         if getattr(session, "in_transaction", False):
             await session.abort_transaction()
@@ -103,6 +126,15 @@ class TransactionExecutor:
         correlation_id: str | None = None,
     ) -> T:
         if not self.capability_provider().transactions:
+            self._emit(
+                "transaction_rejected",
+                operation_name=operation_name,
+                outcome="unavailable",
+                attempt=0,
+                retry_mode=retry_mode,
+                correlation_id=correlation_id,
+                error_class="transaction_unavailable",
+            )
             raise TransactionUnavailableError()
 
         session = None
@@ -110,14 +142,48 @@ class TransactionExecutor:
             session = await self.client.start_session()
             for attempt in range(1, self.max_transaction_attempts + 1):
                 session.start_transaction()
+                self._emit(
+                    "transaction_start",
+                    operation_name=operation_name,
+                    outcome="started",
+                    attempt=attempt,
+                    retry_mode=retry_mode,
+                    correlation_id=correlation_id,
+                )
                 try:
                     result = await callback(session)
                     await self._commit(session)
+                    self._emit(
+                        "transaction_commit",
+                        operation_name=operation_name,
+                        outcome="committed",
+                        attempt=attempt,
+                        retry_mode=retry_mode,
+                        correlation_id=correlation_id,
+                    )
                     return result
-                except TransactionCommitOutcomeUnknownError:
+                except TransactionCommitOutcomeUnknownError as exc:
+                    self._emit(
+                        "transaction_commit_unknown",
+                        operation_name=operation_name,
+                        outcome="unknown",
+                        attempt=exc.attempts,
+                        retry_mode=retry_mode,
+                        correlation_id=correlation_id,
+                        error_class="commit_outcome_unknown",
+                    )
                     raise
                 except PyMongoError as exc:
                     await self._abort_if_active(session)
+                    self._emit(
+                        "transaction_abort",
+                        operation_name=operation_name,
+                        outcome="aborted",
+                        attempt=attempt,
+                        retry_mode=retry_mode,
+                        correlation_id=correlation_id,
+                        error_class="database_error",
+                    )
                     if _is_unavailable(exc):
                         raise TransactionUnavailableError() from exc
                     retry_allowed = (
@@ -128,10 +194,28 @@ class TransactionExecutor:
                         and attempt < self.max_transaction_attempts
                     )
                     if retry_allowed:
+                        self._emit(
+                            "transaction_retry",
+                            operation_name=operation_name,
+                            outcome="retrying",
+                            attempt=attempt,
+                            retry_mode=retry_mode,
+                            correlation_id=correlation_id,
+                            error_class="database_error",
+                        )
                         continue
                     raise
                 except BaseException:
                     await self._abort_if_active(session)
+                    self._emit(
+                        "transaction_abort",
+                        operation_name=operation_name,
+                        outcome="aborted",
+                        attempt=attempt,
+                        retry_mode=retry_mode,
+                        correlation_id=correlation_id,
+                        error_class="application_error",
+                    )
                     raise
             raise AssertionError(
                 "transaction attempt loop exited unexpectedly"

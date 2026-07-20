@@ -33,6 +33,7 @@ from permissions import canonical_roles, has_permission, permissions_for
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
+from transaction_observability import TransactionLogSink
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("niuva")
@@ -69,6 +70,7 @@ app.state.reservation_expiry_task = None
 app.state.transaction_executor = TransactionExecutor(
     client,
     lambda: app.state.database_capabilities,
+    event_sink=TransactionLogSink(logging.getLogger("niuva.transaction")),
 )
 app.state.transaction_guard = TransactionMutationGuard(
     app.state.transaction_executor,
