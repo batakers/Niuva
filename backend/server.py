@@ -23,7 +23,7 @@ import storage
 import emailer
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
-from database_capabilities import DatabaseCapabilities, probe_transaction_capability
+from database_capabilities import DatabaseCapabilities, probe_database_capabilities
 from identity_routes import build_identity_router
 from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
@@ -36,7 +36,8 @@ logger = logging.getLogger("niuva")
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+database_name = os.environ["DB_NAME"]
+db = client[database_name]
 
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGO = "HS256"
@@ -705,6 +706,24 @@ async def health():
     return {"status": "ok", "transactions": app.state.database_capabilities.transactions}
 
 
+@api.get("/health/live")
+async def health_live():
+    return {"status": "ok"}
+
+
+@api.get("/health/ready")
+async def health_ready():
+    capabilities = app.state.database_capabilities
+    transaction_mutations = "ready" if capabilities.transactions else "unavailable"
+    return {
+        "status": "ready" if capabilities.transactions else "degraded",
+        "transaction_mutations": transaction_mutations,
+        "capabilities": {
+            "transactions": capabilities.transaction_diagnostic(),
+        },
+    }
+
+
 @api.get("/")
 async def root():
     return {"message": "NIUVA API", "status": "ok"}
@@ -886,8 +905,14 @@ async def reservation_expiry_loop():
 async def startup():
     storage.init_storage()
     await seed()
-    app.state.database_capabilities = DatabaseCapabilities(
-        transactions=await probe_transaction_capability(client)
+    app.state.database_capabilities = await probe_database_capabilities(
+        client,
+        database_name,
+    )
+    logger.info(
+        "database capability checked transactions=%s reason=%s",
+        app.state.database_capabilities.transactions,
+        app.state.database_capabilities.transaction_reason.value,
     )
     await ensure_catalog_inventory_indexes(db)
     asyncio.create_task(auto_delete_loop())
