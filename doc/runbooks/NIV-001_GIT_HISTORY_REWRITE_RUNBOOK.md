@@ -28,15 +28,16 @@
 
 ## 1. Current State and Known Impact Snapshot
 
-Snapshot date: 20 July 2026, Asia/Jakarta.
+Snapshot date: 20 July 2026, 15:40 WIB (Asia/Jakarta).
 
 - Repository: `batakers/Niuva`.
 - Visibility: public.
 - Default branch: `main`.
 - Commit that introduced the audited value: `a75dc92b46e6d0f6f1820a4d1123c17bffdcca84`.
-- Current containment merge: `300287108e8c73455c5e677fb9caaab45d5a0245`.
+- Current `main`: `8a804288662cc4bc58f21b7f29c1f821a158a57f`.
+- Current containment merge: `abec0befa04e6f1ec12fb71b968a6672b7674b8b` (PR `#10`).
 - Current open pull requests: 0.
-- Current merged pull requests: 8; PRs `#1` through `#8` may have rewritten commit references or broken historical diff views.
+- Current merged pull requests: 11; PRs `#1` through `#11` may have rewritten commit references or broken historical diff views.
 - Current fork count: 0. Recheck immediately before execution because the repository is public.
 - Current repository rulesets: 0.
 - Current protection query for `main` and `redesign/brand-alignment`: no protection returned. Recheck every affected branch before execution.
@@ -45,7 +46,7 @@ Snapshot date: 20 July 2026, Asia/Jakarta.
 
 ### 1.1 Affected remote branches
 
-All 20 remote heads advertised by `origin` currently contain the introducing commit:
+All 22 remote heads advertised by `origin` currently contain the introducing commit:
 
 1. `backup-main`
 2. `design/catalog-material-inventory-foundation`
@@ -55,18 +56,20 @@ All 20 remote heads advertised by `origin` currently contain the introducing com
 6. `docs/foundation-spec-review-findings`
 7. `docs/foundation-spec-source-normalization`
 8. `docs/niv-001-history-rewrite-runbook`
-9. `docs/platform-governance-baseline`
-10. `fazguy`
-11. `feat/tx-core`
-12. `feat/tx-readiness-guard`
-13. `feat/tx-test-topology`
-14. `feature/foundation-identity-rbac-audit`
-15. `fix/niv-001-contact-regression-gate`
-16. `fix/niv-001-credential-containment`
-17. `integration/foundation-transaction-capability`
-18. `main`
-19. `plan/foundation-transaction-capability`
-20. `redesign/brand-alignment`
+9. `docs/niv-001-rehearsal-scope-v2`
+10. `docs/platform-governance-baseline`
+11. `fazguy`
+12. `feat/tx-core`
+13. `feat/tx-readiness-guard`
+14. `feat/tx-test-topology`
+15. `feature/foundation-identity-rbac-audit`
+16. `fix/niv-001-contact-regression-gate`
+17. `fix/niv-001-credential-containment`
+18. `fix/niv-001-main-containment`
+19. `integration/foundation-transaction-capability`
+20. `main`
+21. `plan/foundation-transaction-capability`
+22. `redesign/brand-alignment`
 
 ### 1.2 Affected tags
 
@@ -74,13 +77,14 @@ No remote tag is currently advertised. This is a snapshot, not an exemption: tag
 
 ### 1.3 Affected local branches
 
-The following 17 local branches currently contain the introducing commit:
+The following 19 local branches currently contain the introducing commit:
 
 - `design/catalog-material-inventory-foundation`
 - `docs/foundation-spec-alignment`
 - `docs/foundation-spec-review-findings`
 - `docs/foundation-spec-source-normalization`
 - `docs/niv-001-history-rewrite-runbook`
+- `docs/niv-001-rehearsal-scope-v2`
 - `docs/platform-governance-baseline`
 - `fazguy`
 - `feat/tx-core`
@@ -89,6 +93,7 @@ The following 17 local branches currently contain the introducing commit:
 - `feature/foundation-identity-rbac-audit`
 - `fix/niv-001-contact-regression-gate`
 - `fix/niv-001-credential-containment`
+- `fix/niv-001-main-containment`
 - `integration/foundation-transaction-capability`
 - `main`
 - `plan/foundation-transaction-capability`
@@ -98,13 +103,15 @@ Remote-only heads currently include `backup-main`, `dimsguy`, and `dirguy`.
 
 ### 1.4 Existing checkout and worktree impact
 
-All 13 currently registered checkouts/worktrees point to affected history:
+All 15 currently registered checkouts/worktrees point to affected history:
 
 | Checkout/worktree | Branch |
 |---|---|
 | Root checkout | `redesign/brand-alignment` |
 | `.worktrees/catalog-material-inventory-foundation-design` | `design/catalog-material-inventory-foundation` |
 | `.worktrees/niv-001-contact-test-fix` | `fix/niv-001-contact-regression-gate` |
+| `.worktrees/niv-001-main-containment` | `fix/niv-001-main-containment` |
+| `.worktrees/niv-001-rehearsal-scope-v2` | `docs/niv-001-rehearsal-scope-v2` |
 | `.worktrees/niv-001-runbook` | `docs/niv-001-history-rewrite-runbook` |
 | `.worktrees/normalize-foundation-spec-source` | `docs/foundation-spec-source-normalization` |
 | `.worktrees/plan-foundation-transaction-capability` | `plan/foundation-transaction-capability` |
@@ -310,7 +317,7 @@ git -C $RewriteMirror for-each-ref --contains $IntroducingCommit `
     Set-Content -LiteralPath $AffectedRefsPath -Encoding utf8NoBOM
 ```
 
-Expected snapshot: 20 remote heads and zero tags. Any difference requires a new review of this runbook before rewriting.
+Expected snapshot: 22 remote heads and zero tags. Any difference requires a new review of this runbook before rewriting.
 
 ---
 
@@ -807,12 +814,12 @@ The verifier must compare the number of `tree-diff-results.json` rows to the fro
 
 Create a normal disposable clone from the rewritten mirror, never from the live remote, and do not reuse an existing Niuva worktree. Before running the matrix, remove `REACT_APP_BACKEND_URL`, `NIUVA_TEST_ADMIN_EMAIL`, and `NIUVA_TEST_ADMIN_PASSWORD` from the verification environment so these checks cannot perform controlled authentication.
 
-The matrix for the current 20-head snapshot is explicit:
+The matrix for the current 22-head snapshot is explicit:
 
 | Tier | Branches | Required verification |
 |---|---|---|
-| Full regression | `main`; `redesign/brand-alignment`; active implementation branches `feat/tx-core`, `feat/tx-readiness-guard`, `feat/tx-test-topology`, `integration/foundation-transaction-capability`, and `fix/niv-001-contact-regression-gate` | Credential-hygiene unittest when present; compile all backend Python; complete backend pytest suite with authentication integration tests skipped because no endpoint/credential is configured; frontend production build |
-| Historical/documentation | `backup-main`; `design/catalog-material-inventory-foundation`; `dimsguy`; `dirguy`; `docs/foundation-spec-alignment`; `docs/foundation-spec-review-findings`; `docs/foundation-spec-source-normalization`; `docs/niv-001-history-rewrite-runbook`; `docs/platform-governance-baseline`; `fazguy`; `feature/foundation-identity-rbac-audit`; `fix/niv-001-credential-containment`; `plan/foundation-transaction-capability` | Redacted credential hygiene from sections 8.1-8.2; compile `backend/tests/backend_test.py` when present; credential-hygiene unittest when present; backend compile smoke |
+| Full regression | `main`; `redesign/brand-alignment`; active implementation branches `feat/tx-core`, `feat/tx-readiness-guard`, `feat/tx-test-topology`, `integration/foundation-transaction-capability`, `fix/niv-001-contact-regression-gate`, and `fix/niv-001-main-containment` | Credential-hygiene unittest when present; compile all backend Python; complete backend pytest suite with authentication integration tests skipped because no endpoint/credential is configured; frontend production build |
+| Historical/documentation | `backup-main`; `design/catalog-material-inventory-foundation`; `dimsguy`; `dirguy`; `docs/foundation-spec-alignment`; `docs/foundation-spec-review-findings`; `docs/foundation-spec-source-normalization`; `docs/niv-001-history-rewrite-runbook`; `docs/niv-001-rehearsal-scope-v2`; `docs/platform-governance-baseline`; `fazguy`; `feature/foundation-identity-rbac-audit`; `fix/niv-001-credential-containment`; `plan/foundation-transaction-capability` | Redacted credential hygiene from sections 8.1-8.2; compile `backend/tests/backend_test.py` when present; credential-hygiene unittest when present; backend compile smoke |
 | All branches and tags | Every frozen ref, including any tag discovered at execution time | Ref-name parity and tree-diff verification from sections 8.3-8.4 |
 
 If the active implementation set changes before the freeze, stop, update this table explicitly, and obtain approval for the revised matrix. Do not infer branch tiers from a wildcard during execution.
@@ -825,7 +832,8 @@ $FullRegressionBranches = @(
     'feat/tx-readiness-guard',
     'feat/tx-test-topology',
     'integration/foundation-transaction-capability',
-    'fix/niv-001-contact-regression-gate'
+    'fix/niv-001-contact-regression-gate',
+    'fix/niv-001-main-containment'
 )
 $TargetedBranches = @(
     'backup-main',
@@ -836,6 +844,7 @@ $TargetedBranches = @(
     'docs/foundation-spec-review-findings',
     'docs/foundation-spec-source-normalization',
     'docs/niv-001-history-rewrite-runbook',
+    'docs/niv-001-rehearsal-scope-v2',
     'docs/platform-governance-baseline',
     'fazguy',
     'feature/foundation-identity-rbac-audit',
@@ -1074,7 +1083,7 @@ After successful publication:
 
 GitHub states that Support may decline server-side purging when credential rotation sufficiently mitigates the risk. If Support declines or any fork/clone cannot be remediated, record the residual risk and obtain a status decision; do not silently claim full expungement.
 
-Closed PR diff views and commit links may stop working after Support removes internal references. Existing review comments anchored to old SHAs may become invalid. PRs `#1` through `#8` are currently merged and must be included in the impact review; the authoritative affected set comes from `changed-refs`.
+Closed PR diff views and commit links may stop working after Support removes internal references. Existing review comments anchored to old SHAs may become invalid. PRs `#1` through `#11` are currently merged and must be included in the impact review; the authoritative affected set comes from `changed-refs`.
 
 ---
 
@@ -1123,7 +1132,7 @@ The Gitleaks report is an incident artifact and must not be committed to the rep
 
 ### 11.3 Existing Niuva worktrees
 
-The 13 worktrees listed in section 1.4 remain quarantined after publication. Recreate only the branches still needed, from a fresh clone, after the incident owner approves branch-by-branch recovery. Do not use `git worktree repair`, `reset`, `rebase`, or `pull` to attach old worktrees to the rewritten repository.
+The 15 worktrees listed in section 1.4 remain quarantined after publication. Recreate only the branches still needed, from a fresh clone, after the incident owner approves branch-by-branch recovery. Do not use `git worktree repair`, `reset`, `rebase`, or `pull` to attach old worktrees to the rewritten repository.
 
 ---
 
@@ -1289,7 +1298,8 @@ GitHub's guidance requires revocation/rotation first, warns that old clones can 
 
 - Prepared: 19 July 2026; execution snapshot revised 20 July 2026.
 - Review revision: the credential replacement is path-scoped to the two observed source paths and exact-value-only; the generated report remains a full-history path removal; redacted `git grep` results are normalized to repository-relative paths before scope comparison; the test matrix is explicit by branch tier; audited-memory recording and cleanup controls are mandatory.
-- Read-only snapshot revalidated before this documentation revision: 20 remote heads, 0 remote tags, 17 affected local branches, 13 affected registered worktrees, 0 open PRs, 0 forks, and 3 collaborators; documented remote-head diff count is zero.
+- Read-only snapshot revalidated on 20 July 2026 at 15:40 WIB: 22 remote heads, 0 remote tags, 19 affected local branches, 15 affected registered worktrees, 0 open PRs, 11 merged PRs, 0 forks, and 3 collaborators. All remote heads still contain the introducing commit.
+- Remote movement since the earlier snapshot: `dirguy` advanced while no write freeze was active; its current remote head remains in the affected set.
 - Aborted rehearsal record: on 20 July 2026, the isolated pre-rewrite exact scan examined 84 commits and found 77 hit commits. After normalizing `git grep` output, three unique repository paths were identified; the additional `memory/PRD.md` path triggered the documented scope stop. Gitleaks, `git-filter-repo`, rewrite, and publication were not started; remote-ref drift was zero and the temporary write freeze was lifted.
-- Current state: the old local/manual credential environment is decommissioned, controlled non-production authentication and regression passed, the runbook PR was merged, pinned rehearsal tools are provisioned, and the first rehearsal stopped safely at the scope gate. No history rewrite, force-push, branch/tag deletion, or publication was performed.
-- Next authorized action: merge the two preparation PRs, refresh the branch/PR/worktree inventory and explicit test matrix, then request separate approval for a new isolated rewrite rehearsal.
+- Current state: the old local/manual credential environment is decommissioned, controlled non-production authentication and regression passed, preparation PRs `#10` and `#11` were merged with normal merge commits, pinned rehearsal tools are provisioned, and the first rehearsal stopped safely at the scope gate. No history rewrite, force-push, branch/tag deletion, or publication was performed.
+- Next authorized action: request explicit human approval for a new isolated rewrite rehearsal only. This inventory revision does not authorize or start that rehearsal.
