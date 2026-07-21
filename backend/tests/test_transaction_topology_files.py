@@ -102,6 +102,23 @@ def test_ci_initializer_waits_for_mongo_with_bounded_retry():
     assert initializer_position < failure_position
 
 
+def test_local_initializer_waits_for_mongo_with_bounded_retry():
+    compose = read("docker-compose.transaction.yml")
+
+    assert "for attempt in {1..30}; do" in compose
+    assert "db.runCommand({ ping: 1 })" in compose
+    assert "sleep 1" in compose
+    assert "exit 1" in compose
+
+    retry_position = compose.index("for attempt in {1..30}; do")
+    ping_position = compose.index("db.runCommand({ ping: 1 })")
+    initializer_position = compose.index("exec mongosh --quiet", ping_position)
+    failure_position = compose.index("exit 1", initializer_position)
+    assert retry_position < ping_position
+    assert ping_position < initializer_position
+    assert initializer_position < failure_position
+
+
 def test_real_inventory_test_uses_shared_isolated_database_fixture():
     inventory_test = read("backend/tests/test_inventory_transactions.py")
     helper_signature = "async def run_transaction_evidence(database_name):"

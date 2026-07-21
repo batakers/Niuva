@@ -27,13 +27,21 @@ services:
     restart: "no"
     volumes:
       - ./scripts/mongodb/init-replica-set.js:/scripts/init-replica-set.js:ro
+    entrypoint: ["/bin/bash", "-ec"]
     command:
-      [
-        "mongosh",
-        "--quiet",
-        "mongodb://mongodb:27017/admin?directConnection=true",
-        "/scripts/init-replica-set.js",
-      ]
+      - |
+        for attempt in {1..30}; do
+          if mongosh --quiet \
+            "mongodb://mongodb:27017/admin?directConnection=true" \
+            --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 1)'; then
+            exec mongosh --quiet \
+              "mongodb://mongodb:27017/admin?directConnection=true" \
+              /scripts/init-replica-set.js
+          fi
+          sleep 1
+        done
+        echo "MongoDB local endpoint did not accept connections within 30 seconds" >&2
+        exit 1
 
 volumes:
   niuva_mongodb_data:
