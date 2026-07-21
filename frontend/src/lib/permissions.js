@@ -17,6 +17,6 @@ export const ADMIN_ROUTE_PERMISSIONS = Object.freeze({
 
 
 export function hasPermission(user, permission) {
-  const permissions = user?.permissions || [];
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
   return permissions.includes("*") || permissions.includes(permission);
 }

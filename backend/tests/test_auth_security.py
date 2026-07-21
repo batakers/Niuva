@@ -111,7 +111,9 @@ async def run_security_matrix():
         "password_hash": server.hash_password("AdminPassword123"),
         "phone": "",
         "company": "Niuva",
-        "role": "admin",
+        "roles": ["super_admin"],
+        "status": "active",
+        "access_state": "approved",
         "created_at": server.now_iso(),
     }
     client = {
@@ -141,8 +143,9 @@ async def run_security_matrix():
         "password_hash": server.hash_password("EditorPassword123"),
         "phone": "",
         "company": "Niuva",
-        "roles": ["content_editor"],
+        "roles": ["operations"],
         "status": "active",
+        "access_state": "approved",
         "created_at": server.now_iso(),
     }
     disabled_client = {
@@ -188,13 +191,15 @@ async def run_security_matrix():
         )
         assert admin_login.status_code == 200
         admin_token = admin_login.json()["token"]
+        assert admin_login.json()["user"]["role_labels"] == ["Owner"]
+        assert admin_login.json()["user"]["role_policy_version"] == "2026-07-22-v1"
 
         editor_login = await api.post(
             "/api/auth/admin/login",
             json={"email": editor["email"], "password": "EditorPassword123"},
         )
         assert editor_login.status_code == 200
-        assert editor_login.json()["user"]["roles"] == ["content_editor"]
+        assert editor_login.json()["user"]["roles"] == ["operations"]
         assert "admin.access" in editor_login.json()["user"]["permissions"]
         assert "password_hash" not in editor_login.json()["user"]
 
@@ -202,7 +207,7 @@ async def run_security_matrix():
             "/api/auth/me", headers=bearer(editor_login.json()["token"])
         )
         assert editor_me.status_code == 200
-        assert editor_me.json()["roles"] == ["content_editor"]
+        assert editor_me.json()["roles"] == ["operations"]
         assert "roles.manage" not in editor_me.json()["permissions"]
 
         client_admin_login = await api.post(
@@ -273,7 +278,8 @@ async def run_security_matrix():
             headers=bearer(admin_token),
         )
         assert provisioned.status_code == 201
-        assert provisioned.json()["role"] == "client"
+        assert provisioned.json()["roles"] == ["retail_customer"]
+        assert provisioned.json()["access_state"] == "approved"
         assert "password_hash" not in provisioned.json()
 
         invalid = await api.get("/api/auth/me", headers=bearer("not-a-token"))

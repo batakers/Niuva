@@ -17,6 +17,15 @@ test("denies missing users and permissions", () => {
 });
 
 
+test("never infers authority from an untrusted role string", () => {
+  expect(hasPermission({ role: "super_admin" }, "roles.manage")).toBe(false);
+  expect(hasPermission({ role: "operations", permissions: [] }, "inventory.write")).toBe(false);
+});
+
+test("denies malformed permissions instead of treating a role-like string as authority", () => {
+  expect(hasPermission({ permissions: "*" }, "roles.manage")).toBe(false);
+});
+
 test("maps catalog, material, and inventory routes to exact permissions", () => {
   expect(ADMIN_ROUTE_PERMISSIONS["/admin/catalog"]).toBe("catalog.read");
   expect(ADMIN_ROUTE_PERMISSIONS["/admin/materials"]).toBe("materials.read");

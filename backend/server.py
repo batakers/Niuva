@@ -29,7 +29,13 @@ from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
 from organization_routes import build_organization_router
-from permissions import canonical_roles, has_permission, permissions_for
+from permissions import (
+    ROLE_LABELS,
+    ROLE_POLICY_VERSION,
+    canonical_roles,
+    has_permission,
+    permissions_for,
+)
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
@@ -235,8 +241,11 @@ def safe_user(user: dict) -> dict:
         "phone": user.get("phone", ""),
         "company": user.get("company", ""),
         "status": user.get("status", "active"),
+        "access_state": user.get("access_state", "approved"),
+        "role_policy_version": ROLE_POLICY_VERSION,
         "role": roles[0] if roles else "",
         "roles": list(roles),
+        "role_labels": [ROLE_LABELS[role] for role in roles],
         "permissions": sorted(permissions_for(user)),
         "created_at": user.get("created_at"),
     }
@@ -268,14 +277,13 @@ async def provision_client(req: ClientProvisionReq) -> dict:
         "password_hash": hash_password(req.password),
         "phone": req.phone or "",
         "company": req.company or "",
-        "role": "client",
+        "roles": ["retail_customer"],
+        "status": "active",
+        "access_state": "approved",
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
-    return {
-        key: user[key]
-        for key in ("id", "name", "email", "role", "phone", "company", "created_at")
-    }
+    return safe_user(user)
 
 
 _rate_buckets: dict = {}
@@ -832,7 +840,8 @@ async def seed():
         await db.users.insert_one({
             "id": str(uuid.uuid4()), "name": "NIUVA Admin", "email": admin_email,
             "password_hash": hash_password(admin_password), "phone": "", "company": "PT Niuva Inovasi Utama",
-            "role": "admin", "created_at": now_iso(),
+            "roles": ["super_admin"], "status": "active",
+            "access_state": "approved", "created_at": now_iso(),
         })
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})

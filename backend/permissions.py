@@ -1,11 +1,21 @@
-LEGACY_ROLE_MAP = {
-    "admin": ("super_admin",),
-    "client": ("retail_customer",),
+ROLE_POLICY_VERSION = "2026-07-22-v1"
+
+ROLE_LABELS = {
+    "super_admin": "Owner",
+    "operations": "Operations",
+    "commercial_finance": "Commercial & Finance",
+    "retail_customer": "Retail Customer",
+    "organization_customer": "Organization Customer",
 }
 
 CUSTOMER_ROLES = frozenset({"retail_customer", "organization_customer"})
-INTERNAL_ROLES = frozenset(
+INTERNAL_ROLES = frozenset({"super_admin", "operations", "commercial_finance"})
+ASSIGNABLE_ROLES = tuple(sorted(CUSTOMER_ROLES | INTERNAL_ROLES))
+
+# These role markers identify records that have not completed the identity review.
+SUPERSEDED_INTERNAL_ROLE_MARKERS = frozenset(
     {
+        "admin",
         "content_editor",
         "catalog_manager",
         "warehouse",
@@ -16,100 +26,56 @@ INTERNAL_ROLES = frozenset(
         "quality_control",
         "finance",
         "manager_approver",
-        "super_admin",
     }
 )
-ASSIGNABLE_ROLES = tuple(sorted(CUSTOMER_ROLES | INTERNAL_ROLES))
 
 ROLE_PERMISSIONS = {
-    "retail_customer": frozenset(),
-    "organization_customer": frozenset(),
-    "content_editor": frozenset(
-        {
-            "admin.access",
-            "content.read",
-            "content.write",
-            "media.read",
-            "media.write",
-        }
-    ),
-    "catalog_manager": frozenset(
+    "super_admin": frozenset({"*"}),
+    "operations": frozenset(
         {
             "admin.access",
             "catalog.read",
             "catalog.write",
-            "catalog.publish",
-            "materials.read",
-            "pricing.read",
-            "pricing.write",
-        }
-    ),
-    "warehouse": frozenset(
-        {
-            "admin.access",
+            "content.read",
+            "content.write",
+            "media.read",
+            "media.write",
             "materials.read",
             "materials.write",
+            "materials.archive",
             "inventory.read",
             "inventory.write",
+            "inventory.adjust",
             "restock_alerts.read",
             "restock_alerts.manage",
-        }
-    ),
-    "order_admin": frozenset(
-        {
-            "admin.access",
+            "production.read",
+            "production.write",
+            "qc.read",
+            "qc.write",
+            "fulfilment.read",
+            "fulfilment.write",
             "orders.read",
             "orders.write",
-            "customers.read",
-            "notifications.write",
+            "projects.read",
+            "files.read",
         }
     ),
-    "sales_estimator": frozenset(
+    "commercial_finance": frozenset(
         {
             "admin.access",
+            "customers.read",
+            "customers.write",
+            "organizations.read",
+            "organizations.write",
             "inquiries.read",
             "inquiries.write",
             "quotes.read",
             "quotes.write",
             "catalog.read",
-            "materials.read",
+            "catalog.write",
+            "catalog.publish",
             "pricing.read",
-            "inventory.read",
-            "projects.read",
-        }
-    ),
-    "designer_engineer": frozenset(
-        {
-            "admin.access",
-            "designs.read",
-            "designs.write",
-            "projects.read",
-            "files.read",
-        }
-    ),
-    "production": frozenset(
-        {
-            "admin.access",
-            "production.read",
-            "production.write",
-            "orders.read",
-            "projects.read",
-            "inventory.read",
-        }
-    ),
-    "quality_control": frozenset(
-        {
-            "admin.access",
-            "qc.read",
-            "qc.write",
-            "production.read",
-            "orders.read",
-            "projects.read",
-        }
-    ),
-    "finance": frozenset(
-        {
-            "admin.access",
+            "pricing.write",
             "payments.read",
             "payments.write",
             "invoices.read",
@@ -117,51 +83,50 @@ ROLE_PERMISSIONS = {
             "refunds.write",
             "orders.read",
             "projects.read",
+            "notifications.write",
         }
     ),
-    "manager_approver": frozenset(
-        {
-            "admin.access",
-            "users.read",
-            "organizations.read",
-            "audit.read",
-            "approvals.read",
-            "approvals.write",
-            "catalog.read",
-            "catalog.write",
-            "catalog.publish",
-            "catalog.archive",
-            "materials.read",
-            "materials.write",
-            "materials.archive",
-            "pricing.read",
-            "pricing.write",
-            "inventory.read",
-            "inventory.write",
-            "inventory.adjust",
-            "restock_alerts.read",
-            "restock_alerts.manage",
-            "orders.read",
-            "projects.read",
-        }
-    ),
-    "super_admin": frozenset({"*"}),
+    "retail_customer": frozenset(),
+    "organization_customer": frozenset(),
 }
 
 
+def validate_roles(roles: object) -> tuple[str, ...]:
+    """Return one valid canonical role, or no role for an invalid assignment."""
+    if not isinstance(roles, list) or len(roles) != 1:
+        return ()
+    role = roles[0]
+    if not isinstance(role, str) or role not in ROLE_PERMISSIONS:
+        return ()
+    return (role,)
+
+
 def canonical_roles(user: dict) -> tuple[str, ...]:
-    roles = user.get("roles")
-    if roles:
-        valid = {role for role in roles if role in ROLE_PERMISSIONS}
-        return tuple(sorted(valid))
-    return LEGACY_ROLE_MAP.get(user.get("role"), tuple())
+    """Resolve only active, reviewed users to one canonical role."""
+    if user.get("status", "active") != "active":
+        return ()
+    if user.get("access_state", "approved") == "access_review_required":
+        return ()
+
+    legacy_role = user.get("role")
+    if legacy_role in SUPERSEDED_INTERNAL_ROLE_MARKERS:
+        return ()
+    if legacy_role:
+        if legacy_role != "client":
+            return ()
+        if "roles" not in user:
+            return ("retail_customer",)
+
+    if "roles" not in user:
+        return ()
+    return validate_roles(user["roles"])
 
 
 def permissions_for(user: dict) -> frozenset[str]:
-    permissions: set[str] = set()
-    for role in canonical_roles(user):
-        permissions.update(ROLE_PERMISSIONS[role])
-    return frozenset(permissions)
+    roles = canonical_roles(user)
+    if not roles:
+        return frozenset()
+    return ROLE_PERMISSIONS[roles[0]]
 
 
 def has_permission(user: dict, permission: str) -> bool:
