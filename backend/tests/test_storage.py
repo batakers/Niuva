@@ -20,7 +20,13 @@ def test_exposes_local_storage_contract():
 
 
 @pytest.fixture
-def local_root(tmp_path, monkeypatch):
+def local_storage_env(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+
+
+@pytest.fixture
+def local_root(tmp_path, monkeypatch, local_storage_env):
     root = tmp_path / "uploads"
     monkeypatch.setenv("LOCAL_STORAGE_ROOT", str(root))
     return root
@@ -31,7 +37,7 @@ def test_init_storage_creates_configured_root(local_root):
     assert local_root.is_dir()
 
 
-def test_init_storage_rejects_file_as_root(tmp_path, monkeypatch):
+def test_init_storage_rejects_file_as_root(tmp_path, monkeypatch, local_storage_env):
     root = tmp_path / "not-a-directory"
     root.write_text("occupied", encoding="utf-8")
     monkeypatch.setenv("LOCAL_STORAGE_ROOT", str(root))
@@ -149,3 +155,71 @@ def test_metadata_write_failure_removes_partial_object(local_root, monkeypatch):
 
     assert not (local_root / "niuva/orders/user-1/model.stl").exists()
     assert not list(local_root.rglob("*.tmp"))
+
+
+def test_exposes_typed_storage_environment_errors():
+    assert issubclass(storage.StorageUnavailableError, storage.StorageError)
+    assert issubclass(storage.StorageConfigurationError, storage.StorageError)
+
+
+def test_disabled_storage_returns_none_and_rejects_reads_and_writes(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("STORAGE_BACKEND", "disabled")
+
+    assert storage.init_storage() is None
+    with pytest.raises(storage.StorageUnavailableError):
+        storage.put_object("niuva/orders/user-1/model.stl", b"solid niuva", "model/stl")
+    with pytest.raises(storage.StorageUnavailableError):
+        storage.get_object("niuva/orders/user-1/model.stl")
+
+
+def test_local_storage_is_rejected_in_production(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+
+    with pytest.raises(storage.StorageConfigurationError):
+        storage.init_storage()
+
+
+def test_unknown_storage_backend_is_rejected(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("STORAGE_BACKEND", "unconfigured-provider")
+
+    with pytest.raises(storage.StorageConfigurationError):
+        storage.init_storage()
+
+
+@pytest.mark.parametrize(
+    "unsafe_path",
+    [
+        "niuva/file:stream.stl",
+        "niuva/trailing-space /model.stl",
+        "niuva/trailing-dot./model.stl",
+    ],
+)
+def test_rejects_colon_and_windows_unsafe_path_components(local_root, unsafe_path):
+    with pytest.raises(storage.InvalidStoragePathError):
+        storage.put_object(unsafe_path, b"data", "application/octet-stream")
+
+
+@pytest.mark.parametrize(
+    "content_type",
+    [
+        "",
+        "a" * 256,
+        "image/png\rmalicious",
+        "image/png\nmalicious",
+    ],
+)
+def test_unsafe_mime_metadata_is_stored_as_binary(local_root, content_type):
+    result = storage.put_object(
+        "niuva/orders/user-1/model.stl",
+        b"solid niuva",
+        content_type,
+    )
+
+    assert result["content_type"] == "application/octet-stream"
+    assert storage.get_object(result["path"]) == (
+        b"solid niuva",
+        "application/octet-stream",
+    )

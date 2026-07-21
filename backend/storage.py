@@ -9,10 +9,21 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 
 BACKEND_DIR = Path(__file__).resolve().parent
 DEFAULT_STORAGE_ROOT = BACKEND_DIR / ".local-storage"
+LOCAL_ENVIRONMENTS = frozenset({"development", "demo", "test"})
+DEFAULT_CONTENT_TYPE = "application/octet-stream"
+MAX_CONTENT_TYPE_LENGTH = 255
 
 
 class StorageError(RuntimeError):
     """Base error for local storage failures."""
+
+
+class StorageUnavailableError(StorageError):
+    """Raised when persistent storage is intentionally disabled."""
+
+
+class StorageConfigurationError(StorageError):
+    """Raised when the selected storage configuration is unsupported or unsafe."""
 
 
 class StorageNotFoundError(StorageError):
@@ -31,14 +42,52 @@ def _storage_root() -> Path:
     return root.resolve()
 
 
-def init_storage() -> Path:
-    root = _storage_root()
+def _normalized_environment(name: str, default: str) -> str:
+    return os.environ.get(name, "").strip().lower() or default
+
+
+def init_storage() -> Path | None:
+    backend = _normalized_environment("STORAGE_BACKEND", "disabled")
+    if backend == "disabled":
+        return None
+    if backend != "local":
+        raise StorageConfigurationError("Unsupported storage backend")
+
+    app_environment = _normalized_environment("APP_ENV", "production")
+    if app_environment not in LOCAL_ENVIRONMENTS:
+        raise StorageConfigurationError(
+            "Local storage is only available in development, demo, or test"
+        )
+
+    descriptor = None
+    probe = None
     try:
+        root = _storage_root()
         root.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise StorageError("Unable to initialize local storage") from exc
-    if not root.is_dir():
-        raise StorageError("Local storage root is not a directory")
+        if not root.is_dir():
+            raise OSError("Local storage root is not a directory")
+        descriptor, probe_name = tempfile.mkstemp(
+            prefix=".niuva-storage-probe-",
+            dir=root,
+        )
+        probe = Path(probe_name)
+        os.close(descriptor)
+        descriptor = None
+        probe.unlink()
+        probe = None
+    except (OSError, ValueError) as exc:
+        raise StorageConfigurationError("Unable to initialize local storage") from exc
+    finally:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        if probe is not None:
+            try:
+                probe.unlink(missing_ok=True)
+            except OSError:
+                pass
     return root
 
 
@@ -52,11 +101,18 @@ def _resolve_path(storage_path: str) -> tuple[Path, str]:
     if (
         PurePosixPath(normalized).is_absolute()
         or windows_path.drive
-        or any(part in {"", ".", ".."} for part in parts)
+        or any(
+            part in {"", ".", ".."}
+            or ":" in part
+            or part.endswith((" ", "."))
+            for part in parts
+        )
     ):
         raise InvalidStoragePathError("Invalid storage path")
 
     root = init_storage()
+    if root is None:
+        raise StorageUnavailableError("Storage is disabled")
     candidate = root.joinpath(*parts).resolve()
     try:
         candidate.relative_to(root)
@@ -87,6 +143,20 @@ def _atomic_write(target: Path, payload: bytes) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def _sanitize_content_type(content_type: object) -> str:
+    if not isinstance(content_type, str):
+        return DEFAULT_CONTENT_TYPE
+    normalized = content_type.strip()
+    if (
+        not normalized
+        or len(content_type) > MAX_CONTENT_TYPE_LENGTH
+        or "\r" in content_type
+        or "\n" in content_type
+    ):
+        return DEFAULT_CONTENT_TYPE
+    return normalized
+
+
 def put_object(path: str, data: bytes, content_type: str) -> dict:
     target, normalized = _resolve_path(path)
     metadata_target = _metadata_path(target)
@@ -95,7 +165,7 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
 
     metadata = {
         "version": 1,
-        "content_type": content_type or "application/octet-stream",
+        "content_type": _sanitize_content_type(content_type),
         "size": len(data),
     }
     try:
@@ -126,10 +196,10 @@ def get_object(path: str) -> tuple[bytes, str]:
         if isinstance(metadata, dict):
             metadata_content_type = metadata.get("content_type")
             if isinstance(metadata_content_type, str) and metadata_content_type.strip():
-                content_type = metadata_content_type
+                content_type = _sanitize_content_type(metadata_content_type)
     except (FileNotFoundError, OSError, ValueError, TypeError):
         content_type = None
 
     if not content_type:
-        content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        content_type = mimetypes.guess_type(target.name)[0] or DEFAULT_CONTENT_TYPE
     return data, content_type
