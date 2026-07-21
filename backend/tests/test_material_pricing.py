@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 
 from material_pricing import resolve_effective_price
 from material_routes import build_material_router
+from permissions import has_permission
 
 
 class FakeCursor:
@@ -328,3 +329,59 @@ async def run_supplier_reference_boundary():
 
 def test_supplier_reference_requires_explicit_read_and_write_capabilities():
     asyncio.run(run_supplier_reference_boundary())
+
+
+def role_require_permission(permission):
+    async def dependency(x_role: str = Header(default="operations")):
+        actor = {"id": f"actor-{x_role}", "email": f"{x_role}@niuva.example.com", "roles": [x_role], "status": "active", "access_state": "approved"}
+        if not has_permission(actor, permission):
+            raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
+        return actor
+    return dependency
+
+
+def build_role_test_context():
+    db = FakeDatabase()
+    app = FastAPI()
+    api = APIRouter(prefix="/api")
+    api.include_router(build_material_router(get_db=lambda: db, require_permission=role_require_permission, has_permission=has_permission))
+    app.include_router(api)
+    return app, db
+
+
+async def run_real_role_supplier_reference_boundaries():
+    app, db = build_role_test_context()
+    db.materials.items.append({"id": "material-private", "name": "Private Material", "description": "Original", "supplier_reference": "SUP-001", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
+    db.materials.items.append({"id": "material-delete", "name": "Delete Material", "description": "Original", "supplier_reference": "SUP-DELETE", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        operations = {"X-Role": "operations"}
+        commercial = {"X-Role": "commercial_finance"}
+        created = await api.post("/api/admin/materials", json={"name": "Operations Material"}, headers=operations)
+        assert created.status_code == 200
+        assert "supplier_reference" not in created.json()
+        operations_list = await api.get("/api/admin/materials", headers=operations)
+        assert operations_list.status_code == 200
+        assert all("supplier_reference" not in material for material in operations_list.json())
+        updated = await api.put("/api/admin/materials/material-private", json={"description": "Operations update"}, headers=operations)
+        assert updated.status_code == 200
+        assert "supplier_reference" not in updated.json()
+        archived = await api.post("/api/admin/materials/material-private/archive", json={"reason": "Archive this material"}, headers=operations)
+        assert archived.status_code == 200
+        assert "supplier_reference" not in archived.json()
+        deprecated = await api.delete("/api/admin/materials/material-delete", headers=operations)
+        assert deprecated.status_code == 200
+        assert "supplier_reference" not in deprecated.json()
+        assert (await api.get("/api/admin/materials", headers=commercial)).status_code == 403
+        supplier = await api.get("/api/admin/materials/material-private/supplier-reference", headers=commercial)
+        assert supplier.status_code == 200
+        assert supplier.json() == {"id": "material-private", "supplier_reference": "SUP-001"}
+        changed = await api.put("/api/admin/materials/material-private/supplier-reference", json={"supplier_reference": "SUP-002"}, headers=commercial)
+        assert changed.status_code == 200
+        assert changed.json() == {"id": "material-private", "supplier_reference": "SUP-002"}
+        assert (await api.get("/api/admin/materials/material-private/supplier-reference", headers=operations)).status_code == 403
+        assert (await api.put("/api/admin/materials/material-private/supplier-reference", json={"supplier_reference": "SUP-LEAK"}, headers=operations)).status_code == 403
+
+
+def test_real_roles_keep_supplier_references_off_generic_material_responses():
+    asyncio.run(run_real_role_supplier_reference_boundaries())

@@ -109,6 +109,13 @@ def build_catalog_router(
                     "message": f"Operations cannot write {field}.",
                 })
 
+    def reject_operations_category_lifecycle(actor: dict, fields: set[str], *, requested_status: str, current_status: str | None = None):
+        if has_permission(actor, "catalog.publish"):
+            return
+        if current_status == "archived":
+            raise HTTPException(status_code=403, detail={"code": "catalog_lifecycle_forbidden", "message": "Operations cannot update archived categories."})
+        if "status" in fields and requested_status != "active":
+            raise HTTPException(status_code=403, detail={"code": "catalog_lifecycle_forbidden", "field": "status", "message": "Operations cannot change category status."})
     def service() -> CatalogService:
         return CatalogService(get_db(), get_client(), get_capabilities())
 
@@ -132,6 +139,7 @@ def build_catalog_router(
         payload: CategoryPayload,
         actor: dict = Depends(require_permission("catalog.write")),
     ):
+        reject_operations_category_lifecycle(actor, payload.model_fields_set, requested_status=payload.status)
         return await invoke(
             service().create_category(payload.model_dump(mode="json"), actor)
         )
@@ -149,9 +157,11 @@ def build_catalog_router(
         payload: CategoryPayload,
         actor: dict = Depends(require_permission("catalog.write")),
     ):
+        current = await invoke(service().get_category(category_id))
+        reject_operations_category_lifecycle(actor, payload.model_fields_set, requested_status=payload.status, current_status=current.get("status"))
         return await invoke(
             service().update_category(
-                category_id, payload.model_dump(mode="json"), actor
+                category_id, payload.model_dump(mode="json", exclude_unset=not has_permission(actor, "catalog.publish")), actor
             )
         )
 
@@ -209,7 +219,7 @@ def build_catalog_router(
     ):
         for item in payload.variants:
             reject_operations_pricing(actor, item.model_fields_set)
-        values = [item.model_dump(mode="json") for item in payload.variants]
+        values = [item.model_dump(mode="json", exclude_unset=not has_permission(actor, "catalog.publish")) for item in payload.variants]
         return await invoke(service().replace_variants(product_id, values, actor))
 
     @router.put("/admin/products/{product_id}/options")

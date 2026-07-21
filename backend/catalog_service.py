@@ -206,7 +206,7 @@ class CatalogService:
         changes = {
             **payload,
             "slug": slug,
-            "workflow_status": "draft",
+            "workflow_status": before.get("workflow_status", "draft") if before.get("workflow_status") == "archived" else "draft",
             "updated_at": now_iso(),
             "updated_by": actor.get("id"),
         }
@@ -227,7 +227,7 @@ class CatalogService:
         self, product_id: str, variants: list[dict], actor: dict
     ) -> list[dict]:
         self._require_transactions()
-        await self._product_document(product_id)
+        product = await self._product_document(product_id)
         incoming_skus = [item["sku"].strip().upper() for item in variants]
         if len(incoming_skus) != len(set(incoming_skus)):
             raise CatalogError(409, "sku_conflict", "SKU varian harus unik.")
@@ -320,7 +320,7 @@ class CatalogService:
                         )
                 await self.db.products.update_one(
                     {"id": product_id},
-                    {"$set": {"workflow_status": "draft", "updated_at": timestamp}},
+                    {"$set": {"workflow_status": product.get("workflow_status", "draft") if product.get("workflow_status") == "archived" else "draft", "updated_at": timestamp}},
                     **_write_options(session),
                 )
                 await append_audit_event(
@@ -338,7 +338,7 @@ class CatalogService:
         self, product_id: str, options: list[dict], actor: dict
     ) -> list[dict]:
         self._require_transactions()
-        await self._product_document(product_id)
+        product = await self._product_document(product_id)
         incoming_codes = [item["code"].strip().lower() for item in options]
         if len(incoming_codes) != len(set(incoming_codes)):
             raise CatalogError(
@@ -435,7 +435,7 @@ class CatalogService:
                         )
                 await self.db.products.update_one(
                     {"id": product_id},
-                    {"$set": {"workflow_status": "draft", "updated_at": timestamp}},
+                    {"$set": {"workflow_status": product.get("workflow_status", "draft") if product.get("workflow_status") == "archived" else "draft", "updated_at": timestamp}},
                     **_write_options(session),
                 )
                 await append_audit_event(
