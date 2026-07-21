@@ -34,6 +34,7 @@ ROLE_PERMISSIONS = {
     "operations": frozenset(
         {
             "admin.access",
+            "dashboard.read",
             "catalog.read",
             "catalog.write",
             "content.read",
@@ -43,6 +44,7 @@ ROLE_PERMISSIONS = {
             "materials.read",
             "materials.write",
             "materials.archive",
+            "organizations.fulfilment.read",
             "inventory.read",
             "inventory.write",
             "inventory.adjust",
@@ -63,10 +65,13 @@ ROLE_PERMISSIONS = {
     "commercial_finance": frozenset(
         {
             "admin.access",
+            "dashboard.read",
             "customers.read",
             "customers.manage",
             "organizations.read",
             "organizations.manage",
+            "supplier_reference.read",
+            "supplier_reference.write",
             "inquiries.read",
             "inquiries.write",
             "quotes.read",

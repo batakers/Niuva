@@ -85,7 +85,7 @@ def require_permission(permission):
         permissions = {value.strip() for value in x_permissions.split(",") if value}
         if permission not in permissions:
             raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
-        return {"id": x_actor_id, "email": "staff@niuva.test", "roles": ["staff"]}
+        return {"id": x_actor_id, "email": "staff@niuva.test", "roles": ["staff"], "permissions": permissions}
 
     return dependency
 
@@ -98,6 +98,7 @@ def build_test_context():
         build_material_router(
             get_db=lambda: db,
             require_permission=require_permission,
+            has_permission=lambda actor, permission: permission in actor.get("permissions", set()),
         )
     )
     app.include_router(api)
@@ -165,7 +166,7 @@ async def run_material_compatibility_and_pricing_flow():
                 "setup_status": "ready",
                 "status": "active",
             },
-            headers=headers("materials.write"),
+            headers=headers("materials.write", "supplier_reference.write"),
         )
         assert completed.status_code == 200, completed.text
         assert completed.json()["id"] == material_id
@@ -304,3 +305,26 @@ async def run_validation_and_compatibility_aliases():
 
 def test_material_validation_and_delete_archive_alias():
     asyncio.run(run_validation_and_compatibility_aliases())
+
+
+async def run_supplier_reference_boundary():
+    app, db = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        material = await api.post("/api/admin/materials", json={"name": "Private Supplier Material", "supplier_reference": "SUP-001"}, headers=headers("materials.write", "supplier_reference.write"))
+        assert material.status_code == 200
+        material_id = material.json()["id"]
+        operations_list = await api.get("/api/admin/materials", headers=headers("materials.read"))
+        assert operations_list.status_code == 200
+        assert "supplier_reference" not in operations_list.json()[0]
+        forbidden = await api.put(f"/api/admin/materials/{material_id}", json={"supplier_reference": "LEAK"}, headers=headers("materials.write"))
+        assert forbidden.status_code == 403
+        assert forbidden.json()["detail"]["code"] == "material_field_forbidden"
+        assert db.materials.items[0]["supplier_reference"] == "SUP-001"
+        commercial_list = await api.get("/api/admin/materials", headers=headers("materials.read", "supplier_reference.read"))
+        assert commercial_list.status_code == 200
+        assert commercial_list.json()[0]["supplier_reference"] == "SUP-001"
+
+
+def test_supplier_reference_requires_explicit_read_and_write_capabilities():
+    asyncio.run(run_supplier_reference_boundary())

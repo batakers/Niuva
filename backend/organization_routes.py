@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
 from audit import append_audit_event
-from permissions import canonical_roles
+from permissions import canonical_roles, has_permission
 
 ORGANIZATION_MEMBER_ROLES = frozenset(
     {"owner", "project_pic", "approver", "finance", "viewer"}
@@ -65,14 +65,17 @@ class OrganizationMemberUpdate(BaseModel):
 
 
 def build_organization_router(
-    *, get_db, require_permission, get_current_user
+    *, get_db, require_permission, get_current_user, has_permission=has_permission
 ) -> APIRouter:
     router = APIRouter(tags=["organizations"])
 
     @router.get("/admin/organizations")
     async def list_organizations(
-        _user: dict = Depends(require_permission("organizations.read")),
+        user: dict = Depends(get_current_user),
     ):
+        management_view = has_permission(user, "organizations.manage")
+        if not management_view and not has_permission(user, "organizations.fulfilment.read"):
+            raise HTTPException(status_code=403, detail="Permission required: organizations.fulfilment.read")
         database = get_db()
         organizations = (
             await database.organizations.find({}, {"_id": 0})
@@ -96,10 +99,26 @@ def build_organization_router(
                 membership["organization_id"], []
             ).append(membership)
 
+        if management_view:
+            return [
+                {
+                    **without_mongo_id(organization),
+                    "memberships": memberships_by_organization.get(organization["id"], []),
+                }
+                for organization in organizations
+            ]
+
+        membership_fields = ("id", "organization_id", "user_id", "member_role", "status")
         return [
             {
-                **without_mongo_id(organization),
-                "memberships": memberships_by_organization.get(organization["id"], []),
+                "id": organization["id"],
+                "name": organization["name"],
+                "status": organization["status"],
+                "memberships": [
+                    {field: membership[field] for field in membership_fields if field in membership}
+                    for membership in memberships_by_organization.get(organization["id"], [])
+                    if membership.get("status") == "active"
+                ],
             }
             for organization in organizations
         ]

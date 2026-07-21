@@ -459,13 +459,26 @@ async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dic
 
 
 # ----------------------------- Admin orders -----------------------------
+def serialize_admin_order_for(actor: dict, order: dict) -> dict:
+    """Return a role-safe order representation for internal readers."""
+    value = {key: item for key, item in order.items() if key != "_id"}
+    if has_permission(actor, "payments.read"):
+        return value
+    operational_fields = {
+        "id", "order_number", "user_id", "user_name", "user_email", "material_id",
+        "material_name", "file", "notes", "status", "status_history", "created_at", "updated_at",
+    }
+    return {key: value[key] for key in operational_fields if key in value}
+
+
+# ----------------------------- Admin orders -----------------------------
 @api.get("/admin/orders")
 async def admin_orders(
     status: Optional[str] = None,
     user: dict = Depends(require_permission("orders.read")),
 ):
     q = {"status": status} if status else {}
-    return await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return [serialize_admin_order_for(user, order) for order in await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)]
 
 
 @api.post("/admin/orders/{oid}/estimate")
@@ -497,7 +510,7 @@ async def set_estimate(
         f"<p>Setelah transfer, unggah bukti pembayaran di dashboard Anda.</p>",
         db=db, user_id=order["user_id"],
     )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
+    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 @api.post("/admin/orders/{oid}/verify-payment")
@@ -523,7 +536,7 @@ async def verify_payment(
         f"Pesanan Anda kini <strong>sedang diproses</strong>.</p>",
         db=db, user_id=order["user_id"],
     )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
+    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 @api.post("/admin/orders/{oid}/status")
@@ -551,7 +564,7 @@ async def update_status(
             f"Tim kami akan menghubungi Anda untuk pengambilan/pengiriman.</p>",
             db=db, user_id=order["user_id"],
         )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
+    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 # ----------------------------- File download -----------------------------
@@ -606,7 +619,7 @@ async def apply_internship(req: InternshipReq):
 
 @api.get("/admin/internships")
 async def list_internships(
-    user: dict = Depends(require_permission("admin.access")),
+    user: dict = Depends(require_permission("internships.read")),
 ):
     return await db.internships.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
@@ -728,7 +741,7 @@ async def list_customers(
 
 @api.get("/admin/stats")
 async def admin_stats(
-    user: dict = Depends(require_permission("admin.access")),
+    user: dict = Depends(require_permission("dashboard.read")),
 ):
     total_orders = await db.orders.count_documents({})
     pending = await db.orders.count_documents({"status": "pending_estimate"})
@@ -788,6 +801,7 @@ api.include_router(
         get_db=lambda: db,
         require_permission=require_permission,
         get_current_user=get_current_user,
+        has_permission=has_permission,
     )
 )
 api.include_router(
@@ -802,6 +816,7 @@ api.include_router(
     build_material_router(
         get_db=lambda: db,
         require_permission=require_permission,
+        has_permission=has_permission,
     )
 )
 api.include_router(

@@ -124,6 +124,8 @@ def permission_dependency(permission):
             "id": f"actor-{x_role}",
             "email": f"{x_role}@niuva.test",
             "roles": [x_role],
+            "status": "active",
+            "access_state": "approved",
         }
         if not has_permission(actor, permission):
             raise HTTPException(status_code=403, detail="Permission denied")
@@ -150,7 +152,7 @@ def build_test_context():
     return app, db, capabilities
 
 
-def headers(role="catalog_manager"):
+def headers(role="super_admin"):
     return {"X-Role": role}
 
 
@@ -502,3 +504,32 @@ async def run_resolved_child_ids_must_remain_unique():
 
 def test_resolved_variant_and_option_ids_cannot_be_reused_in_one_replacement():
     asyncio.run(run_resolved_child_ids_must_remain_unique())
+
+
+async def run_operations_catalog_field_boundary():
+    app, _db, _capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        category = await api.post("/api/admin/categories", json={"name": "Operations Drafts", "slug": "operations-drafts"}, headers=headers("operations"))
+        assert category.status_code == 201
+        forbidden_product = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Operations Product", "short_description": "Draft copy", "description": "Draft description", "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}], "pricing_mode": "fixed", "price_from": 50000, "currency": "IDR", "pricing_rule_reference": "rule-private"}, headers=headers("operations"))
+        assert forbidden_product.status_code == 403
+        assert forbidden_product.json()["detail"]["code"] == "catalog_field_forbidden"
+        assert forbidden_product.json()["detail"]["field"] == "pricing_mode"
+        draft = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Operations Draft", "short_description": "Draft copy", "description": "Draft description", "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}]}, headers=headers("operations"))
+        assert draft.status_code == 201, draft.text
+        priced = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Owner Priced Product", "short_description": "Original", "description": "Original description", "pricing_mode": "fixed", "price_from": 75000, "currency": "IDR"}, headers=headers("super_admin"))
+        assert priced.status_code == 201
+        operations_update = await api.put(f"/api/admin/products/{priced.json()['id']}", json={"category_id": category.json()["id"], "name": "Owner Priced Product", "short_description": "Operations edit", "description": "Updated description"}, headers=headers("operations"))
+        assert operations_update.status_code == 200, operations_update.text
+        assert operations_update.json()["pricing_mode"] == "fixed"
+        assert operations_update.json()["price_from"] == 75000
+        forbidden_variant = await api.put(f"/api/admin/products/{draft.json()['id']}/variants", json={"variants": [{"sku": "OPS-DRAFT", "name": "Draft", "fixed_price": 50000, "currency": "IDR", "production_type": "made_to_order"}]}, headers=headers("operations"))
+        assert forbidden_variant.status_code == 403
+        assert forbidden_variant.json()["detail"]["code"] == "catalog_field_forbidden"
+        assert (await api.post(f"/api/admin/products/{draft.json()['id']}/publish", json={"reason": "Operations cannot publish"}, headers=headers("operations"))).status_code == 403
+        assert (await api.post(f"/api/admin/products/{draft.json()['id']}/archive", json={"reason": "Operations cannot archive"}, headers=headers("operations"))).status_code == 403
+
+
+def test_operations_can_edit_catalog_drafts_without_pricing_or_publish_authority():
+    asyncio.run(run_operations_catalog_field_boundary())

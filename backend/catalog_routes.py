@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from catalog_service import CatalogError, CatalogService
+from permissions import has_permission
 
 
 class CategoryPayload(BaseModel):
@@ -33,7 +34,7 @@ class ProductPayload(BaseModel):
     media: list[MediaPayload] = Field(default_factory=list)
     seo_title: str = Field(default="", max_length=200)
     seo_description: str = Field(default="", max_length=500)
-    pricing_mode: Literal["fixed", "calculated", "quote_required"]
+    pricing_mode: Literal["fixed", "calculated", "quote_required"] = "quote_required"
     price_from: int = Field(default=0, ge=0)
     currency: Literal["IDR"] = "IDR"
     pricing_rule_reference: str | None = None
@@ -96,6 +97,17 @@ def build_catalog_router(
     require_permission,
 ) -> APIRouter:
     router = APIRouter(tags=["catalog"])
+
+    def reject_operations_pricing(actor: dict, fields: set[str]):
+        if has_permission(actor, "catalog.publish"):
+            return
+        for field in ("pricing_mode", "price_from", "pricing_rule_reference", "currency", "fixed_price"):
+            if field in fields:
+                raise HTTPException(status_code=403, detail={
+                    "code": "catalog_field_forbidden",
+                    "field": field,
+                    "message": f"Operations cannot write {field}.",
+                })
 
     def service() -> CatalogService:
         return CatalogService(get_db(), get_client(), get_capabilities())
@@ -164,6 +176,7 @@ def build_catalog_router(
         payload: ProductPayload,
         actor: dict = Depends(require_permission("catalog.write")),
     ):
+        reject_operations_pricing(actor, payload.model_fields_set)
         return await invoke(
             service().create_product(payload.model_dump(mode="json"), actor)
         )
@@ -181,9 +194,10 @@ def build_catalog_router(
         payload: ProductPayload,
         actor: dict = Depends(require_permission("catalog.write")),
     ):
+        reject_operations_pricing(actor, payload.model_fields_set)
         return await invoke(
             service().update_product(
-                product_id, payload.model_dump(mode="json"), actor
+                product_id, payload.model_dump(mode="json", exclude_unset=not has_permission(actor, "catalog.publish")), actor
             )
         )
 
@@ -193,6 +207,8 @@ def build_catalog_router(
         payload: VariantListPayload,
         actor: dict = Depends(require_permission("catalog.write")),
     ):
+        for item in payload.variants:
+            reject_operations_pricing(actor, item.model_fields_set)
         values = [item.model_dump(mode="json") for item in payload.variants]
         return await invoke(service().replace_variants(product_id, values, actor))
 
