@@ -37,6 +37,16 @@ APP_NAME = os.environ.get("APP_NAME", "niuva")
 MAX_FILE_SIZE = 50 * 1024 * 1024
 DESIGN_EXTS = {"stl", "obj"}
 IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "gif", "pdf"}
+SAFE_FILE_CONTENT_TYPES = {
+    "stl": "model/stl",
+    "obj": "text/plain",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+    "gif": "image/gif",
+    "pdf": "application/pdf",
+}
 
 ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "completed", "cancelled"]
 
@@ -233,6 +243,11 @@ def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terla
     _rate_buckets[key] = bucket
 
 
+def safe_file_content_type(path: str) -> str:
+    ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+    return SAFE_FILE_CONTENT_TYPES.get(ext, "application/octet-stream")
+
+
 async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict:
     ext = (file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin").lower()
     if ext not in allowed_exts:
@@ -241,12 +256,22 @@ async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File exceeds 50MB limit")
     path = f"{APP_NAME}/{prefix}/{uuid.uuid4()}.{ext}"
-    result = storage.put_object(path, data, file.content_type or "application/octet-stream")
+    content_type = safe_file_content_type(path)
+    try:
+        result = storage.put_object(path, data, content_type)
+    except storage.InvalidStoragePathError as exc:
+        logger.warning("Rejected generated storage path")
+        raise HTTPException(status_code=400, detail="Invalid file storage path") from exc
+    except storage.StorageUnavailableError as exc:
+        raise HTTPException(status_code=503, detail="File storage unavailable") from exc
+    except storage.StorageError as exc:
+        logger.exception("Unable to store uploaded file")
+        raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     return {
         "id": str(uuid.uuid4()),
         "storage_path": result["path"],
         "original_filename": file.filename,
-        "content_type": file.content_type or "application/octet-stream",
+        "content_type": content_type,
         "size": result.get("size", len(data)),
     }
 
@@ -505,8 +530,22 @@ async def download_file(path: str, request: Request, auth: Optional[str] = Query
     # access control: admins can fetch anything; clients only their own paths
     if user["role"] != "admin" and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
-    data, content_type = storage.get_object(path)
-    return Response(content=data, media_type=content_type)
+    try:
+        data, _stored_content_type = storage.get_object(path)
+    except storage.InvalidStoragePathError as exc:
+        raise HTTPException(status_code=400, detail="Invalid file path") from exc
+    except storage.StorageNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="File not found") from exc
+    except storage.StorageUnavailableError as exc:
+        raise HTTPException(status_code=503, detail="File storage unavailable") from exc
+    except storage.StorageError as exc:
+        logger.exception("Unable to read stored file")
+        raise HTTPException(status_code=500, detail="File storage unavailable") from exc
+    return Response(
+        content=data,
+        media_type=safe_file_content_type(path),
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
 
 
 # ----------------------------- Internship -----------------------------
@@ -740,10 +779,7 @@ async def auto_delete_loop():
 
 @app.on_event("startup")
 async def startup():
-    try:
-        storage.init_storage()
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
+    storage.init_storage()
     await seed()
     asyncio.create_task(auto_delete_loop())
 
