@@ -81,7 +81,12 @@ class OrganizationMemberUpdate(BaseModel):
 
 
 def build_organization_router(
-    *, get_db, require_permission, get_current_user, has_permission=has_permission
+    *,
+    get_db,
+    get_transaction_guard,
+    require_permission,
+    get_current_user,
+    has_permission=has_permission,
 ) -> APIRouter:
     router = APIRouter(tags=["organizations"])
 
@@ -167,26 +172,36 @@ def build_organization_router(
         actor: dict = Depends(require_permission("organizations.manage")),
     ):
         database = get_db()
-        timestamp = now_iso()
-        organization = {
-            "id": str(uuid.uuid4()),
-            **request.model_dump(),
-            "created_at": timestamp,
-            "updated_at": timestamp,
-        }
-        await database.organizations.insert_one(dict(organization))
-        await append_identity_audit_event(
-            database,
-            actor_user_id=actor["id"],
-            action="organization.created",
-            target_type="organization",
-            target_id=organization["id"],
-            previous=None,
-            result=_organization_audit_projection(organization),
-            reason_code="organization_created",
-            policy_version=ROLE_POLICY_VERSION,
+        guard = get_transaction_guard()
+
+        async def mutate(session):
+            timestamp = now_iso()
+            organization = {
+                "id": str(uuid.uuid4()),
+                **request.model_dump(),
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+            await database.organizations.insert_one(dict(organization), session=session)
+            await append_identity_audit_event(
+                database,
+                actor_user_id=actor["id"],
+                action="organization.created",
+                target_type="organization",
+                target_id=organization["id"],
+                previous=None,
+                result=_organization_audit_projection(organization),
+                reason_code="organization_created",
+                policy_version=ROLE_POLICY_VERSION,
+                session=session,
+            )
+            return organization
+
+        return await guard.run(
+            mutate,
+            operation_name="organization.create",
+            retry_safe=False,
         )
-        return organization
 
     @router.put("/admin/organizations/{organization_id}")
     async def update_organization(
@@ -195,29 +210,45 @@ def build_organization_router(
         actor: dict = Depends(require_permission("organizations.manage")),
     ):
         database = get_db()
-        before = await database.organizations.find_one({"id": organization_id})
-        if not before:
-            raise HTTPException(status_code=404, detail="Organization not found")
+        guard = get_transaction_guard()
 
-        changes = {**request.model_dump(), "updated_at": now_iso()}
-        result = await database.organizations.update_one(
-            {"id": organization_id}, {"$set": changes}
+        async def mutate(session):
+            before = await database.organizations.find_one(
+                {"id": organization_id}, session=session
+            )
+            if not before:
+                raise HTTPException(status_code=404, detail="Organization not found")
+
+            changes = {**request.model_dump(), "updated_at": now_iso()}
+            result = await database.organizations.update_one(
+                {"id": organization_id}, {"$set": changes}, session=session
+            )
+            if result.matched_count == 0:
+                raise HTTPException(status_code=404, detail="Organization not found")
+            after = await database.organizations.find_one(
+                {"id": organization_id}, session=session
+            )
+            if after is None:
+                raise RuntimeError("Updated organization disappeared before audit")
+            await append_identity_audit_event(
+                database,
+                actor_user_id=actor["id"],
+                action="organization.updated",
+                target_type="organization",
+                target_id=organization_id,
+                previous=_organization_audit_projection(before),
+                result=_organization_audit_projection(after),
+                reason_code="organization_updated",
+                policy_version=ROLE_POLICY_VERSION,
+                session=session,
+            )
+            return without_mongo_id(after)
+
+        return await guard.run(
+            mutate,
+            operation_name="organization.update",
+            retry_safe=False,
         )
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Organization not found")
-        after = await database.organizations.find_one({"id": organization_id})
-        await append_identity_audit_event(
-            database,
-            actor_user_id=actor["id"],
-            action="organization.updated",
-            target_type="organization",
-            target_id=organization_id,
-            previous=_organization_audit_projection(before),
-            result=_organization_audit_projection(after),
-            reason_code="organization_updated",
-            policy_version=ROLE_POLICY_VERSION,
-        )
-        return without_mongo_id(after)
 
     @router.post(
         "/admin/organizations/{organization_id}/members",
@@ -229,70 +260,90 @@ def build_organization_router(
         actor: dict = Depends(require_permission("organizations.manage")),
     ):
         database = get_db()
-        organization = await database.organizations.find_one(
-            {"id": organization_id, "status": "active"}
+        guard = get_transaction_guard()
+
+        async def mutate(session):
+            organization = await database.organizations.find_one(
+                {"id": organization_id, "status": "active"}, session=session
+            )
+            if not organization:
+                raise HTTPException(
+                    status_code=404, detail="Active organization not found"
+                )
+
+            member_user = await database.users.find_one(
+                {"id": request.user_id}, session=session
+            )
+            if not member_user:
+                raise HTTPException(status_code=404, detail="User not found")
+            if "organization_customer" not in canonical_roles(member_user):
+                raise HTTPException(
+                    status_code=422,
+                    detail="User must have the organization_customer role",
+                )
+
+            existing = await database.organization_memberships.find_one(
+                {"organization_id": organization_id, "user_id": request.user_id},
+                session=session,
+            )
+            timestamp = now_iso()
+            if existing and existing.get("status") == "active":
+                raise HTTPException(
+                    status_code=409, detail="Active membership already exists"
+                )
+
+            if existing:
+                await database.organization_memberships.update_one(
+                    {"id": existing["id"], "status": {"$ne": "active"}},
+                    {
+                        "$set": {
+                            "member_role": request.member_role,
+                            "status": "active",
+                            "updated_at": timestamp,
+                        }
+                    },
+                    session=session,
+                )
+                membership = await database.organization_memberships.find_one(
+                    {"id": existing["id"]}, session=session
+                )
+                action = "organization.member_reactivated"
+            else:
+                membership = {
+                    "id": str(uuid.uuid4()),
+                    "organization_id": organization_id,
+                    "user_id": request.user_id,
+                    "member_role": request.member_role,
+                    "status": "active",
+                    "created_at": timestamp,
+                    "updated_at": timestamp,
+                }
+                await database.organization_memberships.insert_one(
+                    dict(membership), session=session
+                )
+                action = "organization.member_added"
+
+            if membership is None:
+                raise RuntimeError("Updated membership disappeared before audit")
+            await append_identity_audit_event(
+                database,
+                actor_user_id=actor["id"],
+                action=action,
+                target_type="organization_membership",
+                target_id=membership["id"],
+                previous=(_membership_audit_projection(existing) if existing else None),
+                result=_membership_audit_projection(membership),
+                reason_code=action.replace(".", "_"),
+                policy_version=ROLE_POLICY_VERSION,
+                session=session,
+            )
+            return without_mongo_id(membership)
+
+        return await guard.run(
+            mutate,
+            operation_name="organization.membership.add_or_reactivate",
+            retry_safe=False,
         )
-        if not organization:
-            raise HTTPException(status_code=404, detail="Active organization not found")
-
-        member_user = await database.users.find_one({"id": request.user_id})
-        if not member_user:
-            raise HTTPException(status_code=404, detail="User not found")
-        if "organization_customer" not in canonical_roles(member_user):
-            raise HTTPException(
-                status_code=422,
-                detail="User must have the organization_customer role",
-            )
-
-        existing = await database.organization_memberships.find_one(
-            {"organization_id": organization_id, "user_id": request.user_id}
-        )
-        timestamp = now_iso()
-        if existing and existing.get("status") == "active":
-            raise HTTPException(
-                status_code=409, detail="Active membership already exists"
-            )
-
-        if existing:
-            await database.organization_memberships.update_one(
-                {"id": existing["id"], "status": {"$ne": "active"}},
-                {
-                    "$set": {
-                        "member_role": request.member_role,
-                        "status": "active",
-                        "updated_at": timestamp,
-                    }
-                },
-            )
-            membership = await database.organization_memberships.find_one(
-                {"id": existing["id"]}
-            )
-            action = "organization.member_reactivated"
-        else:
-            membership = {
-                "id": str(uuid.uuid4()),
-                "organization_id": organization_id,
-                "user_id": request.user_id,
-                "member_role": request.member_role,
-                "status": "active",
-                "created_at": timestamp,
-                "updated_at": timestamp,
-            }
-            await database.organization_memberships.insert_one(dict(membership))
-            action = "organization.member_added"
-
-        await append_identity_audit_event(
-            database,
-            actor_user_id=actor["id"],
-            action=action,
-            target_type="organization_membership",
-            target_id=membership["id"],
-            previous=_membership_audit_projection(existing) if existing else None,
-            result=_membership_audit_projection(membership),
-            reason_code=action.replace(".", "_"),
-            policy_version=ROLE_POLICY_VERSION,
-        )
-        return without_mongo_id(membership)
 
     @router.put("/admin/organizations/{organization_id}/members/{membership_id}")
     async def update_organization_member(
@@ -302,38 +353,64 @@ def build_organization_router(
         actor: dict = Depends(require_permission("organizations.manage")),
     ):
         database = get_db()
-        before = await database.organization_memberships.find_one(
-            {
-                "id": membership_id,
-                "organization_id": organization_id,
-                "status": "active",
-            }
-        )
-        if not before:
-            raise HTTPException(status_code=404, detail="Active membership not found")
+        guard = get_transaction_guard()
 
-        await database.organization_memberships.update_one(
-            {"id": membership_id, "organization_id": organization_id},
-            {
-                "$set": {
-                    "member_role": request.member_role,
-                    "updated_at": now_iso(),
-                }
-            },
+        async def mutate(session):
+            before = await database.organization_memberships.find_one(
+                {
+                    "id": membership_id,
+                    "organization_id": organization_id,
+                    "status": "active",
+                },
+                session=session,
+            )
+            if not before:
+                raise HTTPException(
+                    status_code=404, detail="Active membership not found"
+                )
+
+            result = await database.organization_memberships.update_one(
+                {
+                    "id": membership_id,
+                    "organization_id": organization_id,
+                    "status": "active",
+                },
+                {
+                    "$set": {
+                        "member_role": request.member_role,
+                        "updated_at": now_iso(),
+                    }
+                },
+                session=session,
+            )
+            if result.matched_count == 0:
+                raise HTTPException(
+                    status_code=404, detail="Active membership not found"
+                )
+            after = await database.organization_memberships.find_one(
+                {"id": membership_id}, session=session
+            )
+            if after is None:
+                raise RuntimeError("Updated membership disappeared before audit")
+            await append_identity_audit_event(
+                database,
+                actor_user_id=actor["id"],
+                action="organization.member_updated",
+                target_type="organization_membership",
+                target_id=membership_id,
+                previous=_membership_audit_projection(before),
+                result=_membership_audit_projection(after),
+                reason_code="organization_member_updated",
+                policy_version=ROLE_POLICY_VERSION,
+                session=session,
+            )
+            return without_mongo_id(after)
+
+        return await guard.run(
+            mutate,
+            operation_name="organization.membership.update",
+            retry_safe=False,
         )
-        after = await database.organization_memberships.find_one({"id": membership_id})
-        await append_identity_audit_event(
-            database,
-            actor_user_id=actor["id"],
-            action="organization.member_updated",
-            target_type="organization_membership",
-            target_id=membership_id,
-            previous=_membership_audit_projection(before),
-            result=_membership_audit_projection(after),
-            reason_code="organization_member_updated",
-            policy_version=ROLE_POLICY_VERSION,
-        )
-        return without_mongo_id(after)
 
     @router.delete("/admin/organizations/{organization_id}/members/{membership_id}")
     async def archive_organization_member(
@@ -342,39 +419,59 @@ def build_organization_router(
         actor: dict = Depends(require_permission("organizations.manage")),
     ):
         database = get_db()
-        before = await database.organization_memberships.find_one(
-            {
-                "id": membership_id,
-                "organization_id": organization_id,
-                "status": "active",
-            }
-        )
-        if not before:
-            raise HTTPException(status_code=404, detail="Active membership not found")
+        guard = get_transaction_guard()
 
-        result = await database.organization_memberships.update_one(
-            {
-                "id": membership_id,
-                "organization_id": organization_id,
-                "status": "active",
-            },
-            {"$set": {"status": "inactive", "updated_at": now_iso()}},
+        async def mutate(session):
+            before = await database.organization_memberships.find_one(
+                {
+                    "id": membership_id,
+                    "organization_id": organization_id,
+                    "status": "active",
+                },
+                session=session,
+            )
+            if not before:
+                raise HTTPException(
+                    status_code=404, detail="Active membership not found"
+                )
+
+            result = await database.organization_memberships.update_one(
+                {
+                    "id": membership_id,
+                    "organization_id": organization_id,
+                    "status": "active",
+                },
+                {"$set": {"status": "inactive", "updated_at": now_iso()}},
+                session=session,
+            )
+            if result.matched_count == 0:
+                raise HTTPException(
+                    status_code=404, detail="Active membership not found"
+                )
+            after = await database.organization_memberships.find_one(
+                {"id": membership_id}, session=session
+            )
+            if after is None:
+                raise RuntimeError("Archived membership disappeared before audit")
+            await append_identity_audit_event(
+                database,
+                actor_user_id=actor["id"],
+                action="organization.member_archived",
+                target_type="organization_membership",
+                target_id=membership_id,
+                previous=_membership_audit_projection(before),
+                result=_membership_audit_projection(after),
+                reason_code="organization_member_archived",
+                policy_version=ROLE_POLICY_VERSION,
+                session=session,
+            )
+            return without_mongo_id(after)
+
+        return await guard.run(
+            mutate,
+            operation_name="organization.membership.archive",
+            retry_safe=False,
         )
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Active membership not found")
-        after = await database.organization_memberships.find_one({"id": membership_id})
-        await append_identity_audit_event(
-            database,
-            actor_user_id=actor["id"],
-            action="organization.member_archived",
-            target_type="organization_membership",
-            target_id=membership_id,
-            previous=_membership_audit_projection(before),
-            result=_membership_audit_projection(after),
-            reason_code="organization_member_archived",
-            policy_version=ROLE_POLICY_VERSION,
-        )
-        return without_mongo_id(after)
 
     @router.get("/organizations/mine")
     async def list_my_organizations(

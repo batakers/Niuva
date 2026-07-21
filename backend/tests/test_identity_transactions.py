@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 
 import httpx
 import pytest
@@ -12,10 +13,16 @@ if not MONGO_TRANSACTION_TEST_URL:
         allow_module_level=True,
     )
 
+loaded_motor = sys.modules.get("motor.motor_asyncio")
+if loaded_motor is not None and getattr(loaded_motor, "__file__", None) is None:
+    sys.modules.pop("motor.motor_asyncio", None)
+    sys.modules.pop("motor", None)
+
 from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 
 from database_capabilities import DatabaseCapabilities  # noqa: E402
 from identity_routes import build_identity_router  # noqa: E402
+from organization_routes import build_organization_router  # noqa: E402
 from transaction_execution import TransactionExecutor  # noqa: E402
 from transaction_guard import TransactionMutationGuard  # noqa: E402
 
@@ -168,6 +175,98 @@ def test_real_access_update_and_forced_audit_failure_are_atomic(
     transaction_database_name,
 ):
     asyncio.run(run_real_identity_transaction_contract(transaction_database_name))
+
+
+async def run_real_membership_transaction_contract(database_name):
+    client = AsyncIOMotorClient(MONGO_TRANSACTION_TEST_URL)
+    database = client[database_name]
+    executor = TransactionExecutor(
+        client,
+        lambda: DatabaseCapabilities(transactions=True),
+    )
+    guard = TransactionMutationGuard(executor, lambda: True)
+    app = FastAPI()
+    app.include_router(
+        build_organization_router(
+            get_db=lambda: database,
+            get_transaction_guard=lambda: guard,
+            require_permission=_require_owner,
+            get_current_user=lambda: {"id": "owner-real"},
+        )
+    )
+    organization = {
+        "id": "organization-membership-real",
+        "name": "Real Transaction Organization",
+        "legal_name": "PT Real Transaction Organization",
+        "tax_id": "private-tax-id",
+        "status": "active",
+    }
+    membership = {
+        "id": "membership-real",
+        "organization_id": organization["id"],
+        "user_id": "member-real",
+        "member_role": "viewer",
+        "status": "active",
+    }
+    try:
+        await database.organizations.insert_one(organization)
+        await database.organization_memberships.insert_one(membership)
+        transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as api:
+            path = (
+                f"/admin/organizations/{organization['id']}"
+                f"/members/{membership['id']}"
+            )
+            committed = await api.put(path, json={"member_role": "approver"})
+            assert committed.status_code == 200
+            assert committed.json()["member_role"] == "approver"
+            event = await database.audit_events.find_one(
+                {"target_id": membership["id"]}, {"_id": 0}
+            )
+            assert event is not None
+            assert set(event) == {
+                "id",
+                "actor_user_id",
+                "action",
+                "target_type",
+                "target_id",
+                "previous",
+                "result",
+                "reason_code",
+                "policy_version",
+                "created_at",
+            }
+
+            await database.command(
+                {
+                    "collMod": "audit_events",
+                    "validator": {"$expr": {"$eq": [1, 0]}},
+                    "validationLevel": "strict",
+                    "validationAction": "error",
+                }
+            )
+            aborted = await api.put(path, json={"member_role": "finance"})
+            assert aborted.status_code == 500
+
+        unchanged = await database.organization_memberships.find_one(
+            {"id": membership["id"]}
+        )
+        assert unchanged["member_role"] == "approver"
+        assert (
+            await database.audit_events.count_documents({"target_id": membership["id"]})
+            == 1
+        )
+    finally:
+        await client.drop_database(database_name)
+        client.close()
+
+
+def test_real_membership_update_and_forced_audit_failure_are_atomic(
+    transaction_database_name,
+):
+    asyncio.run(run_real_membership_transaction_contract(transaction_database_name))
 
 
 async def run_real_concurrent_owner_demotion_contract(database_name):

@@ -800,6 +800,7 @@ api.include_router(
 api.include_router(
     build_organization_router(
         get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         get_current_user=get_current_user,
         has_permission=has_permission,
