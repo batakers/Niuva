@@ -7,6 +7,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 INTEGRATION_TEST = REPOSITORY_ROOT / "backend" / "tests" / "backend_test.py"
 STALE_ITERATION_REPORT = REPOSITORY_ROOT / "test_reports" / "iteration_1.json"
 GITIGNORE = REPOSITORY_ROOT / ".gitignore"
+FRONTEND_PACKAGE = REPOSITORY_ROOT / "frontend" / "package.json"
+FRONTEND_CRACO = REPOSITORY_ROOT / "frontend" / "craco.config.js"
+FRONTEND_INDEX = REPOSITORY_ROOT / "frontend" / "public" / "index.html"
+FRONTEND_LOCK = REPOSITORY_ROOT / "frontend" / "package-lock.json"
+FRONTEND_ENV_EXAMPLE = REPOSITORY_ROOT / "frontend" / ".env.example"
+FRONTEND_HOME_TEST_IDS = REPOSITORY_ROOT / "frontend" / "src" / "constants" / "testIds" / "home.js"
 
 
 class RepositoryCredentialHygieneTests(unittest.TestCase):
@@ -69,6 +75,24 @@ class RepositoryCredentialHygieneTests(unittest.TestCase):
         }
 
         self.assertIn("test_reports/iteration_*.json", patterns)
+
+    def test_frontend_has_no_emergent_visual_editing_integration(self):
+        package_source = FRONTEND_PACKAGE.read_text(encoding="utf-8")
+        craco_source = FRONTEND_CRACO.read_text(encoding="utf-8")
+        index_source = FRONTEND_INDEX.read_text(encoding="utf-8")
+        lock_source = FRONTEND_LOCK.read_text(encoding="utf-8")
+        env_example_source = FRONTEND_ENV_EXAMPLE.read_text(encoding="utf-8")
+
+        self.assertNotIn("@emergentbase/visual-edits", package_source)
+        self.assertNotIn("@emergentbase/visual-edits", craco_source)
+        self.assertNotIn("withVisualEdits", craco_source)
+        self.assertNotIn("assets.emergent.sh", index_source)
+        self.assertNotIn("REACT_APP_ENABLE_EMERGENT_RUNTIME", index_source)
+        self.assertNotIn("@emergentbase/visual-edits", lock_source)
+        self.assertNotIn("assets.emergent.sh", lock_source)
+        self.assertNotIn("Emergent", env_example_source)
+        self.assertNotIn("REACT_APP_ENABLE_EMERGENT_RUNTIME", env_example_source)
+        self.assertFalse(FRONTEND_HOME_TEST_IDS.exists())
 
 
 if __name__ == "__main__":
