@@ -18,7 +18,7 @@ Konfigurasi pihak ketiga bersifat opt-in:
 - `REACT_APP_POSTHOG_HOST` menetapkan host ingestion.
 - `REACT_APP_ENABLE_SESSION_RECORDING=true` hanya boleh diaktifkan setelah persetujuan privasi. Default release adalah `false`. Form contact memakai exclusion attribute, seluruh input dimasking, dan cross-origin iframe recording dimatikan.
 
-Backend memakai `backend/.env.example`. Nilai `JWT_SECRET`, kredensial admin, MongoDB, dan Resend adalah secret server-side; jangan memakai prefix `REACT_APP_`, jangan menyimpannya di Git, dan rotasi jika pernah terpapar. `LOCAL_STORAGE_ROOT` hanya untuk development/demo dan bukan rancangan storage production.
+Backend memakai `backend/.env.example`. Nilai `JWT_SECRET`, kredensial admin, MongoDB, dan Resend adalah secret server-side; jangan memakai prefix `REACT_APP_`, jangan menyimpannya di Git, dan rotasi jika pernah terpapar. Default aman production adalah `STORAGE_BACKEND=disabled`. Mode `local` hanya boleh dipakai saat `APP_ENV` bernilai `development`, `demo`, atau `test`; `LOCAL_STORAGE_ROOT` bukan rancangan storage production.
 
 ## 2. Build and release gate
 
@@ -92,7 +92,7 @@ Catatan operasional:
 - Rate limiter saat ini in-memory dan berlaku per process. Deployment multi-instance perlu rate limiter bersama (misalnya Redis atau gateway/CDN rate limit).
 - `TRUST_PROXY_HEADERS=true` hanya jika reverse proxy tepercaya menimpa `X-Forwarded-For`; jika tidak, biarkan `false`.
 - Pastikan MongoDB persisten, index startup berhasil, `HRD_EMAIL` benar, domain pengirim Resend terverifikasi, dan admin dapat melihat fallback notification.
-- Filesystem lokal di `LOCAL_STORAGE_ROOT` hanya untuk development/demo. Jangan deploy portal upload ke production sebelum persistent object storage, backup, recovery, retention, dan capacity limit disetujui.
+- Filesystem lokal di `LOCAL_STORAGE_ROOT` hanya untuk development/demo. Pada production, gunakan `STORAGE_BACKEND=disabled`; portal upload tetap nonaktif sampai private persistent storage dan seluruh gate ADR-002 disetujui.
 - Jangan mengirim form uji ke production tanpa persetujuan stakeholder. Gunakan staging atau request terkontrol dan hapus data uji sesuai kebijakan retensi.
 
 Download file terautentikasi saat ini menggunakan header `Authorization: Bearer <token>` pada request ke `/api/files/{path}`. Endpoint tidak membaca token dari URL dan menolak URL dengan `?auth=` (tanpa header Authorization request akan dikembalikan sebagai `401`). Frontend mengambil response sebagai blob sehingga token tidak masuk ke browser history atau URL access log.
@@ -119,7 +119,7 @@ Pre-deploy:
 - Domain utama dan redirect `www`/apex telah diputuskan.
 - DNS, sertifikat TLS, frontend origin, backend origin, CORS, dan secret backend telah diisi.
 - Backup database terbaru tersedia dan proses restore pernah diuji.
-- Production yang menerima upload telah memakai persistent storage yang disetujui; jangan memakai `backend/.local-storage/`.
+- Production tetap memakai `STORAGE_BACKEND=disabled` sampai private persistent storage dan readiness upload disetujui; jangan memakai `backend/.local-storage/`.
 - Analytics/session recording memiliki keputusan eksplisit dan consent/privacy copy bila diwajibkan.
 - Build commit dicatat sebagai release commit; working tree release bersih.
 

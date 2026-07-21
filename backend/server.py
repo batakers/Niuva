@@ -289,6 +289,8 @@ async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict
     except storage.InvalidStoragePathError as exc:
         logger.warning("Rejected generated storage path")
         raise HTTPException(status_code=400, detail="Invalid file storage path") from exc
+    except storage.StorageUnavailableError as exc:
+        raise HTTPException(status_code=503, detail="File storage unavailable") from exc
     except storage.StorageError as exc:
         logger.exception("Unable to store uploaded file")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
@@ -539,6 +541,8 @@ async def download_file(path: str, request: Request):
         data, _stored_content_type = storage.get_object(path)
     except storage.InvalidStoragePathError as exc:
         raise HTTPException(status_code=400, detail="Invalid file path") from exc
+    except storage.StorageUnavailableError as exc:
+        raise HTTPException(status_code=503, detail="File storage unavailable") from exc
     except storage.StorageNotFoundError as exc:
         raise HTTPException(status_code=404, detail="File not found") from exc
     except storage.StorageError as exc:

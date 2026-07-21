@@ -77,6 +77,21 @@ def test_store_upload_maps_storage_failure_to_controlled_http_error(monkeypatch)
     assert caught.value.detail == "File storage unavailable"
 
 
+def test_disabled_storage_upload_returns_controlled_503(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("STORAGE_BACKEND", "disabled")
+
+    async def run():
+        upload = UploadFile(filename="part.stl", file=io.BytesIO(b"solid part"))
+        return await server.store_upload(upload, "orders/customer-1", {"stl"})
+
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(run())
+
+    assert caught.value.status_code == 503
+    assert caught.value.detail == "File storage unavailable"
+
+
 def test_file_download_requires_authorization_header_and_safe_media_type(local_storage_root, monkeypatch):
     path = "niuva/orders/customer-1/model.stl"
     storage.put_object(path, b"solid part", "model/stl")
@@ -114,6 +129,29 @@ def test_file_download_requires_authorization_header_and_safe_media_type(local_s
     assert staff.status_code == 200
     assert missing.status_code == 404
     assert missing.json() == {"detail": "File not found"}
+
+
+def test_disabled_storage_download_returns_controlled_503(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("STORAGE_BACKEND", "disabled")
+    path = "niuva/orders/customer-1/model.stl"
+
+    async def fake_user(_token):
+        return {"id": "customer-1", "email": "owner@example.com", "role": "client"}
+
+    monkeypatch.setattr(server, "get_user_from_token", fake_user)
+
+    async def run():
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+            return await api.get(
+                f"/api/files/{path}",
+                headers={"Authorization": "Bearer owner"},
+            )
+
+    response = asyncio.run(run())
+    assert response.status_code == 503
+    assert response.json() == {"detail": "File storage unavailable"}
 
 
 def test_file_download_forces_active_metadata_to_binary(local_storage_root, monkeypatch):
