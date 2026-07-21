@@ -400,10 +400,6 @@ class CatalogService:
                 "updated_by": actor.get("id"),
             }
             if not current:
-                if not has_permission(actor, "catalog.publish"):
-                    value.setdefault("fixed_price", None)
-                    value.setdefault("currency", "IDR")
-                    value.setdefault("status", "active")
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
             prepared.append((current, value))

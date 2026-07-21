@@ -579,6 +579,10 @@ async def run_operations_catalog_lifecycle_and_variant_boundaries():
         assert new_variant["status"] == "active"
         assert new_variant["currency"] == "IDR"
         assert new_variant["fixed_price"] is None
+        operations_option = await api.put(f"/api/admin/products/{product_id}/options", json={"options": [{"code": "ops_finish", "label": "Operations finish", "type": "select", "allowed_values": ["matte"], "required": True}]}, headers=operations)
+        assert operations_option.status_code == 200
+        new_option = operations_option.json()[0]
+        assert not {"fixed_price", "currency", "status"}.intersection(new_option)
 
 
 def test_operations_catalog_lifecycle_and_variant_boundaries():
