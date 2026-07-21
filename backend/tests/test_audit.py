@@ -2,7 +2,11 @@ import asyncio
 
 import pytest
 
-from audit import append_audit_event, append_identity_audit_event
+from audit import (
+    AuditValidationError,
+    append_audit_event,
+    append_identity_audit_event,
+)
 
 
 class AuditCollection:
@@ -261,3 +265,29 @@ def test_organization_audit_event_uses_exact_allowlisted_shape():
     }
     assert "actor_email" not in event
     assert "before" not in event and "after" not in event and "reason" not in event
+
+
+def test_organization_audit_event_rejects_nested_allowlisted_identifier_before_insert():
+    db = AuditDatabase()
+
+    with pytest.raises(AuditValidationError, match="organization ID"):
+        asyncio.run(
+            append_identity_audit_event(
+                db,
+                actor_user_id="owner-1",
+                action="organization.member_added",
+                target_type="organization_membership",
+                target_id="membership-1",
+                previous=None,
+                result={
+                    "organization_id": {"bank_account": "secret"},
+                    "membership_id": "membership-1",
+                    "member_role": "viewer",
+                    "status": "active",
+                },
+                reason_code="organization_member_added",
+                policy_version="2026-07-22-v1",
+            )
+        )
+
+    assert db.audit_events.items == []

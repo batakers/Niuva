@@ -138,6 +138,12 @@ _ORGANIZATION_STATUSES = frozenset({"active", "inactive"})
 _MEMBERSHIP_ROLES = frozenset({"owner", "project_pic", "approver", "finance", "viewer"})
 
 
+def _validate_audit_identifier(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise AuditValidationError(f"Audit {label} must be a non-empty scalar string")
+    return value
+
+
 def _validate_identity_projection(
     snapshot: Mapping[str, Any] | None,
     *,
@@ -157,6 +163,14 @@ def _validate_identity_projection(
         )
 
     projection = {field: snapshot[field] for field in fields if field in snapshot}
+    for identifier, label in (
+        ("organization_id", "organization ID"),
+        ("membership_id", "membership ID"),
+    ):
+        if identifier in projection:
+            projection[identifier] = _validate_audit_identifier(
+                projection[identifier], label
+            )
     if "roles" in projection:
         roles = projection["roles"]
         if not isinstance(roles, (list, tuple)) or any(
@@ -216,10 +230,8 @@ async def append_identity_audit_event(
         raise AuditValidationError("Unsupported identity audit action or target")
     if reason_code != expected_reason_code:
         raise AuditValidationError("Unsupported audit reason code")
-    if not isinstance(actor_user_id, str) or not actor_user_id:
-        raise AuditValidationError("Audit actor user ID is required")
-    if not isinstance(target_id, str) or not target_id:
-        raise AuditValidationError("Audit target ID is required")
+    actor_user_id = _validate_audit_identifier(actor_user_id, "actor user ID")
+    target_id = _validate_audit_identifier(target_id, "target ID")
     if not isinstance(policy_version, str) or not policy_version:
         raise AuditValidationError("Audit policy version is required")
 
