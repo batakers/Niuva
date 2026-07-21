@@ -195,7 +195,7 @@ def get_object(path: str) -> tuple[bytes, str]:
         metadata = json.loads(_metadata_path(target).read_text(encoding="utf-8"))
         if isinstance(metadata, dict):
             metadata_content_type = metadata.get("content_type")
-            if isinstance(metadata_content_type, str) and metadata_content_type.strip():
+            if isinstance(metadata_content_type, str):
                 content_type = _sanitize_content_type(metadata_content_type)
     except (FileNotFoundError, OSError, ValueError, TypeError):
         content_type = None

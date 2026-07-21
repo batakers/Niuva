@@ -42,7 +42,39 @@ def test_init_storage_rejects_file_as_root(tmp_path, monkeypatch, local_storage_
     root.write_text("occupied", encoding="utf-8")
     monkeypatch.setenv("LOCAL_STORAGE_ROOT", str(root))
 
-    with pytest.raises(storage.StorageError, match="Unable to initialize local storage"):
+    with pytest.raises(
+        storage.StorageConfigurationError,
+        match="Unable to initialize local storage",
+    ):
+        storage.init_storage()
+
+
+@pytest.mark.parametrize("backend_value", [None, "", "   "])
+def test_missing_or_blank_storage_backend_defaults_to_disabled(
+    monkeypatch,
+    backend_value,
+):
+    monkeypatch.setenv("APP_ENV", "test")
+    if backend_value is None:
+        monkeypatch.delenv("STORAGE_BACKEND", raising=False)
+    else:
+        monkeypatch.setenv("STORAGE_BACKEND", backend_value)
+
+    assert storage.init_storage() is None
+
+
+@pytest.mark.parametrize("app_env_value", [None, "", "   "])
+def test_missing_or_blank_app_environment_defaults_to_production(
+    monkeypatch,
+    app_env_value,
+):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    if app_env_value is None:
+        monkeypatch.delenv("APP_ENV", raising=False)
+    else:
+        monkeypatch.setenv("APP_ENV", app_env_value)
+
+    with pytest.raises(storage.StorageConfigurationError):
         storage.init_storage()
 
 
@@ -118,8 +150,6 @@ def test_missing_metadata_uses_extension_fallback(local_root):
     [
         [],
         {},
-        {"content_type": ""},
-        {"content_type": "   "},
         {"content_type": 42},
     ],
 )
@@ -134,6 +164,29 @@ def test_unusable_metadata_uses_extension_fallback(local_root, metadata):
     )
 
     assert storage.get_object(path) == (b"png", "image/png")
+
+
+@pytest.mark.parametrize("content_type", ["", "   "])
+def test_blank_string_metadata_is_read_as_binary(local_root, content_type):
+    path = "niuva/uploads/user-1/payload.html"
+    target = local_root / path
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"<script>alert(1)</script>")
+    target.with_name(f"{target.name}.metadata.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "content_type": content_type,
+                "size": len(b"<script>alert(1)</script>"),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert storage.get_object(path) == (
+        b"<script>alert(1)</script>",
+        "application/octet-stream",
+    )
 
 
 def test_metadata_write_failure_removes_partial_object(local_root, monkeypatch):
