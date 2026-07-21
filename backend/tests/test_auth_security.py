@@ -59,7 +59,22 @@ class FakeCollection:
 
     @staticmethod
     def _matches(item, query):
-        return all(item.get(key) == value for key, value in query.items())
+        for key, expected in query.items():
+            if key == "$or":
+                if not any(FakeCollection._matches(item, clause) for clause in expected):
+                    return False
+                continue
+            actual = item.get(key)
+            if isinstance(expected, dict) and "$in" in expected:
+                actual_values = actual if isinstance(actual, list) else [actual]
+                if not any(value in expected["$in"] for value in actual_values):
+                    return False
+            elif isinstance(actual, list):
+                if expected not in actual:
+                    return False
+            elif actual != expected:
+                return False
+        return True
 
     @staticmethod
     def _project(item, projection):
@@ -148,6 +163,18 @@ async def run_security_matrix():
         "access_state": "approved",
         "created_at": server.now_iso(),
     }
+    commercial = {
+        "id": "commercial-1",
+        "name": "Commercial Finance",
+        "email": "commercial@example.com",
+        "password_hash": server.hash_password("CommercialPassword123"),
+        "phone": "",
+        "company": "Niuva",
+        "roles": ["commercial_finance"],
+        "status": "active",
+        "access_state": "approved",
+        "created_at": server.now_iso(),
+    }
     disabled_client = {
         "id": "client-disabled",
         "name": "Disabled Client",
@@ -159,7 +186,7 @@ async def run_security_matrix():
         "status": "disabled",
         "created_at": server.now_iso(),
     }
-    server.db = FakeDatabase([admin, client, other_client, editor, disabled_client])
+    server.db = FakeDatabase([admin, client, other_client, editor, commercial, disabled_client])
     server.db.orders.items.append(
         {
             "id": "order-1",
@@ -210,6 +237,13 @@ async def run_security_matrix():
         assert editor_me.json()["roles"] == ["operations"]
         assert "roles.manage" not in editor_me.json()["permissions"]
 
+        commercial_login = await api.post(
+            "/api/auth/admin/login",
+            json={"email": commercial["email"], "password": "CommercialPassword123"},
+        )
+        assert commercial_login.status_code == 200
+        commercial_token = commercial_login.json()["token"]
+
         client_admin_login = await api.post(
             "/api/auth/admin/login",
             json={"email": client["email"], "password": "ClientPassword123"},
@@ -239,6 +273,7 @@ async def run_security_matrix():
         assert (await api.get("/api/admin/users")).status_code == 401
         assert (await api.get("/api/admin/users", headers=bearer(client_token))).status_code == 403
         assert (await api.get("/api/admin/users", headers=bearer(admin_token))).status_code == 200
+        assert (await api.get("/api/admin/users", headers=bearer(commercial_token))).status_code == 403
 
         assert (await api.get("/api/orders")).status_code == 401
         assert (await api.get("/api/orders", headers=bearer(client_token))).status_code == 200
@@ -275,12 +310,24 @@ async def run_security_matrix():
         provisioned = await api.post(
             "/api/admin/users",
             json=new_client_payload,
-            headers=bearer(admin_token),
+            headers=bearer(commercial_token),
         )
         assert provisioned.status_code == 201
         assert provisioned.json()["roles"] == ["retail_customer"]
         assert provisioned.json()["access_state"] == "approved"
         assert "password_hash" not in provisioned.json()
+
+        assert (await api.get("/api/admin/customers")).status_code == 401
+        assert (await api.get("/api/admin/customers", headers=bearer(client_token))).status_code == 403
+
+        commercial_customers = await api.get(
+            "/api/admin/customers", headers=bearer(commercial_token)
+        )
+        assert commercial_customers.status_code == 200
+        assert {customer["email"] for customer in commercial_customers.json()} == {
+            client["email"], other_client["email"], new_client_payload["email"]
+        }
+        assert all("password_hash" not in customer for customer in commercial_customers.json())
 
         invalid = await api.get("/api/auth/me", headers=bearer("not-a-token"))
         assert invalid.status_code == 401

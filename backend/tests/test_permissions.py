@@ -20,6 +20,14 @@ from permissions import (
         ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "catalog.publish", False),
         ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "pricing.write", True),
         ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "inventory.write", False),
+        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "catalog.read", True),
+        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "catalog.publish", True),
+        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "catalog.archive", True),
+        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "catalog.write", False),
+        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "organizations.manage", True),
+        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "customers.read", True),
+        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "customers.manage", True),
+        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "users.manage", False),
     ],
 )
 def test_policy_matrix(user, permission, expected):
@@ -87,3 +95,16 @@ def test_legacy_admin_never_receives_owner_permissions():
 )
 def test_role_validation_rejects_unknown_and_multiple_role_combinations(roles, expected):
     assert validate_roles(roles) == expected
+
+
+def test_missing_status_never_grants_internal_authority():
+    missing_status_owner = {"roles": ["super_admin"], "access_state": "approved"}
+    missing_status_operations = {"roles": ["operations"], "access_state": "approved"}
+    assert canonical_roles(missing_status_owner) == ()
+    assert canonical_roles(missing_status_operations) == ()
+    assert permissions_for(missing_status_owner) == frozenset()
+    assert not has_permission(missing_status_operations, "inventory.write")
+
+
+def test_malformed_legacy_role_marker_fails_closed():
+    assert canonical_roles({"role": [], "roles": ["super_admin"], "status": "active"}) == ()

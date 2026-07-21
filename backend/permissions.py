@@ -64,16 +64,16 @@ ROLE_PERMISSIONS = {
         {
             "admin.access",
             "customers.read",
-            "customers.write",
+            "customers.manage",
             "organizations.read",
-            "organizations.write",
+            "organizations.manage",
             "inquiries.read",
             "inquiries.write",
             "quotes.read",
             "quotes.write",
             "catalog.read",
-            "catalog.write",
             "catalog.publish",
+            "catalog.archive",
             "pricing.read",
             "pricing.write",
             "payments.read",
@@ -102,16 +102,24 @@ def validate_roles(roles: object) -> tuple[str, ...]:
 
 
 def canonical_roles(user: dict) -> tuple[str, ...]:
-    """Resolve only active, reviewed users to one canonical role."""
-    if user.get("status", "active") != "active":
-        return ()
+    """Resolve active, reviewed users to one canonical role without fallback."""
+    legacy_role = user.get("role")
     if user.get("access_state", "approved") == "access_review_required":
         return ()
-
-    legacy_role = user.get("role")
-    if legacy_role in SUPERSEDED_INTERNAL_ROLE_MARKERS:
+    if user.get("status") != "active":
+        if (
+            user.get("status") is None
+            and legacy_role == "client"
+            and "roles" not in user
+        ):
+            return ("retail_customer",)
         return ()
-    if legacy_role:
+
+    if "role" in user:
+        if not isinstance(legacy_role, str):
+            return ()
+        if legacy_role in SUPERSEDED_INTERNAL_ROLE_MARKERS:
+            return ()
         if legacy_role != "client":
             return ()
         if "roles" not in user:

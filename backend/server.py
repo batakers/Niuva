@@ -701,10 +701,30 @@ async def update_settings(
 @api.post("/admin/users", status_code=201)
 async def create_client_user(
     req: ClientProvisionReq,
-    user: dict = Depends(require_permission("users.manage")),
+    user: dict = Depends(require_permission("customers.manage")),
 ):
     return await provision_client(req)
 
+
+@api.get("/admin/customers")
+async def list_customers(
+    user: dict = Depends(require_permission("customers.read")),
+):
+    customer_query = {
+        "$or": [
+            {"roles": {"$in": ["retail_customer", "organization_customer"]}},
+            {"role": "client"},
+        ]
+    }
+    candidates = await db.users.find(
+        customer_query, {"_id": 0, "password_hash": 0}
+    ).to_list(500)
+    customer_roles = {("retail_customer",), ("organization_customer",)}
+    return [
+        safe_user(candidate)
+        for candidate in candidates
+        if canonical_roles(candidate) in customer_roles
+    ]
 
 @api.get("/admin/stats")
 async def admin_stats(
