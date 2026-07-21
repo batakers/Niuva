@@ -3,9 +3,36 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 RUNBOOK = ROOT / "doc" / "TRANSACTION_CAPABILITY_RUNBOOK.md"
 
+IMPLEMENTATION_SUBJECTS = (
+    "feat: add mongodb transaction capability detection",
+    "fix: harden transaction capability cleanup",
+    "feat: add mongodb transaction execution boundary",
+    "feat: define transaction unavailable API contract",
+    "feat: expose transaction readiness diagnostics",
+    "chore: configure local mongodb replica set",
+    "ci: run transaction tests against mongodb replica set",
+    "fix: harden transaction test topology startup",
+    "feat: add fail-closed transaction mutation guard",
+    "feat: add safe transaction lifecycle diagnostics",
+    "docs: document transaction-capable development setup",
+    "style: satisfy transaction quality gates",
+    "docs: finalize transaction verification and rollback",
+    "fix: emit transaction rejection when mutations disabled",
+    "fix: harden local replica set startup",
+    "docs: synchronize final verification after post-review fixes",
+)
+
 
 def runbook_text():
     return RUNBOOK.read_text(encoding="utf-8")
+
+
+def documented_subjects(block):
+    return tuple(
+        line.strip().rstrip(",").strip('"')
+        for line in block.splitlines()
+        if line.strip().startswith('"')
+    )
 
 
 def test_runbook_documents_local_ci_readiness_and_troubleshooting():
@@ -73,3 +100,29 @@ def test_runbook_defines_two_level_rollback_without_fallback():
     full_suite_command = "--basetemp C:\\tmp\\niuva-transaction-final"
     full_suite = text.index(full_suite_command, real_suite)
     assert real_suite < clear_real_url < full_suite
+
+
+def test_runbook_verifies_complete_ordered_local_commit_provenance():
+    text = runbook_text()
+    verification_start = text.index("## Final Verification")
+    verification = text[verification_start:]
+    subjects_start = verification.index("$expectedSubjects = @(")
+    subjects_end = verification.index("$actualSubjects = @(")
+    expected_block = verification[subjects_start:subjects_end]
+
+    assert documented_subjects(expected_block) == IMPLEMENTATION_SUBJECTS
+    assert "$actualSubjects.Count -ne $expectedSubjects.Count" in verification
+    assert "-eq ($expectedSubjects.Count - 1)" not in verification
+    assert "Unexpected implementation commit count: 13" not in verification
+
+
+def test_runbook_rollback_lists_every_local_commit_newest_first():
+    text = runbook_text()
+    rollback_start = text.index("## Level 1 — Code Rollback")
+    rollback = text[rollback_start:]
+    subjects_start = rollback.index("$subjects = @(")
+    subjects_end = rollback.index("foreach ($subject in $subjects)")
+    rollback_subjects = rollback[subjects_start:subjects_end]
+
+    expected_rollback = tuple(reversed(IMPLEMENTATION_SUBJECTS))
+    assert documented_subjects(rollback_subjects) == expected_rollback

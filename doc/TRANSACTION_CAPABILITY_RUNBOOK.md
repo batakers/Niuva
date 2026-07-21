@@ -334,10 +334,14 @@ if ($frontendPaths.Count -ne 0) { throw "Unexpected frontend scope: $($frontendP
 correction exposed by the mandatory real topology. It changes stale test
 expectations only; it does not change production behavior.
 
-The scope report must include the ten task commits, both review-fix commits,
-and the focused quality-gate commit. The following check accepts the state
-immediately before or after the final Task 10 commit and rejects any other
-sequence:
+The final scope report must include all 15 reviewed functional and review-fix
+commits that precede this synchronization, followed by the documentation-sync
+commit itself. The synchronization commit subject is predetermined as
+`docs: synchronize final verification after post-review fixes`, so the final
+ordered implementation history contains exactly 16 commits after this runbook
+update is committed. The check below validates every ordered subject in
+addition to the approved-plan and clean-baseline provenance checks above; a
+matching commit count alone is not accepted:
 
 ```powershell
 $expectedSubjects = @(
@@ -353,18 +357,20 @@ $expectedSubjects = @(
     "feat: add safe transaction lifecycle diagnostics",
     "docs: document transaction-capable development setup",
     "style: satisfy transaction quality gates",
-    "docs: finalize transaction verification and rollback"
+    "docs: finalize transaction verification and rollback",
+    "fix: emit transaction rejection when mutations disabled",
+    "fix: harden local replica set startup",
+    "docs: synchronize final verification after post-review fixes"
 )
 $actualSubjects = @(git log --reverse --format=%s "$reviewedPlanBaseline..HEAD")
-if ($actualSubjects.Count -eq ($expectedSubjects.Count - 1)) {
-    $expectedAtThisStage = @($expectedSubjects[0..($expectedSubjects.Count - 2)])
-} elseif ($actualSubjects.Count -eq $expectedSubjects.Count) {
-    $expectedAtThisStage = $expectedSubjects
-} else {
+if ($actualSubjects.Count -ne $expectedSubjects.Count) {
     throw "Unexpected implementation commit count: $($actualSubjects.Count)"
 }
-$subjectDiff = @(Compare-Object $expectedAtThisStage $actualSubjects -SyncWindow 0)
-if ($subjectDiff.Count -ne 0) { throw "Implementation commit sequence differs: $($subjectDiff | Out-String)" }
+foreach ($index in 0..($expectedSubjects.Count - 1)) {
+    if ($actualSubjects[$index] -ne $expectedSubjects[$index]) {
+        throw "Implementation commit sequence differs at index $index`: expected '$($expectedSubjects[$index])', got '$($actualSubjects[$index])'"
+    }
+}
 
 git diff --name-status "$reviewedPlanBaseline...HEAD"
 git log --oneline "$reviewedPlanBaseline..HEAD"
@@ -387,6 +393,9 @@ implementation commits by subject and revert them newest-first:
 if (git status --porcelain) { throw "Rollback requires a clean worktree" }
 
 $subjects = @(
+    "docs: synchronize final verification after post-review fixes",
+    "fix: harden local replica set startup",
+    "fix: emit transaction rejection when mutations disabled",
     "docs: finalize transaction verification and rollback",
     "style: satisfy transaction quality gates",
     "docs: document transaction-capable development setup",
