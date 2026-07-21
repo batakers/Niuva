@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Awaitable, Callable, TypeVar
+from typing import Awaitable, Callable, NoReturn, TypeVar
 
 from pymongo.errors import (
     ConnectionFailure,
@@ -101,6 +101,24 @@ class TransactionExecutor:
             },
         )
 
+    def reject_unavailable(
+        self,
+        *,
+        operation_name: str,
+        retry_mode: RetryMode = RetryMode.NEVER,
+        correlation_id: str | None = None,
+    ) -> NoReturn:
+        self._emit(
+            "transaction_rejected",
+            operation_name=operation_name,
+            outcome="unavailable",
+            attempt=0,
+            retry_mode=retry_mode,
+            correlation_id=correlation_id,
+            error_class="transaction_unavailable",
+        )
+        raise TransactionUnavailableError()
+
     async def _abort_if_active(self, session) -> None:
         if getattr(session, "in_transaction", False):
             await session.abort_transaction()
@@ -127,16 +145,11 @@ class TransactionExecutor:
         correlation_id: str | None = None,
     ) -> T:
         if not self.capability_provider().transactions:
-            self._emit(
-                "transaction_rejected",
+            self.reject_unavailable(
                 operation_name=operation_name,
-                outcome="unavailable",
-                attempt=0,
                 retry_mode=retry_mode,
                 correlation_id=correlation_id,
-                error_class="transaction_unavailable",
             )
-            raise TransactionUnavailableError()
 
         session = None
         try:

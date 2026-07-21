@@ -3,7 +3,6 @@ from typing import Awaitable, Callable, TypeVar
 from transaction_execution import (
     RetryMode,
     TransactionExecutor,
-    TransactionUnavailableError,
 )
 
 T = TypeVar("T")
@@ -28,11 +27,15 @@ class TransactionMutationGuard:
         retry_safe: bool = False,
         correlation_id: str | None = None,
     ) -> T:
-        if not self.enabled_provider():
-            raise TransactionUnavailableError()
         retry_mode = RetryMode.NEVER
         if retry_safe:
             retry_mode = RetryMode.DRIVER_TRANSIENT
+        if not self.enabled_provider():
+            self.executor.reject_unavailable(
+                operation_name=operation_name,
+                retry_mode=retry_mode,
+                correlation_id=correlation_id,
+            )
         return await self.executor.execute(
             callback,
             operation_name=operation_name,
