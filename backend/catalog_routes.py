@@ -219,13 +219,13 @@ def build_catalog_router(
     ):
         for item in payload.variants:
             reject_operations_pricing(actor, item.model_fields_set)
-        can_publish = has_permission(actor, "catalog.publish")
-        values = []
-        for item in payload.variants:
-            value = item.model_dump(mode="json", exclude_unset=not can_publish)
-            if not can_publish and item.id is None:
-                value.update({"fixed_price": None, "currency": "IDR", "status": "active"})
-            values.append(value)
+        values = [
+            item.model_dump(
+                mode="json",
+                exclude_unset=not has_permission(actor, "catalog.publish"),
+            )
+            for item in payload.variants
+        ]
         return await invoke(service().replace_variants(product_id, values, actor))
 
     @router.put("/admin/products/{product_id}/options")

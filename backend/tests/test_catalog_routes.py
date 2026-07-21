@@ -568,6 +568,11 @@ async def run_operations_catalog_lifecycle_and_variant_boundaries():
         assert variant_update.status_code == 200
         assert variant_update.json()[0]["fixed_price"] == 50000
         assert variant_update.json()[0]["currency"] == "IDR"
+        sku_resolved = await api.put(f"/api/admin/products/{product_id}/variants", json={"variants": [{"sku": "ARCHIVED-VARIANT", "name": "SKU resolved edit", "production_type": "made_to_order"}]}, headers=operations)
+        assert sku_resolved.status_code == 200
+        assert sku_resolved.json()[0]["fixed_price"] == 50000
+        assert sku_resolved.json()[0]["currency"] == "IDR"
+        assert sku_resolved.json()[0]["status"] == "active"
         operations_created = await api.put(f"/api/admin/products/{product_id}/variants", json={"variants": [{"sku": "OPS-NEW-VARIANT", "name": "Operations created", "production_type": "made_to_order"}]}, headers=operations)
         assert operations_created.status_code == 200
         new_variant = operations_created.json()[0]

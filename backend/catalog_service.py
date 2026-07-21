@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 from audit import append_audit_event
+from permissions import has_permission
 from catalog_domain import (
     build_publication_snapshot,
     normalize_slug,
@@ -280,6 +281,10 @@ class CatalogService:
                 "updated_by": actor.get("id"),
             }
             if not current:
+                if not has_permission(actor, "catalog.publish"):
+                    value.setdefault("fixed_price", None)
+                    value.setdefault("currency", "IDR")
+                    value.setdefault("status", "active")
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
             prepared.append((current, value))
@@ -395,6 +400,10 @@ class CatalogService:
                 "updated_by": actor.get("id"),
             }
             if not current:
+                if not has_permission(actor, "catalog.publish"):
+                    value.setdefault("fixed_price", None)
+                    value.setdefault("currency", "IDR")
+                    value.setdefault("status", "active")
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
             prepared.append((current, value))
