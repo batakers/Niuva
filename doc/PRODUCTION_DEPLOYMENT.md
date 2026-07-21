@@ -110,6 +110,12 @@ Architecture references:
 - Production storage uses a stable provider-neutral storage port and private persistent object storage. Local filesystem is development/demo only; production upload remains disabled until provider selection, database-backed ownership, token removal, MIME/signature validation, malware/quarantine, backup/restore, reconciliation, and operational readiness are approved.
 - Retail production payment remains provider-neutral online payment orchestration. Gateway provider selection is deferred and required for provider integration/go-live, not for this architectural boundary. No new manual-transfer adapter is enabled.
 
+Transaction-capability setup tracked in this repository is limited to local
+development and isolated CI. See
+`doc/TRANSACTION_CAPABILITY_RUNBOOK.md`. Staging/production topology,
+persistence, monitoring, backup/restore, incident ownership, mutation
+enablement, and go-live require separate approval.
+
 These gates record approved architecture direction only. They do not authorize production infrastructure changes, Finance operational activation, payment gateway activation, production upload enablement, or production go-live.
 
 ## 7. Pre-deploy and post-deploy checklist

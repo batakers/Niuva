@@ -23,20 +23,25 @@ import storage
 import emailer
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
-from database_capabilities import DatabaseCapabilities, probe_transaction_capability
+from database_capabilities import DatabaseCapabilities, probe_database_capabilities
 from identity_routes import build_identity_router
 from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
 from organization_routes import build_organization_router
 from permissions import canonical_roles, has_permission, permissions_for
+from transaction_api import transaction_unavailable_handler
+from transaction_execution import TransactionExecutor, TransactionUnavailableError
+from transaction_guard import TransactionMutationGuard
+from transaction_observability import TransactionLogSink
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("niuva")
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+database_name = os.environ["DB_NAME"]
+db = client[database_name]
 
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGO = "HS256"
@@ -62,6 +67,21 @@ ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "complet
 app = FastAPI(title="NIUVA API")
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
 app.state.reservation_expiry_task = None
+app.state.transaction_executor = TransactionExecutor(
+    client,
+    lambda: app.state.database_capabilities,
+    event_sink=TransactionLogSink(logging.getLogger("niuva.transaction")),
+)
+app.state.transaction_guard = TransactionMutationGuard(
+    app.state.transaction_executor,
+    lambda: os.environ.get(
+        "TRANSACTION_MUTATIONS_ENABLED", "false"
+    ).strip().lower() == "true",
+)
+app.add_exception_handler(
+    TransactionUnavailableError,
+    transaction_unavailable_handler,
+)
 api = APIRouter(prefix="/api")
 
 
@@ -705,6 +725,24 @@ async def health():
     return {"status": "ok", "transactions": app.state.database_capabilities.transactions}
 
 
+@api.get("/health/live")
+async def health_live():
+    return {"status": "ok"}
+
+
+@api.get("/health/ready")
+async def health_ready():
+    capabilities = app.state.database_capabilities
+    transaction_mutations = "ready" if capabilities.transactions else "unavailable"
+    return {
+        "status": "ready" if capabilities.transactions else "degraded",
+        "transaction_mutations": transaction_mutations,
+        "capabilities": {
+            "transactions": capabilities.transaction_diagnostic(),
+        },
+    }
+
+
 @api.get("/")
 async def root():
     return {"message": "NIUVA API", "status": "ok"}
@@ -886,8 +924,14 @@ async def reservation_expiry_loop():
 async def startup():
     storage.init_storage()
     await seed()
-    app.state.database_capabilities = DatabaseCapabilities(
-        transactions=await probe_transaction_capability(client)
+    app.state.database_capabilities = await probe_database_capabilities(
+        client,
+        database_name,
+    )
+    logger.info(
+        "database capability checked transactions=%s reason=%s",
+        app.state.database_capabilities.transactions,
+        app.state.database_capabilities.transaction_reason.value,
     )
     await ensure_catalog_inventory_indexes(db)
     asyncio.create_task(auto_delete_loop())

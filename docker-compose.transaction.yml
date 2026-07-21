@@ -1,0 +1,47 @@
+name: niuva-transaction-local
+
+services:
+  mongodb:
+    image: mongo:7.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - niuva_mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --host localhost:27017 --eval 'try { quit(db.hello().isWritablePrimary ? 0 : 1) } catch (error) { quit(1) }'",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  mongodb-init:
+    image: mongo:7.0
+    depends_on:
+      mongodb:
+        condition: service_started
+    restart: "no"
+    volumes:
+      - ./scripts/mongodb/init-replica-set.js:/scripts/init-replica-set.js:ro
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        for attempt in {1..30}; do
+          if mongosh --quiet \
+            "mongodb://mongodb:27017/admin?directConnection=true" \
+            --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 1)'; then
+            exec mongosh --quiet \
+              "mongodb://mongodb:27017/admin?directConnection=true" \
+              /scripts/init-replica-set.js
+          fi
+          sleep 1
+        done
+        echo "MongoDB local endpoint did not accept connections within 30 seconds" >&2
+        exit 1
+
+volumes:
+  niuva_mongodb_data:
