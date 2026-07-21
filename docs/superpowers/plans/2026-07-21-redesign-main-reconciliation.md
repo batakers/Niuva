@@ -527,14 +527,14 @@ Expected: no whitespace errors; pytest exits `0`. Report environment-driven skip
 Push-Location frontend
 $env:CI='true'
 npm.cmd test -- --watchAll=false
-$env:REACT_APP_PUBLIC_SITE_URL='http://localhost:3000'
+Remove-Item Env:REACT_APP_PUBLIC_SITE_URL -ErrorAction SilentlyContinue
 $env:REACT_APP_BACKEND_URL='http://127.0.0.1:8001'
 $env:GENERATE_SOURCEMAP='false'
 npm.cmd run build
 Pop-Location
 ```
 
-Expected: all frontend suites pass and the optimized build completes without an Emergent module/runtime warning.
+Expected: all frontend suites pass and the optimized build completes without an Emergent module/runtime warning. Because no confirmed production origin is supplied during this local verification, the postbuild step reports that sitemap generation was skipped.
 
 - [ ] **Step 3: Run an explicit active-integration scan**
 
