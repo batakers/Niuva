@@ -3,11 +3,13 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pymongo.errors import OperationFailure
 
 from audit import append_identity_audit_event
 from permissions import (
     ASSIGNABLE_ROLES,
     CUSTOMER_ROLES,
+    INTERNAL_ROLES,
     ROLE_POLICY_VERSION,
     ROLE_PERMISSIONS,
     canonical_roles,
@@ -30,8 +32,8 @@ class UserAccessUpdate(BaseModel):
     @field_validator("roles")
     @classmethod
     def validate_roles(cls, roles: list[str]) -> list[str]:
-        if roles[0] not in ASSIGNABLE_ROLES:
-            raise ValueError(f"Unknown role: {roles[0]}")
+        if roles[0] not in INTERNAL_ROLES:
+            raise ValueError(f"Unsupported internal role: {roles[0]}")
         return roles
 
 
@@ -45,6 +47,15 @@ def _access_audit_projection(user: dict) -> dict:
 
 _POLICY_STATE_ID = "identity_access_policy"
 _FINAL_OWNER_DETAIL = "The final approved Owner cannot be disabled or demoted"
+_POLICY_CONFLICT_DETAIL = "Identity access policy changed concurrently"
+
+
+class _IdentityPolicyConcurrencyConflict(RuntimeError):
+    pass
+
+
+def _is_transient_write_conflict(exc: OperationFailure) -> bool:
+    return exc.code == 112 and exc.has_error_label("TransientTransactionError")
 
 
 def _is_approved_owner(user: dict) -> bool:
@@ -95,19 +106,24 @@ def build_identity_router(
         guard = get_transaction_guard()
 
         async def mutate(session):
-            await database.identity_policy_state.update_one(
-                {"_id": _POLICY_STATE_ID},
-                {
-                    "$inc": {"version": 1},
-                    "$setOnInsert": {
-                        "key": _POLICY_STATE_ID,
-                        "approved_owner_count": 0,
-                        "policy_version": ROLE_POLICY_VERSION,
+            try:
+                await database.identity_policy_state.update_one(
+                    {"_id": _POLICY_STATE_ID},
+                    {
+                        "$inc": {"version": 1},
+                        "$setOnInsert": {
+                            "key": _POLICY_STATE_ID,
+                            "approved_owner_count": 0,
+                            "policy_version": ROLE_POLICY_VERSION,
+                        },
                     },
-                },
-                upsert=True,
-                session=session,
-            )
+                    upsert=True,
+                    session=session,
+                )
+            except OperationFailure as exc:
+                if _is_transient_write_conflict(exc):
+                    raise _IdentityPolicyConcurrencyConflict() from exc
+                raise
             before = await database.users.find_one({"id": user_id}, session=session)
             if not before:
                 raise HTTPException(status_code=404, detail="User not found")
@@ -172,11 +188,16 @@ def build_identity_router(
             )
             return safe_user(after)
 
-        return await guard.run(
-            mutate,
-            operation_name="identity.access.update",
-            retry_safe=False,
-        )
+        try:
+            return await guard.run(
+                mutate,
+                operation_name="identity.access.update",
+                retry_safe=False,
+            )
+        except _IdentityPolicyConcurrencyConflict:
+            raise HTTPException(
+                status_code=409, detail=_POLICY_CONFLICT_DETAIL
+            ) from None
 
     @router.get("/audit-events")
     async def list_audit_events(

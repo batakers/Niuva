@@ -495,6 +495,8 @@ async def run_access_validation_and_stale_token_contract():
         for invalid_payload in (
             {"roles": ["operations", "commercial_finance"]},
             {"roles": ["warehouse"]},
+            {"roles": ["retail_customer"]},
+            {"roles": ["organization_customer"]},
             {"reason_code": "free text is forbidden"},
             {"reason": "free text must be rejected"},
         ):
