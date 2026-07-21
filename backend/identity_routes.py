@@ -4,10 +4,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
-from audit import append_audit_event
+from audit import append_identity_audit_event
 from permissions import (
     ASSIGNABLE_ROLES,
     CUSTOMER_ROLES,
+    ROLE_POLICY_VERSION,
     ROLE_PERMISSIONS,
     canonical_roles,
 )
@@ -34,6 +35,14 @@ class UserAccessUpdate(BaseModel):
         if len(normalized) < 3:
             raise ValueError("Reason must contain at least 3 characters")
         return normalized
+
+
+def _access_audit_projection(user: dict) -> dict:
+    return {
+        field: user[field]
+        for field in ("roles", "access_state", "status")
+        if field in user
+    }
 
 
 def build_identity_router(*, get_db, require_permission, safe_user) -> APIRouter:
@@ -105,15 +114,16 @@ def build_identity_router(*, get_db, require_permission, safe_user) -> APIRouter
             raise HTTPException(status_code=404, detail="User not found")
 
         after = await database.users.find_one({"id": user_id})
-        await append_audit_event(
+        await append_identity_audit_event(
             database,
-            actor=actor,
+            actor_user_id=actor["id"],
             action="user.access_updated",
             target_type="user",
             target_id=user_id,
-            before=before,
-            after=after,
-            reason=request.reason,
+            previous=_access_audit_projection(before),
+            result=_access_audit_projection(after),
+            reason_code="user_access_updated",
+            policy_version=ROLE_POLICY_VERSION,
         )
         return safe_user(after)
 

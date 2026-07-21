@@ -1,6 +1,8 @@
 import asyncio
 
-from audit import append_audit_event
+import pytest
+
+from audit import append_audit_event, append_identity_audit_event
 
 
 class AuditCollection:
@@ -72,3 +74,190 @@ def test_audit_event_forwards_session_without_persisting_it():
     assert db.audit_events.insert_options == [{"session": session}]
     assert "session" not in event
     assert "session" not in db.audit_events.items[0]
+
+
+def test_generic_catalog_audit_event_redacts_expanded_sensitive_fields():
+    db = AuditDatabase()
+
+    event = asyncio.run(
+        append_audit_event(
+            db,
+            actor={"id": "staff-1", "email": "staff@example.com"},
+            action="catalog.product_updated",
+            target_type="catalog_product",
+            target_id="product-2",
+            before={
+                "name": "Visible product",
+                "supplier_reference": "supplier-private",
+                "payment": {"bank_account": "bank-private"},
+                "credentials": {"api_key": "credential-private"},
+                "bank_details": "bank-details-private",
+                "rationale": "Free text must never be stored",
+                "reason": "Free text must never be stored",
+            },
+            after={
+                "name": "Updated product",
+                "price": 100,
+                "internal_cost": 50,
+                "margin": 50,
+                "profit": 50,
+            },
+            reason="Catalog update rationale",
+        )
+    )
+
+    assert event["before"] == {"name": "Visible product"}
+    assert event["after"] == {"name": "Updated product"}
+    assert event["reason"] is None
+
+
+def test_identity_audit_event_stores_only_allowlisted_access_projection_and_forwards_session():
+    db = AuditDatabase()
+    session = object()
+
+    event = asyncio.run(
+        append_identity_audit_event(
+            db,
+            actor_user_id="owner-1",
+            action="user.access_updated",
+            target_type="user",
+            target_id="user-2",
+            previous={
+                "roles": ["retail_customer"],
+                "access_state": "approved",
+                "status": "active",
+            },
+            result={
+                "roles": ["operations"],
+                "access_state": "approved",
+                "status": "active",
+            },
+            reason_code="user_access_updated",
+            policy_version="2026-07-22-v1",
+            session=session,
+        )
+    )
+
+    assert set(event) == {
+        "id",
+        "actor_user_id",
+        "action",
+        "target_type",
+        "target_id",
+        "previous",
+        "result",
+        "reason_code",
+        "policy_version",
+        "created_at",
+    }
+    assert event["previous"] == {
+        "roles": ["retail_customer"],
+        "access_state": "approved",
+        "status": "active",
+    }
+    assert event["result"] == {
+        "roles": ["operations"],
+        "access_state": "approved",
+        "status": "active",
+    }
+    assert "actor_email" not in event
+    assert "before" not in event and "after" not in event and "reason" not in event
+    assert db.audit_events.items == [event]
+    assert db.audit_events.insert_options == [{"session": session}]
+
+
+def test_organization_audit_event_rejects_raw_sensitive_snapshot_before_insert():
+    db = AuditDatabase()
+    unsafe_snapshot = {
+        "organization_id": "organization-1",
+        "membership_id": "membership-1",
+        "member_role": "viewer",
+        "status": "active",
+        "supplier_reference": "supplier-private",
+        "tax_id": "tax-private",
+        "legal_name": "legal-private",
+        "internal_notes": "internal-private",
+        "password": "password-private",
+        "password_hash": "hash-private",
+        "token": "token-private",
+        "secret": "secret-private",
+        "payment": {"bank_account": "bank-private"},
+        "price": 100,
+        "internal_cost": 50,
+        "margin": 50,
+        "profit": 50,
+        "membership_profile": {"email": "private@example.com"},
+        "reason": "Free text must never be stored",
+    }
+
+    with pytest.raises(ValueError, match="Unsupported audit projection fields"):
+        asyncio.run(
+            append_identity_audit_event(
+                db,
+                actor_user_id="owner-1",
+                action="organization.member_added",
+                target_type="organization_membership",
+                target_id="membership-1",
+                previous=None,
+                result=unsafe_snapshot,
+                reason_code="organization_member_added",
+                policy_version="2026-07-22-v1",
+            )
+        )
+
+    assert db.audit_events.items == []
+
+
+def test_organization_audit_event_uses_exact_allowlisted_shape():
+    db = AuditDatabase()
+
+    event = asyncio.run(
+        append_identity_audit_event(
+            db,
+            actor_user_id="owner-1",
+            action="organization.member_archived",
+            target_type="organization_membership",
+            target_id="membership-1",
+            previous={
+                "organization_id": "organization-1",
+                "membership_id": "membership-1",
+                "member_role": "approver",
+                "status": "active",
+            },
+            result={
+                "organization_id": "organization-1",
+                "membership_id": "membership-1",
+                "member_role": "approver",
+                "status": "inactive",
+            },
+            reason_code="organization_member_archived",
+            policy_version="2026-07-22-v1",
+        )
+    )
+
+    assert set(event) == {
+        "id",
+        "actor_user_id",
+        "action",
+        "target_type",
+        "target_id",
+        "previous",
+        "result",
+        "reason_code",
+        "policy_version",
+        "created_at",
+    }
+    assert event["previous"] == {
+        "organization_id": "organization-1",
+        "membership_id": "membership-1",
+        "member_role": "approver",
+        "status": "active",
+    }
+    assert event["result"] == {
+        "organization_id": "organization-1",
+        "membership_id": "membership-1",
+        "member_role": "approver",
+        "status": "inactive",
+    }
+    assert "actor_email" not in event
+    assert "before" not in event and "after" not in event and "reason" not in event

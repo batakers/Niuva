@@ -5,8 +5,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
-from audit import append_audit_event
-from permissions import canonical_roles, has_permission
+from audit import append_identity_audit_event
+from permissions import ROLE_POLICY_VERSION, canonical_roles, has_permission
 
 ORGANIZATION_MEMBER_ROLES = frozenset(
     {"owner", "project_pic", "approver", "finance", "viewer"}
@@ -19,6 +19,22 @@ def now_iso() -> str:
 
 def without_mongo_id(document: dict) -> dict:
     return {key: value for key, value in document.items() if key != "_id"}
+
+
+def _organization_audit_projection(organization: dict) -> dict:
+    return {
+        "organization_id": organization["id"],
+        "status": organization["status"],
+    }
+
+
+def _membership_audit_projection(membership: dict) -> dict:
+    return {
+        "organization_id": membership["organization_id"],
+        "membership_id": membership["id"],
+        "member_role": membership["member_role"],
+        "status": membership["status"],
+    }
 
 
 class OrganizationPayload(BaseModel):
@@ -74,8 +90,13 @@ def build_organization_router(
         user: dict = Depends(get_current_user),
     ):
         management_view = has_permission(user, "organizations.manage")
-        if not management_view and not has_permission(user, "organizations.fulfilment.read"):
-            raise HTTPException(status_code=403, detail="Permission required: organizations.fulfilment.read")
+        if not management_view and not has_permission(
+            user, "organizations.fulfilment.read"
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="Permission required: organizations.fulfilment.read",
+            )
         database = get_db()
         organizations = (
             await database.organizations.find({}, {"_id": 0})
@@ -103,20 +124,34 @@ def build_organization_router(
             return [
                 {
                     **without_mongo_id(organization),
-                    "memberships": memberships_by_organization.get(organization["id"], []),
+                    "memberships": memberships_by_organization.get(
+                        organization["id"], []
+                    ),
                 }
                 for organization in organizations
             ]
 
-        membership_fields = ("id", "organization_id", "user_id", "member_role", "status")
+        membership_fields = (
+            "id",
+            "organization_id",
+            "user_id",
+            "member_role",
+            "status",
+        )
         return [
             {
                 "id": organization["id"],
                 "name": organization["name"],
                 "status": organization["status"],
                 "memberships": [
-                    {field: membership[field] for field in membership_fields if field in membership}
-                    for membership in memberships_by_organization.get(organization["id"], [])
+                    {
+                        field: membership[field]
+                        for field in membership_fields
+                        if field in membership
+                    }
+                    for membership in memberships_by_organization.get(
+                        organization["id"], []
+                    )
                     if membership.get("status") == "active"
                 ],
             }
@@ -140,15 +175,16 @@ def build_organization_router(
             "updated_at": timestamp,
         }
         await database.organizations.insert_one(dict(organization))
-        await append_audit_event(
+        await append_identity_audit_event(
             database,
-            actor=actor,
+            actor_user_id=actor["id"],
             action="organization.created",
             target_type="organization",
             target_id=organization["id"],
-            before=None,
-            after=organization,
-            reason="Organization created",
+            previous=None,
+            result=_organization_audit_projection(organization),
+            reason_code="organization_created",
+            policy_version=ROLE_POLICY_VERSION,
         )
         return organization
 
@@ -170,15 +206,16 @@ def build_organization_router(
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Organization not found")
         after = await database.organizations.find_one({"id": organization_id})
-        await append_audit_event(
+        await append_identity_audit_event(
             database,
-            actor=actor,
+            actor_user_id=actor["id"],
             action="organization.updated",
             target_type="organization",
             target_id=organization_id,
-            before=before,
-            after=after,
-            reason="Organization updated",
+            previous=_organization_audit_projection(before),
+            result=_organization_audit_projection(after),
+            reason_code="organization_updated",
+            policy_version=ROLE_POLICY_VERSION,
         )
         return without_mongo_id(after)
 
@@ -244,15 +281,16 @@ def build_organization_router(
             await database.organization_memberships.insert_one(dict(membership))
             action = "organization.member_added"
 
-        await append_audit_event(
+        await append_identity_audit_event(
             database,
-            actor=actor,
+            actor_user_id=actor["id"],
             action=action,
             target_type="organization_membership",
             target_id=membership["id"],
-            before=existing,
-            after=membership,
-            reason="Organization membership added",
+            previous=_membership_audit_projection(existing) if existing else None,
+            result=_membership_audit_projection(membership),
+            reason_code=action.replace(".", "_"),
+            policy_version=ROLE_POLICY_VERSION,
         )
         return without_mongo_id(membership)
 
@@ -284,15 +322,16 @@ def build_organization_router(
             },
         )
         after = await database.organization_memberships.find_one({"id": membership_id})
-        await append_audit_event(
+        await append_identity_audit_event(
             database,
-            actor=actor,
+            actor_user_id=actor["id"],
             action="organization.member_updated",
             target_type="organization_membership",
             target_id=membership_id,
-            before=before,
-            after=after,
-            reason="Organization membership role updated",
+            previous=_membership_audit_projection(before),
+            result=_membership_audit_projection(after),
+            reason_code="organization_member_updated",
+            policy_version=ROLE_POLICY_VERSION,
         )
         return without_mongo_id(after)
 
@@ -324,15 +363,16 @@ def build_organization_router(
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Active membership not found")
         after = await database.organization_memberships.find_one({"id": membership_id})
-        await append_audit_event(
+        await append_identity_audit_event(
             database,
-            actor=actor,
+            actor_user_id=actor["id"],
             action="organization.member_archived",
             target_type="organization_membership",
             target_id=membership_id,
-            before=before,
-            after=after,
-            reason="Organization membership archived",
+            previous=_membership_audit_projection(before),
+            result=_membership_audit_projection(after),
+            reason_code="organization_member_archived",
+            policy_version=ROLE_POLICY_VERSION,
         )
         return without_mongo_id(after)
 
