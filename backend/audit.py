@@ -90,8 +90,17 @@ class AuditValidationError(ValueError):
     """Raised when a restricted audit event does not meet its safe contract."""
 
 
+_USER_ACCESS_REASON_CODES = frozenset(
+    {
+        "role_review_approved",
+        "role_access_removed",
+        "emergency_override",
+        "policy_migration_v1",
+    }
+)
+
 _EVENT_REASON_CODES = {
-    ("user.access_updated", "user"): "user_access_updated",
+    ("user.access_updated", "user"): _USER_ACCESS_REASON_CODES,
     ("organization.created", "organization"): "organization_created",
     ("organization.updated", "organization"): "organization_updated",
     (
@@ -228,7 +237,12 @@ async def append_identity_audit_event(
     expected_reason_code = _EVENT_REASON_CODES.get((action, target_type))
     if expected_reason_code is None:
         raise AuditValidationError("Unsupported identity audit action or target")
-    if reason_code != expected_reason_code:
+    reason_code_allowed = (
+        reason_code in expected_reason_code
+        if isinstance(expected_reason_code, frozenset)
+        else reason_code == expected_reason_code
+    )
+    if not reason_code_allowed:
         raise AuditValidationError("Unsupported audit reason code")
     actor_user_id = _validate_audit_identifier(actor_user_id, "actor user ID")
     target_id = _validate_audit_identifier(target_id, "target ID")

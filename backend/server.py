@@ -792,6 +792,7 @@ async def root():
 api.include_router(
     build_identity_router(
         get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         safe_user=safe_user,
     )

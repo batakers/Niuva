@@ -136,7 +136,7 @@ def test_identity_audit_event_stores_only_allowlisted_access_projection_and_forw
                 "access_state": "approved",
                 "status": "active",
             },
-            reason_code="user_access_updated",
+            reason_code="role_review_approved",
             policy_version="2026-07-22-v1",
             session=session,
         )
@@ -168,6 +168,56 @@ def test_identity_audit_event_stores_only_allowlisted_access_projection_and_forw
     assert "before" not in event and "after" not in event and "reason" not in event
     assert db.audit_events.items == [event]
     assert db.audit_events.insert_options == [{"session": session}]
+
+
+@pytest.mark.parametrize(
+    "reason_code",
+    (
+        "role_review_approved",
+        "role_access_removed",
+        "emergency_override",
+        "policy_migration_v1",
+    ),
+)
+def test_user_access_audit_accepts_only_public_reason_codes(reason_code):
+    db = AuditDatabase()
+
+    event = asyncio.run(
+        append_identity_audit_event(
+            db,
+            actor_user_id="owner-1",
+            action="user.access_updated",
+            target_type="user",
+            target_id="user-2",
+            previous={"roles": ["retail_customer"]},
+            result={"roles": ["operations"]},
+            reason_code=reason_code,
+            policy_version="2026-07-22-v1",
+        )
+    )
+
+    assert event["reason_code"] == reason_code
+
+
+def test_user_access_audit_rejects_superseded_internal_reason_code():
+    db = AuditDatabase()
+
+    with pytest.raises(AuditValidationError, match="reason code"):
+        asyncio.run(
+            append_identity_audit_event(
+                db,
+                actor_user_id="owner-1",
+                action="user.access_updated",
+                target_type="user",
+                target_id="user-2",
+                previous={"roles": ["retail_customer"]},
+                result={"roles": ["operations"]},
+                reason_code="user_access_updated",
+                policy_version="2026-07-22-v1",
+            )
+        )
+
+    assert db.audit_events.items == []
 
 
 def test_organization_audit_event_rejects_raw_sensitive_snapshot_before_insert():
