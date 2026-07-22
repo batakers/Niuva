@@ -1,3 +1,10 @@
+> **ARCHIVED — Do not use for new planning.**
+>
+> Canonical product and experience authority:
+> `docs/NIUVA_MASTER_SPEC.md`
+>
+> See `docs/context/DOCUMENT_REGISTER.md` for status and permitted use.
+
 # Addendum PRS v2.0 — Integrated Operations, Customer Portal, dan Hybrid Marketplace
 
 Tanggal: 14 Juli 2026  

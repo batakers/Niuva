@@ -28,8 +28,8 @@ This audit compared the current public implementation with:
 - `docs/references/requirements/historical-active/BRD_Website_Niuva.md`
 - `docs/references/requirements/historical-active/PRS_Website_Niuva.md`
 - `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`
-- `doc/brand/BRAND_DIGITAL_EXTENSION.md`
-- `doc/brand/BRAND_IMPLEMENTATION_PLAN.md`
+- `docs/archive/drafts/BRAND_DIGITAL_EXTENSION.md` — archived draft; historical comparison only
+- `docs/archive/implementation-history/BRAND_IMPLEMENTATION_PLAN.md` — archived implementation history; historical sequencing only
 - Current React components, CSS tokens, public routes, and local project assets
 - Desktop renders of Home, About, Capabilities, Projects, and Contact
 - Narrow-layout renders of Home and Projects, used as supporting visual evidence only

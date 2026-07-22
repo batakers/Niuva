@@ -1,3 +1,10 @@
+> **ARCHIVED — Do not use for new planning.**
+>
+> Canonical product and experience authority:
+> `docs/NIUVA_MASTER_SPEC.md`
+>
+> See `docs/context/DOCUMENT_REGISTER.md` for status and permitted use.
+
 # Desain Platform Operasional, Portal B2B, dan Marketplace Niuva
 
 Tanggal: 14 Juli 2026  

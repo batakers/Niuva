@@ -46,9 +46,9 @@ Candidate and Superseded documents are not implementation authority.
 | `docs/references/requirements/historical-active/BRD_Website_Niuva.md` | Historical Active Baseline | Public brand, company, portfolio, and lead-generation requirements | Approval evidence not recorded |
 | `docs/references/requirements/historical-active/PRS_Website_Niuva.md` | Historical Active Baseline | Public v1 page, navigation, CTA, and scope baseline | Approval evidence not recorded |
 | `docs/references/requirements/historical-active/AGENTS.brand-baseline-v1.md` | Active Implementation Guardrail | Public website and brand guardrails | Stakeholder approval not separately recorded |
-| `doc/BRD_Platform_Niuva_v2_addendum.md` | Superseded | Historical v2 business requirements | Superseded by BRD v2.1 |
-| `doc/PRS_Platform_Niuva_v2_addendum.md` | Superseded | Historical v2 product scope | Superseded by PRS v2.1 |
-| `docs/superpowers/specs/2026-07-14-integrated-operations-marketplace-design.md` | Superseded | Historical integrated marketplace design | Superseded by unified Retail–B2B design |
+| `docs/archive/superseded/BRD_Platform_Niuva_v2_addendum.md` | Superseded | Archived historical v2 business requirements | Archived supersession evidence; superseded by BRD v2.1 |
+| `docs/archive/superseded/PRS_Platform_Niuva_v2_addendum.md` | Superseded | Archived historical v2 product scope | Archived supersession evidence; superseded by PRS v2.1 |
+| `docs/archive/superseded/2026-07-14-integrated-operations-marketplace-design.md` | Superseded | Archived integrated marketplace design | Archived supersession evidence; superseded by unified Retail–B2B design |
 | `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md` | Active Decision Register | Business, operational, and technical decision index | Active register; approved ADR directions recorded in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; unresolved entries remain open |
 | `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` | Approved Baseline | Transaction-capability authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; internal architecture direction only |
 | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` | Approved with Open Decisions | Production persistent-storage authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; operational decisions remain open |
@@ -143,13 +143,13 @@ Dokumen berikut tetap berada di luar approval requirements dan/atau tetap menjad
 ## Supersession Map
 
 ```text
-doc/BRD_Platform_Niuva_v2_addendum.md
+docs/archive/superseded/BRD_Platform_Niuva_v2_addendum.md [archived supersession evidence]
   → docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md
 
-doc/PRS_Platform_Niuva_v2_addendum.md
+docs/archive/superseded/PRS_Platform_Niuva_v2_addendum.md [archived supersession evidence]
   → docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md
 
-docs/superpowers/specs/2026-07-14-integrated-operations-marketplace-design.md
+docs/archive/superseded/2026-07-14-integrated-operations-marketplace-design.md [archived supersession evidence]
   → docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md
 
 Website v1 BRD/PRS

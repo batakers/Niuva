@@ -4,7 +4,7 @@ Tanggal: 14 Juli 2026
 Status: Approved Baseline
 Approval record: `docs/decisions/evidence/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
 Dokumen induk: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`
-Supersedes: `doc/BRD_Platform_Niuva_v2_addendum.md`
+Supersedes archived evidence: `docs/archive/superseded/BRD_Platform_Niuva_v2_addendum.md`
 Design source: `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`
 
 ## 1. Arah Bisnis

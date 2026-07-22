@@ -1,3 +1,10 @@
+> **ARCHIVED — Do not use for new planning.**
+>
+> Canonical product and experience authority:
+> `docs/NIUVA_MASTER_SPEC.md`
+>
+> See `docs/context/DOCUMENT_REGISTER.md` for status and permitted use.
+
 #====================================================================================================
 # START - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
 #====================================================================================================
