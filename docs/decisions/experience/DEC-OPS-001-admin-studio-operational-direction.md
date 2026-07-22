@@ -124,5 +124,5 @@ This decision does not supersede `DESIGN.md` in full. `DESIGN.md` remains a tran
 - `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
 - `AGENTS.md`
 - `DESIGN.md` — transitional/current-state reference only
-- `doc/IDENTITY_RBAC_AUDIT_RUNBOOK.md` — procedural reference for role, permission, audit, and access recovery
-- `doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` — procedural reference for inventory conflict and recovery operations
+- `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` — procedural reference for role, permission, audit, and access recovery
+- `docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` — procedural reference for inventory conflict and recovery operations

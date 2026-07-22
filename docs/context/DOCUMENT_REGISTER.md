@@ -90,10 +90,10 @@ This register does not upgrade the approval status of any source. Approval evide
 
 | Document | Status | Scope | Authority | Use when | Do not use for |
 |---|---|---|---|---|---|
-| `doc/IDENTITY_RBAC_AUDIT_RUNBOOK.md` | Runbook | Identity migration, role recovery, audit, handoff | Procedural authority within its operational scope | Migration dry run, backup, rollback, access recovery, and handoff | Product role direction or visual design |
-| `doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` | Runbook | Catalog/material/inventory rollout and recovery | Procedural authority within its operational scope | Rollout, migration, correction, verification, rollback, and recovery | Product direction, pricing policy, or customer experience design |
+| `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` | Runbook | Identity migration, role recovery, audit, handoff | Procedural authority within its operational scope | Migration dry run, backup, rollback, access recovery, and handoff | Product role direction or visual design |
+| `docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` | Runbook | Catalog/material/inventory rollout and recovery | Procedural authority within its operational scope | Rollout, migration, correction, verification, rollback, and recovery | Product direction, pricing policy, or customer experience design |
 | `doc/PRODUCTION_DEPLOYMENT.md` | Runbook | Provider-neutral production deployment | Procedural authority subject to approved architecture gates | Release, configuration, headers, readiness, and rollback | Selecting provider or authorizing go-live |
-| `doc/runbooks/NIV-001_GIT_HISTORY_REWRITE_RUNBOOK.md` | Runbook | Controlled Git history rewrite | Procedural authority for NIV-001 only | Freeze, backup, rewrite, verification, publication, and recovery | Ordinary Git workflow or product direction |
+| `docs/runbooks/NIV-001_GIT_HISTORY_REWRITE_RUNBOOK.md` | Runbook | Controlled Git history rewrite | Procedural authority for NIV-001 only | Freeze, backup, rewrite, verification, publication, and recovery | Ordinary Git workflow or product direction |
 
 ## Implementation Plans and Execution Context
 

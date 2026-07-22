@@ -962,7 +962,7 @@ Only with explicit authorization, commit with message `feat: add inventory and r
 
 **Files:**
 
-- Create: `doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md`
+- Create: `docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md`
 - Modify: `backend/tests/backend_test.py`
 - Verify: all backend/frontend files from Tasks 1–11
 
@@ -977,7 +977,7 @@ Add URL-dependent assertions to `backend/tests/backend_test.py` for Catalog Mana
 
 - [x] **Step 2: Write the operational runbook**
 
-`doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` contains:
+`docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` contains:
 
 1. Scope and owners
 2. MongoDB replica-set prerequisite and capability check
@@ -1062,7 +1062,7 @@ Expected: no whitespace errors or unexpected generated artifacts. Review every c
 Only with explicit authorization:
 
 ```powershell
-git add -- backend frontend/src doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md
+git add -- backend frontend/src docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md
 git commit -m "feat: complete catalog material pricing inventory foundation"
 ```
 

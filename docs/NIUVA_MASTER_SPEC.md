@@ -102,7 +102,7 @@ Organization members may access only assigned organizations and projects. Approv
 
 Authorization must be enforced in backend handlers, services, and data queries. Hiding a control is a usability measure, not authorization. Use least privilege, conflict-safe approval behavior, and audit records for sensitive actions.
 
-Sources: `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `doc/IDENTITY_RBAC_AUDIT_RUNBOOK.md` for procedure only.
+Sources: `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` for procedure only.
 
 ## 5. Product Structure
 
@@ -333,7 +333,7 @@ Inventory and operational mutations must provide:
 
 Notification failure must not roll back an otherwise successful core transaction.
 
-Detailed rollout, migration, correction, rollback, and recovery procedures remain in `doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` and other relevant runbooks.
+Detailed rollout, migration, correction, rollback, and recovery procedures remain in `docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` and other relevant runbooks.
 
 ## 13. Security and Data Boundaries
 

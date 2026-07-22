@@ -46,7 +46,7 @@
 | `frontend/src/pages/admin/AuditLog.jsx` | Read-only audit event viewer |
 | `frontend/src/App.js` | Permission-specific route registration |
 | `frontend/src/i18n.js` | Indonesian and English labels for new modules |
-| `doc/IDENTITY_RBAC_AUDIT_RUNBOOK.md` | Role matrix, migration, rollback, and verification procedure |
+| `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` | Role matrix, migration, rollback, and verification procedure |
 
 ## Public Interfaces Locked by This Plan
 
@@ -832,7 +832,7 @@ Only with explicit authorization, commit with message `feat: add identity admini
 
 **Files:**
 
-- Create: `doc/IDENTITY_RBAC_AUDIT_RUNBOOK.md`
+- Create: `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md`
 - Modify: `backend/.env.example` only if the implementation introduces a real new environment variable; this plan does not require one.
 - Test: all focused backend and frontend checks listed below.
 
@@ -900,7 +900,7 @@ Using API responses from login, `/auth/me`, `/admin/users`, `/admin/organization
 Only with explicit user authorization:
 
 ```powershell
-git add -- backend frontend/src doc/IDENTITY_RBAC_AUDIT_RUNBOOK.md
+git add -- backend frontend/src docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md
 git commit -m "feat: establish identity rbac organization and audit foundation"
 ```
 

@@ -58,7 +58,7 @@ capability foundation for transaction-required platform mutations.
 - Current inventory retry checks only `TransientTransactionError` and is embedded in business service logic (`backend/inventory_service.py:223-235`). There is no centralized commit retry for `UnknownTransactionCommitResult` and no shared explicit retry-safety contract.
 - Cross-collection write locations include catalog publication/pointer/audit writes (`backend/catalog_service.py:508-530`, `566-589`) and inventory balance/movement/reservation/audit/restock/notification writes (`backend/inventory_service.py:306-404`, `503-607`). These remain future consumers of the new guard; this plan does not rewrite their business rules.
 - Unit/API tests primarily use in-memory fakes. The real replica-set test creates a UUID-scoped database and drops it in `finally` (`backend/tests/test_inventory_transactions.py:36-117`). No shared `conftest.py` transaction topology fixture exists.
-- Local configuration defaults to standalone `mongodb://127.0.0.1:27017` in `backend/.env.example:1`. The runbook requires a MongoDB 7 replica set but supplies no Compose topology (`doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md:13-23,164-169`).
+- Local configuration defaults to standalone `mongodb://127.0.0.1:27017` in `backend/.env.example:1`. The runbook requires a MongoDB 7 replica set but supplies no Compose topology (`docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md:13-23,164-169`).
 - There are no tracked Docker/Compose files and no tracked `.github` workflow. CI transaction topology is therefore absent.
 - Logging uses the standard library and a plain text root formatter (`backend/server.py:34-35`). Transaction lifecycle events are not logged, request/correlation IDs are not established, and no metrics library or metrics endpoint exists.
 
@@ -102,7 +102,7 @@ capability foundation for transaction-required platform mutations.
 | Create | `backend/tests/test_transaction_observability.py` | Lifecycle, unknown-commit, UUID correlation, untrusted-source omission, and forbidden-field coverage | itself | Task 10 |
 | Create | `doc/TRANSACTION_CAPABILITY_RUNBOOK.md` | Direct single-node local/CI setup, reconciliation, trusted-correlation guidance, verification, troubleshooting, limitations, and rollback | pointer validation | Task 10 |
 | Create | `backend/tests/test_transaction_documentation.py` | Runbook setup, direct-connection scope, reconciliation, security, and two-level rollback contract tests | itself | Task 10 |
-| Modify | `doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` | Point existing foundation operators to the canonical topology/runbook | pointer validation | Task 10 |
+| Modify | `docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` | Point existing foundation operators to the canonical topology/runbook | pointer validation | Task 10 |
 | Modify | `doc/PRODUCTION_DEPLOYMENT.md` | State capability/feature gates without claiming production readiness | pointer validation | Task 10 |
 
 ## Dependency Graph
@@ -2800,7 +2800,7 @@ git commit -m "feat: add safe transaction lifecycle diagnostics"
 **Files:**
 - Create: `doc/TRANSACTION_CAPABILITY_RUNBOOK.md`
 - Create: `backend/tests/test_transaction_documentation.py`
-- Modify: `doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md:13-23,151-169`
+- Modify: `docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md:13-23,151-169`
 - Modify: `doc/PRODUCTION_DEPLOYMENT.md` under `Approved Architecture Gates`
 
 **Interfaces:**
@@ -3042,7 +3042,7 @@ volume and must never be used against staging or production data.
 ```
 
 Apply these exact pointer updates to
-`doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md`:
+`docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md`:
 
 ```diff
  ## 2. Prasyarat MongoDB Replica Set dan Capability Check
@@ -3103,7 +3103,7 @@ Expected: all selected tests pass and all documented commands/names match implem
 - [ ] **Step 10: Commit only Task 9 files**
 
 ```powershell
-git add -- doc/TRANSACTION_CAPABILITY_RUNBOOK.md backend/tests/test_transaction_documentation.py doc/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md doc/PRODUCTION_DEPLOYMENT.md
+git add -- doc/TRANSACTION_CAPABILITY_RUNBOOK.md backend/tests/test_transaction_documentation.py docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md doc/PRODUCTION_DEPLOYMENT.md
 git diff --cached --check
 git commit -m "docs: document transaction-capable development setup"
 ```
