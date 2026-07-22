@@ -1,347 +1,170 @@
----
-name: "NIUVA Website"
-description: "Corporate engineering brand system for R&D, design prototyping, and 3D printing service workflows."
-colors:
-  niuva-blue: "#6390BB"
-  sky-blue: "#8AAECF"
-  blue-dark: "#4A72A0"
-  midnight: "#1C2B3A"
-  steel: "#3D5266"
-  smoke: "#6B7A8D"
-  silver: "#E2E8EE"
-  frost: "#EBF1F7"
-  cloud: "#F8F9FB"
-  pure-white: "#FFFFFF"
-  success: "#2E8452"
-  warning: "#B87B1E"
-  error: "#C14444"
-typography:
-  display:
-    fontFamily: "Poppins, system-ui, sans-serif"
-    fontSize: "clamp(2.25rem, 4.6vw, 3.5rem)"
-    fontWeight: 800
-    lineHeight: "42px mobile / 62px desktop"
-    letterSpacing: "-0.025em"
-  headline:
-    fontFamily: "Poppins, system-ui, sans-serif"
-    fontSize: "clamp(2.125rem, 4.2vw, 3rem)"
-    fontWeight: 800
-    lineHeight: "40px mobile / 55px desktop"
-    letterSpacing: "-0.02em"
-  title:
-    fontFamily: "Poppins, system-ui, sans-serif"
-    fontSize: "1.25rem"
-    fontWeight: 700
-    lineHeight: 1.25
-    letterSpacing: "-0.02em"
-  body:
-    fontFamily: "Poppins, system-ui, sans-serif"
-    fontSize: "1rem"
-    fontWeight: 400
-    lineHeight: 1.625
-    letterSpacing: "0"
-  label:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
-    fontSize: "0.75rem"
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: "0.04em"
-rounded:
-  none: "0px"
-  sm: "8px"
-  md: "12px"
-  lg: "16px"
-  panel: "20px"
-  outer: "24px"
-  full: "999px"
-spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "12px"
-  lg: "16px"
-  xl: "20px"
-  2xl: "24px"
-  3xl: "32px"
-  section: "96px"
-components:
-  button-primary:
-    backgroundColor: "{colors.blue-dark}"
-    textColor: "{colors.pure-white}"
-    typography: "{typography.body}"
-    rounded: "{rounded.md}"
-    padding: "10px 16px"
-    height: "40px"
-  button-primary-hover:
-    backgroundColor: "{colors.midnight}"
-    textColor: "{colors.pure-white}"
-    rounded: "{rounded.md}"
-    padding: "10px 16px"
-    height: "40px"
-  button-outline:
-    backgroundColor: "{colors.pure-white}"
-    textColor: "{colors.midnight}"
-    rounded: "{rounded.md}"
-    padding: "10px 16px"
-    height: "40px"
-  input-default:
-    backgroundColor: "{colors.pure-white}"
-    textColor: "{colors.midnight}"
-    rounded: "{rounded.md}"
-    padding: "8px 12px"
-    height: "40px"
-  nav-shell:
-    backgroundColor: "{colors.pure-white}"
-    textColor: "{colors.midnight}"
-    rounded: "{rounded.lg}"
-    height: "64px"
-  button-technical:
-    backgroundColor: "{colors.blue-dark}"
-    textColor: "{colors.pure-white}"
-    typography: "{typography.label}"
-    rounded: "{rounded.none}"
-    padding: "8px 12px"
-    height: "36px"
-  technical-label:
-    textColor: "{colors.steel}"
-    typography: "{typography.label}"
-    rounded: "{rounded.none}"
-  surface-panel:
-    backgroundColor: "{colors.pure-white}"
-    textColor: "{colors.midnight}"
-    rounded: "{rounded.none}"
-    padding: "0px"
-  empty-state:
-    backgroundColor: "{colors.pure-white}"
-    textColor: "{colors.steel}"
-    typography: "{typography.label}"
-    padding: "48px"
----
+# Niuva Cross-Surface Implementation Design System
 
-# Design System: NIUVA Website
+## Authority and Scope
 
-## 1. Overview
+This is the active implementation design guardrail for one Niuva website and one
+operational platform. It is subordinate to the approved BRD, PRS, PRD, product
+decisions, and architecture decisions recorded in `docs/context/DOCUMENT_REGISTER.md`
+and `docs/decisions/DECISION_REGISTER.md`.
 
-**Creative North Star: "The Steel-Blue Engineering Dossier"**
+`DEC-UX-001` governs the Unified Homepage with its B2B-primary narrative and
+clear Retail secondary path. `DEC-UX-002` governs the public Homepage's
+Experimental Editorial Hybrid. `DEC-OPS-001` governs Admin Studio as a
+role-aware, task-oriented, dense-but-calm operational environment. Detailed
+Retail/B2B navigation, provider selection, production activation, and source
+implementation remain separately authorized decisions.
 
-NIUVA's visual system should feel like a precise engineering dossier made presentable for business decision makers: clean, technical, credible, and easy to act on. The public site uses a light corporate surface, steel-blue identity color, real project imagery, measured typography, and clear CTA hierarchy to make R&D, design engineering, prototyping, EV development, and 3D printing feel concrete rather than abstract.
+This document changes guidance only. Component, CSS, asset, route, page, CMS
+schema, and production changes require a later implementation plan and explicit
+authorization.
 
-The system rejects commodity-vendor styling. It must not feel like a generic marketplace, a static PDF company profile copied into HTML, or a cheap "best and cheapest service" pitch. Public pages may carry stronger brand expression through imagery, large Poppins headlines, and technical annotations; authenticated dashboards stay restrained, data-dense, and task-first.
+## Shared Semantic Tokens
 
-**Key Characteristics:**
-- Light, steel-tinted surfaces with high-contrast ink.
-- Blue is decisive but scarce: primary actions, active states, proof points, and technical highlights.
-- Poppins carries the brand voice; JetBrains Mono is reserved for technical data, IDs, status metadata, and compact operational labels.
-- Public pages show evidence through portfolio/case-study structure; dashboards optimize order completion, verification, and admin scanning.
-- Motion is short, stateful, and respectful of reduced-motion preferences.
+Preserve the semantic-token pipeline already consumed by
+`frontend/src/index.css`, `frontend/tailwind.config.js`, and shared components:
 
-## 2. Colors
-
-The palette is a desaturated steel-blue system: trustworthy, technical, and calm without becoming navy corporate default.
-
-### Primary
-- **Command Blue**: The primary interactive color. Use it for primary CTA backgrounds, active navigation, focused controls, key icons, status emphasis, and links that need business weight.
-- **Niuva Blue**: The brand signal. Use it for identity accents, secondary highlights, subtle fills, proof-point numbers, badges, and hover accents.
-- **Sky Blue**: The soft highlight. Use it sparingly for hover washes, selected surfaces, and gentle visual relief inside mostly neutral layouts.
-
-### Secondary
-- **Status Green**: Operational completion and positive confirmation.
-- **Amber Review**: Pending estimates, warnings, review-needed states, and payment or commercial evaluation attention.
-- **Controlled Error Red**: Destructive actions, cancellations, upload failures, validation errors, and unrecoverable status states.
-
-### Neutral
-- **Midnight Ink**: Primary text, dark bands, major headings, and high-emphasis structural contrast.
-- **Steel Body**: Body copy, muted explanatory text, secondary navigation, metadata that still needs readable contrast.
-- **Smoke Label**: Low-emphasis supporting labels only; do not use it for long body text on light backgrounds.
-- **Silver Line**: Borders, dividers, table lines, field strokes, and low-emphasis separators.
-- **Frost Surface**: Secondary panels, hover surfaces, dashboard rows, and form groups.
-- **Cloud Page**: Page background. It keeps the site light without defaulting to pure white everywhere.
-- **Pure White Surface**: Cards, nav shell, dropdowns, inputs, dialogs, and high-legibility content blocks.
-
-### Named Rules
-
-**The Scarce Blue Rule.** Blue must guide decisions, not flood the screen. If every heading, icon, and card is blue, the hierarchy has failed.
-
-**The Contrast First Rule.** Body text uses Midnight Ink or Steel Body on Cloud, Frost, or Pure White. Smoke Label is for short metadata only.
-
-## 3. Typography
-
-**Display Font:** Poppins with system-ui fallback
-**Body Font:** Poppins with system-ui fallback
-**Label/Mono Font:** JetBrains Mono with ui-monospace fallback
-
-**Character:** Poppins gives NIUVA a rounded engineering-business voice close to the approved company profile direction. JetBrains Mono adds technical precision, but only where the content is actually technical.
-
-### Hierarchy
-
-- **Display** (800, `clamp(2.5rem, 6vw, 4.5rem)`, 1.05): Hero statements, major page introductions, and final CTA bands. Keep letter spacing at `-0.02em`; never tighten below `-0.04em`.
-- **Headline** (800, `clamp(2rem, 4vw, 3.75rem)`, 1.1): Section leads, capability groups, and portfolio feature headings.
-- **Title** (700, `1.25rem`, 1.25): Card titles, modal headings, dashboard block titles, and list item names.
-- **Body** (400-500, `1rem`, 1.625): Service explanations, case-study copy, form help text, and operational descriptions. Cap long prose at 65ch.
-- **Label** (JetBrains Mono 500, `0.75rem`, 0.04em): Order numbers, technical annotations, short status metadata, SLA snippets, compact table headers, and engineering readouts.
-
-### Named Rules
-
-**The Mono Is Data Rule.** JetBrains Mono is allowed for IDs, measurements, order numbers, short labels, and technical readouts. It is forbidden as a lazy costume for all brand copy.
-
-**The No Shouting Rule.** All-caps is reserved for compact labels and technical tags. Body copy, navigation, service explanations, and case-study text stay sentence case.
-
-## 4. Elevation
-
-NIUVA uses tonal layering first and shadow second. Most public and dashboard surfaces are separated by Cloud, Frost, Pure White, Silver borders, and careful spacing. Shadows are small structural cues for sticky navigation, dropdowns, dialogs, and interactive surfaces; they must never become soft decorative "ghost cards."
-
-### Shadow Vocabulary
-
-- **Subtle** (`0 1px 2px rgba(28, 43, 58, 0.06)`): Inputs, small controls, and low-lift elements that need separation from Cloud.
-- **Navigation** (`0 8px 24px rgba(36, 50, 65, 0.09)`): Sticky navbar, dropdowns, and compact panels that float above content.
-- **Dialog** (`0 18px 48px rgba(36, 50, 65, 0.16)`): Modals, mobile menu panels, and high-priority overlays.
-- **Focus Glow** (`0 0 0 3px rgba(102, 146, 188, 0.22)`): Focus-visible or selected state support; do not use as decorative ambient glow.
-
-### Named Rules
-
-**The Flat First Rule.** A surface starts flat. Add elevation only when it clarifies stacking, focus, hover, or overlay behavior.
-
-**The Border Or Shadow Rule.** Avoid heavy border plus wide shadow on the same card. Use a clear Silver border for structure, or a restrained shadow for floating UI.
-
-## 5. Components
-
-### Buttons
-
-Buttons are confident and utilitarian, not pillowy. They should be immediately scannable in public CTAs and dashboard actions.
-
-- **Shape:** Gently curved by default (12px radius). Square overrides are allowed in dense engineering pages and admin tables when the surrounding system is intentionally technical.
-- **Primary:** Command Blue background with Pure White text, 40px default height, 44px large height, 16-28px horizontal padding depending on size.
-- **Hover / Focus:** Hover deepens to Midnight Ink. Focus uses a 2px ring plus offset on Cloud or Pure White.
-- **Secondary / Ghost / Outline:** Secondary uses Frost with Midnight Ink. Outline uses Pure White, Silver border, and hover border shift to Command Blue. Ghost stays transparent until hover.
-
-### Technical Labels
-
-Technical labels are the reusable system voice for order numbers, registry headers, compact admin metadata, and engineering readouts. They use JetBrains Mono, uppercase text, 0.04em letter spacing, and the Steel Body or Command Blue tones. They must stay short; if the text needs a full sentence, use Poppins body copy instead.
-
-### Surface Panels
-
-Surface panels are the shared operational container: Silver border, Pure White surface, optional Frost header, and no decorative shadow. Use them for admin registry blocks, settings panels, material cards, and other task-first groups. They should replace repeated `border border-border bg-surface-1` markup when the surface has reusable structure.
-
-### Empty States
-
-Empty states use the extracted mono registry style: 48px padding, centered text, Steel Body color, uppercase technical wording, and optional solid or dashed frame. Use them for loading, no-data, and configuration-missing states where the system is reporting status rather than telling a marketing story.
-
-### Chips
-
-Chips and badges are compact status cues. They use 8-10px radius, semibold text, a faint tinted background, and a border in the same semantic family. They must not rely on color alone; the label text must carry the state.
-
-### Cards / Containers
-
-Cards are used only for repeated items, portfolio objects, modal-like panels, and operational blocks. Marketing sections should usually be full-width bands or unframed layouts rather than nested cards.
-
-- **Corner Style:** Default card radius is 12-18px depending on surface. Larger brand panels may use 20-24px. Dense operational containers may be square; nav and dropdown surfaces use 16-20px.
-- **Background:** Pure White for readable content, Frost for grouped support areas, Cloud for page canvas.
-- **Shadow Strategy:** Flat by default with Silver borders. Shadow only for sticky/floating UI.
-- **Border:** Silver 1px border for structure. No colored side stripes.
-- **Internal Padding:** 16px for compact controls, 24-32px for cards, 96px vertical rhythm for major marketing sections.
-
-### Inputs / Fields
-
-Inputs are white, bordered, and direct. Default height is 40px with 12px radius, 12px horizontal padding, Midnight text, and Steel placeholder/support copy. Focus changes the border to Command Blue and adds a faint ring. Error states use Controlled Error Red plus text, never color alone.
-
-### Navigation
-
-The public navbar is a compact floating shell: Pure White at high opacity, 20px radius, Silver border, and a modest shadow. Active links use Command Blue; inactive links use Steel Body and turn Midnight on hover. Dropdowns and mobile panels use the same card shell. Language and utility controls may use JetBrains Mono only because they behave like compact system metadata.
-
-### Status Stepper
-
-The status stepper is an operational pattern for order progress. Completed steps use Status Green, the active step uses Command Blue, and future steps use Frost plus Steel. Numbers use JetBrains Mono because they are ordered system markers. The connecting line must update with state and remain understandable with the text label below each step.
-
-### Logo
-
-The mark is a technical "N" form with a Command Blue block and low-opacity measurement marks. The wordmark uses Poppins ExtraBold in title case: `Niuva`, not all-caps shouting. Use it in Midnight on light surfaces and Pure White only on dark bands.
-
-## 6. Do's and Don'ts
-
-### Do:
-
-- **Do** lead with R&D, Design & Prototyping, and real portfolio evidence before supporting services.
-- **Do** make contact obvious through WhatsApp, email, consultation forms, project discussion CTAs, and clear order actions.
-- **Do** use Command Blue for primary actions and active states, not as decorative fill everywhere.
-- **Do** treat portfolio entries as mini case studies: challenge, solution, output, and capability proven.
-- **Do** keep operational dashboards task-first: order creation, status tracking, estimation, payment-proof handling, fulfillment, and admin scanning.
-- **Do** use extracted primitives for repeated operational UI: `SurfacePanel`, `SurfacePanelHeader`, `TechnicalLabel`, `EmptyState`, and `Button variant="technical"`.
-- **Do** keep body text at readable contrast; use Midnight Ink or Steel Body on light surfaces.
-- **Do** respect reduced motion. Content must remain visible without animation.
-
-### Don't:
-
-- **Don't** make NIUVA look like a generic vendor, a static PDF company profile converted to a web page, or a cheap "best and cheapest service" marketplace pitch.
-- **Don't** present all services with equal weight. R&D and Design & Prototyping are the face of the business; Consultant & Workshop and Apparel & Merchandise are supporting capabilities.
-- **Don't** use overpromising, overpromotional copy, generic tech-startup claims, weak portfolio lists without business context, e-commerce-first framing, blog-first framing, or visual choices that bury the path to discuss a project.
-- **Don't** add decorative brand theatrics to dashboards when they slow order management, payment verification, or admin decision-making.
-- **Don't** use gradient text, colored side-stripe borders, decorative grid backgrounds, repeated tiny uppercase section eyebrows, or identical icon-card grids as default scaffolding.
-- **Don't** use Smoke Label for paragraph text or placeholder text if contrast drops below 4.5:1.
-- **Don't** use JetBrains Mono for long paragraphs, service explanations, or brand claims.
-
-## 7. Canonical Token Architecture
-
-The public website uses one token pipeline:
-
-```txt
+```text
 Approved Niuva values
--> semantic CSS tokens in frontend/src/index.css
--> semantic Tailwind mappings
--> shared public components
+→ semantic CSS tokens
+→ semantic Tailwind mappings
+→ shared components and surfaces
 ```
 
-Public components must not introduce parallel HSL palettes, hardcoded brand hex values, or local RGBA substitutes for an existing semantic role. The HSL variables below the semantic system in `index.css` are a temporary operational compatibility layer for shadcn-based admin, dashboard, order, and authentication surfaces.
+The public semantic color roles remain `--color-brand-primary`,
+`--color-brand-secondary`, `--color-action-primary`,
+`--color-action-primary-hover`, surface, text, border, focus, status, disabled,
+overlay, navigation, and decoration roles. Their current values and semantic
+meanings remain the compatibility baseline; do not introduce a parallel palette
+or hard-coded substitute where a semantic role already exists.
 
-### Semantic colors
+Preserve the established typography, spacing, container, radius, elevation,
+focus, state, and motion roles. This includes the current public and operational
+HSL compatibility layer (`--background`, `--foreground`, `--primary`,
+`--secondary`, `--muted`, `--border`, `--input`, `--ring`, `--surface-*`,
+`--signal`, and status aliases) because current components consume it. New
+public work should use the public semantic roles; the compatibility layer is not
+a license to create a second public visual system.
 
-| Role | Token | Value | Usage |
-|---|---|---:|---|
-| Brand identity | `--color-brand-primary` | `#6390BB` | Logo, identity accents, large decorative fields |
-| Brand support | `--color-brand-secondary` | `#8AAECF` | Soft highlights and secondary brand decoration |
-| Primary action | `--color-action-primary` | `#4A72A0` | CTA, active controls, important interactive text |
-| Action hover | `--color-action-primary-hover` | `#1C2B3A` | Hover and pressed emphasis |
-| Page surface | `--color-surface-page` | `#F8F9FB` | Public page canvas |
-| Default surface | `--color-surface-default` | `#FFFFFF` | Cards, fields, navigation, dialogs |
-| Muted surface | `--color-surface-muted` | `#EBF1F7` | Supporting groups and hover surfaces |
-| Highlight surface | `--color-surface-highlight` | `#E2E8EE` | Selected or stronger neutral relief |
-| Primary text | `--color-text-primary` | `#1C2B3A` | Headings and high-emphasis copy |
-| Secondary text | `--color-text-secondary` | `#3D5266` | Body and supporting copy |
-| Disabled text | `--color-text-disabled` | `#6B7A8D` | Disabled or low-emphasis metadata only |
-| Default border | `--color-border-default` | `#E2E8EE` | Structural borders and dividers |
-| Strong border | `--color-border-strong` | `#8AAECF` | Selected or emphasized borders |
-| Focus | `--color-focus-ring` | `#4A72A0` | Keyboard focus |
+## Typography by Surface
 
-Niuva Blue, Sky Blue, and Blue Dark form one tonal family with distinct semantic roles. Niuva Blue carries brand identity, Sky Blue supports highlights, and Blue Dark provides accessible contrast for buttons, active controls, and important interactive text.
+Use Poppins for approved display and UI emphasis; use Inter for body copy, metadata, forms, and dense operational text.
 
-### Typography roles
+Poppins is appropriate for public display hierarchy, headings, navigation-style
+UI, and buttons. Inter is appropriate for readable public body copy as well as
+customer and operational body text. Preserve the current typography role names
+and utility mapping so existing `type-*`, `font-heading`, `font-display`, and
+related consumers remain compatible until separately authorized source changes
+are made.
 
-The reusable classes are `type-display-home`, `type-heading-page`, `type-heading-section`, `type-heading-subsection`, `type-heading-card`, `type-body-large`, `type-body`, `type-body-small`, `type-label`, `type-technical-metadata`, `type-button`, and `type-navigation`.
+Limit JetBrains Mono to code, identifiers, measurements, and genuinely technical data. It must not create pseudo-terminal decoration on public pages.
 
-- Poppins is the display and body family.
-- JetBrains Mono is reserved for genuine technical metadata.
-- Home H1 is 36/42px on mobile and 56/62px on desktop.
-- Page H1 is 34/40px on mobile and 48/55px on desktop.
-- Prose defaults to 65ch. The 70ch extended measure requires a clear editorial reason.
+Operationally meaningful examples include SKU, order number, revision,
+timestamp, operation ID, status code, and audit identifier. It is not the voice
+for ordinary navigation, explanatory copy, customer messaging, metrics, loading
+copy, empty states, or marketing claims.
 
-### Spacing and containers
+## Official Brand Mark
 
-The canonical spacing scale is 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, and 120px. Semantic section roles distinguish standard, compact, hero-bottom, card, and page-gutter spacing.
+Use the approved lowercase ni mark from the brand source; do not construct an alternative letterform as product identity.
 
-- Wide container: `--container-wide` = 1344px.
-- Content container: `--container-content` = 1120px.
-- Narrow/form container: `--container-narrow` = 768px.
-- Page gutters: 16px mobile, 24px tablet, 32px desktop.
-- `PageContainer` is the canonical public container primitive.
+Use approved brand assets and factual company information. The mark, palette,
+and typography should establish Niuva identity without fabricated technical
+measurements, decorative telemetry, or a substitute logo treatment.
 
-### Radius and elevation
+## Public Brand and B2B Surfaces
 
-- Radius: none 0, small 8px, control 12px, card 16px, panel 20px, feature 24px, full 999px.
-- `radius-full` is only for circles, compact statuses, avatars, and justified small pills.
-- Shadows: none, surface `0 1px 2px rgba(28,43,58,.06)`, navigation `0 8px 24px rgba(28,43,58,.09)`, and overlay `0 18px 48px rgba(28,43,58,.16)`.
-- Static bordered cards remain flat unless elevation communicates stacking.
+Public brand and B2B surfaces prioritize credibility, R&D, design engineering,
+prototyping, capabilities, and authentic project evidence. The Homepage follows
+the Unified Homepage decision: B2B is the primary narrative, while Retail is a
+clear secondary path within the same identity.
 
-### Breakpoints and motion
+Public pages may use the Experimental Editorial Hybrid language governed by
+`DEC-UX-002`: editorial clarity, differentiated capability chapters, authentic
+project context, and a semantic `Need → Research → Experiment → Prototype →
+Output` U-curve. The initial Homepage permits two dominant U-curve placements:
+a compact hero path and a complete process path. Motion stays restrained, with a
+complete static equivalent for reduced-motion users.
 
-Canonical breakpoints are 640, 768, 1024, 1280, and 1536px through Tailwind `sm`, `md`, `lg`, `xl`, and `2xl`. An arbitrary breakpoint requires a documented component-specific need and must not become page layout infrastructure.
+Do not use generic marketplace composition, fabricated proof, gradients, neon,
+glassmorphism, particles, fake dashboards, decorative telemetry, or repeated
+U-curves as ornament. Public composition must not be copied into Admin Studio.
 
-Motion durations are fast 150ms, standard 200ms, and emphasis 300ms. Page reveals may use at most 450ms with 12-16px travel. Existing GSAP remains scoped to public reveal behavior and must keep its reduced-motion exit.
+## Retail Commerce Surfaces
 
+Retail surfaces prioritize product discovery, standardized configuration, file
+requirements, safe price and ETA, checkout state, payment state, and tracking.
+They may be commerce-oriented while preserving Niuva's R&D and engineering
+positioning across the wider website.
+
+Retail must remain distinct from B2B inquiry, quotation, design approval, and
+project milestones. Use the shared semantic tokens and accessible interaction
+states; do not invent product availability, price, ETA, payment-provider
+behavior, tax, shipping, pickup, cancellation, refund, or return policy.
+
+Detailed Retail navigation, CTA placement, and implementation are deferred to
+their separately approved plan and authorization.
+
+## Customer Portals
+
+Customer portals prioritize current status, next action, milestones, ETA,
+approvals, payment, files, and shipment. They show customer-safe information
+only and must preserve the separate Retail Order and B2B Quote/Project
+lifecycles.
+
+Use calm semantic states for loading, empty, error, conflict, retry, permission,
+stale, expired, and recovery conditions. Do not expose internal cost, margin,
+supplier, profit, internal notes, or operational data that customers are not
+authorized to see.
+
+## Admin Studio Operational Surfaces
+
+Admin Studio follows `DEC-OPS-001`: dense, calm, status-led, role-aware,
+permission-aware, task-oriented, auditable, recovery-aware, and accessible. It
+contains CMS and Operations Back-office; it is not a third customer journey.
+
+Prioritize data clarity, visible next action, filters, status, validation,
+permission boundaries, audit history, conflicts, and routine work. Do not copy
+public Homepage composition, decorative telemetry, fabricated metrics, repeated
+generic KPI-card grids, or decorative terminal language into Admin Studio.
+
+Monospace remains available for genuine technical data only. Existing operational
+component APIs stay compatible, but future visual implementation must not turn
+ordinary labels, explanations, navigation, metrics, or empty states into a
+simulated terminal.
+
+## Shared Components and Accessibility
+
+Preserve the current shared-component contracts: `SurfacePanel`,
+`SurfacePanelHeader`, `TechnicalLabel`, `EmptyState`, and the existing button
+variants (`default`, `secondary`, `outline`, `ghost`, `destructive`, `success`,
+`technical`, `technicalOutline`, and `link`). Preserve their semantic token
+dependencies while later implementation work aligns their presentation with this
+guidance.
+
+`SurfacePanel` and `SurfacePanelHeader` remain reusable operational containers.
+`TechnicalLabel` remains for short, genuinely technical metadata. `EmptyState`
+continues to represent loading, no-data, and configuration states, but its
+content must be clear, meaningful, and non-decorative. Button variants retain
+their current API, focus treatment, disabled state, and semantic action roles.
+
+All surfaces require readable contrast, semantic structure, keyboard reach,
+visible focus, labels that do not rely on color alone, responsive behavior, and
+reduced-motion equivalents. Animation must never be necessary to understand
+content or reach an action.
+
+## Transitional Component Mapping
+
+The following mappings are preserved during the documentation transition; this
+table does not authorize code changes.
+
+| Current contract | Required continuity | Future alignment constraint |
+|---|---|---|
+| `frontend/src/index.css` semantic CSS variables | Keep public semantic roles, typography, spacing, radius, elevation, focus, and motion names stable | Use semantic roles rather than parallel public palettes |
+| `frontend/tailwind.config.js` mappings | Keep semantic color, font, radius, shadow, motion, and status mappings available | Do not remove compatibility aliases without a separately approved migration |
+| `SurfacePanel` / `SurfacePanelHeader` | Keep API, padding, intent, border, and surface-token behavior | Use for calm task-oriented operational grouping, not public decoration |
+| `TechnicalLabel` | Keep API, tone, size, and semantic text-color variants | Restrict use to genuinely technical, concise data |
+| `EmptyState` | Keep API and frame variants | Use meaningful operational states, not simulated terminal messaging |
+| Button variants | Keep names, sizes, focus, disabled, and semantic state behavior | Preserve accessible action hierarchy; do not use technical styling as public decoration |
+
+Any source-level migration must include compatibility, accessibility, responsive,
+and role-boundary verification before removing or renaming these contracts.
