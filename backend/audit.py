@@ -49,7 +49,7 @@ def _redact(value: Any) -> Any:
         return {
             key: _redact(item)
             for key, item in value.items()
-            if key.lower() not in SENSITIVE_KEYS
+            if key != "_id" and key.lower() not in SENSITIVE_KEYS
         }
     if isinstance(value, list):
         return [_redact(item) for item in value]
