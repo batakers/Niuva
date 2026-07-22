@@ -2,53 +2,112 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pymongo.errors import OperationFailure
 
-from audit import append_audit_event
+from audit import append_identity_audit_event
 from permissions import (
     ASSIGNABLE_ROLES,
     CUSTOMER_ROLES,
+    INTERNAL_ROLES,
+    ROLE_LABELS,
+    ROLE_POLICY_VERSION,
     ROLE_PERMISSIONS,
     canonical_roles,
 )
 
+ACCESS_REASON_CODES = (
+    ("role_review_approved", "Approve access review"),
+    ("role_access_removed", "Remove access"),
+    ("emergency_override", "Emergency override"),
+)
+
 
 class UserAccessUpdate(BaseModel):
-    roles: list[str] = Field(min_length=1)
+    model_config = ConfigDict(extra="forbid")
+
+    roles: list[str] = Field(min_length=1, max_length=1)
     status: Literal["active", "disabled"]
-    reason: str = Field(min_length=3, max_length=500)
+    access_state: Literal["approved", "access_review_required"]
+    reason_code: Literal[
+        "role_review_approved",
+        "role_access_removed",
+        "emergency_override",
+    ]
 
     @field_validator("roles")
     @classmethod
     def validate_roles(cls, roles: list[str]) -> list[str]:
-        normalized = sorted(set(roles))
-        unknown = sorted(set(normalized) - set(ASSIGNABLE_ROLES))
-        if unknown:
-            raise ValueError(f"Unknown roles: {', '.join(unknown)}")
-        return normalized
-
-    @field_validator("reason")
-    @classmethod
-    def normalize_reason(cls, reason: str) -> str:
-        normalized = reason.strip()
-        if len(normalized) < 3:
-            raise ValueError("Reason must contain at least 3 characters")
-        return normalized
+        if roles[0] not in INTERNAL_ROLES:
+            raise ValueError(f"Unsupported internal role: {roles[0]}")
+        return roles
 
 
-def build_identity_router(*, get_db, require_permission, safe_user) -> APIRouter:
+def _access_audit_projection(user: dict) -> dict:
+    projection = {"roles": list(canonical_roles(user))}
+    projection.update(
+        {field: user[field] for field in ("access_state", "status") if field in user}
+    )
+    return projection
+
+
+_POLICY_STATE_ID = "identity_access_policy"
+_FINAL_OWNER_DETAIL = "The final approved Owner cannot be disabled or demoted"
+_POLICY_CONFLICT_DETAIL = "Identity access policy changed concurrently"
+
+
+class _IdentityPolicyConcurrencyConflict(RuntimeError):
+    pass
+
+
+def _is_transient_write_conflict(exc: OperationFailure) -> bool:
+    return exc.code == 112 and exc.has_error_label("TransientTransactionError")
+
+
+def _is_approved_owner(user: dict) -> bool:
+    return canonical_roles(user) == ("super_admin",)
+
+
+async def _approved_owner_count(database, *, session) -> int:
+    count = 0
+    async for user in database.users.find({}, session=session):
+        if _is_approved_owner(user):
+            count += 1
+    return count
+
+
+def _role_catalog() -> list[dict]:
+    return [
+        {
+            "role": role,
+            "label": ROLE_LABELS[role],
+            "kind": "customer" if role in CUSTOMER_ROLES else "internal",
+            "permissions": sorted(ROLE_PERMISSIONS[role]),
+        }
+        for role in ASSIGNABLE_ROLES
+    ]
+
+
+def build_identity_router(
+    *, get_db, get_transaction_guard, require_permission, safe_user
+) -> APIRouter:
     router = APIRouter(prefix="/admin", tags=["identity"])
 
     @router.get("/roles")
     async def list_roles(_user: dict = Depends(require_permission("users.read"))):
-        return [
-            {
-                "role": role,
-                "kind": "customer" if role in CUSTOMER_ROLES else "internal",
-                "permissions": sorted(ROLE_PERMISSIONS[role]),
-            }
-            for role in ASSIGNABLE_ROLES
-        ]
+        return _role_catalog()
+
+    @router.get("/access-policy")
+    async def get_access_policy(
+        _user: dict = Depends(require_permission("users.read")),
+    ):
+        return {
+            "policy_version": ROLE_POLICY_VERSION,
+            "roles": _role_catalog(),
+            "access_reason_codes": [
+                {"code": code, "label": label} for code, label in ACCESS_REASON_CODES
+            ],
+        }
 
     @router.get("/users")
     async def list_users(_user: dict = Depends(require_permission("users.read"))):
@@ -67,55 +126,101 @@ def build_identity_router(*, get_db, require_permission, safe_user) -> APIRouter
         actor: dict = Depends(require_permission("roles.manage")),
     ):
         database = get_db()
-        before = await database.users.find_one({"id": user_id})
-        if not before:
-            raise HTTPException(status_code=404, detail="User not found")
+        guard = get_transaction_guard()
 
-        removes_super_admin = "super_admin" in canonical_roles(before) and (
-            request.status == "disabled" or "super_admin" not in request.roles
-        )
-        if removes_super_admin:
-            active_super_admins = await database.users.count_documents(
-                {
-                    "status": {"$ne": "disabled"},
-                    "$or": [
-                        {"roles": "super_admin"},
-                        {"role": "admin"},
-                    ],
-                }
-            )
-            if active_super_admins <= 1:
-                raise HTTPException(
-                    status_code=409,
-                    detail="The final active super admin cannot be disabled or demoted",
+        async def mutate(session):
+            try:
+                await database.identity_policy_state.update_one(
+                    {"_id": _POLICY_STATE_ID},
+                    {
+                        "$inc": {"version": 1},
+                        "$setOnInsert": {
+                            "key": _POLICY_STATE_ID,
+                            "approved_owner_count": 0,
+                            "policy_version": ROLE_POLICY_VERSION,
+                        },
+                    },
+                    upsert=True,
+                    session=session,
                 )
+            except OperationFailure as exc:
+                if _is_transient_write_conflict(exc):
+                    raise _IdentityPolicyConcurrencyConflict() from exc
+                raise
+            before = await database.users.find_one({"id": user_id}, session=session)
+            if not before:
+                raise HTTPException(status_code=404, detail="User not found")
 
-        updated_at = datetime.now(timezone.utc).isoformat()
-        result = await database.users.update_one(
-            {"id": user_id},
-            {
-                "$set": {
-                    "roles": request.roles,
-                    "status": request.status,
-                    "updated_at": updated_at,
-                }
-            },
-        )
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="User not found")
+            owner_count = await _approved_owner_count(database, session=session)
+            after_candidate = {
+                **before,
+                "roles": request.roles,
+                "status": request.status,
+                "access_state": request.access_state,
+            }
+            after_candidate.pop("role", None)
+            owner_delta = int(_is_approved_owner(after_candidate)) - int(
+                _is_approved_owner(before)
+            )
+            if owner_count + owner_delta < 1:
+                raise HTTPException(status_code=409, detail=_FINAL_OWNER_DETAIL)
 
-        after = await database.users.find_one({"id": user_id})
-        await append_audit_event(
-            database,
-            actor=actor,
-            action="user.access_updated",
-            target_type="user",
-            target_id=user_id,
-            before=before,
-            after=after,
-            reason=request.reason,
-        )
-        return safe_user(after)
+            updated_at = datetime.now(timezone.utc).isoformat()
+            result = await database.users.update_one(
+                {"id": user_id},
+                {
+                    "$set": {
+                        "roles": request.roles,
+                        "status": request.status,
+                        "access_state": request.access_state,
+                        "role_policy_version": ROLE_POLICY_VERSION,
+                        "updated_at": updated_at,
+                    },
+                    "$unset": {"role": ""},
+                },
+                session=session,
+            )
+            if result.matched_count == 0:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            await database.identity_policy_state.update_one(
+                {"_id": _POLICY_STATE_ID},
+                {
+                    "$set": {
+                        "approved_owner_count": owner_count + owner_delta,
+                        "policy_version": ROLE_POLICY_VERSION,
+                        "updated_at": updated_at,
+                    }
+                },
+                session=session,
+            )
+            after = await database.users.find_one({"id": user_id}, session=session)
+            if after is None:
+                raise RuntimeError("Updated user disappeared before audit")
+            await append_identity_audit_event(
+                database,
+                actor_user_id=actor["id"],
+                action="user.access_updated",
+                target_type="user",
+                target_id=user_id,
+                previous=_access_audit_projection(before),
+                result=_access_audit_projection(after),
+                reason_code=request.reason_code,
+                policy_version=ROLE_POLICY_VERSION,
+                session=session,
+            )
+            return safe_user(after)
+
+        try:
+            return await guard.run(
+                mutate,
+                operation_name="identity.access.update",
+                retry_safe=False,
+            )
+        except _IdentityPolicyConcurrencyConflict:
+            raise HTTPException(
+                status_code=409, detail=_POLICY_CONFLICT_DETAIL
+            ) from None
 
     @router.get("/audit-events")
     async def list_audit_events(

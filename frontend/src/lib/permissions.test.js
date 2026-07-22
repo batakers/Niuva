@@ -17,10 +17,31 @@ test("denies missing users and permissions", () => {
 });
 
 
+test("never infers authority from an untrusted role string", () => {
+  expect(hasPermission({ role: "super_admin" }, "roles.manage")).toBe(false);
+  expect(hasPermission({ role: "operations", permissions: [] }, "inventory.write")).toBe(false);
+});
+
+test("denies malformed permissions instead of treating a role-like string as authority", () => {
+  expect(hasPermission({ permissions: "*" }, "roles.manage")).toBe(false);
+});
+
 test("maps catalog, material, and inventory routes to exact permissions", () => {
   expect(ADMIN_ROUTE_PERMISSIONS["/admin/catalog"]).toBe("catalog.read");
   expect(ADMIN_ROUTE_PERMISSIONS["/admin/materials"]).toBe("materials.read");
   expect(ADMIN_ROUTE_PERMISSIONS["/admin/inventory"]).toBe("inventory.read");
   expect(ADMIN_ROUTE_PERMISSIONS["/admin/stock-movements"]).toBe("inventory.read");
   expect(ADMIN_ROUTE_PERMISSIONS["/admin/restock-alerts"]).toBe("restock_alerts.read");
+});
+
+test("hides identity, audit, and settings navigation without their explicit permissions", () => {
+  const operations = {
+    permissions: ["dashboard.read", "catalog.read", "inventory.read"],
+  };
+
+  expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin"])).toBe(true);
+  expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin/catalog"])).toBe(true);
+  expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin/users"])).toBe(false);
+  expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin/audit"])).toBe(false);
+  expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin/settings"])).toBe(false);
 });

@@ -1,0 +1,44 @@
+name: niuva-transaction-test
+
+services:
+  mongodb-test:
+    image: mongo:7.0
+    command: ["mongod", "--replSet", "rs-test", "--bind_ip_all", "--port", "27018"]
+    ports:
+      - "127.0.0.1:27018:27018"
+    tmpfs:
+      - /data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --port 27018 --eval 'try { quit(db.hello().isWritablePrimary ? 0 : 1) } catch (error) { quit(1) }'",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  mongodb-test-init:
+    image: mongo:7.0
+    depends_on:
+      mongodb-test:
+        condition: service_started
+    restart: "no"
+    volumes:
+      - ./scripts/mongodb/init-test-replica-set.js:/scripts/init-test-replica-set.js:ro
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        for attempt in {1..30}; do
+          if mongosh --quiet \
+            "mongodb://mongodb-test:27018/admin?directConnection=true" \
+            --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 1)'; then
+            exec mongosh --quiet \
+              "mongodb://mongodb-test:27018/admin?directConnection=true" \
+              /scripts/init-test-replica-set.js
+          fi
+          sleep 1
+        done
+        echo "MongoDB test endpoint did not accept connections within 30 seconds" >&2
+        exit 1

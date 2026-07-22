@@ -18,6 +18,9 @@ Foundation ini tidak menghitung harga jual calculated di browser, tidak menangan
 
 ## 2. Prasyarat MongoDB Replica Set dan Capability Check
 
+Setup local, isolated test topology, readiness fields, troubleshooting, dan
+reset aman mengikuti `doc/TRANSACTION_CAPABILITY_RUNBOOK.md`.
+
 Publikasi katalog dan setiap mutation inventory memerlukan transaction. Standalone MongoDB hanya boleh melayani read dan mutation non-transaksional yang aman.
 
 1. Pastikan MongoDB berjalan sebagai replica set dan logical sessions tersedia.
@@ -187,6 +190,9 @@ npm run build
 ```
 
 Real transaction test memerlukan Mongo 7 single-node replica set, polling `db.hello().isWritablePrimary`, environment `MONGO_TRANSACTION_TEST_URL`, dan eksekusi:
+
+Gunakan `docker-compose.transaction-test.yml` dan command cleanup dari
+`doc/TRANSACTION_CAPABILITY_RUNBOOK.md`; skipped module bukan bukti lulus CI.
 
 ```powershell
 .\backend\.venv\Scripts\python.exe -m pytest -n 0 backend\tests\test_inventory_transactions.py -q

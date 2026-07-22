@@ -4,6 +4,7 @@ import { useI18n } from "../../i18n";
 import { useAuth } from "../../context/AuthContext";
 import { api, formatApiError } from "../../lib/api";
 import { hasPermission } from "../../lib/permissions";
+import { safeAuditEvent } from "../../lib/identityAccess";
 import { AdminLayout } from "./AdminLayout";
 import { Button } from "../../components/ui/button";
 import {
@@ -57,7 +58,9 @@ export default function AdminAuditLog() {
     api
       .get("/admin/audit-events?limit=100")
       .then((response) => {
-        if (active) setItems(response.data);
+        if (active) {
+          setItems(Array.isArray(response.data) ? response.data.map(safeAuditEvent) : []);
+        }
       })
       .catch((requestError) => {
         if (!active) return;
@@ -110,13 +113,13 @@ export default function AdminAuditLog() {
                     <td className="whitespace-nowrap px-5 py-4 font-mono text-muted-foreground">
                       {formatTimestamp(event.created_at)}
                     </td>
-                    <td className="px-5 py-4 text-foreground">{event.actor_email || event.actor_user_id || "system"}</td>
+                    <td className="px-5 py-4 text-foreground">{event.actor_user_id || "system"}</td>
                     <td className="px-5 py-4 font-mono text-primary">{event.action}</td>
                     <td className="px-5 py-4 text-muted-foreground">
                       <span className="block">{event.target_type}</span>
                       <span className="mt-1 block font-mono text-[10px]">{event.target_id}</span>
                     </td>
-                    <td className="max-w-xs px-5 py-4 text-muted-foreground">{event.reason || "-"}</td>
+                    <td className="max-w-xs px-5 py-4 text-muted-foreground">{event.reason_code || "-"}</td>
                     <td className="px-5 py-4 text-right">
                       {canReadAudit ? (
                         <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(event)}>
@@ -137,13 +140,13 @@ export default function AdminAuditLog() {
           <DialogHeader>
             <DialogTitle>{selected?.action}</DialogTitle>
             <DialogDescription>
-              {selected?.actor_email || selected?.actor_user_id || "system"} · {formatTimestamp(selected?.created_at)} · {selected?.reason || "Tanpa alasan"}
+              {selected?.actor_user_id || "system"} · {formatTimestamp(selected?.created_at)} · {selected?.reason_code || "No reason code"}
             </DialogDescription>
           </DialogHeader>
           {canReadAudit ? (
             <div className="grid gap-4 md:grid-cols-2">
-              <AuditSnapshot title="BEFORE" value={selected?.before} />
-              <AuditSnapshot title="AFTER" value={selected?.after} />
+              <AuditSnapshot title="PREVIOUS PROJECTION" value={selected?.previous} />
+              <AuditSnapshot title="RESULT PROJECTION" value={selected?.result} />
             </div>
           ) : null}
         </DialogContent>

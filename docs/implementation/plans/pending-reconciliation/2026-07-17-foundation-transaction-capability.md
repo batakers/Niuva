@@ -1,9 +1,26 @@
 # Foundation Transaction Capability Implementation Plan
 
+> **Status: Completed and archived — 2026-07-22.** All ten implementation
+> tasks and their verification steps are complete. This plan is closed and
+> must not be reused as an active backlog. Any future transaction work requires
+> a new, separately approved implementation plan.
+>
+> **Completion checklist:**
+> - [x] Task 1 — Transaction capability model and read-only detection
+> - [x] Task 2 — Central transaction execution boundary
+> - [x] Task 3 — Public unavailable-transaction API contract
+> - [x] Task 4 — Transaction readiness diagnostics
+> - [x] Task 5 — Local MongoDB replica-set topology
+> - [x] Task 6 — Isolated transaction test and CI topology
+> - [x] Task 7 — Fail-closed mutation guard and composition
+> - [x] Task 8 — Safe transaction lifecycle observability
+> - [x] Task 9 — Operator and developer documentation
+> - [x] Task 10 — Final verification and rollback
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use
-> checkbox (`- [ ]`) syntax for tracking.
+> checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Establish a tested, reusable, fail-closed MongoDB transaction
 capability foundation for transaction-required platform mutations.
@@ -134,7 +151,7 @@ Tasks 1 and 5 may start in parallel. Task 3 may start after Task 2 publishes bot
 - Compatibility: retain `probe_transaction_capability(client) -> bool` until Task 4 moves startup to `probe_database_capabilities`.
 - Ownership: this module detects capability only; it never executes business callbacks.
 
-- [ ] **Step 1: Write the failing capability tests**
+- [x] **Step 1: Write the failing capability tests**
 
 Replace `backend/tests/test_database_capabilities.py` with:
 
@@ -297,21 +314,21 @@ def test_legacy_boolean_probe_remains_compatible_until_startup_migrates():
     assert asyncio.run(probe_transaction_capability(client)) is True
 ```
 
-- [ ] **Step 2: Inspect the complete test diff**
+- [x] **Step 2: Inspect the complete test diff**
 
 Run: `git diff -- backend/tests/test_database_capabilities.py`
 
 Expected: only the test file above is shown; it contains no database write command such as `insert`, `update`, `delete`, or `aggregate` with `$out`/`$merge`.
 
-- [ ] **Step 3: Run the focused test to verify RED**
+- [x] **Step 3: Run the focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_database_capabilities.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: collection fails with an import error for `TransactionCapabilityReason` or `probe_database_capabilities`, because the current module exposes only a Boolean model and `hello` probe.
 
-- [ ] **Step 5: Implement the capability model and probe**
+- [x] **Step 5: Implement the capability model and probe**
 
 Replace `backend/database_capabilities.py` with:
 
@@ -445,27 +462,27 @@ async def probe_transaction_capability(client) -> bool:
     return supports_transactions(hello)
 ```
 
-- [ ] **Step 6: Inspect the implementation for read-only behavior**
+- [x] **Step 6: Inspect the implementation for read-only behavior**
 
 Run: `rg -n "insert|update|delete|replace|\$out|\$merge" backend/database_capabilities.py`
 
 Expected: no matches. The only database operation in the usable-transaction probe is `find` against the technical name `__transaction_capability_probe__`.
 
-- [ ] **Step 7: Run the focused test to verify GREEN**
+- [x] **Step 7: Run the focused test to verify GREEN**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_database_capabilities.py`
 
-- [ ] **Step 8: Confirm focused passing output**
+- [x] **Step 8: Confirm focused passing output**
 
 Expected: `6 passed` and exit code `0`.
 
-- [ ] **Step 9: Run related regression tests**
+- [x] **Step 9: Run related regression tests**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_database_capabilities.py backend\tests\test_health.py backend\tests\test_catalog_routes.py backend\tests\test_inventory_service.py`
 
 Expected: all selected tests pass; existing services still consume `DatabaseCapabilities.transactions` unchanged.
 
-- [ ] **Step 10: Commit only Task 1 files**
+- [x] **Step 10: Commit only Task 1 files**
 
 ```powershell
 git add -- backend/database_capabilities.py backend/tests/test_database_capabilities.py
@@ -490,7 +507,7 @@ git commit -m "feat: add mongodb transaction capability detection"
 - Correlation contract: callers pass only `None` or a canonical UUID generated or validated by trusted server-side code. The executor does not source request headers, cookies, query parameters, request bodies, customer data, or provider/payment payloads; without trusted request-ID middleware, most calls pass `correlation_id=None`.
 - Ownership: executor owns session creation, transaction start, commit, abort, and session cleanup. Callbacks own only database work that uses the supplied session.
 
-- [ ] **Step 1: Write the failing executor tests**
+- [x] **Step 1: Write the failing executor tests**
 
 Create `backend/tests/test_transaction_execution.py`:
 
@@ -792,21 +809,21 @@ def test_connection_failure_is_normalized_without_secret_detail():
     asyncio.run(run())
 ```
 
-- [ ] **Step 2: Inspect the complete test contract**
+- [x] **Step 2: Inspect the complete test contract**
 
 Run: `git diff -- backend/tests/test_transaction_execution.py`
 
 Expected: eight tests cover capability rejection, success, abort, default no-retry, explicit transaction retry, temporary commit-only retry, exhausted unknown commit reconciliation without rerun/abort, and unavailable normalization.
 
-- [ ] **Step 3: Run the focused test to verify RED**
+- [x] **Step 3: Run the focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_execution.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: collection fails with `ModuleNotFoundError: No module named 'transaction_execution'`.
 
-- [ ] **Step 5: Implement the central executor**
+- [x] **Step 5: Implement the central executor**
 
 Create `backend/transaction_execution.py`:
 
@@ -951,27 +968,27 @@ class TransactionExecutor:
                 await session.end_session()
 ```
 
-- [ ] **Step 6: Inspect retry and cleanup ownership**
+- [x] **Step 6: Inspect retry and cleanup ownership**
 
 Run: `rg -n "RetryMode|TransientTransactionError|UnknownTransactionCommitResult|TransactionCommitOutcomeUnknownError|abort_transaction|end_session" backend/transaction_execution.py`
 
 Expected: the default is `NEVER`; callback retry requires `DRIVER_TRANSIENT`; commit retry is label-specific; exhausted unknown commit raises the safe reconciliation exception before abort handling; other aborts and every `end_session` remain centralized.
 
-- [ ] **Step 7: Run the focused test to verify GREEN**
+- [x] **Step 7: Run the focused test to verify GREEN**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_execution.py`
 
-- [ ] **Step 8: Confirm focused passing output**
+- [x] **Step 8: Confirm focused passing output**
 
 Expected: `8 passed` and exit code `0`.
 
-- [ ] **Step 9: Run core regression tests**
+- [x] **Step 9: Run core regression tests**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_database_capabilities.py backend\tests\test_transaction_execution.py backend\tests\test_inventory_service.py backend\tests\test_catalog_routes.py`
 
 Expected: all selected tests pass; no current catalog/inventory service is changed by this task.
 
-- [ ] **Step 10: Commit only Task 2 files**
+- [x] **Step 10: Commit only Task 2 files**
 
 ```powershell
 git add -- backend/transaction_execution.py backend/tests/test_transaction_execution.py
@@ -994,7 +1011,7 @@ git commit -m "feat: add mongodb transaction execution boundary"
 - Internal reconciliation contract: `TransactionCommitOutcomeUnknownError` has no public handler, is not mapped to `503 transaction_unavailable`, and introduces no browser-facing instruction to retry the mutation.
 - Ownership: HTTP mapping never serializes the exception cause or request payload.
 
-- [ ] **Step 1: Write the failing API-contract tests**
+- [x] **Step 1: Write the failing API-contract tests**
 
 Create `backend/tests/test_transaction_error_contract.py`:
 
@@ -1080,21 +1097,21 @@ def test_commit_outcome_unknown_remains_internal_without_public_retry_mapping():
 
 ```
 
-- [ ] **Step 2: Inspect the complete security assertions**
+- [x] **Step 2: Inspect the complete security assertions**
 
 Run: `git diff -- backend/tests/test_transaction_error_contract.py`
 
 Expected: the exact unavailable status/body and leak exclusions are asserted; the unknown commit exception is proven internal, distinct from `TransactionUnavailableError`, and absent from public handlers.
 
-- [ ] **Step 3: Run the focused test to verify RED**
+- [x] **Step 3: Run the focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_error_contract.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: collection fails with `ModuleNotFoundError: No module named 'transaction_api'`.
 
-- [ ] **Step 5: Implement the exact HTTP mapping**
+- [x] **Step 5: Implement the exact HTTP mapping**
 
 Create `backend/transaction_api.py`:
 
@@ -1121,27 +1138,27 @@ async def transaction_unavailable_handler(
     )
 ```
 
-- [ ] **Step 6: Inspect the response producer**
+- [x] **Step 6: Inspect the response producer**
 
 Run: `git diff -- backend/transaction_api.py`
 
 Expected: the response uses unavailable constants only, does not import or map `TransactionCommitOutcomeUnknownError`, and never interpolates request, exception, client, database, or topology values.
 
-- [ ] **Step 7: Run the focused test to verify GREEN**
+- [x] **Step 7: Run the focused test to verify GREEN**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_error_contract.py`
 
-- [ ] **Step 8: Confirm focused passing output**
+- [x] **Step 8: Confirm focused passing output**
 
 Expected: `3 passed` and exit code `0`.
 
-- [ ] **Step 9: Run API-envelope regression tests**
+- [x] **Step 9: Run API-envelope regression tests**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_error_contract.py backend\tests\test_catalog_routes.py backend\tests\test_inventory_routes.py backend\tests\test_auth_security.py`
 
 Expected: all selected tests pass, existing route envelopes remain unchanged, and no browser-facing retry contract exists for an unknown commit outcome.
 
-- [ ] **Step 10: Commit only Task 3 files**
+- [x] **Step 10: Commit only Task 3 files**
 
 ```powershell
 git add -- backend/transaction_api.py backend/tests/test_transaction_error_contract.py
@@ -1162,7 +1179,7 @@ git commit -m "feat: define transaction unavailable API contract"
 - Status rules: liveness always returns `200 {"status":"ok"}` while the process is serving; readiness returns HTTP 200 with `status=ready` when transactions are available and `status=degraded` otherwise, so public/read-only traffic is not disabled solely by transaction degradation.
 - Ownership: mutation endpoints still enforce fail-closed behavior through Task 7; readiness is diagnostic, not authorization.
 
-- [ ] **Step 1: Write the failing readiness tests**
+- [x] **Step 1: Write the failing readiness tests**
 
 Replace `backend/tests/test_health.py` with:
 
@@ -1257,21 +1274,21 @@ def test_readiness_is_degraded_without_disabling_public_liveness():
         assert forbidden not in serialized
 ```
 
-- [ ] **Step 2: Inspect the complete readiness matrix**
+- [x] **Step 2: Inspect the complete readiness matrix**
 
 Run: `git diff -- backend/tests/test_health.py`
 
 Expected: legacy health, independent liveness, ready transactions, and degraded transactions each have exact status/body assertions.
 
-- [ ] **Step 3: Run the focused test to verify RED**
+- [x] **Step 3: Run the focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_health.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: `/api/health/live` and `/api/health/ready` return `404` because only `/api/health` exists.
 
-- [ ] **Step 5: Implement startup probing and health separation**
+- [x] **Step 5: Implement startup probing and health separation**
 
 Apply these exact changes to `backend/server.py`:
 
@@ -1325,27 +1342,27 @@ Apply these exact changes to `backend/server.py`:
      await ensure_catalog_inventory_indexes(db)
 ```
 
-- [ ] **Step 6: Inspect diagnostics for forbidden detail**
+- [x] **Step 6: Inspect diagnostics for forbidden detail**
 
 Run: `rg -n "mongo_url|MONGO_URL|client\.address|setName|hello" backend/server.py backend/tests/test_health.py`
 
 Expected: `mongo_url` remains private initialization state; health response code uses only `transaction_diagnostic()` and does not serialize URL, address, `setName`, or raw `hello` data.
 
-- [ ] **Step 7: Run the focused test to verify GREEN**
+- [x] **Step 7: Run the focused test to verify GREEN**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_health.py`
 
-- [ ] **Step 8: Confirm focused passing output**
+- [x] **Step 8: Confirm focused passing output**
 
 Expected: `4 passed` and exit code `0`.
 
-- [ ] **Step 9: Run startup/API regression tests**
+- [x] **Step 9: Run startup/API regression tests**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_health.py backend\tests\test_database_capabilities.py backend\tests\test_identity_foundation.py backend\tests\test_auth_security.py`
 
 Expected: all selected tests pass; startup fakes remain compatible and liveness is independent of transaction readiness.
 
-- [ ] **Step 10: Commit only Task 4 files**
+- [x] **Step 10: Commit only Task 4 files**
 
 ```powershell
 git add -- backend/server.py backend/tests/test_health.py
@@ -1371,7 +1388,7 @@ git commit -m "feat: expose transaction readiness diagnostics"
 - Connection boundary: `directConnection=true` applies only to this tracked single-node local topology and does not specify staging or production discovery.
 - Safety boundary: normal startup never deletes or reconfigures existing data. Destructive volume removal requires `reset-local-replica-set.ps1 -DestroyData` plus PowerShell confirmation.
 
-- [ ] **Step 1: Write the failing local-topology contract test**
+- [x] **Step 1: Write the failing local-topology contract test**
 
 Create `backend/tests/test_transaction_topology_files.py`:
 
@@ -1416,21 +1433,21 @@ def test_local_reset_requires_explicit_destructive_switch():
     assert "ShouldProcess" in reset_script
 ```
 
-- [ ] **Step 2: Inspect the complete topology assertions**
+- [x] **Step 2: Inspect the complete topology assertions**
 
 Run: `git diff -- backend/tests/test_transaction_topology_files.py`
 
 Expected: persistent volume, exact `rs0` name, direct host and initializer connections, idempotent initialization, readiness polling, and explicit destructive-reset gates are all asserted.
 
-- [ ] **Step 3: Run the focused test to verify RED**
+- [x] **Step 3: Run the focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: `FileNotFoundError` for `docker-compose.transaction.yml`.
 
-- [ ] **Step 5: Add the local topology and PowerShell operations**
+- [x] **Step 5: Add the local topology and PowerShell operations**
 
 Create `docker-compose.transaction.yml`:
 
@@ -1564,27 +1581,27 @@ Modify the first line of `backend/.env.example`:
  DB_NAME=niuva
 ```
 
-- [ ] **Step 6: Validate Compose syntax without starting or deleting data**
+- [x] **Step 6: Validate Compose syntax without starting or deleting data**
 
 Run: `docker compose -f docker-compose.transaction.yml config --quiet`
 
 Expected: exit code `0`. If Docker CLI/Compose is unavailable, classify it as an environment blocker; do not claim topology validation passed.
 
-- [ ] **Step 7: Run the focused topology tests to verify GREEN**
+- [x] **Step 7: Run the focused topology tests to verify GREEN**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py`
 
-- [ ] **Step 8: Confirm focused passing output**
+- [x] **Step 8: Confirm focused passing output**
 
 Expected: `2 passed` and exit code `0`.
 
-- [ ] **Step 9: Run local-topology regression checks**
+- [x] **Step 9: Run local-topology regression checks**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py backend\tests\test_database_capabilities.py`
 
 Expected: all selected tests pass. Do not run the reset script during verification.
 
-- [ ] **Step 10: Commit only Task 5 files**
+- [x] **Step 10: Commit only Task 5 files**
 
 ```powershell
 git add -- docker-compose.transaction.yml scripts/mongodb/init-replica-set.js scripts/mongodb/wait-for-replica-set.ps1 scripts/mongodb/reset-local-replica-set.ps1 backend/.env.example backend/tests/test_transaction_topology_files.py
@@ -1611,7 +1628,7 @@ git commit -m "chore: configure local mongodb replica set"
 - Connection boundary: `directConnection=true` applies only to the tracked single-node `rs-test` topology and does not specify staging or production discovery.
 - CI boundary: no developer-local MongoDB is read. The dedicated workflow pins CPython `3.14.3`, always defines `MONGO_TRANSACTION_TEST_URL`, and must not use `continue-on-error`. Missing `MONGO_TRANSACTION_TEST_URL` remains a local skip only.
 
-- [ ] **Step 1: Write the failing integration and topology tests**
+- [x] **Step 1: Write the failing integration and topology tests**
 
 Append this test to `backend/tests/test_transaction_topology_files.py`:
 
@@ -1723,21 +1740,21 @@ def test_real_probe_commit_abort_and_cleanup(transaction_database_name):
     asyncio.run(run_real_transaction_contract(transaction_database_name))
 ```
 
-- [ ] **Step 2: Inspect the complete isolation contract**
+- [x] **Step 2: Inspect the complete isolation contract**
 
 Run: `git diff -- backend/tests/conftest.py backend/tests/test_transaction_integration.py backend/tests/test_transaction_topology_files.py`
 
 Expected: exact `rs-test` naming, direct host and initializer connections, unique worker/node/UUID database naming, real usable probe/commit/abort behavior, `finally` cleanup, and the grounded CPython `3.14.3` CI pin are explicit.
 
-- [ ] **Step 3: Run the static focused test to verify RED**
+- [x] **Step 3: Run the static focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: the new CI-topology test fails with `FileNotFoundError` for `docker-compose.transaction-test.yml` or `.github/workflows/transaction-tests.yml`.
 
-- [ ] **Step 5: Implement the isolated topology and mandatory workflow**
+- [x] **Step 5: Implement the isolated topology and mandatory workflow**
 
 Create `docker-compose.transaction-test.yml`:
 
@@ -1876,13 +1893,13 @@ Append to `backend/.env.example`:
 MONGO_TRANSACTION_TEST_URL=mongodb://127.0.0.1:27018/?replicaSet=rs-test&directConnection=true
 ```
 
-- [ ] **Step 6: Validate both Compose and workflow files**
+- [x] **Step 6: Validate both Compose and workflow files**
 
 Run: `docker compose -f docker-compose.transaction-test.yml config --quiet`
 
 Expected: exit code `0`. Then run `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py`; expected `3 passed`.
 
-- [ ] **Step 7: Start the isolated topology and run real focused tests**
+- [x] **Step 7: Start the isolated topology and run real focused tests**
 
 Run:
 
@@ -1892,17 +1909,17 @@ $env:MONGO_TRANSACTION_TEST_URL = "mongodb://127.0.0.1:27018/?replicaSet=rs-test
 backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_integration.py backend\tests\test_inventory_transactions.py
 ```
 
-- [ ] **Step 8: Confirm real passing output and clean topology**
+- [x] **Step 8: Confirm real passing output and clean topology**
 
 Expected: both real transaction test modules pass with no skip. Always run `docker compose -f docker-compose.transaction-test.yml down --volumes --remove-orphans` afterward, even when pytest fails.
 
-- [ ] **Step 9: Run isolated-topology regression tests**
+- [x] **Step 9: Run isolated-topology regression tests**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_topology_files.py backend\tests\test_database_capabilities.py backend\tests\test_transaction_execution.py backend\tests\test_transaction_integration.py`
 
 Expected: all selected tests pass with `MONGO_TRANSACTION_TEST_URL` set. The generated database names are unique, and cleanup drops only those names.
 
-- [ ] **Step 10: Commit only Task 6 files**
+- [x] **Step 10: Commit only Task 6 files**
 
 ```powershell
 git add -- docker-compose.transaction-test.yml scripts/mongodb/init-test-replica-set.js backend/tests/conftest.py backend/tests/test_transaction_integration.py backend/tests/test_transaction_topology_files.py backend/.env.example .github/workflows/transaction-tests.yml
@@ -1928,7 +1945,7 @@ git commit -m "ci: run transaction tests against mongodb replica set"
 - Feature gate: `TRANSACTION_MUTATIONS_ENABLED=false` is fail-closed and prevents callback execution. Enabling the flag never bypasses the executor's live capability check.
 - Ownership: all future cross-collection mutations enter through this guard. Read-only and proven-safe single-document operations remain outside it. Existing catalog/inventory business code is not refactored in this task.
 
-- [ ] **Step 1: Write the failing guard tests**
+- [x] **Step 1: Write the failing guard tests**
 
 Create `backend/tests/test_transaction_guard.py`:
 
@@ -2078,21 +2095,21 @@ def test_server_composes_one_shared_transaction_guard_and_handler():
     assert TransactionCommitOutcomeUnknownError not in server.app.exception_handlers
 ```
 
-- [ ] **Step 2: Inspect the complete guard contract**
+- [x] **Step 2: Inspect the complete guard contract**
 
 Run: `git diff -- backend/tests/test_transaction_guard.py backend/tests/test_transaction_error_contract.py`
 
 Expected: capability rejection, runtime disablement, transactional execution, abort, safe unguarded read, and server composition all have explicit assertions.
 
-- [ ] **Step 3: Run the focused tests to verify RED**
+- [x] **Step 3: Run the focused tests to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_guard.py backend\tests\test_transaction_error_contract.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: collection fails because `transaction_guard` does not exist; after adding only the guard file, the composition test still fails because `server.app.state.transaction_guard` is absent.
 
-- [ ] **Step 5: Implement and compose the guard**
+- [x] **Step 5: Implement and compose the guard**
 
 Create `backend/transaction_guard.py`:
 
@@ -2177,27 +2194,27 @@ Append to `backend/.env.example`:
 TRANSACTION_MUTATIONS_ENABLED=false
 ```
 
-- [ ] **Step 6: Inspect the composition for bypass paths**
+- [x] **Step 6: Inspect the composition for bypass paths**
 
 Run: `rg -n "transaction_guard|TRANSACTION_MUTATIONS_ENABLED|TransactionUnavailableError" backend/server.py backend/transaction_guard.py backend/.env.example`
 
 Expected: `false` is the default; disabled state raises the same controlled exception; enabled state still calls `TransactionExecutor`. No callback invocation exists outside `executor.execute`.
 
-- [ ] **Step 7: Run the focused tests to verify GREEN**
+- [x] **Step 7: Run the focused tests to verify GREEN**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_guard.py backend\tests\test_transaction_error_contract.py`
 
-- [ ] **Step 8: Confirm focused passing output**
+- [x] **Step 8: Confirm focused passing output**
 
 Expected: `8 passed` and exit code `0`.
 
-- [ ] **Step 9: Run guard/API/readiness regressions**
+- [x] **Step 9: Run guard/API/readiness regressions**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_guard.py backend\tests\test_transaction_error_contract.py backend\tests\test_transaction_execution.py backend\tests\test_health.py backend\tests\test_catalog_routes.py backend\tests\test_inventory_service.py`
 
 Expected: all selected tests pass. Catalog and inventory behavior remains unchanged because this task only exposes the shared boundary for later adoption.
 
-- [ ] **Step 10: Commit only Task 7 files**
+- [x] **Step 10: Commit only Task 7 files**
 
 ```powershell
 git add -- backend/transaction_guard.py backend/tests/test_transaction_guard.py backend/tests/test_transaction_error_contract.py backend/server.py backend/.env.example
@@ -2223,7 +2240,7 @@ git commit -m "feat: add fail-closed transaction mutation guard"
 - Trust boundary: the repository has no trusted request-ID middleware, so this task adds none and most calls pass `correlation_id=None`. Raw authorization headers, cookies, query parameters, request bodies, customer payloads, and payment/provider payloads are never trusted as correlation IDs.
 - Field boundary: operation names and enum-like fields use separate narrow validators; the correlation validator never reuses the generic operation/enum token path. No metrics mechanism is invented.
 
-- [ ] **Step 1: Write the failing observability tests**
+- [x] **Step 1: Write the failing observability tests**
 
 Create `backend/tests/test_transaction_observability.py`:
 
@@ -2528,21 +2545,21 @@ def test_executor_emits_commit_unknown_without_abort_or_driver_detail():
 
 ```
 
-- [ ] **Step 2: Inspect the complete logging security contract**
+- [x] **Step 2: Inspect the complete logging security contract**
 
 Run: `git diff -- backend/tests/test_transaction_observability.py`
 
 Expected: nine tests require all six lifecycle events, safe unknown-outcome reconciliation, canonical lowercase UUID handling, uppercase UUID normalization, and `None` for JWTs, API keys, bearer tokens, MongoDB URIs, request-like tokens, overlong values, customer/provider payloads, and every raw request source.
 
-- [ ] **Step 3: Run the focused test to verify RED**
+- [x] **Step 3: Run the focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_observability.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: collection fails with `ModuleNotFoundError: No module named 'transaction_observability'`.
 
-- [ ] **Step 5: Implement the log sink and lifecycle events**
+- [x] **Step 5: Implement the log sink and lifecycle events**
 
 Create `backend/transaction_observability.py`:
 
@@ -2765,27 +2782,27 @@ Wire the safe sink in `backend/server.py`:
  )
 ```
 
-- [ ] **Step 6: Inspect event fields and forbidden values**
+- [x] **Step 6: Inspect event fields and forbidden values**
 
 Run: `rg -n "authorization|cookie|query|request|customer|provider|connection|mongo_url|payload|password|token|exception|str\\(exc\\)|safe_correlation_id" backend/transaction_observability.py backend/transaction_execution.py`
 
 Expected: no raw request source, customer/provider payload, connection string, password, sensitive token, exception message, or `str(exc)` is sent to the event sink. `safe_correlation_id` uses `uuid.UUID`, emits only canonical lowercase UUID text, and turns every noncanonical or invalid value into `None`.
 
-- [ ] **Step 7: Run the focused test to verify GREEN**
+- [x] **Step 7: Run the focused test to verify GREEN**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_observability.py`
 
-- [ ] **Step 8: Confirm focused passing output**
+- [x] **Step 8: Confirm focused passing output**
 
 Expected: `9 passed` and exit code `0`.
 
-- [ ] **Step 9: Run executor/guard/readiness regressions**
+- [x] **Step 9: Run executor/guard/readiness regressions**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_observability.py backend\tests\test_transaction_execution.py backend\tests\test_transaction_guard.py backend\tests\test_health.py`
 
 Expected: all selected tests pass. No metrics assertion is added because the repository has no established metrics mechanism.
 
-- [ ] **Step 10: Commit only Task 8 files**
+- [x] **Step 10: Commit only Task 8 files**
 
 ```powershell
 git add -- backend/transaction_observability.py backend/tests/test_transaction_observability.py backend/transaction_execution.py backend/server.py
@@ -2808,7 +2825,7 @@ git commit -m "feat: add safe transaction lifecycle diagnostics"
 - Produces: one canonical operator/developer runbook and stable links from existing operational documentation.
 - Boundary: documentation covers local development and isolated CI. It does not authorize staging/production topology, mutation enablement, infrastructure purchase, or go-live.
 
-- [ ] **Step 1: Write the failing documentation contract tests**
+- [x] **Step 1: Write the failing documentation contract tests**
 
 Create `backend/tests/test_transaction_documentation.py`:
 
@@ -2863,21 +2880,21 @@ def test_runbook_disclaims_checkout_and_production_authorization():
     assert "silent non-atomic fallback is prohibited" in text
 ```
 
-- [ ] **Step 2: Inspect the complete documentation assertions**
+- [x] **Step 2: Inspect the complete documentation assertions**
 
 Run: `git diff -- backend/tests/test_transaction_documentation.py`
 
 Expected: exact local/CI commands, variables, endpoints, error code, reset warning, limitations, Retail Checkout status, and production disclaimers are required.
 
-- [ ] **Step 3: Run the focused test to verify RED**
+- [x] **Step 3: Run the focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_documentation.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: both tests fail with `FileNotFoundError` because `doc/TRANSACTION_CAPABILITY_RUNBOOK.md` does not exist.
 
-- [ ] **Step 5: Write the operational documentation**
+- [x] **Step 5: Write the operational documentation**
 
 Create `doc/TRANSACTION_CAPABILITY_RUNBOOK.md`:
 
@@ -3067,7 +3084,7 @@ persistence, monitoring, backup/restore, incident ownership, mutation
 enablement, and go-live require separate approval.
 ```
 
-- [ ] **Step 6: Validate repository-relative pointers**
+- [x] **Step 6: Validate repository-relative pointers**
 
 Run:
 
@@ -3086,21 +3103,21 @@ if ($missing) { $missing; exit 1 }
 
 Expected: exit code `0` and no missing path output.
 
-- [ ] **Step 7: Run the focused documentation tests to verify GREEN**
+- [x] **Step 7: Run the focused documentation tests to verify GREEN**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_documentation.py`
 
-- [ ] **Step 8: Confirm focused passing output**
+- [x] **Step 8: Confirm focused passing output**
 
 Expected: `2 passed` and exit code `0`.
 
-- [ ] **Step 9: Run documentation/topology regressions**
+- [x] **Step 9: Run documentation/topology regressions**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_documentation.py backend\tests\test_transaction_topology_files.py backend\tests\test_health.py`
 
 Expected: all selected tests pass and all documented commands/names match implementation files.
 
-- [ ] **Step 10: Commit only Task 9 files**
+- [x] **Step 10: Commit only Task 9 files**
 
 ```powershell
 git add -- doc/TRANSACTION_CAPABILITY_RUNBOOK.md backend/tests/test_transaction_documentation.py docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md doc/PRODUCTION_DEPLOYMENT.md
@@ -3121,7 +3138,7 @@ git commit -m "docs: document transaction-capable development setup"
 - Produces: executable final verification sequence; code-revert procedure; runtime mutation-disable procedure.
 - Rollback invariant: code rollback preserves committed data, and runtime disablement returns fail-closed errors. Neither path enables a non-atomic fallback.
 
-- [ ] **Step 1: Write the failing rollback-documentation test**
+- [x] **Step 1: Write the failing rollback-documentation test**
 
 Append to `backend/tests/test_transaction_documentation.py`:
 
@@ -3137,21 +3154,21 @@ def test_runbook_defines_two_level_rollback_without_fallback():
     assert "do not roll back committed database records" in text
 ```
 
-- [ ] **Step 2: Inspect the complete rollback assertions**
+- [x] **Step 2: Inspect the complete rollback assertions**
 
 Run: `git diff -- backend/tests/test_transaction_documentation.py`
 
 Expected: both rollback levels, exact disabled value, executable `git revert`, database preservation, and the no-fallback invariant are asserted.
 
-- [ ] **Step 3: Run the focused test to verify RED**
+- [x] **Step 3: Run the focused test to verify RED**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_documentation.py`
 
-- [ ] **Step 4: Confirm the expected failure**
+- [x] **Step 4: Confirm the expected failure**
 
 Expected: the new test fails because the three final verification/rollback headings do not yet exist.
 
-- [ ] **Step 5: Add final verification and rollback procedures**
+- [x] **Step 5: Add final verification and rollback procedures**
 
 Append to `doc/TRANSACTION_CAPABILITY_RUNBOOK.md`:
 
@@ -3287,21 +3304,21 @@ disabled until capability, tests, review, and operational approval are all
 restored.
 ```
 
-- [ ] **Step 6: Run focused rollback/documentation checks**
+- [x] **Step 6: Run focused rollback/documentation checks**
 
 Run: `backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_documentation.py backend\tests\test_transaction_execution.py backend\tests\test_transaction_guard.py backend\tests\test_transaction_observability.py`
 
 Expected: all selected tests pass, including exhausted unknown commit outcome without callback rerun/abort, safe unknown-outcome observability, and the two-level rollback contract.
 
-- [ ] **Step 7: Run the full final verification sequence**
+- [x] **Step 7: Run the full final verification sequence**
 
 Run every command under `Final Verification` in order. Use the reviewed plan merge SHA in the frontend scope check. Do not omit the real transaction modules and do not treat a skip as a pass.
 
-- [ ] **Step 8: Confirm complete passing evidence**
+- [x] **Step 8: Confirm complete passing evidence**
 
 Expected: all Compose validations, real transaction tests, complete backend regression, focused format/lint/type checks, dependency check, whitespace check, and scope check exit `0`. The isolated topology is removed afterward.
 
-- [ ] **Step 9: Inspect final implementation scope**
+- [x] **Step 9: Inspect final implementation scope**
 
 Run:
 
@@ -3313,7 +3330,7 @@ git status --short
 
 Expected: only files listed in this plan and the ten task-level commits are present; no Retail Checkout, payment, shipping, tax, refund, production storage, frontend, migration, or production-infrastructure implementation appears. `$reviewedPlanBaseline` must resolve to the immutable approved plan merge commit before these commands run.
 
-- [ ] **Step 10: Commit only Task 10 files**
+- [x] **Step 10: Commit only Task 10 files**
 
 ```powershell
 git add -- doc/TRANSACTION_CAPABILITY_RUNBOOK.md backend/tests/test_transaction_documentation.py
@@ -3481,12 +3498,12 @@ Each commit stages only the files listed in its task, runs `git diff --cached --
 
 Before implementation begins, the integration lead confirms:
 
-- [ ] Every ADR-001 direction and relevant catalog-foundation transaction requirement maps to a task above.
-- [ ] Every proposed symbol has one owner and matching parameter/return types across consumers.
-- [ ] Every behavior task has executable RED, GREEN, regression, and commit commands.
-- [ ] Every proposed file appears in the Target File Map.
-- [ ] No incomplete code fence or unspecified command remains.
-- [ ] No Retail Checkout, payment, shipping, tax, refund, production storage, frontend, migration, or production-enablement implementation is present.
-- [ ] Real replica-set coverage is mandatory in CI and cannot pass by skip.
-- [ ] Runtime disablement remains fail closed and never selects a non-atomic write path.
-- [ ] Existing catalog and inventory service adoption is clearly identified as a later behavior-preserving review, not silently included.
+- [x] Every ADR-001 direction and relevant catalog-foundation transaction requirement maps to a task above.
+- [x] Every proposed symbol has one owner and matching parameter/return types across consumers.
+- [x] Every behavior task has executable RED, GREEN, regression, and commit commands.
+- [x] Every proposed file appears in the Target File Map.
+- [x] No incomplete code fence or unspecified command remains.
+- [x] No Retail Checkout, payment, shipping, tax, refund, production storage, frontend, migration, or production-enablement implementation is present.
+- [x] Real replica-set coverage is mandatory in CI and cannot pass by skip.
+- [x] Runtime disablement remains fail closed and never selects a non-atomic write path.
+- [x] Existing catalog and inventory service adoption is clearly identified as a later behavior-preserving review, not silently included.

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 
 from material_pricing import resolve_effective_price
 from material_routes import build_material_router
+from permissions import has_permission
 
 
 class FakeCursor:
@@ -85,7 +86,7 @@ def require_permission(permission):
         permissions = {value.strip() for value in x_permissions.split(",") if value}
         if permission not in permissions:
             raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
-        return {"id": x_actor_id, "email": "staff@niuva.test", "roles": ["staff"]}
+        return {"id": x_actor_id, "email": "staff@niuva.test", "roles": ["staff"], "permissions": permissions}
 
     return dependency
 
@@ -98,6 +99,7 @@ def build_test_context():
         build_material_router(
             get_db=lambda: db,
             require_permission=require_permission,
+            has_permission=lambda actor, permission: permission in actor.get("permissions", set()),
         )
     )
     app.include_router(api)
@@ -165,7 +167,7 @@ async def run_material_compatibility_and_pricing_flow():
                 "setup_status": "ready",
                 "status": "active",
             },
-            headers=headers("materials.write"),
+            headers=headers("materials.write", "supplier_reference.write"),
         )
         assert completed.status_code == 200, completed.text
         assert completed.json()["id"] == material_id
@@ -304,3 +306,108 @@ async def run_validation_and_compatibility_aliases():
 
 def test_material_validation_and_delete_archive_alias():
     asyncio.run(run_validation_and_compatibility_aliases())
+
+
+async def run_supplier_reference_boundary():
+    app, db = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        material = await api.post("/api/admin/materials", json={"name": "Private Supplier Material", "supplier_reference": "SUP-001"}, headers=headers("materials.write", "supplier_reference.write"))
+        assert material.status_code == 200
+        material_id = material.json()["id"]
+        operations_list = await api.get("/api/admin/materials", headers=headers("materials.read"))
+        assert operations_list.status_code == 200
+        assert "supplier_reference" not in operations_list.json()[0]
+        forbidden = await api.put(f"/api/admin/materials/{material_id}", json={"supplier_reference": "LEAK"}, headers=headers("materials.write"))
+        assert forbidden.status_code == 403
+        assert forbidden.json()["detail"]["code"] == "material_field_forbidden"
+        assert db.materials.items[0]["supplier_reference"] == "SUP-001"
+        commercial_list = await api.get("/api/admin/materials", headers=headers("materials.read", "supplier_reference.read"))
+        assert commercial_list.status_code == 200
+        assert commercial_list.json()[0]["supplier_reference"] == "SUP-001"
+
+
+def test_supplier_reference_requires_explicit_read_and_write_capabilities():
+    asyncio.run(run_supplier_reference_boundary())
+
+
+def role_require_permission(permission):
+    async def dependency(x_role: str = Header(default="operations")):
+        actor = {"id": f"actor-{x_role}", "email": f"{x_role}@niuva.example.com", "roles": [x_role], "status": "active", "access_state": "approved"}
+        if not has_permission(actor, permission):
+            raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
+        return actor
+    return dependency
+
+
+def build_role_test_context():
+    db = FakeDatabase()
+    app = FastAPI()
+    api = APIRouter(prefix="/api")
+    api.include_router(build_material_router(get_db=lambda: db, require_permission=role_require_permission, has_permission=has_permission))
+    app.include_router(api)
+    return app, db
+
+
+async def run_real_role_supplier_reference_boundaries():
+    app, db = build_role_test_context()
+    db.materials.items.append({"id": "material-private", "name": "Private Material", "description": "Original", "supplier_reference": "SUP-001", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
+    db.materials.items.append({"id": "material-delete", "name": "Delete Material", "description": "Original", "supplier_reference": "SUP-DELETE", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        operations = {"X-Role": "operations"}
+        commercial = {"X-Role": "commercial_finance"}
+        created = await api.post("/api/admin/materials", json={"name": "Operations Material"}, headers=operations)
+        assert created.status_code == 200
+        assert "supplier_reference" not in created.json()
+        operations_list = await api.get("/api/admin/materials", headers=operations)
+        assert operations_list.status_code == 200
+        assert all("supplier_reference" not in material for material in operations_list.json())
+        updated = await api.put("/api/admin/materials/material-private", json={"description": "Operations update"}, headers=operations)
+        assert updated.status_code == 200
+        assert "supplier_reference" not in updated.json()
+        archived = await api.post("/api/admin/materials/material-private/archive", json={"reason": "Archive this material"}, headers=operations)
+        assert archived.status_code == 200
+        assert "supplier_reference" not in archived.json()
+        deprecated = await api.delete("/api/admin/materials/material-delete", headers=operations)
+        assert deprecated.status_code == 200
+        assert "supplier_reference" not in deprecated.json()
+        assert (await api.get("/api/admin/materials", headers=commercial)).status_code == 403
+        supplier = await api.get("/api/admin/materials/material-private/supplier-reference", headers=commercial)
+        assert supplier.status_code == 200
+        assert supplier.json() == {"id": "material-private", "supplier_reference": "SUP-001"}
+        changed = await api.put("/api/admin/materials/material-private/supplier-reference", json={"supplier_reference": "SUP-002"}, headers=commercial)
+        assert changed.status_code == 200
+        assert changed.json() == {"id": "material-private", "supplier_reference": "SUP-002"}
+        assert (await api.get("/api/admin/materials/material-private/supplier-reference", headers=operations)).status_code == 403
+        assert (await api.put("/api/admin/materials/material-private/supplier-reference", json={"supplier_reference": "SUP-LEAK"}, headers=operations)).status_code == 403
+
+
+def test_real_roles_keep_supplier_references_off_generic_material_responses():
+    asyncio.run(run_real_role_supplier_reference_boundaries())
+async def run_supplier_reference_omission_preserves_stored_value():
+    app, db = build_role_test_context()
+    db.materials.items.append({"id": "material-omission", "name": "Omission Material", "supplier_reference": "SUP-ORIGINAL", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        commercial = {"X-Role": "commercial_finance"}
+        omitted = await api.put(
+            "/api/admin/materials/material-omission/supplier-reference",
+            json={},
+            headers=commercial,
+        )
+        assert omitted.status_code == 200
+        assert omitted.json() == {"id": "material-omission", "supplier_reference": "SUP-ORIGINAL"}
+        assert db.materials.items[0]["supplier_reference"] == "SUP-ORIGINAL"
+
+        cleared = await api.put(
+            "/api/admin/materials/material-omission/supplier-reference",
+            json={"supplier_reference": ""},
+            headers=commercial,
+        )
+        assert cleared.status_code == 200
+        assert cleared.json() == {"id": "material-omission", "supplier_reference": ""}
+
+
+def test_supplier_reference_omission_does_not_clear_stored_value():
+    asyncio.run(run_supplier_reference_omission_preserves_stored_value())
