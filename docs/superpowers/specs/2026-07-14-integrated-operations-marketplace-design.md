@@ -2,7 +2,7 @@
 
 Tanggal: 14 Juli 2026  
 Status: Superseded
-Superseded by: `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+Superseded by: `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`
 Do not use for new planning. Historical content is preserved for traceability.
 Stack saat ini: React, FastAPI, MongoDB standalone
 

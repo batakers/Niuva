@@ -37,11 +37,11 @@ Current source code, UI, schemas, routes, and tests must be inspected before imp
 
 Primary provenance:
 
-- `doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
-- `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
-- `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
-- `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
-- `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+- `docs/decisions/evidence/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
+- `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`
+- `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`
 
 ## 2. Product Definition
 
@@ -54,7 +54,7 @@ The journeys share identity, organization, catalog, materials, inventory, produc
 
 Shared foundations do not mean shared customer lifecycles. Retail Order and B2B Quote/Project remain separate aggregates, state machines, authorization projections, and customer experiences.
 
-Sources: `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`.
+Sources: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`.
 
 ## 3. Business Positioning
 
@@ -66,7 +66,7 @@ Niuva must be understood as a strategic product-development partner that connect
 
 Retail is an additional transaction journey. It must not replace the main positioning or make Niuva marketplace-first, Retail-first, e-commerce-only, or merchandise-led. R&D, design engineering, prototyping, and real project evidence remain prominent across the public brand experience.
 
-Sources: `doc/BRD_Website_Niuva.md`; `doc/PRS_Website_Niuva.md`; `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`.
+Sources: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/historical-active/PRS_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`.
 
 ## 4. Users and Roles
 
@@ -102,7 +102,7 @@ Organization members may access only assigned organizations and projects. Approv
 
 Authorization must be enforced in backend handlers, services, and data queries. Hiding a control is a usability measure, not authorization. Use least privilege, conflict-safe approval behavior, and audit records for sensitive actions.
 
-Sources: `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` for procedure only.
+Sources: `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` for procedure only.
 
 ## 5. Product Structure
 
@@ -369,11 +369,11 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 
 | Decision | Status | Source |
 |---|---|---|
-| One website and one operational platform | Approved Baseline | `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
-| Retail and Business/B2B are separate customer journeys | Approved Baseline | `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
-| Shared foundations do not merge Retail and B2B lifecycles | Approved Baseline | `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
-| R&D, design engineering, and prototyping remain the primary positioning | Historical Active + Approved v2.1 continuation | `doc/BRD_Website_Niuva.md`; `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
-| Retail is an additional transaction journey | Approved Baseline | `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
+| One website and one operational platform | Approved Baseline | `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Retail and Business/B2B are separate customer journeys | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Shared foundations do not merge Retail and B2B lifecycles | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
+| R&D, design engineering, and prototyping remain the primary positioning | Historical Active + Approved v2.1 continuation | `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Retail is an additional transaction journey | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
 | Unified Homepage | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | Business/B2B is the primary Homepage narrative | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | Retail is a secondary but clear Homepage path | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
@@ -381,13 +381,13 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Homepage uses Poppins + Inter with the approved display/UI and body/metadata roles | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | U-curve is a semantic transformation path with two initial dominant placements | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | Official company mark is the `ni` brandmark | Supporting official brand authority + active decision | `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
-| Primary and supporting capability hierarchy | Historical Active Baseline | `doc/PRS_Website_Niuva.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
-| Fixed, calculated, and quote-required pricing | Approved Baseline | `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
-| Guest Retail checkout and organization-based B2B access | Approved Baseline | `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
-| Structured integrated CMS and Admin Studio | Approved Baseline | `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Primary and supporting capability hierarchy | Historical Active Baseline | `docs/references/requirements/historical-active/PRS_Website_Niuva.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
+| Fixed, calculated, and quote-required pricing | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Guest Retail checkout and organization-based B2B access | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
+| Structured integrated CMS and Admin Studio | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Admin Studio follows the approved operational experience direction | Approved Decision | `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-direction.md` |
-| Commercial history uses versions and snapshots | Approved Baseline | `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
-| Real milestones and ETA replace fake percentage progress | Approved Baseline | `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Commercial history uses versions and snapshots | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
+| Real milestones and ETA replace fake percentage progress | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Replica-set transaction capability | Approved Baseline | `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` |
 | Provider-neutral private production storage boundary | Approved with Open Decisions | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` |
 | Provider-neutral Retail online-payment orchestration | Approved with Open Decisions | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` |

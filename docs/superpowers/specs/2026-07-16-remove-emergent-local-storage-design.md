@@ -4,7 +4,7 @@
 **Status:** Approved with Open Decisions
 **Base:** `design/catalog-material-inventory-foundation` at `f00c662`
 **Approved scope:** Development/demo storage only
-**Related requirements:** `AGENTS.md`, `PRODUCT.md`, `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`, and `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+**Related requirements:** `AGENTS.md`, `PRODUCT.md`, `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`, and `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`
 **Approved architecture pointers:** `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` and `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## 1. Context

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Source baseline: `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`, `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`, `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`, and `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`.
+- Source baseline: `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`, `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`, `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`, and `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`.
 - This package covers only Identity, RBAC, Organization, and Audit. CMS, catalog, material pricing, inventory, order/project redesign, payment gateway, and homepage decisions are separate packages.
 - Do not add runtime dependencies; use packages already declared in `backend/requirements.txt` and `frontend/package.json`.
 - Backend authorization is authoritative. UI visibility is only a usability layer.

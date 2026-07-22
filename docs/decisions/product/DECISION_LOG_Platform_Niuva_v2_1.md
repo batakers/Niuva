@@ -2,7 +2,7 @@
 
 Status: Active Decision Register
 Authority: Index keputusan bisnis, operasional, dan teknis
-Baseline source: `doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
+Baseline source: `docs/decisions/evidence/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
 Created in: Governance Register Pass
 
 ## Recorded Approval Context

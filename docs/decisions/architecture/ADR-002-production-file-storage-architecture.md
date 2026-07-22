@@ -9,7 +9,7 @@ Decision date: 16 July 2026
 Approval source: Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
 Recorded by: Project documentation owner
 Open decision categories: Provider, operations, production readiness, RPO/RTO, retention, quota, ownership, backup/restore, malware handling, and Emergent migration.
-Related baseline: `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
+Related baseline: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 Decision log: `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## Context and Scope

@@ -69,23 +69,23 @@ This decision does not determine:
 
 This decision supersedes only the following statements or assumptions within otherwise active documents:
 
-- `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`: Homepage pattern remains deferred.
-- `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`: Homepage pattern remains deferred.
-- `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`: split gateway, unified Homepage, or Retail-first remains open.
+- `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`: Homepage pattern remains deferred.
+- `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`: Homepage pattern remains deferred.
+- `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`: split gateway, unified Homepage, or Retail-first remains open.
 - `PRODUCT.md`: Homepage pattern remains deferred.
 - `AGENTS.md`: Homepage pattern remains deferred.
-- `doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`: Homepage pattern is listed as outside the earlier approval.
+- `docs/decisions/evidence/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`: Homepage pattern is listed as outside the earlier approval.
 - `doc/brand/HOMEPAGE_PRODUCTION_IMPLEMENTATION_PLAN.md`: any assumption that the production Homepage can proceed without a clear secondary Retail path.
 
 The documents themselves are not superseded in full. Their other approved scopes remain unchanged.
 
 ## References
 
-- `doc/BRD_Website_Niuva.md`
-- `doc/PRS_Website_Niuva.md`
-- `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
-- `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
-- `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
-- `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
+- `docs/references/requirements/historical-active/BRD_Website_Niuva.md`
+- `docs/references/requirements/historical-active/PRS_Website_Niuva.md`
+- `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`
+- `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`
 - `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`
 - `doc/brand/HOMEPAGE_PRODUCTION_IMPLEMENTATION_PLAN.md`

@@ -19,7 +19,7 @@
 - Storage and Retail payment boundaries remain provider-neutral. Do not select or activate a provider, upload, payment, Finance, production-readiness, or go-live decision without explicit approval.
 - Preserve historical records and perform migrations non-destructively with backup, dry run, validation, and rollback instructions. Do not hard-delete referenced records.
 - Do not write credentials, tokens, secrets, or API keys into source or product documentation.
-- `AGENTS.brand-baseline-v1.md` remains an Active Guardrail for public-page and brand work only where it does not conflict with the canonical documents or an approved decision.
+- `docs/references/requirements/historical-active/AGENTS.brand-baseline-v1.md` remains an Active Guardrail for public-page and brand work only where it does not conflict with the canonical documents or an approved decision.
 
 ## Repository Workflow
 

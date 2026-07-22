@@ -2,9 +2,9 @@
 
 Tanggal: 14 Juli 2026  
 Status: Superseded
-Superseded by: `doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+Superseded by: `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
 Do not use for new planning. Historical content is preserved for traceability.
-Dokumen induk: `doc/BRD_Website_Niuva.md`  
+Dokumen induk: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`
 Referensi desain: `docs/superpowers/specs/2026-07-14-integrated-operations-marketplace-design.md`
 
 ## 1. Tujuan Addendum

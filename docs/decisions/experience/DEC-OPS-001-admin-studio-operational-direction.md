@@ -120,8 +120,8 @@ This decision does not supersede `DESIGN.md` in full. `DESIGN.md` remains a tran
 
 - `docs/NIUVA_MASTER_SPEC.md`
 - `docs/context/CONVERSATION_HANDOFF.md`
-- `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
-- `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
+- `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`
+- `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
 - `AGENTS.md`
 - `DESIGN.md` — transitional/current-state reference only
 - `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` — procedural reference for role, permission, audit, and access recovery

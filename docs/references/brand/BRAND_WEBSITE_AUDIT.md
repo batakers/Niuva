@@ -25,8 +25,8 @@ This audit compared the current public implementation with:
 - `AGENTS.md`
 - `PRODUCT.md`
 - `DESIGN.md`
-- `doc/BRD_Website_Niuva.md`
-- `doc/PRS_Website_Niuva.md`
+- `docs/references/requirements/historical-active/BRD_Website_Niuva.md`
+- `docs/references/requirements/historical-active/PRS_Website_Niuva.md`
 - `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`
 - `doc/brand/BRAND_DIGITAL_EXTENSION.md`
 - `doc/brand/BRAND_IMPLEMENTATION_PLAN.md`
