@@ -4,7 +4,7 @@
 **Status:** Approved with Open Decisions
 **Base:** `main` at `09de876`
 **Related requirements:** `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` and `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
-**Approved architecture pointers:** `doc/decisions/ADR-001-mongodb-transaction-capability.md` and `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
+**Approved architecture pointers:** `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` and `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## 1. Context
 
@@ -456,7 +456,7 @@ Movement history is read-only and filterable by subject, type, reference, actor,
 
 ## 13. Transaction, Concurrency, and Availability
 
-`doc/decisions/ADR-001-mongodb-transaction-capability.md` is the approved authority for transaction capability. MongoDB replica-set multi-document transactions are approved for cross-collection mutations requiring atomicity.
+`docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` is the approved authority for transaction capability. MongoDB replica-set multi-document transactions are approved for cross-collection mutations requiring atomicity.
 
 Environment policy:
 

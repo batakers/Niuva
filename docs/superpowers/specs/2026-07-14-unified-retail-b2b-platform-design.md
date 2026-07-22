@@ -6,10 +6,10 @@ Approval record: `doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md`
 Supersedes: `2026-07-14-integrated-operations-marketplace-design.md`  
 Stack saat ini: React, FastAPI, MongoDB; mutation environments require the replica-set capability defined by ADR-001, while standalone is limited to read-only or proven-safe single-document atomic writes.
 Approved architecture pointers:
-- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
-- `doc/decisions/ADR-002-production-file-storage-architecture.md`
-- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
-- `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
+- `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
+- `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
+- `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
+- `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## 1. Ringkasan
 
@@ -176,7 +176,7 @@ Pelanggan dapat:
 
 File divalidasi berdasarkan tipe, ukuran, ownership, dan keamanan. Produksi tidak dimulai sebelum file dinyatakan siap.
 
-Approved storage direction (`doc/decisions/ADR-002-production-file-storage-architecture.md`): application memakai stable provider-neutral storage port dengan private persistent object storage sebagai production adapter class. Local filesystem hanya development/demo; production objects private by default; backend authorization adalah default; signed access harus short-lived, telah diotorisasi backend, dan scoped ke satu object/action. Database-backed ownership menggantikan path-substring authorization; public bucket/static directory dilarang.
+Approved storage direction (`docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`): application memakai stable provider-neutral storage port dengan private persistent object storage sebagai production adapter class. Local filesystem hanya development/demo; production objects private by default; backend authorization adalah default; signed access harus short-lived, telah diotorisasi backend, dan scoped ke satu object/action. Database-backed ownership menggantikan path-substring authorization; public bucket/static directory dilarang.
 
 Boundary ini mencakup seluruh persistent Retail, B2B, design, operational, QC, fulfillment, dan payment-proof uploads bila transitional manual-transfer adapter kelak disetujui. Provider, RPO/RTO, retention, quota, owners, backup/restore, malware/quarantine, Emergent migration/decommission, dan production readiness tetap open. Query-string access tokens, ownership, MIME/signature validation, malware quarantine, backup/restore, dan metadata/object reconciliation adalah prerequisite; production upload tetap disabled sampai operational readiness disetujui.
 
@@ -462,7 +462,7 @@ Internal restock alert dipicu oleh reorder point atau projected shortage. Custom
 - Notification gagal: masuk retry tanpa membatalkan transaksi utama.
 - Approval ganda atau stale version: request ditolak sebagai conflict.
 
-MongoDB replica-set multi-document transaction adalah baseline yang disetujui untuk cross-collection mutation yang membutuhkan atomicity. Local mutation development memakai single-node replica set; CI memakai isolated replica set; staging dan production memerlukan transaction capability sebelum affected mutation flags diaktifkan. Standalone MongoDB terbatas pada read-only atau operasi yang terbukti aman sebagai single-document atomic write. Transaction-required operations fail closed dengan `503 transaction_unavailable`; silent fallback ke non-atomic writes dilarang. See `doc/decisions/ADR-001-mongodb-transaction-capability.md`.
+MongoDB replica-set multi-document transaction adalah baseline yang disetujui untuk cross-collection mutation yang membutuhkan atomicity. Local mutation development memakai single-node replica set; CI memakai isolated replica set; staging dan production memerlukan transaction capability sebelum affected mutation flags diaktifkan. Standalone MongoDB terbatas pada read-only atau operasi yang terbukti aman sebagai single-document atomic write. Transaction-required operations fail closed dengan `503 transaction_unavailable`; silent fallback ke non-atomic writes dilarang. See `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`.
 
 ## 16. Pengujian
 

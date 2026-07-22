@@ -7,10 +7,10 @@ Product scope source: `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
 Design source: `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`  
 Baseline lama: `memory/PRD.md`
 Approved architecture pointers:
-- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
-- `doc/decisions/ADR-002-production-file-storage-architecture.md`
-- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
-- `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
+- `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
+- `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
+- `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
+- `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## 1. Ringkasan Produk
 
@@ -329,7 +329,7 @@ Model detail ditetapkan dalam implementation plan dan schema design, tetapi haru
 
 ## 12.1 Approved Architecture Boundaries
 
-### Transaction capability — `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+### Transaction capability — `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
 
 - MongoDB replica-set multi-document transaction adalah baseline yang disetujui untuk cross-collection mutation yang membutuhkan atomicity.
 - Local mutation development menggunakan single-node replica set; CI menggunakan isolated replica set.
@@ -338,7 +338,7 @@ Model detail ditetapkan dalam implementation plan dan schema design, tetapi haru
 - Operasi yang membutuhkan transaction harus fail closed dengan `503 transaction_unavailable`; silent fallback ke non-atomic writes dilarang.
 - Boundary meliputi catalog publication snapshot/active pointer, inventory balance/movement/reservation, multi-line checkout plus reservations, reservation consume/release/expiry lintas record, payment/order transitions yang juga memutasi inventory, dan reconciliation writes yang membutuhkan atomic consistency.
 
-### Persistent storage — `doc/decisions/ADR-002-production-file-storage-architecture.md`
+### Persistent storage — `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
 
 - Application architecture memakai stable provider-neutral storage port dengan private persistent object storage sebagai production adapter class.
 - Local filesystem hanya untuk development/demo. Production objects private by default; backend authorization adalah access model default.
@@ -348,7 +348,7 @@ Model detail ditetapkan dalam implementation plan dan schema design, tetapi haru
 - Provider, RPO/RTO, retention, quota, operational owners, backup/restore ownership, malware/quarantine ownership, Emergent migration/decommission, dan production readiness tetap open.
 - Production upload tetap disabled sampai query-string access tokens dihapus, database-backed ownership dan MIME/signature validation diterapkan, malware scanning/quarantine serta backup/restore diuji, metadata/object reconciliation diuji, dan operational readiness disetujui.
 
-### Payment orchestration — `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+### Payment orchestration — `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
 
 - Retail production target tetap online payment dengan provider-neutral core orchestration dan provider adapters di luar core order/payment domain.
 - Provider events/webhooks harus idempotent; refund dan reconciliation memiliki boundary eksplisit; customer responses memakai customer-safe payment projections.
@@ -367,7 +367,7 @@ ADR approval scope tetap terbatas pada internal architecture, documentation, dan
 - Upload retry: tidak membuat file/design version ganda.
 - Stale quote/design/content approval: ditolak sebagai conflict.
 - Notification failure: core transaction tetap berhasil dan notifikasi dapat di-retry.
-- Transaction-required operations fail closed with `503 transaction_unavailable`; silent fallback to non-atomic writes is prohibited. See `doc/decisions/ADR-001-mongodb-transaction-capability.md`.
+- Transaction-required operations fail closed with `503 transaction_unavailable`; silent fallback to non-atomic writes is prohibited. See `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`.
 
 ## 14. Non-Functional Requirements
 

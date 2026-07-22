@@ -4,10 +4,10 @@ Tanggal: 16 Juli 2026
 Status: Technical Design Candidate — not approved for implementation
 Scope kandidat: Retail ready-stock, fixed-price, guest-first checkout, authoritative server preview, atomic reservation, provider-neutral payment orchestration, dan customer-safe tracking; bukan implementation approval
 Approved architecture pointers:
-- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
-- `doc/decisions/ADR-002-production-file-storage-architecture.md`
-- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
-- `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
+- `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
+- `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
+- `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
+- `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 Dokumen ini merevisi candidate spec pada commit `a433141` berdasarkan review stakeholder. BRD/PRS v2.1, PRD v2.1, `PRODUCT.md`, `AGENTS.md`, dan keputusan stakeholder terbaru menjadi sumber kebenaran. Revision pass ini hanya mengubah dokumen desain; tidak ada production code yang diubah.
 
@@ -53,9 +53,9 @@ Status document ini tetap candidate dan tidak memberi implementation approval.
 - Line item dan pricing snapshot immutable setelah order dibuat.
 - Checkout memakai inventory reservation service; checkout tidak langsung memutasi inventory balance, stock movement, atau reservation collections.
 - Foundation reservation lifecycle tetap `active → consumed | released | expired`. Payment review atau cancellation adalah order/payment state, bukan inventory reservation state baru.
-- Cross-collection checkout/order/reservation mutation mengikuti `doc/decisions/ADR-001-mongodb-transaction-capability.md`, fail closed dengan `503 transaction_unavailable`, dan tidak memiliki silent non-atomic fallback.
-- Upload-dependent flows mengikuti `doc/decisions/ADR-002-production-file-storage-architecture.md`; production upload tetap blocked sampai readiness conditions disetujui.
-- Payment lifecycle mengikuti `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`: core provider-neutral, adapter terpisah, event/webhook idempotent, serta refund/reconciliation boundary eksplisit.
+- Cross-collection checkout/order/reservation mutation mengikuti `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`, fail closed dengan `503 transaction_unavailable`, dan tidak memiliki silent non-atomic fallback.
+- Upload-dependent flows mengikuti `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`; production upload tetap blocked sampai readiness conditions disetujui.
+- Payment lifecycle mengikuti `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`: core provider-neutral, adapter terpisah, event/webhook idempotent, serta refund/reconciliation boundary eksplisit.
 - Idempotency, conflict handling, audit, legacy compatibility, customer-safe projection, dan concurrency safety tetap invariant.
 
 ## 3. Batas Scope
@@ -515,21 +515,21 @@ Retail and B2B must both remain discoverable, but this candidate does not lock t
 
 ## 14. Operational Constraints dan Deferred Decisions
 
-### Transaction gate — `doc/decisions/ADR-001-mongodb-transaction-capability.md`
+### Transaction gate — `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
 
 - Checkout/order/reservation cross-collection mutation requires replica-set transaction capability.
 - Local mutation development uses a single-node replica set; CI uses an isolated replica set; staging/production require capability before affected mutation flags.
 - Standalone MongoDB is limited to read-only or proven-safe single-document atomic operations.
 - Missing capability returns `503 transaction_unavailable`; silent non-atomic fallback is prohibited.
 
-### Storage gate — `doc/decisions/ADR-002-production-file-storage-architecture.md`
+### Storage gate — `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
 
 - ADR-002 applies to design files and every upload-dependent flow.
 - Production upload remains blocked by provider, authorization/ownership, validation, malware/quarantine, backup/restore, reconciliation, ownership, and readiness conditions.
 - Manual payment proof cannot be enabled without a separately approved transitional adapter and approved production storage.
 - Local development storage does not satisfy production persistence.
 
-### Payment gate — `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+### Payment gate — `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
 
 - Online payment remains the Retail production target.
 - Provider-neutral core, separate adapters, idempotent events, refund/reconciliation boundaries, and customer-safe projections are required.

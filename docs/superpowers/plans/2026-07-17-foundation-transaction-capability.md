@@ -2887,7 +2887,7 @@ Create `doc/TRANSACTION_CAPABILITY_RUNBOOK.md`:
 Status: Development and CI foundation only.
 
 This runbook implements the internal architecture direction in
-`doc/decisions/ADR-001-mongodb-transaction-capability.md`. It does not
+`docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`. It does not
 authorize production infrastructure, production mutation enablement, or
 production go-live.
 
@@ -3073,7 +3073,7 @@ Run:
 
 ```powershell
 $paths = @(
-    "doc/decisions/ADR-001-mongodb-transaction-capability.md",
+    "docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md",
     "docker-compose.transaction.yml",
     "docker-compose.transaction-test.yml",
     "scripts/mongodb/wait-for-replica-set.ps1",

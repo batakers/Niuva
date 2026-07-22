@@ -49,10 +49,10 @@ Candidate and Superseded documents are not implementation authority.
 | `doc/BRD_Platform_Niuva_v2_addendum.md` | Superseded | Historical v2 business requirements | Superseded by BRD v2.1 |
 | `doc/PRS_Platform_Niuva_v2_addendum.md` | Superseded | Historical v2 product scope | Superseded by PRS v2.1 |
 | `docs/superpowers/specs/2026-07-14-integrated-operations-marketplace-design.md` | Superseded | Historical integrated marketplace design | Superseded by unified Retail–B2B design |
-| `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md` | Active Decision Register | Business, operational, and technical decision index | Active register; approved ADR directions recorded in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; unresolved entries remain open |
-| `doc/decisions/ADR-001-mongodb-transaction-capability.md` | Approved Baseline | Transaction-capability authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; internal architecture direction only |
-| `doc/decisions/ADR-002-production-file-storage-architecture.md` | Approved with Open Decisions | Production persistent-storage authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; operational decisions remain open |
-| `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md` | Approved with Open Decisions | Provider-neutral Retail payment authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; provider and operational decisions remain open |
+| `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md` | Active Decision Register | Business, operational, and technical decision index | Active register; approved ADR directions recorded in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; unresolved entries remain open |
+| `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` | Approved Baseline | Transaction-capability authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; internal architecture direction only |
+| `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` | Approved with Open Decisions | Production persistent-storage authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; operational decisions remain open |
+| `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` | Approved with Open Decisions | Provider-neutral Retail payment authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; provider and operational decisions remain open |
 
 ## Known Branch-Local Documents
 
@@ -105,9 +105,9 @@ Original approval ini tidak otomatis mencakup ADR yang dibuat kemudian, implemen
 
 Approval internal berbasis role yang direkam dalam commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e` mencakup:
 
-- `doc/decisions/ADR-001-mongodb-transaction-capability.md` — **Approved Baseline**
-- `doc/decisions/ADR-002-production-file-storage-architecture.md` — **Approved with Open Decisions**
-- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md` — **Approved with Open Decisions**
+- `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` — **Approved Baseline**
+- `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` — **Approved with Open Decisions**
+- `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` — **Approved with Open Decisions**
 
 Scope approval later ADR ini hanya:
 
@@ -163,6 +163,6 @@ Historical documents remain preserved for traceability. Superseded documents mus
 
 Unresolved business, operational, and technical decisions are indexed in:
 
-`doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
+`docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 The decision log is the index only. Technical authority belongs to an approved ADR when an ADR is referenced. A pending decision or candidate ADR does not propagate requirements into the approved baseline.

@@ -5,7 +5,7 @@
 **Base:** `design/catalog-material-inventory-foundation` at `f00c662`
 **Approved scope:** Development/demo storage only
 **Related requirements:** `AGENTS.md`, `PRODUCT.md`, `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`, and `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
-**Approved architecture pointers:** `doc/decisions/ADR-002-production-file-storage-architecture.md` and `doc/decisions/DECISION_LOG_Platform_Niuva_v2_1.md`
+**Approved architecture pointers:** `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` and `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## 1. Context
 
@@ -16,7 +16,7 @@ The current application depends on Emergent in two separate areas:
 
 This dependency causes the backend to make an external storage initialization request during startup. Without an Emergent key, startup logs an external-storage error even though the rest of the application can continue. The project must no longer depend on Emergent.
 
-For the current development and demonstration phase, uploaded files use local filesystem storage. This approved scope does not make the local adapter production-ready. `doc/decisions/ADR-002-production-file-storage-architecture.md` separately approves a stable provider-neutral storage port with private persistent object storage as the production adapter class; production provider and operational readiness remain open.
+For the current development and demonstration phase, uploaded files use local filesystem storage. This approved scope does not make the local adapter production-ready. `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` separately approves a stable provider-neutral storage port with private persistent object storage as the production adapter class; production provider and operational readiness remain open.
 
 ## 2. Goals
 
@@ -296,7 +296,7 @@ The run documentation must explicitly warn that this storage mode is unsuitable 
 
 ## 15. Future Production Transition
 
-`doc/decisions/ADR-002-production-file-storage-architecture.md` defines the approved production direction:
+`docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` defines the approved production direction:
 
 - application storage uses a stable provider-neutral storage port;
 - the production adapter class is private persistent object storage;

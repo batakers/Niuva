@@ -25,9 +25,9 @@ Effective 23 July 2026, this document is the primary product and experience sour
 
 Approved ADRs are not replaced by summaries in this document. In particular:
 
-- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
-- `doc/decisions/ADR-002-production-file-storage-architecture.md`
-- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+- `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
+- `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
+- `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
 
 Runbooks are procedural authority only. They do not decide product direction, customer journeys, business policy, visual direction, or brand identity.
 
@@ -350,7 +350,7 @@ Detailed rollout, migration, correction, rollback, and recovery procedures remai
 - Credentials, secret values, API keys, and raw provider secrets must not be stored in product documentation or committed to the repository.
 - Logs must avoid unnecessary personal, financial, file, and provider data.
 
-Technical sources: `doc/decisions/ADR-001-mongodb-transaction-capability.md`; `doc/decisions/ADR-002-production-file-storage-architecture.md`; `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`.
+Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`; `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`; `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`.
 
 ## 14. Accessibility and Responsive Requirements
 
@@ -388,9 +388,9 @@ Technical sources: `doc/decisions/ADR-001-mongodb-transaction-capability.md`; `d
 | Admin Studio follows the approved operational experience direction | Approved Decision | `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-direction.md` |
 | Commercial history uses versions and snapshots | Approved Baseline | `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
 | Real milestones and ETA replace fake percentage progress | Approved Baseline | `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
-| Replica-set transaction capability | Approved Baseline | `doc/decisions/ADR-001-mongodb-transaction-capability.md` |
-| Provider-neutral private production storage boundary | Approved with Open Decisions | `doc/decisions/ADR-002-production-file-storage-architecture.md` |
-| Provider-neutral Retail online-payment orchestration | Approved with Open Decisions | `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md` |
+| Replica-set transaction capability | Approved Baseline | `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` |
+| Provider-neutral private production storage boundary | Approved with Open Decisions | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` |
+| Provider-neutral Retail online-payment orchestration | Approved with Open Decisions | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` |
 
 ## 16. Deferred Decisions
 
