@@ -499,6 +499,7 @@ async def run_access_validation_and_stale_token_contract():
             {"roles": ["organization_customer"]},
             {"reason_code": "free text is forbidden"},
             {"reason": "free text must be rejected"},
+            {"reason_code": "policy_migration_v1"},
         ):
             response = await _put_access(
                 api, owner_token, target["id"], **invalid_payload

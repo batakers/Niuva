@@ -17,13 +17,18 @@ from permissions import (  # noqa: E402
     SUPERSEDED_INTERNAL_ROLE_MARKERS,
     canonical_roles,
 )
-from transaction_execution import TransactionExecutor, TransactionUnavailableError  # noqa: E402
+from transaction_execution import (
+    TransactionExecutor,
+    TransactionUnavailableError,
+)  # noqa: E402
 from transaction_guard import TransactionMutationGuard  # noqa: E402
 
 
 def load_migration():
     path = BACKEND_DIR / "migrations" / "003_identity_access_policy.py"
-    spec = importlib.util.spec_from_file_location("identity_access_policy_migration", path)
+    spec = importlib.util.spec_from_file_location(
+        "identity_access_policy_migration", path
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -95,10 +100,13 @@ class FakeCollection:
                     item.pop(key, None)
                 for key, value in update.get("$inc", {}).items():
                     item[key] = item.get(key, 0) + value
-                return types.SimpleNamespace(matched_count=1, modified_count=int(item != before))
+                return types.SimpleNamespace(
+                    matched_count=1, modified_count=int(item != before)
+                )
         if options.get("upsert"):
             item = {
-                key: value for key, value in query.items()
+                key: value
+                for key, value in query.items()
                 if not key.startswith("$") and not isinstance(value, dict)
             }
             item.update(copy.deepcopy(update.get("$setOnInsert", {})))
@@ -170,14 +178,26 @@ def user(user_id, **overrides):
 
 def test_default_dry_run_is_read_only_and_reports_only_safe_aggregates():
     migration = load_migration()
-    database = FakeDatabase([
-        user("opaque-admin", role="admin", email="private@example.com", password_hash="secret"),
-        user("opaque-client", role="client"),
-    ])
+    database = FakeDatabase(
+        [
+            user(
+                "opaque-admin",
+                role="admin",
+                email="private@example.com",
+                password_hash="secret",
+            ),
+            user("opaque-client", role="client"),
+        ]
+    )
 
     report = asyncio.run(migration.run(database))
 
-    assert set(report) == {"policy_version", "categories", "remediation_ids", "failures"}
+    assert set(report) == {
+        "policy_version",
+        "categories",
+        "remediation_ids",
+        "failures",
+    }
     assert report["policy_version"] == ROLE_POLICY_VERSION
     assert report["categories"]["legacy_internal_review_required"] == 1
     assert report["categories"]["legacy_client"] == 1
@@ -192,7 +212,11 @@ def test_default_dry_run_is_read_only_and_reports_only_safe_aggregates():
 
 @pytest.mark.parametrize(
     ("bootstrap_owner_id", "enabled", "capability"),
-    [(None, True, True), ("bootstrap-owner", False, True), ("bootstrap-owner", True, False)],
+    [
+        (None, True, True),
+        ("bootstrap-owner", False, True),
+        ("bootstrap-owner", True, False),
+    ],
 )
 def test_apply_rejects_missing_owner_or_transaction_gate_before_any_write(
     bootstrap_owner_id, enabled, capability
@@ -202,9 +226,11 @@ def test_apply_rejects_missing_owner_or_transaction_gate_before_any_write(
     guard = TransactionMutationGuard(RejectingExecutor(capability), lambda: enabled)
 
     with pytest.raises((migration.MigrationSafetyError, TransactionUnavailableError)):
-        asyncio.run(migration.run(
-            database, apply=True, bootstrap_owner_id=bootstrap_owner_id, guard=guard
-        ))
+        asyncio.run(
+            migration.run(
+                database, apply=True, bootstrap_owner_id=bootstrap_owner_id, guard=guard
+            )
+        )
 
     assert all(operation != "update_one" for operation, _ in database.users.operations)
     assert database.users.indexes == []
@@ -212,16 +238,20 @@ def test_apply_rejects_missing_owner_or_transaction_gate_before_any_write(
     assert database.audit_events.items == []
 
 
-@pytest.mark.parametrize("bootstrap", [user("bootstrap-owner", role="admin", status="disabled"), None])
+@pytest.mark.parametrize(
+    "bootstrap", [user("bootstrap-owner", role="admin", status="disabled"), None]
+)
 def test_apply_requires_an_existing_active_bootstrap_owner(bootstrap):
     migration = load_migration()
     database = FakeDatabase([bootstrap] if bootstrap else [])
     guard = RecordingGuard(database)
 
     with pytest.raises(migration.MigrationSafetyError):
-        asyncio.run(migration.run(
-            database, apply=True, bootstrap_owner_id="bootstrap-owner", guard=guard
-        ))
+        asyncio.run(
+            migration.run(
+                database, apply=True, bootstrap_owner_id="bootstrap-owner", guard=guard
+            )
+        )
 
     assert guard.calls == []
     assert database.users.indexes == []
@@ -231,26 +261,32 @@ def test_apply_requires_an_existing_active_bootstrap_owner(bootstrap):
 @pytest.mark.parametrize("legacy_role", sorted(SUPERSEDED_INTERNAL_ROLE_MARKERS))
 def test_apply_quarantines_every_superseded_internal_role(legacy_role):
     migration = load_migration()
-    database = FakeDatabase([
-        user("bootstrap-owner", role="admin"),
-        user("legacy-internal", roles=[legacy_role]),
-    ])
+    database = FakeDatabase(
+        [
+            user("bootstrap-owner", role="admin"),
+            user("legacy-internal", roles=[legacy_role]),
+        ]
+    )
     guard = RecordingGuard(database)
 
-    asyncio.run(migration.run(
-        database,
-        apply=True,
-        bootstrap_owner_id="bootstrap-owner",
-        guard=guard,
-    ))
+    asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            bootstrap_owner_id="bootstrap-owner",
+            guard=guard,
+        )
+    )
 
     migrated = next(
-        account for account in database.users.items
+        account
+        for account in database.users.items
         if account["id"] == "legacy-internal"
     )
     assert migrated["roles"] == []
     assert migrated["access_state"] == "access_review_required"
     assert migrated[migration.EVIDENCE_FIELD]["legacy_roles"] == [legacy_role]
+
 
 def migration_matrix():
     return [
@@ -271,9 +307,11 @@ def test_apply_classifies_fail_closed_audits_each_change_and_is_idempotent():
     database = FakeDatabase(migration_matrix())
     guard = RecordingGuard(database)
 
-    first = asyncio.run(migration.run(
-        database, apply=True, bootstrap_owner_id="bootstrap-owner", guard=guard
-    ))
+    first = asyncio.run(
+        migration.run(
+            database, apply=True, bootstrap_owner_id="bootstrap-owner", guard=guard
+        )
+    )
 
     by_id = {item["id"]: item for item in database.users.items}
     assert canonical_roles(by_id["bootstrap-owner"]) == ("super_admin",)
@@ -304,9 +342,18 @@ def test_apply_classifies_fail_closed_audits_each_change_and_is_idempotent():
         "identity.bootstrap_owner_assigned",
     }
     assert all(
-        set(event) == {
-            "id", "actor_user_id", "action", "target_type", "target_id",
-            "previous", "result", "reason_code", "policy_version", "created_at",
+        set(event)
+        == {
+            "id",
+            "actor_user_id",
+            "action",
+            "target_type",
+            "target_id",
+            "previous",
+            "result",
+            "reason_code",
+            "policy_version",
+            "created_at",
         }
         for event in database.audit_events.items
     )
@@ -318,28 +365,28 @@ def test_apply_classifies_fail_closed_audits_each_change_and_is_idempotent():
             database.audit_events,
         )
         for operation, options in collection.operations
-        if operation in {"find_one", "update_one", "insert_one"} and "session" in options
+        if operation in {"find_one", "update_one", "insert_one"}
+        and "session" in options
     ]
     assert session_options and all(
         options["session"] is guard.session for options in session_options
     )
-    assert database.identity_policy_state.items == [{
-        "_id": "identity_access_policy",
-        "key": "identity_access_policy",
-        "approved_owner_count": 1,
-        "policy_version": ROLE_POLICY_VERSION,
-        "version": 1,
-    }]
+    assert database.identity_policy_state.items == [
+        {
+            "_id": "identity_access_policy",
+            "key": "identity_access_policy",
+            "approved_owner_count": 1,
+            "policy_version": ROLE_POLICY_VERSION,
+            "version": 1,
+        }
+    ]
     policy_writes = [
         options
         for operation, options in database.identity_policy_state.operations
         if operation == "update_one"
     ]
     assert policy_writes
-    assert all(
-        options.get("session") is guard.session
-        for options in policy_writes
-    )
+    assert all(options.get("session") is guard.session for options in policy_writes)
     assert ("key", {"unique": True}) in database.identity_policy_state.indexes
     assert ("access_state", {}) in database.users.indexes
     assert ("roles", {}) in database.users.indexes
@@ -348,14 +395,126 @@ def test_apply_classifies_fail_closed_audits_each_change_and_is_idempotent():
     calls_before = list(guard.calls)
     audit_before = copy.deepcopy(database.audit_events.items)
     users_before = copy.deepcopy(database.users.items)
-    second = asyncio.run(migration.run(
-        database, apply=True, bootstrap_owner_id="bootstrap-owner", guard=guard
-    ))
+    second = asyncio.run(
+        migration.run(
+            database, apply=True, bootstrap_owner_id="bootstrap-owner", guard=guard
+        )
+    )
     assert second["categories"]["already_current"] == 5
     assert guard.calls == calls_before
     assert database.audit_events.items == audit_before
     assert database.users.items == users_before
-    assert sum(canonical_roles(item) == ("super_admin",) for item in database.users.items) == 1
+    assert (
+        sum(canonical_roles(item) == ("super_admin",) for item in database.users.items)
+        == 1
+    )
+
+
+def test_apply_promotes_an_explicit_marked_review_bootstrap_owner():
+    migration = load_migration()
+    evidence = {
+        "policy_version": ROLE_POLICY_VERSION,
+        "legacy_role": "admin",
+    }
+    marked_review = user(
+        "marked-review-bootstrap",
+        roles=[],
+        access_state="access_review_required",
+        role_policy_version=ROLE_POLICY_VERSION,
+        **{
+            migration.MARKER_FIELD: ROLE_POLICY_VERSION,
+            migration.EVIDENCE_FIELD: evidence,
+        },
+    )
+    database = FakeDatabase([marked_review])
+    guard = RecordingGuard(database)
+
+    first = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            bootstrap_owner_id=marked_review["id"],
+            guard=guard,
+        )
+    )
+
+    migrated = database.users.items[0]
+    assert canonical_roles(migrated) == ("super_admin",)
+    assert migrated["access_state"] == "approved"
+    assert migrated["role_policy_version"] == ROLE_POLICY_VERSION
+    assert migrated[migration.EVIDENCE_FIELD] == evidence
+    assert first["categories"] == {"bootstrap_owner_assigned": 1}
+    assert guard.calls == [("identity.policy.migrate_account", False)]
+    assert [event["action"] for event in database.audit_events.items] == [
+        "identity.bootstrap_owner_assigned"
+    ]
+    assert database.identity_policy_state.items[0]["approved_owner_count"] == 1
+
+    users_before = copy.deepcopy(database.users.items)
+    events_before = copy.deepcopy(database.audit_events.items)
+    calls_before = list(guard.calls)
+    second = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            bootstrap_owner_id=marked_review["id"],
+            guard=guard,
+        )
+    )
+    assert second["categories"] == {"already_current": 1}
+    assert database.users.items == users_before
+    assert database.audit_events.items == events_before
+    assert guard.calls == calls_before
+
+
+def test_apply_preserves_verified_bootstrap_owner_and_initializes_policy_state():
+    migration = load_migration()
+    verified_owner = user(
+        "verified-owner",
+        roles=["super_admin"],
+        role_policy_version=ROLE_POLICY_VERSION,
+    )
+    database = FakeDatabase([verified_owner])
+    guard = RecordingGuard(database)
+
+    first = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            bootstrap_owner_id=verified_owner["id"],
+            guard=guard,
+        )
+    )
+
+    assert first["categories"] == {"already_current": 1}
+    assert database.users.items == [verified_owner]
+    assert database.audit_events.items == []
+    assert database.identity_policy_state.items == [
+        {
+            "_id": migration.POLICY_STATE_ID,
+            "key": migration.POLICY_STATE_ID,
+            "approved_owner_count": 1,
+            "policy_version": ROLE_POLICY_VERSION,
+            "version": 1,
+        }
+    ]
+    assert guard.calls == [("identity.policy.reconcile_state", False)]
+
+    users_before = copy.deepcopy(database.users.items)
+    state_before = copy.deepcopy(database.identity_policy_state.items)
+    calls_before = list(guard.calls)
+    second = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            bootstrap_owner_id=verified_owner["id"],
+            guard=guard,
+        )
+    )
+    assert second["categories"] == {"already_current": 1}
+    assert database.users.items == users_before
+    assert database.identity_policy_state.items == state_before
+    assert guard.calls == calls_before
 
 
 def test_apply_assigns_reviewed_bootstrap_and_preserves_verified_current_owners():
@@ -378,29 +537,33 @@ def test_apply_assigns_reviewed_bootstrap_and_preserves_verified_current_owners(
     database = FakeDatabase([selected, previous_owner, unchanged_operations])
     guard = RecordingGuard(database)
 
-    asyncio.run(migration.run(
-        database,
-        apply=True,
-        bootstrap_owner_id=selected["id"],
-        guard=guard,
-    ))
+    asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            bootstrap_owner_id=selected["id"],
+            guard=guard,
+        )
+    )
 
     by_id = {item["id"]: item for item in database.users.items}
     assert canonical_roles(by_id[selected["id"]]) == ("super_admin",)
     assert by_id[previous_owner["id"]] == previous_owner
     assert by_id[unchanged_operations["id"]] == unchanged_operations
-    assert sum(
-        canonical_roles(item) == ("super_admin",)
-        for item in database.users.items
-    ) == 2
+    assert (
+        sum(canonical_roles(item) == ("super_admin",) for item in database.users.items)
+        == 2
+    )
     assert database.identity_policy_state.items[0]["approved_owner_count"] == 2
 
-    asyncio.run(migration.run(
-        database,
-        rollback=True,
-        bootstrap_owner_id=selected["id"],
-        guard=guard,
-    ))
+    asyncio.run(
+        migration.run(
+            database,
+            rollback=True,
+            bootstrap_owner_id=selected["id"],
+            guard=guard,
+        )
+    )
     by_id = {item["id"]: item for item in database.users.items}
     assert by_id[selected["id"]]["roles"] == []
     assert by_id[selected["id"]]["access_state"] == "access_review_required"
@@ -408,20 +571,71 @@ def test_apply_assigns_reviewed_bootstrap_and_preserves_verified_current_owners(
     assert database.identity_policy_state.items[0]["approved_owner_count"] == 1
 
 
+def test_rollback_by_preserved_owner_reconciles_migration_owner_authority():
+    migration = load_migration()
+    preserved_owner = user(
+        "preserved-current-owner",
+        roles=["super_admin"],
+        role_policy_version=ROLE_POLICY_VERSION,
+    )
+    migration_owner = user("migration-owned-owner", role="admin")
+    database = FakeDatabase([preserved_owner, migration_owner])
+    guard = RecordingGuard(database)
+
+    asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            bootstrap_owner_id=migration_owner["id"],
+            guard=guard,
+        )
+    )
+    assert database.identity_policy_state.items[0]["approved_owner_count"] == 2
+
+    asyncio.run(
+        migration.run(
+            database,
+            rollback=True,
+            bootstrap_owner_id=preserved_owner["id"],
+            guard=guard,
+        )
+    )
+
+    by_id = {item["id"]: item for item in database.users.items}
+    assert canonical_roles(by_id[preserved_owner["id"]]) == ("super_admin",)
+    assert canonical_roles(by_id[migration_owner["id"]]) == ()
+    assert by_id[migration_owner["id"]]["access_state"] == "access_review_required"
+    actual_owner_count = sum(
+        canonical_roles(account) == ("super_admin",) for account in database.users.items
+    )
+    assert actual_owner_count == 1
+    assert database.identity_policy_state.items[0]["approved_owner_count"] == 1
+    policy_writes = [
+        options
+        for operation, options in database.identity_policy_state.operations
+        if operation == "update_one"
+    ]
+    assert len(policy_writes) == 2
+    assert policy_writes[-1].get("session") is guard.session
+
 
 def test_rollback_is_scoped_audited_and_never_restores_runtime_authority():
     migration = load_migration()
     database = FakeDatabase(migration_matrix())
     guard = RecordingGuard(database)
-    asyncio.run(migration.run(
-        database, apply=True, bootstrap_owner_id="bootstrap-owner", guard=guard
-    ))
+    asyncio.run(
+        migration.run(
+            database, apply=True, bootstrap_owner_id="bootstrap-owner", guard=guard
+        )
+    )
     calls_before = len(guard.calls)
     events_before = len(database.audit_events.items)
 
-    report = asyncio.run(migration.run(
-        database, rollback=True, bootstrap_owner_id="bootstrap-owner", guard=guard
-    ))
+    report = asyncio.run(
+        migration.run(
+            database, rollback=True, bootstrap_owner_id="bootstrap-owner", guard=guard
+        )
+    )
 
     migrated_ids = {"bootstrap-owner", "legacy-admin", "old-manager", "legacy-client"}
     by_id = {item["id"]: item for item in database.users.items}
@@ -450,8 +664,7 @@ def test_rollback_is_scoped_audited_and_never_restores_runtime_authority():
     ][1:]
     assert rollback_policy_writes
     assert all(
-        options.get("session") is guard.session
-        for options in rollback_policy_writes
+        options.get("session") is guard.session for options in rollback_policy_writes
     )
     assert report["categories"]["rolled_back"] == len(migrated_ids)
 
@@ -487,10 +700,15 @@ def test_real_replica_set_migrates_user_and_audit_in_the_same_transaction():
             )
             account = await database.users.find_one({"id": "bootstrap-real"})
             assert canonical_roles(account) == ("super_admin",)
-            assert await database.audit_events.count_documents({
-                "target_id": "bootstrap-real",
-                "action": "identity.bootstrap_owner_assigned",
-            }) == 1
+            assert (
+                await database.audit_events.count_documents(
+                    {
+                        "target_id": "bootstrap-real",
+                        "action": "identity.bootstrap_owner_assigned",
+                    }
+                )
+                == 1
+            )
         finally:
             await client.drop_database(database_name)
             client.close()

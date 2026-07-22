@@ -176,7 +176,6 @@ def test_identity_audit_event_stores_only_allowlisted_access_projection_and_forw
         "role_review_approved",
         "role_access_removed",
         "emergency_override",
-        "policy_migration_v1",
     ),
 )
 def test_user_access_audit_accepts_only_public_reason_codes(reason_code):
@@ -199,7 +198,11 @@ def test_user_access_audit_accepts_only_public_reason_codes(reason_code):
     assert event["reason_code"] == reason_code
 
 
-def test_user_access_audit_rejects_superseded_internal_reason_code():
+@pytest.mark.parametrize(
+    "reason_code",
+    ("user_access_updated", "policy_migration_v1"),
+)
+def test_user_access_audit_rejects_non_public_reason_code(reason_code):
     db = AuditDatabase()
 
     with pytest.raises(AuditValidationError, match="reason code"):
@@ -212,7 +215,7 @@ def test_user_access_audit_rejects_superseded_internal_reason_code():
                 target_id="user-2",
                 previous={"roles": ["retail_customer"]},
                 result={"roles": ["operations"]},
-                reason_code="user_access_updated",
+                reason_code=reason_code,
                 policy_version="2026-07-22-v1",
             )
         )

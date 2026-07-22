@@ -30,11 +30,18 @@ class MigrationSafetyError(RuntimeError):
 
 
 def transaction_mutations_enabled() -> bool:
-    return os.environ.get("TRANSACTION_MUTATIONS_ENABLED", "false").strip().lower() == "true"
+    return (
+        os.environ.get("TRANSACTION_MUTATIONS_ENABLED", "false").strip().lower()
+        == "true"
+    )
 
 
 def _safe_status(account: dict) -> str:
-    return account.get("status") if account.get("status") in {"active", "disabled"} else "active"
+    return (
+        account.get("status")
+        if account.get("status") in {"active", "disabled"}
+        else "active"
+    )
 
 
 def _projection(account: dict) -> dict:
@@ -47,11 +54,24 @@ def _projection(account: dict) -> dict:
 
 def _evidence(account: dict) -> dict:
     evidence = {"policy_version": ROLE_POLICY_VERSION}
+    existing = account.get(EVIDENCE_FIELD)
+    if isinstance(existing, dict):
+        legacy_role = existing.get("legacy_role")
+        if isinstance(legacy_role, str):
+            evidence["legacy_role"] = legacy_role
+        legacy_roles = existing.get("legacy_roles")
+        if isinstance(legacy_roles, list) and all(
+            isinstance(role, str) for role in legacy_roles
+        ):
+            evidence["legacy_roles"] = list(legacy_roles)
     if "role" in account:
         evidence["legacy_role"] = account.get("role")
     if "roles" in account:
         roles = account.get("roles")
-        evidence["legacy_roles"] = list(roles) if isinstance(roles, list) else []
+        if isinstance(roles, list) and roles:
+            evidence["legacy_roles"] = list(roles)
+        elif not isinstance(roles, list):
+            evidence["legacy_roles"] = []
     return evidence
 
 
@@ -80,11 +100,30 @@ def _is_current(account: dict) -> bool:
     )
 
 
+def _is_current_bootstrap_owner(account: dict, bootstrap_owner_id: str) -> bool:
+    if account.get("id") != bootstrap_owner_id:
+        return False
+    approved_owner = (
+        "role" not in account
+        and account.get("roles") == ["super_admin"]
+        and account.get("status") == "active"
+        and account.get("access_state") == "approved"
+        and account.get("role_policy_version") == ROLE_POLICY_VERSION
+    )
+    if not approved_owner:
+        return False
+    return account.get(MARKER_FIELD) == ROLE_POLICY_VERSION or (
+        MARKER_FIELD not in account and EVIDENCE_FIELD not in account
+    )
+
+
 def _classify(account: dict, bootstrap_owner_id: str | None) -> str:
+    if bootstrap_owner_id and account.get("id") == bootstrap_owner_id:
+        if _is_current_bootstrap_owner(account, bootstrap_owner_id):
+            return "already_current"
+        return "bootstrap_owner_assigned"
     if account.get(MARKER_FIELD) == ROLE_POLICY_VERSION:
         return "already_current"
-    if bootstrap_owner_id and account.get("id") == bootstrap_owner_id:
-        return "bootstrap_owner_assigned"
     if _is_current(account):
         return "already_current"
     if account.get("role") == "client":
@@ -105,7 +144,11 @@ def _desired(account: dict, category: str) -> tuple[dict, dict]:
         roles = ["super_admin"]
         access_state = "approved"
     elif category in {"legacy_client", "canonical_customer_updated"}:
-        roles = ["retail_customer"] if category == "legacy_client" else list(account["roles"])
+        roles = (
+            ["retail_customer"]
+            if category == "legacy_client"
+            else list(account["roles"])
+        )
         access_state = "approved"
     else:
         roles = []
@@ -146,9 +189,7 @@ def _report(accounts: list[dict], bootstrap_owner_id: str | None) -> dict:
             if isinstance(account_id, str) and account_id:
                 remediation_ids.append(account_id)
     remediation = (
-        {"access_review_required": sorted(remediation_ids)}
-        if remediation_ids
-        else {}
+        {"access_review_required": sorted(remediation_ids)} if remediation_ids else {}
     )
     return {
         "policy_version": ROLE_POLICY_VERSION,
@@ -173,7 +214,25 @@ async def ensure_indexes(database) -> None:
     await database.users.create_index("role_policy_version")
 
 
-async def _migrate_account(database, guard, account: dict, bootstrap_owner_id: str) -> bool:
+def _conditional_update_filter(account_id: str, category: str) -> dict:
+    query = {"id": account_id}
+    if category != "bootstrap_owner_assigned":
+        query[MARKER_FIELD] = {"$ne": ROLE_POLICY_VERSION}
+        return query
+    query["$or"] = [
+        {MARKER_FIELD: {"$ne": ROLE_POLICY_VERSION}},
+        {"role": {"$exists": True}},
+        {"roles": {"$ne": ["super_admin"]}},
+        {"status": {"$ne": "active"}},
+        {"access_state": {"$ne": "approved"}},
+        {"role_policy_version": {"$ne": ROLE_POLICY_VERSION}},
+    ]
+    return query
+
+
+async def _migrate_account(
+    database, guard, account: dict, bootstrap_owner_id: str
+) -> bool:
     account_id = account["id"]
 
     async def mutate(session):
@@ -185,10 +244,7 @@ async def _migrate_account(database, guard, account: dict, bootstrap_owner_id: s
             return False
         values, result_projection = _desired(current, category)
         result = await database.users.update_one(
-            {
-                "id": account_id,
-                MARKER_FIELD: {"$ne": ROLE_POLICY_VERSION},
-            },
+            _conditional_update_filter(account_id, category),
             {"$set": values, "$unset": {"role": ""}},
             session=session,
         )
@@ -228,6 +284,7 @@ async def _rollback_account(database, guard, account_id: str, actor_id: str) -> 
         if current is None or current.get(MARKER_FIELD) != ROLE_POLICY_VERSION:
             return False
         status = _safe_status(current)
+        was_owner = canonical_roles(current) == ("super_admin",)
         result_projection = {
             "roles": [],
             "status": status,
@@ -252,7 +309,7 @@ async def _rollback_account(database, guard, account_id: str, actor_id: str) -> 
         )
         if result.matched_count == 0:
             return False
-        if account_id == actor_id:
+        if was_owner:
             await _reconcile_policy_state(database, session=session)
         await append_identity_audit_event(
             database,
@@ -300,6 +357,26 @@ async def _reconcile_policy_state(database, *, session) -> None:
     )
 
 
+async def _ensure_policy_state(database, guard) -> None:
+    current_count = await _approved_owner_count(database, session=None)
+    state = await database.identity_policy_state.find_one({"_id": POLICY_STATE_ID})
+    if (
+        state is not None
+        and state.get("policy_version") == ROLE_POLICY_VERSION
+        and state.get("approved_owner_count") == current_count
+    ):
+        return
+
+    async def mutate(session):
+        await _reconcile_policy_state(database, session=session)
+
+    await guard.run(
+        mutate,
+        operation_name="identity.policy.reconcile_state",
+        retry_safe=False,
+    )
+
+
 async def run(
     database,
     *,
@@ -330,8 +407,11 @@ async def run(
 
     report = _report(accounts, bootstrap_owner_id)
     if apply:
+        if _classify(bootstrap, bootstrap_owner_id) == "already_current":
+            await _ensure_policy_state(database, guard)
         pending = [
-            account for account in accounts
+            account
+            for account in accounts
             if _classify(account, bootstrap_owner_id) != "already_current"
         ]
         pending.sort(key=lambda account: account.get("id") == bootstrap_owner_id)
@@ -340,7 +420,8 @@ async def run(
         return report
 
     owned = [
-        account for account in accounts
+        account
+        for account in accounts
         if account.get(MARKER_FIELD) == ROLE_POLICY_VERSION
     ]
     owned.sort(key=lambda account: account.get("id") == bootstrap_owner_id)
@@ -356,7 +437,10 @@ async def run(
 
 
 async def run_cli(
-    *, apply: bool = False, rollback: bool = False, bootstrap_owner_id: str | None = None
+    *,
+    apply: bool = False,
+    rollback: bool = False,
+    bootstrap_owner_id: str | None = None,
 ) -> dict:
     from dotenv import load_dotenv
     from motor.motor_asyncio import AsyncIOMotorClient
@@ -399,11 +483,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     try:
-        report = asyncio.run(run_cli(
-            apply=args.apply,
-            rollback=args.rollback,
-            bootstrap_owner_id=args.bootstrap_owner_id,
-        ))
+        report = asyncio.run(
+            run_cli(
+                apply=args.apply,
+                rollback=args.rollback,
+                bootstrap_owner_id=args.bootstrap_owner_id,
+            )
+        )
     except (MigrationSafetyError, TransactionUnavailableError):
         report = {
             "policy_version": ROLE_POLICY_VERSION,

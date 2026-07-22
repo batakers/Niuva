@@ -26,7 +26,6 @@ class UserAccessUpdate(BaseModel):
         "role_review_approved",
         "role_access_removed",
         "emergency_override",
-        "policy_migration_v1",
     ]
 
     @field_validator("roles")

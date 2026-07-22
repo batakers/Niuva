@@ -95,7 +95,6 @@ _USER_ACCESS_REASON_CODES = frozenset(
         "role_review_approved",
         "role_access_removed",
         "emergency_override",
-        "policy_migration_v1",
     }
 )
 
