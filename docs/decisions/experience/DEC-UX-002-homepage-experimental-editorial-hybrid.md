@@ -4,7 +4,7 @@ ID: `DEC-UX-002`
 Title: Homepage Experimental Editorial Hybrid
 Status: **Approved Decision**
 Decision date: 13 July 2026; reconfirmed 23 July 2026
-Decision source: `doc/brand/HOMEPAGE_PROTOTYPE_DECISION.md`; explicit user decision recorded during documentation consolidation, 23 July 2026.
+Decision source: `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`; explicit user decision recorded during documentation consolidation, 23 July 2026.
 
 ## Context
 
@@ -96,11 +96,11 @@ The Brand Guidelines, prototype review, and implementation plan remain useful re
 
 ## References
 
-- `doc/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`
-- `doc/Company profile PT Niuva_compressed.pdf`
-- `doc/brand/BRAND_WEBSITE_AUDIT.md`
-- `doc/brand/BRAND_APPROVAL_DECISIONS.md`
-- `doc/brand/HOMEPAGE_PROTOTYPE_REVIEW.md`
-- `doc/brand/HOMEPAGE_PROTOTYPE_DECISION.md`
+- `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`
+- `docs/references/company/Company profile PT Niuva_compressed.pdf`
+- `docs/references/brand/BRAND_WEBSITE_AUDIT.md`
+- `docs/decisions/evidence/BRAND_APPROVAL_DECISIONS.md`
+- `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_REVIEW.md`
+- `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`
 - `doc/brand/HOMEPAGE_PRODUCTION_IMPLEMENTATION_PLAN.md`
 - `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`

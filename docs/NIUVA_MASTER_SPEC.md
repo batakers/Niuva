@@ -194,13 +194,13 @@ The approved direction is **Experimental Editorial Hybrid**:
 - Research & Development and Design & Prototyping remain the primary capabilities.
 - Consultant & Workshop and Apparel & Merchandise remain supporting capabilities.
 
-Sources: `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`; `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md`; `doc/brand/HOMEPAGE_PROTOTYPE_DECISION.md`.
+Sources: `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`; `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`.
 
 ## 8. Brand System
 
 ### Identity
 
-- The official company brandmark is the `ni` mark defined by `doc/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`.
+- The official company brandmark is the `ni` mark defined by `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`.
 - A constructed technical “N” must not be used as the Niuva company logo.
 - Logo geometry, clear space, proportions, and approved color usage must be preserved.
 
@@ -224,7 +224,7 @@ Blue is scarce and purposeful. Use it for identity, primary action, focus/active
 
 Public brand pages may be more expressive and editorial. Retail, customer portals, and operational surfaces must apply the same identity with greater clarity, restraint, and task focus.
 
-Sources: `doc/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `doc/brand/BRAND_WEBSITE_AUDIT.md`; `doc/brand/HOMEPAGE_PROTOTYPE_DECISION.md`.
+Sources: `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `docs/references/brand/BRAND_WEBSITE_AUDIT.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`.
 
 ## 9. Surface-Specific Experience Rules
 
@@ -380,8 +380,8 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Experimental Editorial Hybrid | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | Homepage uses Poppins + Inter with the approved display/UI and body/metadata roles | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | U-curve is a semantic transformation path with two initial dominant placements | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
-| Official company mark is the `ni` brandmark | Supporting official brand authority + active decision | `doc/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `doc/brand/HOMEPAGE_PROTOTYPE_DECISION.md` |
-| Primary and supporting capability hierarchy | Historical Active Baseline | `doc/PRS_Website_Niuva.md`; `doc/brand/HOMEPAGE_PROTOTYPE_DECISION.md` |
+| Official company mark is the `ni` brandmark | Supporting official brand authority + active decision | `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
+| Primary and supporting capability hierarchy | Historical Active Baseline | `doc/PRS_Website_Niuva.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
 | Fixed, calculated, and quote-required pricing | Approved Baseline | `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Guest Retail checkout and organization-based B2B access | Approved Baseline | `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
 | Structured integrated CMS and Admin Studio | Approved Baseline | `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |

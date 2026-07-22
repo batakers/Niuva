@@ -87,5 +87,5 @@ The documents themselves are not superseded in full. Their other approved scopes
 - `doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
 - `doc/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 - `docs/superpowers/specs/2026-07-14-unified-retail-b2b-platform-design.md`
-- `doc/brand/HOMEPAGE_PROTOTYPE_DECISION.md`
+- `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`
 - `doc/brand/HOMEPAGE_PRODUCTION_IMPLEMENTATION_PLAN.md`
