@@ -10,9 +10,16 @@ from permissions import (
     ASSIGNABLE_ROLES,
     CUSTOMER_ROLES,
     INTERNAL_ROLES,
+    ROLE_LABELS,
     ROLE_POLICY_VERSION,
     ROLE_PERMISSIONS,
     canonical_roles,
+)
+
+ACCESS_REASON_CODES = (
+    ("role_review_approved", "Approve access review"),
+    ("role_access_removed", "Remove access"),
+    ("emergency_override", "Emergency override"),
 )
 
 
@@ -69,6 +76,18 @@ async def _approved_owner_count(database, *, session) -> int:
     return count
 
 
+def _role_catalog() -> list[dict]:
+    return [
+        {
+            "role": role,
+            "label": ROLE_LABELS[role],
+            "kind": "customer" if role in CUSTOMER_ROLES else "internal",
+            "permissions": sorted(ROLE_PERMISSIONS[role]),
+        }
+        for role in ASSIGNABLE_ROLES
+    ]
+
+
 def build_identity_router(
     *, get_db, get_transaction_guard, require_permission, safe_user
 ) -> APIRouter:
@@ -76,14 +95,19 @@ def build_identity_router(
 
     @router.get("/roles")
     async def list_roles(_user: dict = Depends(require_permission("users.read"))):
-        return [
-            {
-                "role": role,
-                "kind": "customer" if role in CUSTOMER_ROLES else "internal",
-                "permissions": sorted(ROLE_PERMISSIONS[role]),
-            }
-            for role in ASSIGNABLE_ROLES
-        ]
+        return _role_catalog()
+
+    @router.get("/access-policy")
+    async def get_access_policy(
+        _user: dict = Depends(require_permission("users.read")),
+    ):
+        return {
+            "policy_version": ROLE_POLICY_VERSION,
+            "roles": _role_catalog(),
+            "access_reason_codes": [
+                {"code": code, "label": label} for code, label in ACCESS_REASON_CODES
+            ],
+        }
 
     @router.get("/users")
     async def list_users(_user: dict = Depends(require_permission("users.read"))):

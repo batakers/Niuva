@@ -294,6 +294,22 @@ async def run_staff_access_matrix():
         )
         assert owner_users.status_code == 200
         assert all("password_hash" not in user for user in owner_users.json())
+        access_policy = await api.get(
+            "/api/admin/access-policy", headers=bearer(super_admin_token)
+        )
+        assert access_policy.status_code == 200
+        assert access_policy.json()["policy_version"] == server.ROLE_POLICY_VERSION
+        assert access_policy.json()["access_reason_codes"] == [
+            {"code": "role_review_approved", "label": "Approve access review"},
+            {"code": "role_access_removed", "label": "Remove access"},
+            {"code": "emergency_override", "label": "Emergency override"},
+        ]
+        owner_role = next(
+            role
+            for role in access_policy.json()["roles"]
+            if role["role"] == "super_admin"
+        )
+        assert owner_role["label"] == "Owner"
 
         updated = await api.put(
             "/api/admin/users/user-2/access",

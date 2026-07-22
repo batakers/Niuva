@@ -1,5 +1,5 @@
 export const ADMIN_ROUTE_PERMISSIONS = Object.freeze({
-  "/admin": "admin.access",
+  "/admin": "dashboard.read",
   "/admin/orders": "orders.read",
   "/admin/catalog": "catalog.read",
   "/admin/materials": "materials.read",
