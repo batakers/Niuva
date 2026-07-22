@@ -37,6 +37,9 @@ class CatalogError(Exception):
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def _preserved_workflow_status(product: dict) -> str:
+    return "archived" if product.get("workflow_status") == "archived" else "draft"
+
 
 def clean_document(document: dict | None) -> dict | None:
     if document is None:
@@ -207,7 +210,7 @@ class CatalogService:
         changes = {
             **payload,
             "slug": slug,
-            "workflow_status": before.get("workflow_status", "draft") if before.get("workflow_status") == "archived" else "draft",
+            "workflow_status": _preserved_workflow_status(before),
             "updated_at": now_iso(),
             "updated_by": actor.get("id"),
         }
@@ -325,7 +328,7 @@ class CatalogService:
                         )
                 await self.db.products.update_one(
                     {"id": product_id},
-                    {"$set": {"workflow_status": product.get("workflow_status", "draft") if product.get("workflow_status") == "archived" else "draft", "updated_at": timestamp}},
+                    {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
                     **_write_options(session),
                 )
                 await append_audit_event(
@@ -440,7 +443,7 @@ class CatalogService:
                         )
                 await self.db.products.update_one(
                     {"id": product_id},
-                    {"$set": {"workflow_status": product.get("workflow_status", "draft") if product.get("workflow_status") == "archived" else "draft", "updated_at": timestamp}},
+                    {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
                     **_write_options(session),
                 )
                 await append_audit_event(

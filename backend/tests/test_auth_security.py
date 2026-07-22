@@ -429,3 +429,20 @@ def test_admin_boundary_projections_and_capability_gates():
 
 def test_authentication_and_authorization_security_matrix():
     asyncio.run(run_security_matrix())
+
+async def run_admin_stats_counts_canonical_customer_roles():
+    original_db = server.db
+    try:
+        server.db = FakeDatabase([
+            {"id": "legacy-client", "role": "client"},
+            {"id": "retail-customer", "roles": ["retail_customer"], "status": "active", "access_state": "approved"},
+            {"id": "organization-customer", "roles": ["organization_customer"], "status": "active", "access_state": "approved"},
+        ])
+        stats = await server.admin_stats({"id": "operations-1"})
+        assert stats["clients"] == 3
+    finally:
+        server.db = original_db
+
+
+def test_admin_stats_counts_legacy_and_canonical_customers():
+    asyncio.run(run_admin_stats_counts_canonical_customer_roles())

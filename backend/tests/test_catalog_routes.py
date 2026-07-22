@@ -558,10 +558,6 @@ async def run_operations_catalog_lifecycle_and_variant_boundaries():
         product = await api.post("/api/admin/products", json={"category_id": category_id, "name": "Archived Workflow Product", "pricing_mode": "fixed", "price_from": 50000, "currency": "IDR"}, headers=owner)
         assert product.status_code == 201
         product_id = product.json()["id"]
-        await _db.products.update_one({"id": product_id}, {"$set": {"workflow_status": "archived"}})
-        product_update = await api.put(f"/api/admin/products/{product_id}", json={"category_id": category_id, "name": "Archived Workflow Product", "short_description": "Owner update"}, headers=owner)
-        assert product_update.status_code == 200
-        assert product_update.json()["workflow_status"] == "archived"
         variant = await api.put(f"/api/admin/products/{product_id}/variants", json={"variants": [{"sku": "ARCHIVED-VARIANT", "name": "Original", "fixed_price": 50000, "currency": "IDR", "production_type": "made_to_order"}]}, headers=owner)
         assert variant.status_code == 200
         variant_update = await api.put(f"/api/admin/products/{product_id}/variants", json={"variants": [{"id": variant.json()[0]["id"], "sku": "ARCHIVED-VARIANT", "name": "Operations rename", "production_type": "made_to_order"}]}, headers=operations)
@@ -587,3 +583,82 @@ async def run_operations_catalog_lifecycle_and_variant_boundaries():
 
 def test_operations_catalog_lifecycle_and_variant_boundaries():
     asyncio.run(run_operations_catalog_lifecycle_and_variant_boundaries())
+async def run_operations_cannot_change_archived_products_or_variants():
+    app, db, _capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        category, product = await create_publishable_product(api)
+        owner = headers("super_admin")
+        operations = headers("operations")
+        await db.products.update_one(
+            {"id": product["id"]}, {"$set": {"workflow_status": "archived"}}
+        )
+
+        owner_update = await api.put(
+            f"/api/admin/products/{product['id']}",
+            json={"category_id": category["id"], "name": "Owner archived update"},
+            headers=owner,
+        )
+        assert owner_update.status_code == 200
+        assert owner_update.json()["workflow_status"] == "archived"
+        blocked_product = await api.put(
+            f"/api/admin/products/{product['id']}",
+            json={"category_id": category["id"], "name": "Archived product"},
+            headers=operations,
+        )
+        assert blocked_product.status_code == 403
+        assert blocked_product.json()["detail"]["code"] == "catalog_lifecycle_forbidden"
+
+        owner_variant = await api.put(
+            f"/api/admin/products/{product['id']}/variants",
+            json={"variants": [{"sku": "ARCHIVED-OWNER", "name": "Owner variant", "production_type": "made_to_order", "status": "active"}]},
+            headers=owner,
+        )
+        assert owner_variant.status_code == 200
+        blocked_variant = await api.put(
+            f"/api/admin/products/{product['id']}/variants",
+            json={"variants": [{"id": owner_variant.json()[0]["id"], "sku": "ARCHIVED-OWNER", "name": "Operations rename", "production_type": "made_to_order"}]},
+            headers=operations,
+        )
+        assert blocked_variant.status_code == 403
+        assert blocked_variant.json()["detail"]["code"] == "catalog_lifecycle_forbidden"
+
+
+def test_operations_cannot_change_archived_products_or_variants():
+    asyncio.run(run_operations_cannot_change_archived_products_or_variants())
+
+
+async def run_operations_cannot_set_variant_status_without_publish_permission():
+    app, _db, _capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        _category, product = await create_publishable_product(api)
+        variant_payload = {
+            "sku": "OPS-STATUS",
+            "name": "Operations status attempt",
+            "production_type": "made_to_order",
+            "status": "archived",
+        }
+        blocked = await api.put(
+            f"/api/admin/products/{product['id']}/variants",
+            json={"variants": [variant_payload]},
+            headers=headers("operations"),
+        )
+        assert blocked.status_code == 403
+        assert blocked.json()["detail"] == {
+            "code": "catalog_field_forbidden",
+            "field": "status",
+            "message": "Operations cannot write status.",
+        }
+
+        allowed = await api.put(
+            f"/api/admin/products/{product['id']}/variants",
+            json={"variants": [variant_payload]},
+            headers=headers("super_admin"),
+        )
+        assert allowed.status_code == 200
+        assert allowed.json()[0]["status"] == "archived"
+
+
+def test_variant_status_requires_catalog_publish_permission():
+    asyncio.run(run_operations_cannot_set_variant_status_without_publish_permission())

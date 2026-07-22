@@ -101,3 +101,28 @@ test("projects audit events to the documented allowlist", () => {
     created_at: "2026-07-22T00:00:00+00:00",
   });
 });
+
+test("maps generic audit snapshots to the audit dialog projection shape", () => {
+  const before = { sku: "NIV-001", status: "active" };
+  const after = { sku: "NIV-001", status: "archived" };
+
+  expect(safeAuditEvent({
+    id: "audit-catalog-1",
+    actor_user_id: "owner-1",
+    action: "catalog.product_archived",
+    target_type: "product",
+    target_id: "product-1",
+    created_at: "2026-07-22T00:00:00+00:00",
+    before,
+    after,
+  })).toEqual({
+    id: "audit-catalog-1",
+    actor_user_id: "owner-1",
+    action: "catalog.product_archived",
+    target_type: "product",
+    target_id: "product-1",
+    created_at: "2026-07-22T00:00:00+00:00",
+    previous: before,
+    result: after,
+  });
+});

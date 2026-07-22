@@ -385,3 +385,29 @@ async def run_real_role_supplier_reference_boundaries():
 
 def test_real_roles_keep_supplier_references_off_generic_material_responses():
     asyncio.run(run_real_role_supplier_reference_boundaries())
+async def run_supplier_reference_omission_preserves_stored_value():
+    app, db = build_role_test_context()
+    db.materials.items.append({"id": "material-omission", "name": "Omission Material", "supplier_reference": "SUP-ORIGINAL", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        commercial = {"X-Role": "commercial_finance"}
+        omitted = await api.put(
+            "/api/admin/materials/material-omission/supplier-reference",
+            json={},
+            headers=commercial,
+        )
+        assert omitted.status_code == 200
+        assert omitted.json() == {"id": "material-omission", "supplier_reference": "SUP-ORIGINAL"}
+        assert db.materials.items[0]["supplier_reference"] == "SUP-ORIGINAL"
+
+        cleared = await api.put(
+            "/api/admin/materials/material-omission/supplier-reference",
+            json={"supplier_reference": ""},
+            headers=commercial,
+        )
+        assert cleared.status_code == 200
+        assert cleared.json() == {"id": "material-omission", "supplier_reference": ""}
+
+
+def test_supplier_reference_omission_does_not_clear_stored_value():
+    asyncio.run(run_supplier_reference_omission_preserves_stored_value())

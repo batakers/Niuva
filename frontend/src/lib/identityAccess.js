@@ -104,7 +104,12 @@ export function safeAuditEvent(event) {
     if (typeof event[field] === "string") result[field] = event[field];
     return result;
   }, {});
-  if (isRecord(event.previous)) safeEvent.previous = safeAuditProjection(event.previous);
-  if (isRecord(event.result)) safeEvent.result = safeAuditProjection(event.result);
+  if (isRecord(event.previous) || isRecord(event.result)) {
+    if (isRecord(event.previous)) safeEvent.previous = safeAuditProjection(event.previous);
+    if (isRecord(event.result)) safeEvent.result = safeAuditProjection(event.result);
+  } else {
+    if (isRecord(event.before)) safeEvent.previous = event.before;
+    if (isRecord(event.after)) safeEvent.result = event.after;
+  }
   return safeEvent;
 }

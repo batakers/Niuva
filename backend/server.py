@@ -70,6 +70,13 @@ SAFE_FILE_CONTENT_TYPES = {
 
 ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "completed", "cancelled"]
 
+CUSTOMER_QUERY = {
+    "$or": [
+        {"roles": {"$in": ["retail_customer", "organization_customer"]}},
+        {"role": "client"},
+    ]
+}
+
 app = FastAPI(title="NIUVA API")
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
 app.state.reservation_expiry_task = None
@@ -724,14 +731,8 @@ async def create_client_user(
 async def list_customers(
     user: dict = Depends(require_permission("customers.read")),
 ):
-    customer_query = {
-        "$or": [
-            {"roles": {"$in": ["retail_customer", "organization_customer"]}},
-            {"role": "client"},
-        ]
-    }
     candidates = await db.users.find(
-        customer_query, {"_id": 0, "password_hash": 0}
+        CUSTOMER_QUERY, {"_id": 0, "password_hash": 0}
     ).to_list(500)
     customer_roles = {("retail_customer",), ("organization_customer",)}
     return [
@@ -749,7 +750,7 @@ async def admin_stats(
     awaiting = await db.orders.count_documents({"status": "awaiting_payment"})
     in_process = await db.orders.count_documents({"status": "in_process"})
     completed = await db.orders.count_documents({"status": "completed"})
-    clients = await db.users.count_documents({"role": "client"})
+    clients = await db.users.count_documents(CUSTOMER_QUERY)
     interns = await db.internships.count_documents({})
     return {
         "total_orders": total_orders, "pending_estimate": pending, "awaiting_payment": awaiting,

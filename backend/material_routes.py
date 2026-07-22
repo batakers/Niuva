@@ -384,7 +384,7 @@ def build_material_router(*, get_db, require_permission, has_permission) -> APIR
         payload: SupplierReferencePayload,
         actor: dict = Depends(require_permission("supplier_reference.write")),
     ):
-        material = await invoke(service().update_material(material_id, payload.model_dump(mode="json"), actor))
+        material = await invoke(service().update_material(material_id, payload.model_dump(mode="json", exclude_unset=True), actor))
         return {"id": material["id"], "supplier_reference": material.get("supplier_reference", "")}
     @router.get("/admin/materials/{material_id}/price-versions")
     async def list_price_versions(

@@ -101,7 +101,7 @@ def build_catalog_router(
     def reject_operations_pricing(actor: dict, fields: set[str]):
         if has_permission(actor, "catalog.publish"):
             return
-        for field in ("pricing_mode", "price_from", "pricing_rule_reference", "currency", "fixed_price"):
+        for field in ("pricing_mode", "price_from", "pricing_rule_reference", "currency", "fixed_price", "status"):
             if field in fields:
                 raise HTTPException(status_code=403, detail={
                     "code": "catalog_field_forbidden",
@@ -116,6 +116,15 @@ def build_catalog_router(
             raise HTTPException(status_code=403, detail={"code": "catalog_lifecycle_forbidden", "message": "Operations cannot update archived categories."})
         if "status" in fields and requested_status != "active":
             raise HTTPException(status_code=403, detail={"code": "catalog_lifecycle_forbidden", "field": "status", "message": "Operations cannot change category status."})
+    async def reject_operations_archived_product(actor: dict, product_id: str):
+        if has_permission(actor, "catalog.publish"):
+            return
+        current = await invoke(service().get_product(product_id))
+        if current["product"].get("workflow_status") == "archived":
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "catalog_lifecycle_forbidden", "message": "Operations cannot update archived products."},
+            )
     def service() -> CatalogService:
         return CatalogService(get_db(), get_client(), get_capabilities())
 
@@ -205,6 +214,7 @@ def build_catalog_router(
         actor: dict = Depends(require_permission("catalog.write")),
     ):
         reject_operations_pricing(actor, payload.model_fields_set)
+        await reject_operations_archived_product(actor, product_id)
         return await invoke(
             service().update_product(
                 product_id, payload.model_dump(mode="json", exclude_unset=not has_permission(actor, "catalog.publish")), actor
@@ -217,6 +227,7 @@ def build_catalog_router(
         payload: VariantListPayload,
         actor: dict = Depends(require_permission("catalog.write")),
     ):
+        await reject_operations_archived_product(actor, product_id)
         for item in payload.variants:
             reject_operations_pricing(actor, item.model_fields_set)
         values = [
