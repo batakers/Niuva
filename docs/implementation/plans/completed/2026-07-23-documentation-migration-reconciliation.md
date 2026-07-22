@@ -1789,6 +1789,13 @@ migration plan as completed.
   matches are evidence only.
 - No application test or build is part of this documentation migration.
 
+**Verification amendment — approved 23 July 2026:** The strict scans below
+must distinguish active prescriptive guidance from recorded evidence of a
+rejected or superseded term. `docs/decisions/evidence/**` is evidence, not an
+active instruction surface, and the one literal path in `NIV-001` identified by
+R27 remains permitted historical rehearsal evidence. Bare file basenames are
+not retired paths when they occur as part of an approved canonical destination.
+
 **Inbound references:**
 - This plan's final register row and self-references.
 - All R01–R42 manifest entries.
@@ -1817,10 +1824,6 @@ Command:
 
 ```powershell
 $retiredPaths = @(
-  'AGENTS.brand-baseline-v1.md',
-  'PRODUCT.brand-baseline-v1.md',
-  'design_guidelines.json',
-  'test_result.md',
   'doc/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md',
   'doc/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md',
   'doc/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md',
@@ -1859,6 +1862,7 @@ $activeMarkdown = @(
   Get-Item -LiteralPath AGENTS.md,PRODUCT.md,DESIGN.md,memory/PRD.md
   Get-ChildItem -LiteralPath docs -Recurse -File -Filter *.md | Where-Object {
     $_.FullName -notmatch '[\\/]archive[\\/]' -and
+    $_.FullName -notmatch '[\\/]decisions[\\/]evidence[\\/]' -and
     $_.FullName -notmatch '[\\/]implementation[\\/]history[\\/]' -and
     $_.FullName -notmatch '[\\/]implementation[\\/]plans[\\/]completed[\\/]' -and
     $_.FullName -notlike '*2026-07-22-cross-surface-ui-ux-consistency-remediation.md' -and
@@ -1868,15 +1872,19 @@ $activeMarkdown = @(
     $_.FullName -notlike '*HOMEPAGE_PRODUCTION_IMPLEMENTATION_PLAN.md'
   }
 )
+$nivHistoricalPath = (Resolve-Path -LiteralPath 'docs/runbooks/NIV-001_GIT_HISTORY_REWRITE_RUNBOOK.md').Path
+$nivHistoricalLiteral = 'docs/superpowers/plans/2026-07-14-foundation-identity-rbac-organization-audit.md'
 $stale = foreach ($oldPath in $retiredPaths) {
-  Select-String -LiteralPath $activeMarkdown.FullName -SimpleMatch -Pattern $oldPath -ErrorAction SilentlyContinue
+  Select-String -LiteralPath $activeMarkdown.FullName -SimpleMatch -Pattern $oldPath -ErrorAction SilentlyContinue |
+    Where-Object { -not ($_.Path -eq $nivHistoricalPath -and $_.Pattern -eq $nivHistoricalLiteral) }
 }
 $stale | ForEach-Object { '{0}:{1}:{2}' -f $_.Path,$_.LineNumber,$_.Line.Trim() }
 if (@($stale).Count -ne 0) { exit 1 }
 ```
 
-Expected: zero active-document matches. Compatibility pointer files, archived
-documents, implementation history, the old source-pinned Homepage plan, the
+Expected: zero active prescriptive-document matches. Compatibility pointer
+files, approval evidence, archived documents, implementation history, the one
+R27 NIV-001 historical literal, the old source-pinned Homepage plan, the
 protected plan, and this execution record are intentionally outside this strict
 scan.
 
@@ -1956,15 +1964,26 @@ $authorityFiles = @(
   'docs/context/DOCUMENT_REGISTER.md','docs/decisions/DECISION_REGISTER.md'
 )
 $authorityFiles += @(Get-ChildItem -LiteralPath docs/decisions/experience,docs/decisions/architecture,docs/decisions/product -File -Filter *.md | ForEach-Object FullName)
-$badAuthority = Select-String -LiteralPath $authorityFiles -SimpleMatch -Pattern $authorityTerms -ErrorAction SilentlyContinue
+$authorityMatches = @(Select-String -LiteralPath $authorityFiles -SimpleMatch -Pattern $authorityTerms -ErrorAction SilentlyContinue)
+function Test-NonPrescriptiveAuthorityContext {
+  param($Match)
+  $lines = @(Get-Content -LiteralPath $Match.Path)
+  $start = [Math]::Max(0, $Match.LineNumber - 8)
+  $context = ($lines[$start..($Match.LineNumber - 1)] -join "`n")
+  return $context -match '(?i)prohibited|superseded statements|supersedes|do not use|not an acceptable|rejected'
+}
+$nonPrescriptiveAuthority = @($authorityMatches | Where-Object { Test-NonPrescriptiveAuthorityContext $_ })
+$badAuthority = @($authorityMatches | Where-Object { -not (Test-NonPrescriptiveAuthorityContext $_) })
+$nonPrescriptiveAuthority | ForEach-Object { 'non-prescriptive:{0}:{1}:{2}' -f $_.Path,$_.LineNumber,$_.Line.Trim() }
 $badAuthority | ForEach-Object { '{0}:{1}:{2}' -f $_.Path,$_.LineNumber,$_.Line.Trim() }
 if (@($badAuthority).Count -ne 0) { exit 1 }
 Select-String -Path docs/archive/**/*.md,docs/implementation/history/*.md -SimpleMatch -Pattern $authorityTerms -ErrorAction SilentlyContinue
 ```
 
-Expected: zero matches in active authority. Matches in archived or implementation
-history are allowed only as rejected, superseded, audit, or historical context;
-they are printed for human review and never accepted as prescriptive guidance.
+Expected: zero prescriptive matches in active authority. Rejected, prohibited,
+or superseded active-document context is printed as `non-prescriptive` for human
+review and never accepted as guidance. Matches in archived or implementation
+history are allowed only as rejected, superseded, audit, or historical context.
 
 - [ ] **Step 5: Verify archive references and canonical reading order.**
 
@@ -2012,13 +2031,19 @@ $nonDocumentation = @($changed | Where-Object {
 })
 $nonDocumentation
 if ($nonDocumentation.Count -ne 0) { exit 1 }
-Get-FileHash -Algorithm SHA256 -LiteralPath 'docs/superpowers/plans/2026-07-22-cross-surface-ui-ux-consistency-remediation.md'
+$sourceProtectedPath = 'C:\Portfolio\Niuva\Niuva-fresh-20260721\docs\superpowers\plans\2026-07-22-cross-surface-ui-ux-consistency-remediation.md'
+if (-not (Test-Path -LiteralPath $sourceProtectedPath)) { throw 'Protected R31 source path not found' }
+$protectedHash = Get-FileHash -Algorithm SHA256 -LiteralPath $sourceProtectedPath
+$protectedHash
+if ($protectedHash.Hash -ne '8D169B4CB6CB63E4C7EAA67D5CF794536000F3828E6B24A93396013743613E32') { exit 1 }
 git status --short
 git diff --stat
 ```
 
 Expected: zero non-documentation paths, protected SHA-256 unchanged unless both
 Task 10 approvals were separately granted, and no unexpected working-tree change.
+R31 remains source-only by the Task 1 isolation constraint; the source hash is
+therefore its proof of integrity.
 
 - [ ] **Step 7: Move this plan to completed, update the register, and make the final commit.**
 
