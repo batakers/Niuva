@@ -60,6 +60,14 @@ class MaterialPayload(BaseModel):
         return self
 
 
+class MaterialUpdatePayload(MaterialPayload):
+    """Accept a partial material update while preserving field validation."""
+
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+
+class SupplierReferencePayload(BaseModel):
+    supplier_reference: str = Field(default="", max_length=200)
+
 class PriceVersionPayload(BaseModel):
     amount: int = Field(ge=0)
     currency: Literal["IDR"] = "IDR"
@@ -280,8 +288,21 @@ class MaterialService:
         }
 
 
-def build_material_router(*, get_db, require_permission) -> APIRouter:
+def build_material_router(*, get_db, require_permission, has_permission) -> APIRouter:
     router = APIRouter(tags=["materials"])
+
+    def serialize_material_for(actor: dict, material: dict) -> dict:
+        value = clean_document(material) or {}
+        if not has_permission(actor, "supplier_reference.read"):
+            value.pop("supplier_reference", None)
+        return value
+
+    def reject_supplier_reference_write(actor: dict, fields: set[str]):
+        if "supplier_reference" in fields and not has_permission(actor, "supplier_reference.write"):
+            raise HTTPException(status_code=403, detail={
+                "code": "material_field_forbidden", "field": "supplier_reference",
+                "message": "Permission required: supplier_reference.write",
+            })
 
     def service() -> MaterialService:
         return MaterialService(get_db())
@@ -298,30 +319,32 @@ def build_material_router(*, get_db, require_permission) -> APIRouter:
 
     @router.get("/admin/materials")
     async def internal_materials(
-        _actor: dict = Depends(require_permission("materials.read")),
+        actor: dict = Depends(require_permission("materials.read")),
     ):
-        return await invoke(service().list_materials_internal())
+        return [serialize_material_for(actor, item) for item in await invoke(service().list_materials_internal())]
 
     @router.post("/admin/materials")
     async def create_material(
         payload: MaterialPayload,
         actor: dict = Depends(require_permission("materials.write")),
     ):
+        reject_supplier_reference_write(actor, payload.model_fields_set)
         value = payload.model_dump(mode="json")
         if "active" in payload.model_fields_set and "status" not in payload.model_fields_set:
             value["status"] = "active" if payload.active else "archived"
-        return await invoke(service().create_material(value, actor))
+        return serialize_material_for(actor, await invoke(service().create_material(value, actor)))
 
     @router.put("/admin/materials/{material_id}")
     async def update_material(
         material_id: str,
-        payload: MaterialPayload,
+        payload: MaterialUpdatePayload,
         actor: dict = Depends(require_permission("materials.write")),
     ):
+        reject_supplier_reference_write(actor, payload.model_fields_set)
         value = payload.model_dump(mode="json", exclude_unset=True)
         if "active" in payload.model_fields_set and "status" not in payload.model_fields_set:
             value["status"] = "active" if payload.active else "archived"
-        return await invoke(service().update_material(material_id, value, actor))
+        return serialize_material_for(actor, await invoke(service().update_material(material_id, value, actor)))
 
     @router.post("/admin/materials/{material_id}/archive")
     async def archive_material(
@@ -329,7 +352,7 @@ def build_material_router(*, get_db, require_permission) -> APIRouter:
         payload: ReasonPayload,
         actor: dict = Depends(require_permission("materials.archive")),
     ):
-        return await invoke(service().archive_material(material_id, actor, payload.reason))
+        return serialize_material_for(actor, await invoke(service().archive_material(material_id, actor, payload.reason)))
 
     @router.delete("/admin/materials/{material_id}")
     async def deprecated_archive_material(
@@ -339,14 +362,30 @@ def build_material_router(*, get_db, require_permission) -> APIRouter:
     ):
         response.headers["Deprecation"] = "true"
         response.headers["Sunset"] = "Wed, 15 Jul 2026 00:00:00 GMT"
-        return await invoke(
+        return serialize_material_for(actor, await invoke(
             service().archive_material(
                 material_id,
                 actor,
                 "Deprecated DELETE compatibility alias",
             )
-        )
+        ))
 
+    @router.get("/admin/materials/{material_id}/supplier-reference")
+    async def get_supplier_reference(
+        material_id: str,
+        actor: dict = Depends(require_permission("supplier_reference.read")),
+    ):
+        material = await invoke(service()._get_material(material_id))
+        return {"id": material["id"], "supplier_reference": material.get("supplier_reference", "")}
+
+    @router.put("/admin/materials/{material_id}/supplier-reference")
+    async def update_supplier_reference(
+        material_id: str,
+        payload: SupplierReferencePayload,
+        actor: dict = Depends(require_permission("supplier_reference.write")),
+    ):
+        material = await invoke(service().update_material(material_id, payload.model_dump(mode="json", exclude_unset=True), actor))
+        return {"id": material["id"], "supplier_reference": material.get("supplier_reference", "")}
     @router.get("/admin/materials/{material_id}/price-versions")
     async def list_price_versions(
         material_id: str,

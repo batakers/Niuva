@@ -16,11 +16,11 @@ from inventory_domain import (
     validate_subject_movement,
 )
 from restock import active_alert_key, shortage_triggers
+from permissions import has_permission
 
 
 logger = logging.getLogger(__name__)
 BALANCE_FIELDS = ("on_hand", "reserved", "incoming", "planned_demand", "available", "projected")
-RESTOCK_ROLES = {"warehouse", "manager_approver", "super_admin"}
 EXPIRY_NAMESPACE = uuid.UUID("2680c649-5e19-4e45-9d8c-b230bd80aca4")
 
 
@@ -582,8 +582,7 @@ class InventoryService:
         ).to_list(1000)
         recipients = []
         for user in users:
-            roles = set(user.get("roles") or ([user["role"]] if user.get("role") else []))
-            if not roles.intersection(RESTOCK_ROLES):
+            if not has_permission(user, "restock_alerts.read"):
                 continue
             notification = {
                 "id": str(uuid.uuid4()),

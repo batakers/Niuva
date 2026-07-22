@@ -29,7 +29,13 @@ from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
 from organization_routes import build_organization_router
-from permissions import canonical_roles, has_permission, permissions_for
+from permissions import (
+    ROLE_LABELS,
+    ROLE_POLICY_VERSION,
+    canonical_roles,
+    has_permission,
+    permissions_for,
+)
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
@@ -63,6 +69,13 @@ SAFE_FILE_CONTENT_TYPES = {
 }
 
 ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "completed", "cancelled"]
+
+CUSTOMER_QUERY = {
+    "$or": [
+        {"roles": {"$in": ["retail_customer", "organization_customer"]}},
+        {"role": "client"},
+    ]
+}
 
 app = FastAPI(title="NIUVA API")
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
@@ -235,8 +248,11 @@ def safe_user(user: dict) -> dict:
         "phone": user.get("phone", ""),
         "company": user.get("company", ""),
         "status": user.get("status", "active"),
+        "access_state": user.get("access_state", "approved"),
+        "role_policy_version": ROLE_POLICY_VERSION,
         "role": roles[0] if roles else "",
         "roles": list(roles),
+        "role_labels": [ROLE_LABELS[role] for role in roles],
         "permissions": sorted(permissions_for(user)),
         "created_at": user.get("created_at"),
     }
@@ -268,14 +284,14 @@ async def provision_client(req: ClientProvisionReq) -> dict:
         "password_hash": hash_password(req.password),
         "phone": req.phone or "",
         "company": req.company or "",
-        "role": "client",
+        "roles": ["retail_customer"],
+        "status": "active",
+        "access_state": "approved",
+        "role_policy_version": ROLE_POLICY_VERSION,
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
-    return {
-        key: user[key]
-        for key in ("id", "name", "email", "role", "phone", "company", "created_at")
-    }
+    return safe_user(user)
 
 
 _rate_buckets: dict = {}
@@ -451,13 +467,26 @@ async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dic
 
 
 # ----------------------------- Admin orders -----------------------------
+def serialize_admin_order_for(actor: dict, order: dict) -> dict:
+    """Return a role-safe order representation for internal readers."""
+    value = {key: item for key, item in order.items() if key != "_id"}
+    if has_permission(actor, "payments.read"):
+        return value
+    operational_fields = {
+        "id", "order_number", "user_id", "user_name", "user_email", "material_id",
+        "material_name", "file", "notes", "status", "status_history", "created_at", "updated_at",
+    }
+    return {key: value[key] for key in operational_fields if key in value}
+
+
+# ----------------------------- Admin orders -----------------------------
 @api.get("/admin/orders")
 async def admin_orders(
     status: Optional[str] = None,
     user: dict = Depends(require_permission("orders.read")),
 ):
     q = {"status": status} if status else {}
-    return await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return [serialize_admin_order_for(user, order) for order in await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)]
 
 
 @api.post("/admin/orders/{oid}/estimate")
@@ -489,7 +518,7 @@ async def set_estimate(
         f"<p>Setelah transfer, unggah bukti pembayaran di dashboard Anda.</p>",
         db=db, user_id=order["user_id"],
     )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
+    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 @api.post("/admin/orders/{oid}/verify-payment")
@@ -515,7 +544,7 @@ async def verify_payment(
         f"Pesanan Anda kini <strong>sedang diproses</strong>.</p>",
         db=db, user_id=order["user_id"],
     )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
+    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 @api.post("/admin/orders/{oid}/status")
@@ -543,7 +572,7 @@ async def update_status(
             f"Tim kami akan menghubungi Anda untuk pengambilan/pengiriman.</p>",
             db=db, user_id=order["user_id"],
         )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
+    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 # ----------------------------- File download -----------------------------
@@ -598,7 +627,7 @@ async def apply_internship(req: InternshipReq):
 
 @api.get("/admin/internships")
 async def list_internships(
-    user: dict = Depends(require_permission("admin.access")),
+    user: dict = Depends(require_permission("internships.read")),
 ):
     return await db.internships.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
@@ -693,21 +722,35 @@ async def update_settings(
 @api.post("/admin/users", status_code=201)
 async def create_client_user(
     req: ClientProvisionReq,
-    user: dict = Depends(require_permission("users.manage")),
+    user: dict = Depends(require_permission("customers.manage")),
 ):
     return await provision_client(req)
 
 
+@api.get("/admin/customers")
+async def list_customers(
+    user: dict = Depends(require_permission("customers.read")),
+):
+    candidates = await db.users.find(
+        CUSTOMER_QUERY, {"_id": 0, "password_hash": 0}
+    ).to_list(500)
+    customer_roles = {("retail_customer",), ("organization_customer",)}
+    return [
+        safe_user(candidate)
+        for candidate in candidates
+        if canonical_roles(candidate) in customer_roles
+    ]
+
 @api.get("/admin/stats")
 async def admin_stats(
-    user: dict = Depends(require_permission("admin.access")),
+    user: dict = Depends(require_permission("dashboard.read")),
 ):
     total_orders = await db.orders.count_documents({})
     pending = await db.orders.count_documents({"status": "pending_estimate"})
     awaiting = await db.orders.count_documents({"status": "awaiting_payment"})
     in_process = await db.orders.count_documents({"status": "in_process"})
     completed = await db.orders.count_documents({"status": "completed"})
-    clients = await db.users.count_documents({"role": "client"})
+    clients = await db.users.count_documents(CUSTOMER_QUERY)
     interns = await db.internships.count_documents({})
     return {
         "total_orders": total_orders, "pending_estimate": pending, "awaiting_payment": awaiting,
@@ -751,6 +794,7 @@ async def root():
 api.include_router(
     build_identity_router(
         get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         safe_user=safe_user,
     )
@@ -758,8 +802,10 @@ api.include_router(
 api.include_router(
     build_organization_router(
         get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         get_current_user=get_current_user,
+        has_permission=has_permission,
     )
 )
 api.include_router(
@@ -774,6 +820,7 @@ api.include_router(
     build_material_router(
         get_db=lambda: db,
         require_permission=require_permission,
+        has_permission=has_permission,
     )
 )
 api.include_router(
@@ -832,7 +879,10 @@ async def seed():
         await db.users.insert_one({
             "id": str(uuid.uuid4()), "name": "NIUVA Admin", "email": admin_email,
             "password_hash": hash_password(admin_password), "phone": "", "company": "PT Niuva Inovasi Utama",
-            "role": "admin", "created_at": now_iso(),
+            "roles": [], "status": "active",
+            "access_state": "access_review_required",
+            "role_policy_version": ROLE_POLICY_VERSION,
+            "created_at": now_iso(),
         })
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})

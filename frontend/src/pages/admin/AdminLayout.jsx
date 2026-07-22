@@ -32,7 +32,9 @@ export function AdminLayout({ children, title, subtitle }) {
   const visibleRoutes = ADMIN_ROUTES.filter(({ path }) =>
     hasPermission(user, ADMIN_ROUTE_PERMISSIONS[path])
   );
-  const accessLevel = user?.roles?.join("+") || "unknown";
+  const accessLevel = Array.isArray(user?.role_labels) && user.role_labels.length > 0
+    ? user.role_labels.join(" + ")
+    : "No approved role";
 
   return (
     <OperationalLayout>

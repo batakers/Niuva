@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import importlib.util
 import os
 import sys
@@ -38,6 +39,10 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+from transaction_execution import TransactionUnavailableError  # noqa: E402
+from transaction_guard import TransactionMutationGuard  # noqa: E402
+
+REAL_TRANSACTION_GUARD = server.app.state.transaction_guard
 
 
 class FakeCursor:
@@ -72,6 +77,8 @@ class FakeCollection:
     def __init__(self, items=None):
         self.items = [dict(item) for item in (items or [])]
         self.indexes = []
+        self.operations = []
+        self.fail_inserts = False
 
     @classmethod
     def _matches(cls, item, query):
@@ -88,6 +95,8 @@ class FakeCollection:
                 if "$ne" in expected and actual == expected["$ne"]:
                     return False
                 if "$in" in expected and actual not in expected["$in"]:
+                    return False
+                if "$gt" in expected and not actual > expected["$gt"]:
                     return False
                 continue
 
@@ -107,31 +116,56 @@ class FakeCollection:
                     result.pop(key, None)
         return result
 
-    async def find_one(self, query, projection=None):
+    async def find_one(self, query, projection=None, **options):
+        self.operations.append(("find_one", dict(options)))
         for item in self.items:
             if self._matches(item, query):
                 return self._project(item, projection)
         return None
 
-    def find(self, query, projection=None):
+    def find(self, query, projection=None, **options):
+        self.operations.append(("find", dict(options)))
         return FakeCursor(
             self._project(item, projection)
             for item in self.items
             if self._matches(item, query)
         )
 
-    async def insert_one(self, item):
+    async def insert_one(self, item, **options):
+        self.operations.append(("insert_one", dict(options)))
+        if self.fail_inserts:
+            raise RuntimeError("forced audit insert failure")
         self.items.append(dict(item))
         return types.SimpleNamespace(inserted_id=item.get("id"))
 
-    async def update_one(self, query, update, **_kwargs):
+    async def update_one(self, query, update, **options):
+        self.operations.append(("update_one", dict(options)))
         for item in self.items:
             if self._matches(item, query):
                 item.update(update.get("$set", {}))
+                for key in update.get("$unset", {}):
+                    item.pop(key, None)
+                for key, value in update.get("$inc", {}).items():
+                    item[key] = item.get(key, 0) + value
                 return types.SimpleNamespace(matched_count=1, modified_count=1)
+        if options.get("upsert"):
+            item = {
+                key: value
+                for key, value in query.items()
+                if not isinstance(value, dict) and not key.startswith("$")
+            }
+            item.update(update.get("$setOnInsert", {}))
+            item.update(update.get("$set", {}))
+            for key, value in update.get("$inc", {}).items():
+                item[key] = item.get(key, 0) + value
+            self.items.append(item)
+            return types.SimpleNamespace(
+                matched_count=0, modified_count=0, upserted_id=item.get("key")
+            )
         return types.SimpleNamespace(matched_count=0, modified_count=0)
 
-    async def count_documents(self, query):
+    async def count_documents(self, query, **options):
+        self.operations.append(("count_documents", dict(options)))
         return sum(1 for item in self.items if self._matches(item, query))
 
     async def create_index(self, keys, **options):
@@ -143,6 +177,7 @@ class FakeDatabase:
     def __init__(self, users):
         self.users = FakeCollection(users)
         self.audit_events = FakeCollection()
+        self.identity_policy_state = FakeCollection()
         self.organizations = FakeCollection()
         self.organization_memberships = FakeCollection()
         self.materials = FakeCollection()
@@ -151,6 +186,59 @@ class FakeDatabase:
         self.internships = FakeCollection()
         self.contacts = FakeCollection()
         self.settings = FakeCollection()
+
+
+class FakeTransactionGuard:
+    def __init__(self, database, *, available=True, barrier_size=0):
+        self.database = database
+        self.available = available
+        self.calls = []
+        self.session = object()
+        self._lock = asyncio.Lock()
+        self._barrier_size = barrier_size
+        self._entrants = 0
+        self._barrier = asyncio.Event()
+
+    async def run(self, callback, *, operation_name, retry_safe=False):
+        self.calls.append((operation_name, retry_safe))
+        if not self.available:
+            from transaction_execution import TransactionUnavailableError
+
+            raise TransactionUnavailableError()
+        if self._barrier_size:
+            self._entrants += 1
+            if self._entrants >= self._barrier_size:
+                self._barrier.set()
+            await self._barrier.wait()
+        async with self._lock:
+            snapshots = {
+                name: copy.deepcopy(collection.items)
+                for name, collection in vars(self.database).items()
+                if isinstance(collection, FakeCollection)
+            }
+            try:
+                return await callback(self.session)
+            except BaseException:
+                for name, items in snapshots.items():
+                    getattr(self.database, name).items = items
+                raise
+
+
+class RejectingTransactionExecutor:
+    def __init__(self, *, capability_available):
+        self.capability_available = capability_available
+        self.execute_calls = []
+        self.reject_calls = []
+
+    def reject_unavailable(self, **options):
+        self.reject_calls.append(options)
+        raise TransactionUnavailableError()
+
+    async def execute(self, callback, **options):
+        self.execute_calls.append(options)
+        if not self.capability_available:
+            raise TransactionUnavailableError()
+        return await callback(object())
 
 
 def bearer(token):
@@ -165,26 +253,29 @@ def make_user(user_id, email, roles, *, status="active"):
         "password_hash": "not-returned",
         "roles": list(roles),
         "status": status,
+        "access_state": "approved",
         "created_at": "2026-07-14T00:00:00+00:00",
     }
 
 
 async def run_staff_access_matrix():
     super_admin = make_user("admin-1", "admin@niuva.com", ["super_admin"])
-    manager = make_user("manager-1", "manager@niuva.com", ["manager_approver"])
-    warehouse = make_user("warehouse-1", "warehouse@niuva.com", ["warehouse"])
+    manager = make_user("manager-1", "manager@niuva.com", ["commercial_finance"])
+    warehouse = make_user("warehouse-1", "warehouse@niuva.com", ["operations"])
     customer = make_user("user-2", "customer@example.com", ["retail_customer"])
     db = FakeDatabase([super_admin, manager, warehouse, customer])
     server.db = db
+    guard = FakeTransactionGuard(db)
+    server.app.state.transaction_guard = guard
 
     super_admin_token = server.create_token(
         super_admin["id"], super_admin["email"], "super_admin"
     )
     manager_token = server.create_token(
-        manager["id"], manager["email"], "manager_approver"
+        manager["id"], manager["email"], "commercial_finance"
     )
     warehouse_token = server.create_token(
-        warehouse["id"], warehouse["email"], "warehouse"
+        warehouse["id"], warehouse["email"], "operations"
     )
 
     transport = httpx.ASGITransport(app=server.app)
@@ -197,20 +288,41 @@ async def run_staff_access_matrix():
         assert denied_roles.status_code == 403
 
         manager_users = await api.get("/api/admin/users", headers=bearer(manager_token))
-        assert manager_users.status_code == 200
-        assert all("password_hash" not in user for user in manager_users.json())
+        assert manager_users.status_code == 403
+        owner_users = await api.get(
+            "/api/admin/users", headers=bearer(super_admin_token)
+        )
+        assert owner_users.status_code == 200
+        assert all("password_hash" not in user for user in owner_users.json())
+        access_policy = await api.get(
+            "/api/admin/access-policy", headers=bearer(super_admin_token)
+        )
+        assert access_policy.status_code == 200
+        assert access_policy.json()["policy_version"] == server.ROLE_POLICY_VERSION
+        assert access_policy.json()["access_reason_codes"] == [
+            {"code": "role_review_approved", "label": "Approve access review"},
+            {"code": "role_access_removed", "label": "Remove access"},
+            {"code": "emergency_override", "label": "Emergency override"},
+        ]
+        owner_role = next(
+            role
+            for role in access_policy.json()["roles"]
+            if role["role"] == "super_admin"
+        )
+        assert owner_role["label"] == "Owner"
 
         updated = await api.put(
             "/api/admin/users/user-2/access",
             headers=bearer(super_admin_token),
             json={
-                "roles": ["warehouse"],
+                "roles": ["operations"],
                 "status": "active",
-                "reason": "Assigned warehouse operations",
+                "access_state": "approved",
+                "reason_code": "role_review_approved",
             },
         )
         assert updated.status_code == 200
-        assert updated.json()["roles"] == ["warehouse"]
+        assert updated.json()["roles"] == ["operations"]
         assert "password_hash" not in updated.json()
         assert db.audit_events.items[-1]["action"] == "user.access_updated"
 
@@ -220,7 +332,8 @@ async def run_staff_access_matrix():
             json={
                 "roles": ["unknown_role"],
                 "status": "active",
-                "reason": "Invalid assignment",
+                "access_state": "approved",
+                "reason_code": "role_review_approved",
             },
         )
         assert invalid.status_code == 422
@@ -229,16 +342,250 @@ async def run_staff_access_matrix():
             "/api/admin/users/admin-1/access",
             headers=bearer(super_admin_token),
             json={
-                "roles": ["manager_approver"],
+                "roles": ["commercial_finance"],
                 "status": "active",
-                "reason": "Remove final administrator",
+                "access_state": "approved",
+                "reason_code": "role_access_removed",
             },
         )
         assert final_admin.status_code == 409
 
 
 def test_staff_access_routes_enforce_permissions_and_audit():
-    asyncio.run(run_staff_access_matrix())
+    try:
+        asyncio.run(run_staff_access_matrix())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
+
+
+async def _put_access(api, token, user_id, **overrides):
+    payload = {
+        "roles": ["operations"],
+        "status": "active",
+        "access_state": "approved",
+        "reason_code": "role_review_approved",
+    }
+    payload.update(overrides)
+    return await api.put(
+        f"/api/admin/users/{user_id}/access",
+        headers=bearer(token),
+        json=payload,
+    )
+
+
+async def run_access_guard_contract():
+    owner = make_user("owner-guard", "owner-guard@niuva.com", ["super_admin"])
+    target = make_user("target-guard", "target-guard@niuva.com", ["retail_customer"])
+
+    cases = (
+        ("disabled_flag", True, False, 1, 0),
+        ("unavailable_capability", False, True, 0, 1),
+    )
+    for failure_source, capability, enabled, reject_count, execute_count in cases:
+        db = FakeDatabase([owner, target])
+        executor = RejectingTransactionExecutor(capability_available=capability)
+        guard = TransactionMutationGuard(executor, lambda: enabled)
+        server.db = db
+        server.app.state.transaction_guard = guard
+        token = server.create_token(owner["id"], owner["email"], "super_admin")
+        transport = httpx.ASGITransport(app=server.app, raise_app_exceptions=False)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as api:
+            response = await _put_access(api, token, target["id"])
+
+        assert response.status_code == 503, failure_source
+        assert response.json() == {
+            "detail": {
+                "code": "transaction_unavailable",
+                "message": (
+                    "Operasi sementara tidak tersedia karena transaksi "
+                    "database belum siap."
+                ),
+            }
+        }
+        assert db.users.items[1] == target
+        assert db.audit_events.items == []
+        assert db.identity_policy_state.items == []
+        assert len(executor.reject_calls) == reject_count
+        assert len(executor.execute_calls) == execute_count
+        options = (executor.reject_calls or executor.execute_calls)[0]
+        assert options["operation_name"] == "identity.access.update"
+        assert options["retry_mode"].value == "never"
+
+
+def test_access_guard_rejects_before_user_or_audit_write():
+    try:
+        asyncio.run(run_access_guard_contract())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
+
+
+async def run_access_atomicity_and_session_contract():
+    owner = make_user("owner-atomic", "owner-atomic@niuva.com", ["super_admin"])
+    target = make_user("target-atomic", "target-atomic@niuva.com", ["retail_customer"])
+    db = FakeDatabase([owner, target])
+    guard = FakeTransactionGuard(db)
+    server.db = db
+    server.app.state.transaction_guard = guard
+    token = server.create_token(owner["id"], owner["email"], "super_admin")
+    transport = httpx.ASGITransport(app=server.app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as api:
+        response = await _put_access(api, token, target["id"])
+
+        assert response.status_code == 200
+        assert guard.calls == [("identity.access.update", False)]
+        assert response.json()["roles"] == ["operations"]
+        assert "reason" not in response.json() and "reason_code" not in response.json()
+        assert len(db.audit_events.items) == 1
+        assert db.identity_policy_state.items[0]["approved_owner_count"] == 1
+        event = db.audit_events.items[0]
+        assert event["reason_code"] == "role_review_approved"
+        assert set(event) == {
+            "id",
+            "actor_user_id",
+            "action",
+            "target_type",
+            "target_id",
+            "previous",
+            "result",
+            "reason_code",
+            "policy_version",
+            "created_at",
+        }
+        transactional_options = [
+            options
+            for collection in (
+                db.users,
+                db.identity_policy_state,
+                db.audit_events,
+            )
+            for _operation, options in collection.operations
+            if "session" in options
+        ]
+        assert transactional_options
+        assert all(
+            options["session"] is guard.session for options in transactional_options
+        )
+
+        before_failure = copy.deepcopy(db.users.items)
+        db.audit_events.fail_inserts = True
+        failed = await _put_access(
+            api,
+            token,
+            target["id"],
+            roles=["commercial_finance"],
+            reason_code="emergency_override",
+        )
+        assert failed.status_code == 500
+        assert guard.calls == [
+            ("identity.access.update", False),
+            ("identity.access.update", False),
+        ]
+        assert db.users.items == before_failure
+        assert len(db.audit_events.items) == 1
+        assert db.identity_policy_state.items[0]["approved_owner_count"] == 1
+
+
+def test_access_update_commits_with_audit_or_rolls_back_and_forwards_one_session():
+    try:
+        asyncio.run(run_access_atomicity_and_session_contract())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
+
+
+async def run_access_validation_and_stale_token_contract():
+    owner = make_user("owner-validation", "owner-validation@niuva.com", ["super_admin"])
+    target = make_user(
+        "target-validation", "target-validation@niuva.com", ["operations"]
+    )
+    db = FakeDatabase([owner, target])
+    db.materials.items.append({"id": "material-validation", "name": "PLA"})
+    guard = FakeTransactionGuard(db)
+    server.db = db
+    server.app.state.transaction_guard = guard
+    owner_token = server.create_token(owner["id"], owner["email"], "super_admin")
+    stale_token = server.create_token(target["id"], target["email"], "operations")
+    transport = httpx.ASGITransport(app=server.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as api:
+        for invalid_payload in (
+            {"roles": ["operations", "commercial_finance"]},
+            {"roles": ["warehouse"]},
+            {"roles": ["retail_customer"]},
+            {"roles": ["organization_customer"]},
+            {"reason_code": "free text is forbidden"},
+            {"reason": "free text must be rejected"},
+            {"reason_code": "policy_migration_v1"},
+        ):
+            response = await _put_access(
+                api, owner_token, target["id"], **invalid_payload
+            )
+            assert response.status_code == 422
+
+        reviewed = await _put_access(
+            api,
+            owner_token,
+            target["id"],
+            access_state="access_review_required",
+            reason_code="role_access_removed",
+        )
+        assert reviewed.status_code == 200
+        denied = await api.get("/api/admin/materials", headers=bearer(stale_token))
+        assert denied.status_code == 403
+
+
+def test_access_contract_is_single_role_reason_coded_and_stale_tokens_fail_closed():
+    try:
+        asyncio.run(run_access_validation_and_stale_token_contract())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
+
+
+async def run_concurrent_final_owner_contract():
+    first = make_user("owner-first", "owner-first@niuva.com", ["super_admin"])
+    second = make_user("owner-second", "owner-second@niuva.com", ["super_admin"])
+    db = FakeDatabase([first, second])
+    guard = FakeTransactionGuard(db, barrier_size=2)
+    server.db = db
+    server.app.state.transaction_guard = guard
+    first_token = server.create_token(first["id"], first["email"], "super_admin")
+    second_token = server.create_token(second["id"], second["email"], "super_admin")
+    transport = httpx.ASGITransport(app=server.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as api:
+        responses = await asyncio.gather(
+            _put_access(
+                api,
+                first_token,
+                second["id"],
+                roles=["operations"],
+                reason_code="role_access_removed",
+            ),
+            _put_access(
+                api,
+                second_token,
+                first["id"],
+                roles=["operations"],
+                reason_code="role_access_removed",
+            ),
+        )
+
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    approved_owners = [
+        user
+        for user in db.users.items
+        if user["roles"] == ["super_admin"]
+        and user["status"] == "active"
+        and user["access_state"] == "approved"
+    ]
+    assert len(approved_owners) == 1
+    assert len(db.audit_events.items) == 1
+
+
+def test_concurrent_updates_cannot_remove_the_final_approved_owner():
+    try:
+        asyncio.run(run_concurrent_final_owner_contract())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
 
 
 def load_identity_migration():
@@ -318,7 +665,9 @@ async def run_organization_isolation_matrix():
     db = FakeDatabase(
         [super_admin, organization_user, other_organization_user, retail_user]
     )
+    guard = FakeTransactionGuard(db)
     server.db = db
+    server.app.state.transaction_guard = guard
 
     super_admin_token = server.create_token(
         super_admin["id"], super_admin["email"], "super_admin"
@@ -445,25 +794,437 @@ async def run_organization_isolation_matrix():
 
 
 def test_organization_membership_is_tenant_scoped():
-    asyncio.run(run_organization_isolation_matrix())
+    try:
+        asyncio.run(run_organization_isolation_matrix())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
+
+
+SAFE_IDENTITY_AUDIT_FIELDS = {
+    "id",
+    "actor_user_id",
+    "action",
+    "target_type",
+    "target_id",
+    "previous",
+    "result",
+    "reason_code",
+    "policy_version",
+    "created_at",
+}
+
+
+def assert_safe_transactional_organization_audit(db, guard, action):
+    event = db.audit_events.items[-1]
+    assert event["action"] == action
+    assert set(event) == SAFE_IDENTITY_AUDIT_FIELDS
+    projections = [
+        projection
+        for projection in (event["previous"], event["result"])
+        if projection is not None
+    ]
+    expected_fields = (
+        {"organization_id", "status"}
+        if event["target_type"] == "organization"
+        else {"organization_id", "membership_id", "member_role", "status"}
+    )
+    assert projections
+    assert all(set(projection) == expected_fields for projection in projections)
+    operation, options = db.audit_events.operations[-1]
+    assert operation == "insert_one"
+    assert options == {"session": guard.session}
+
+
+def assert_collection_operations_share_session(collection, start, session):
+    operations = collection.operations[start:]
+    assert operations
+    assert all(options == {"session": session} for _operation, options in operations)
+
+
+async def run_organization_transaction_contract():
+    owner = make_user("owner-org-tx", "owner-org-tx@niuva.com", ["super_admin"])
+    first_member = make_user(
+        "member-org-tx-1",
+        "member-org-tx-1@niuva.com",
+        ["organization_customer"],
+    )
+    second_member = make_user(
+        "member-org-tx-2",
+        "member-org-tx-2@niuva.com",
+        ["organization_customer"],
+    )
+    db = FakeDatabase([owner, first_member, second_member])
+    guard = FakeTransactionGuard(db)
+    server.db = db
+    server.app.state.transaction_guard = guard
+    token = server.create_token(owner["id"], owner["email"], "super_admin")
+    headers = bearer(token)
+    transport = httpx.ASGITransport(app=server.app, raise_app_exceptions=False)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as api:
+        organization_start = len(db.organizations.operations)
+        created = await api.post(
+            "/api/admin/organizations",
+            headers=headers,
+            json={
+                "name": "Transactional Organization",
+                "legal_name": "PT Transactional Organization",
+                "tax_id": "private-tax-id",
+                "status": "active",
+            },
+        )
+        assert created.status_code == 201
+        organization_id = created.json()["id"]
+        assert guard.calls[-1] == ("organization.create", False)
+        assert_collection_operations_share_session(
+            db.organizations, organization_start, guard.session
+        )
+        assert_safe_transactional_organization_audit(db, guard, "organization.created")
+
+        before = copy.deepcopy(db.organizations.items)
+        audit_before = copy.deepcopy(db.audit_events.items)
+        db.audit_events.fail_inserts = True
+        failed = await api.post(
+            "/api/admin/organizations",
+            headers=headers,
+            json={
+                "name": "Must Roll Back",
+                "legal_name": "PT Must Roll Back",
+                "tax_id": "private-tax-id",
+                "status": "active",
+            },
+        )
+        assert failed.status_code == 500
+        assert db.organizations.items == before
+        assert db.audit_events.items == audit_before
+        db.audit_events.fail_inserts = False
+
+        organization_start = len(db.organizations.operations)
+        updated = await api.put(
+            f"/api/admin/organizations/{organization_id}",
+            headers=headers,
+            json={
+                "name": "Updated Organization",
+                "legal_name": "PT Updated Organization",
+                "tax_id": "updated-private-tax-id",
+                "status": "active",
+            },
+        )
+        assert updated.status_code == 200
+        assert guard.calls[-1] == ("organization.update", False)
+        assert_collection_operations_share_session(
+            db.organizations, organization_start, guard.session
+        )
+        assert_safe_transactional_organization_audit(db, guard, "organization.updated")
+
+        before = copy.deepcopy(db.organizations.items)
+        audit_before = copy.deepcopy(db.audit_events.items)
+        db.audit_events.fail_inserts = True
+        failed = await api.put(
+            f"/api/admin/organizations/{organization_id}",
+            headers=headers,
+            json={
+                "name": "Must Not Persist",
+                "legal_name": "PT Must Not Persist",
+                "tax_id": "private-tax-id",
+                "status": "inactive",
+            },
+        )
+        assert failed.status_code == 500
+        assert db.organizations.items == before
+        assert db.audit_events.items == audit_before
+        db.audit_events.fail_inserts = False
+
+        organization_start = len(db.organizations.operations)
+        membership_start = len(db.organization_memberships.operations)
+        user_start = len(db.users.operations)
+        added = await api.post(
+            f"/api/admin/organizations/{organization_id}/members",
+            headers=headers,
+            json={"user_id": first_member["id"], "member_role": "project_pic"},
+        )
+        assert added.status_code == 201
+        membership_id = added.json()["id"]
+        assert guard.calls[-1] == ("organization.membership.add_or_reactivate", False)
+        assert_collection_operations_share_session(
+            db.organizations, organization_start, guard.session
+        )
+        assert_collection_operations_share_session(
+            db.organization_memberships, membership_start, guard.session
+        )
+        assert any(
+            options == {"session": guard.session}
+            for _operation, options in db.users.operations[user_start:]
+        )
+        assert_safe_transactional_organization_audit(
+            db, guard, "organization.member_added"
+        )
+
+        before = copy.deepcopy(db.organization_memberships.items)
+        audit_before = copy.deepcopy(db.audit_events.items)
+        db.audit_events.fail_inserts = True
+        failed = await api.post(
+            f"/api/admin/organizations/{organization_id}/members",
+            headers=headers,
+            json={"user_id": second_member["id"], "member_role": "viewer"},
+        )
+        assert failed.status_code == 500
+        assert db.organization_memberships.items == before
+        assert db.audit_events.items == audit_before
+        db.audit_events.fail_inserts = False
+
+        membership_start = len(db.organization_memberships.operations)
+        changed = await api.put(
+            f"/api/admin/organizations/{organization_id}/members/{membership_id}",
+            headers=headers,
+            json={"member_role": "approver"},
+        )
+        assert changed.status_code == 200
+        assert guard.calls[-1] == ("organization.membership.update", False)
+        assert_collection_operations_share_session(
+            db.organization_memberships, membership_start, guard.session
+        )
+        assert_safe_transactional_organization_audit(
+            db, guard, "organization.member_updated"
+        )
+
+        before = copy.deepcopy(db.organization_memberships.items)
+        audit_before = copy.deepcopy(db.audit_events.items)
+        db.audit_events.fail_inserts = True
+        failed = await api.put(
+            f"/api/admin/organizations/{organization_id}/members/{membership_id}",
+            headers=headers,
+            json={"member_role": "finance"},
+        )
+        assert failed.status_code == 500
+        assert db.organization_memberships.items == before
+        assert db.audit_events.items == audit_before
+        db.audit_events.fail_inserts = False
+
+        before = copy.deepcopy(db.organization_memberships.items)
+        audit_before = copy.deepcopy(db.audit_events.items)
+        db.audit_events.fail_inserts = True
+        failed = await api.delete(
+            f"/api/admin/organizations/{organization_id}/members/{membership_id}",
+            headers=headers,
+        )
+        assert failed.status_code == 500
+        assert db.organization_memberships.items == before
+        assert db.audit_events.items == audit_before
+        db.audit_events.fail_inserts = False
+
+        membership_start = len(db.organization_memberships.operations)
+        archived = await api.delete(
+            f"/api/admin/organizations/{organization_id}/members/{membership_id}",
+            headers=headers,
+        )
+        assert archived.status_code == 200
+        assert guard.calls[-1] == ("organization.membership.archive", False)
+        assert_collection_operations_share_session(
+            db.organization_memberships, membership_start, guard.session
+        )
+        assert_safe_transactional_organization_audit(
+            db, guard, "organization.member_archived"
+        )
+
+        before = copy.deepcopy(db.organization_memberships.items)
+        audit_before = copy.deepcopy(db.audit_events.items)
+        db.audit_events.fail_inserts = True
+        failed = await api.post(
+            f"/api/admin/organizations/{organization_id}/members",
+            headers=headers,
+            json={"user_id": first_member["id"], "member_role": "owner"},
+        )
+        assert failed.status_code == 500
+        assert db.organization_memberships.items == before
+        assert db.audit_events.items == audit_before
+        db.audit_events.fail_inserts = False
+
+        organization_start = len(db.organizations.operations)
+        membership_start = len(db.organization_memberships.operations)
+        user_start = len(db.users.operations)
+        reactivated = await api.post(
+            f"/api/admin/organizations/{organization_id}/members",
+            headers=headers,
+            json={"user_id": first_member["id"], "member_role": "owner"},
+        )
+        assert reactivated.status_code == 201
+        assert reactivated.json()["id"] == membership_id
+        assert guard.calls[-1] == ("organization.membership.add_or_reactivate", False)
+        assert_collection_operations_share_session(
+            db.organizations, organization_start, guard.session
+        )
+        assert_collection_operations_share_session(
+            db.organization_memberships, membership_start, guard.session
+        )
+        assert any(
+            options == {"session": guard.session}
+            for _operation, options in db.users.operations[user_start:]
+        )
+        assert_safe_transactional_organization_audit(
+            db, guard, "organization.member_reactivated"
+        )
+
+        calls_before_read = list(guard.calls)
+        listed = await api.get("/api/organizations/mine", headers=headers)
+        assert listed.status_code == 200
+        assert guard.calls == calls_before_read
+
+
+def test_organization_mutations_commit_with_safe_audit_or_fully_roll_back():
+    try:
+        asyncio.run(run_organization_transaction_contract())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
+
+
+async def run_organization_unavailable_contract():
+    owner = make_user(
+        "owner-org-unavailable", "owner-org-unavailable@niuva.com", ["super_admin"]
+    )
+    member = make_user(
+        "member-org-unavailable",
+        "member-org-unavailable@niuva.com",
+        ["organization_customer"],
+    )
+    inactive_member = make_user(
+        "inactive-member",
+        "inactive-member@niuva.com",
+        ["organization_customer"],
+    )
+    db = FakeDatabase([owner, member, inactive_member])
+    db.organizations.items.append(
+        {
+            "id": "organization-unavailable",
+            "name": "Unavailable Organization",
+            "legal_name": "PT Unavailable Organization",
+            "tax_id": "private-tax-id",
+            "status": "active",
+        }
+    )
+    db.organization_memberships.items.extend(
+        [
+            {
+                "id": "membership-active",
+                "organization_id": "organization-unavailable",
+                "user_id": member["id"],
+                "member_role": "viewer",
+                "status": "active",
+            },
+            {
+                "id": "membership-inactive",
+                "organization_id": "organization-unavailable",
+                "user_id": inactive_member["id"],
+                "member_role": "viewer",
+                "status": "inactive",
+            },
+        ]
+    )
+    guard = FakeTransactionGuard(db, available=False)
+    server.db = db
+    server.app.state.transaction_guard = guard
+    token = server.create_token(owner["id"], owner["email"], "super_admin")
+    headers = bearer(token)
+    before = {
+        "organizations": copy.deepcopy(db.organizations.items),
+        "memberships": copy.deepcopy(db.organization_memberships.items),
+        "audit": copy.deepcopy(db.audit_events.items),
+    }
+    requests = (
+        (
+            "POST",
+            "/api/admin/organizations",
+            {
+                "name": "Rejected Organization",
+                "legal_name": "PT Rejected Organization",
+                "tax_id": "",
+                "status": "active",
+            },
+        ),
+        (
+            "PUT",
+            "/api/admin/organizations/organization-unavailable",
+            {
+                "name": "Rejected Update",
+                "legal_name": "PT Rejected Update",
+                "tax_id": "",
+                "status": "active",
+            },
+        ),
+        (
+            "POST",
+            "/api/admin/organizations/organization-unavailable/members",
+            {"user_id": member["id"], "member_role": "owner"},
+        ),
+        (
+            "POST",
+            "/api/admin/organizations/organization-unavailable/members",
+            {"user_id": inactive_member["id"], "member_role": "finance"},
+        ),
+        (
+            "PUT",
+            "/api/admin/organizations/organization-unavailable/members/membership-active",
+            {"member_role": "approver"},
+        ),
+        (
+            "DELETE",
+            "/api/admin/organizations/organization-unavailable/members/membership-active",
+            None,
+        ),
+    )
+    transport = httpx.ASGITransport(app=server.app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as api:
+        for method, path, payload in requests:
+            response = await api.request(method, path, headers=headers, json=payload)
+            assert response.status_code == 503
+            assert response.json()["detail"]["code"] == "transaction_unavailable"
+
+    assert db.organizations.items == before["organizations"]
+    assert db.organization_memberships.items == before["memberships"]
+    assert db.audit_events.items == before["audit"]
+    assert db.organizations.operations == []
+    assert db.organization_memberships.operations == []
+    assert db.audit_events.operations == []
+    assert guard.calls == [
+        ("organization.create", False),
+        ("organization.update", False),
+        ("organization.membership.add_or_reactivate", False),
+        ("organization.membership.add_or_reactivate", False),
+        ("organization.membership.update", False),
+        ("organization.membership.archive", False),
+    ]
+
+
+def test_organization_guard_unavailable_returns_503_before_callback_or_write():
+    try:
+        asyncio.run(run_organization_unavailable_contract())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
 
 
 async def run_legacy_admin_route_permission_matrix():
     warehouse = make_user(
-        "warehouse-routes", "warehouse-routes@niuva.com", ["warehouse"]
+        "warehouse-routes", "warehouse-routes@niuva.com", ["operations"]
     )
-    order_admin = make_user("order-routes", "order-routes@niuva.com", ["order_admin"])
+    order_admin = make_user("order-routes", "order-routes@niuva.com", ["operations"])
     content_editor = make_user(
         "editor-routes",
         "editor-routes@niuva.com",
-        ["content_editor"],
+        ["operations"],
     )
     customer = make_user(
         "customer-routes",
         "customer-routes@example.com",
         ["retail_customer"],
     )
-    db = FakeDatabase([warehouse, order_admin, content_editor, customer])
+    other_customer = make_user(
+        "other-customer-routes",
+        "other-customer-routes@example.com",
+        ["retail_customer"],
+    )
+    db = FakeDatabase(
+        [warehouse, order_admin, content_editor, customer, other_customer]
+    )
     db.materials.items.append(
         {
             "id": "material-1",
@@ -483,13 +1244,16 @@ async def run_legacy_admin_route_permission_matrix():
     server.db = db
 
     warehouse_token = server.create_token(
-        warehouse["id"], warehouse["email"], "warehouse"
+        warehouse["id"], warehouse["email"], "operations"
     )
     order_admin_token = server.create_token(
-        order_admin["id"], order_admin["email"], "order_admin"
+        order_admin["id"], order_admin["email"], "operations"
     )
     content_editor_token = server.create_token(
-        content_editor["id"], content_editor["email"], "content_editor"
+        content_editor["id"], content_editor["email"], "operations"
+    )
+    customer_token = server.create_token(
+        other_customer["id"], other_customer["email"], "retail_customer"
     )
 
     transport = httpx.ASGITransport(app=server.app)
@@ -507,7 +1271,7 @@ async def run_legacy_admin_route_permission_matrix():
                 "/api/admin/orders",
                 headers=bearer(warehouse_token),
             )
-        ).status_code == 403
+        ).status_code == 200
         assert (
             await api.get(
                 "/api/admin/orders",
@@ -520,7 +1284,7 @@ async def run_legacy_admin_route_permission_matrix():
             headers=bearer(content_editor_token),
             json={"name": "ABS", "description": "", "color": "", "active": True},
         )
-        assert forbidden_material.status_code == 403
+        assert forbidden_material.status_code == 200
 
         portfolio = await api.post(
             "/api/admin/portfolio",
@@ -537,10 +1301,43 @@ async def run_legacy_admin_route_permission_matrix():
 
         forbidden_file = await api.get(
             "/api/files/niuva/orders/customer-routes/private.stl",
-            headers=bearer(warehouse_token),
+            headers=bearer(customer_token),
         )
         assert forbidden_file.status_code == 403
 
 
 def test_legacy_admin_routes_use_exact_backend_permissions():
     asyncio.run(run_legacy_admin_route_permission_matrix())
+
+
+async def run_canonical_account_creation_contract():
+    database = FakeDatabase([])
+    server.db = database
+    provisioned = await server.provision_client(
+        server.ClientProvisionReq(
+            name="Retail Customer",
+            email="retail@example.com",
+            password="SafePassword123",
+            phone="",
+            company="",
+        )
+    )
+
+    assert provisioned["roles"] == ["retail_customer"]
+    assert database.users.items[0]["role_policy_version"] == server.ROLE_POLICY_VERSION
+    assert "role" not in database.users.items[0]
+
+    await server.seed()
+    seeded_admin = next(
+        account
+        for account in database.users.items
+        if account["email"] == os.environ["ADMIN_EMAIL"].lower()
+    )
+    assert seeded_admin["roles"] == []
+    assert seeded_admin["access_state"] == "access_review_required"
+    assert seeded_admin["role_policy_version"] == server.ROLE_POLICY_VERSION
+    assert "role" not in seeded_admin
+
+
+def test_runtime_account_creation_never_recreates_legacy_or_owner_authority():
+    asyncio.run(run_canonical_account_creation_contract())

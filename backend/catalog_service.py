@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 from audit import append_audit_event
+from permissions import has_permission
 from catalog_domain import (
     build_publication_snapshot,
     normalize_slug,
@@ -35,6 +36,9 @@ class CatalogError(Exception):
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+def _preserved_workflow_status(product: dict) -> str:
+    return "archived" if product.get("workflow_status") == "archived" else "draft"
 
 
 def clean_document(document: dict | None) -> dict | None:
@@ -206,7 +210,7 @@ class CatalogService:
         changes = {
             **payload,
             "slug": slug,
-            "workflow_status": "draft",
+            "workflow_status": _preserved_workflow_status(before),
             "updated_at": now_iso(),
             "updated_by": actor.get("id"),
         }
@@ -227,7 +231,7 @@ class CatalogService:
         self, product_id: str, variants: list[dict], actor: dict
     ) -> list[dict]:
         self._require_transactions()
-        await self._product_document(product_id)
+        product = await self._product_document(product_id)
         incoming_skus = [item["sku"].strip().upper() for item in variants]
         if len(incoming_skus) != len(set(incoming_skus)):
             raise CatalogError(409, "sku_conflict", "SKU varian harus unik.")
@@ -280,6 +284,10 @@ class CatalogService:
                 "updated_by": actor.get("id"),
             }
             if not current:
+                if not has_permission(actor, "catalog.publish"):
+                    value.setdefault("fixed_price", None)
+                    value.setdefault("currency", "IDR")
+                    value.setdefault("status", "active")
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
             prepared.append((current, value))
@@ -320,7 +328,7 @@ class CatalogService:
                         )
                 await self.db.products.update_one(
                     {"id": product_id},
-                    {"$set": {"workflow_status": "draft", "updated_at": timestamp}},
+                    {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
                     **_write_options(session),
                 )
                 await append_audit_event(
@@ -338,7 +346,7 @@ class CatalogService:
         self, product_id: str, options: list[dict], actor: dict
     ) -> list[dict]:
         self._require_transactions()
-        await self._product_document(product_id)
+        product = await self._product_document(product_id)
         incoming_codes = [item["code"].strip().lower() for item in options]
         if len(incoming_codes) != len(set(incoming_codes)):
             raise CatalogError(
@@ -435,7 +443,7 @@ class CatalogService:
                         )
                 await self.db.products.update_one(
                     {"id": product_id},
-                    {"$set": {"workflow_status": "draft", "updated_at": timestamp}},
+                    {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
                     **_write_options(session),
                 )
                 await append_audit_event(

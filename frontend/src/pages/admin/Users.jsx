@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { api, formatApiError } from "../../lib/api";
 import { fmtDay } from "../../lib/format";
 import { hasPermission } from "../../lib/permissions";
+import { accessStateLabel, accountStatusLabel, internalRoles, reasonCodes, roleLabels } from "../../lib/identityAccess";
 import { AdminLayout } from "./AdminLayout";
 import { Button } from "../../components/ui/button";
 import {
@@ -30,11 +31,10 @@ import {
   SurfacePanelHeader,
 } from "../../components/ui/surface-panel";
 import { TechnicalLabel } from "../../components/ui/technical-label";
-import { Textarea } from "../../components/ui/textarea";
 
 
 function StatusBadge({ status }) {
-  const active = status !== "disabled";
+  const active = status === "active";
   return (
     <span
       className={`inline-flex border px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${
@@ -43,24 +43,40 @@ function StatusBadge({ status }) {
           : "border-destructive/40 bg-destructive/10 text-destructive"
       }`}
     >
-      {active ? "ACTIVE" : "DISABLED"}
+      {accountStatusLabel(status)}
+    </span>
+  );
+}
+
+function AccessStateBadge({ accessState }) {
+  const approved = accessState === "approved";
+  return (
+    <span
+      className={`inline-flex border px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${
+        approved
+          ? "border-primary/40 bg-primary/10 text-primary"
+          : "border-status-warning/40 bg-status-warning/10 text-status-warning"
+      }`}
+    >
+      {accessStateLabel(accessState)}
     </span>
   );
 }
 
 
-function RoleList({ roles = [] }) {
-  if (roles.length === 0) {
+function RoleList({ user, policy }) {
+  const labels = roleLabels(user, policy);
+  if (labels.length === 0) {
     return <span className="text-muted-foreground">UNASSIGNED</span>;
   }
   return (
     <div className="flex flex-wrap gap-1.5">
-      {roles.map((role) => (
+      {labels.map((label, index) => (
         <span
-          key={role}
+          key={`${label}-${index}`}
           className="border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-foreground"
         >
-          {role.replaceAll("_", " ")}
+          {label}
         </span>
       ))}
     </div>
@@ -72,24 +88,27 @@ export default function AdminUsers() {
   const { t } = useI18n();
   const { user } = useAuth();
   const [items, setItems] = useState([]);
-  const [roleCatalog, setRoleCatalog] = useState([]);
+  const [accessPolicy, setAccessPolicy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
-  const [selectedRoles, setSelectedRoles] = useState([]);
+  const [selectedRole, setSelectedRole] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("active");
-  const [reason, setReason] = useState("");
+  const [selectedAccessState, setSelectedAccessState] = useState("approved");
+  const [selectedReasonCode, setSelectedReasonCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState("");
   const canManageRoles = hasPermission(user, "roles.manage");
+  const availableRoles = internalRoles(accessPolicy);
+  const availableReasonCodes = reasonCodes(accessPolicy);
 
   useEffect(() => {
     let active = true;
-    Promise.all([api.get("/admin/users"), api.get("/admin/roles")])
-      .then(([usersResponse, rolesResponse]) => {
+    Promise.all([api.get("/admin/users"), api.get("/admin/access-policy")])
+      .then(([usersResponse, policyResponse]) => {
         if (!active) return;
         setItems(usersResponse.data);
-        setRoleCatalog(rolesResponse.data);
+        setAccessPolicy(policyResponse.data);
       })
       .catch((requestError) => {
         if (!active) return;
@@ -105,18 +124,15 @@ export default function AdminUsers() {
 
   const openAccessDialog = (item) => {
     setSelected(item);
-    setSelectedRoles(item.roles || []);
-    setSelectedStatus(item.status || "active");
-    setReason("");
-    setMutationError("");
-  };
-
-  const toggleRole = (role) => {
-    setSelectedRoles((current) =>
-      current.includes(role)
-        ? current.filter((item) => item !== role)
-        : [...current, role].sort()
+    setSelectedRole(
+      availableRoles.some((role) => role.role === item.roles?.[0])
+        ? item.roles[0]
+        : ""
     );
+    setSelectedStatus(item.status || "active");
+    setSelectedAccessState(item.access_state || "approved");
+    setSelectedReasonCode("");
+    setMutationError("");
   };
 
   const saveAccess = async () => {
@@ -125,9 +141,10 @@ export default function AdminUsers() {
     setMutationError("");
     try {
       const response = await api.put(`/admin/users/${selected.id}/access`, {
-        roles: selectedRoles,
+        roles: [selectedRole],
         status: selectedStatus,
-        reason: reason.trim(),
+        access_state: selectedAccessState,
+        reason_code: selectedReasonCode,
       });
       setItems((current) =>
         current.map((item) => (item.id === response.data.id ? response.data : item))
@@ -135,14 +152,16 @@ export default function AdminUsers() {
       setSelected(null);
       toast.success("Akses pengguna berhasil diperbarui.");
     } catch (requestError) {
-      setMutationError(formatApiError(requestError.response?.data?.detail));
+      const detail = formatApiError(requestError.response?.data?.detail);
+      setMutationError(requestError.response?.status === 503
+        ? `Perubahan akses belum disimpan: ${detail}`
+        : detail);
     } finally {
       setSaving(false);
     }
   };
 
-  const saveDisabled =
-    saving || selectedRoles.length === 0 || reason.trim().length < 3;
+  const saveDisabled = saving || !selectedRole || !selectedReasonCode;
 
   return (
     <AdminLayout title={t("admin.users")} subtitle="Platform Identity & Access">
@@ -167,7 +186,8 @@ export default function AdminUsers() {
                 <tr className="border-b border-border/50 bg-background/50 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                   <th className="px-6 py-4 font-normal">Identity</th>
                   <th className="px-6 py-4 font-normal">Status</th>
-                  <th className="px-6 py-4 font-normal">Roles</th>
+                  <th className="px-6 py-4 font-normal">Role</th>
+                  <th className="px-6 py-4 font-normal">Access review</th>
                   <th className="px-6 py-4 font-normal">Created</th>
                   {canManageRoles ? <th className="px-6 py-4 text-right font-normal">Action</th> : null}
                 </tr>
@@ -180,7 +200,8 @@ export default function AdminUsers() {
                       <p className="mt-1 font-mono text-[11px] text-primary">{item.email}</p>
                     </td>
                     <td className="px-6 py-4"><StatusBadge status={item.status} /></td>
-                    <td className="min-w-64 px-6 py-4"><RoleList roles={item.roles} /></td>
+                    <td className="min-w-64 px-6 py-4"><RoleList user={item} policy={accessPolicy} /></td>
+                    <td className="px-6 py-4"><AccessStateBadge accessState={item.access_state} /></td>
                     <td className="whitespace-nowrap px-6 py-4 font-mono text-muted-foreground">
                       {fmtDay(item.created_at)}
                     </td>
@@ -230,48 +251,43 @@ export default function AdminUsers() {
               </Select>
             </div>
 
-            <fieldset className="space-y-3">
-              <legend className="text-sm font-medium">Platform roles</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {roleCatalog.map((role) => {
-                  const checked = selectedRoles.includes(role.role);
-                  return (
-                    <label
-                      key={role.role}
-                      className={`flex cursor-pointer items-start gap-3 border p-3 transition-colors ${
-                        checked ? "border-primary bg-primary/5" : "border-border bg-background"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleRole(role.role)}
-                        className="mt-0.5 h-4 w-4 accent-primary"
-                      />
-                      <span>
-                        <span className="block font-mono text-xs uppercase text-foreground">
-                          {role.role.replaceAll("_", " ")}
-                        </span>
-                        <span className="mt-1 block text-xs text-muted-foreground">
-                          {role.kind} · {role.permissions.length} permissions
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
+            <div className="space-y-2">
+              <Label>Peran internal</Label>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger><SelectValue placeholder="Pilih peran internal" /></SelectTrigger>
+                <SelectContent>
+                  {availableRoles.map((role) => (
+                    <SelectItem key={role.role} value={role.role}>
+                      {role.label} · {role.permissions.length} permissions
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="space-y-2">
-              <Label htmlFor="access-change-reason">Alasan perubahan</Label>
-              <Textarea
-                id="access-change-reason"
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder="Contoh: Ditugaskan mengelola operasional gudang"
-                maxLength={500}
-              />
-              <p className="text-xs text-muted-foreground">Minimal 3 karakter. Tersimpan di audit log.</p>
+              <Label>Status review akses</Label>
+              <Select value={selectedAccessState} onValueChange={setSelectedAccessState}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="access_review_required">Access review required</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Reason code</Label>
+              <Select value={selectedReasonCode} onValueChange={setSelectedReasonCode}>
+                <SelectTrigger><SelectValue placeholder="Pilih reason code" /></SelectTrigger>
+                <SelectContent>
+                  {availableReasonCodes.map((reason) => (
+                    <SelectItem key={reason.code} value={reason.code}>
+                      {reason.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {mutationError ? (

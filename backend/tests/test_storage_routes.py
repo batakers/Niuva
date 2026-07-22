@@ -100,7 +100,13 @@ def test_file_download_requires_authorization_header_and_safe_media_type(local_s
         users = {
             "owner": {"id": "customer-1", "email": "owner@example.com", "role": "client"},
             "other": {"id": "customer-2", "email": "other@example.com", "role": "client"},
-            "staff": {"id": "staff-1", "email": "staff@niuva.com", "roles": ["super_admin"]},
+            "staff": {
+                "id": "staff-1",
+                "email": "staff@niuva.com",
+                "roles": ["super_admin"],
+                "status": "active",
+                "access_state": "approved",
+            },
         }
         return users[token]
 
