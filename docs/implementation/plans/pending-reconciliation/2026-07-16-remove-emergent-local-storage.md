@@ -19,7 +19,7 @@
 - Do not migrate old Emergent files.
 - Do not add runtime dependencies.
 - Preserve the 50 MB upload limit and existing allowed-extension rules.
-- Preserve unrelated user changes, especially the checklist edit in `docs/superpowers/plans/2026-07-14-foundation-identity-rbac-organization-audit.md`.
+- Preserve unrelated user changes, especially the checklist edit in `docs/implementation/plans/pending-reconciliation/2026-07-14-foundation-identity-rbac-organization-audit.md`.
 - Use TDD for behavior changes and run focused checks before full suites.
 
 ---
@@ -882,7 +882,7 @@ git commit -m "docs: remove Emergent configuration and deployment guidance"
 
 **Files:**
 - Verify: all files from Tasks 1-4
-- Modify: `docs/superpowers/plans/2026-07-16-remove-emergent-local-storage.md` checkboxes only after each command succeeds
+- Modify: `docs/implementation/plans/pending-reconciliation/2026-07-16-remove-emergent-local-storage.md` checkboxes only after each command succeeds
 
 **Interfaces:**
 - Verifies: local storage, authorization, backend regressions, frontend regressions, production build, active-reference removal, and clean staging boundaries.
@@ -984,7 +984,7 @@ Change a checkbox from `[ ]` to `[x]` only when its command or required inspecti
 Do this only when the user has explicitly authorized committing documentation:
 
 ```powershell
-git add -- docs/superpowers/specs/2026-07-16-remove-emergent-local-storage-design.md docs/superpowers/plans/2026-07-16-remove-emergent-local-storage.md
+git add -- docs/implementation/specs/active/2026-07-16-remove-emergent-local-storage-design.md docs/implementation/plans/pending-reconciliation/2026-07-16-remove-emergent-local-storage.md
 git commit -m "docs: add local storage design and implementation plan"
 ```
 

@@ -34,8 +34,8 @@
 | `backend/tests/test_storage_routes.py` | Route/helper coverage for disabled storage and current header-only authorization |
 | `backend/tests/test_emergent_backend_hygiene.py` | Regression scan for active backend/deployment Emergent integration |
 | `doc/PRODUCTION_DEPLOYMENT.md` | Production-disabled storage guidance without reverting current token-security guidance |
-| `docs/superpowers/specs/2026-07-21-redesign-main-reconciliation-design.md` | Approved reconciliation and branch-retention policy |
-| `docs/superpowers/plans/2026-07-21-redesign-main-reconciliation.md` | This executable implementation plan and safety gates |
+| `docs/implementation/history/2026-07-21-redesign-main-reconciliation-design.md` | Approved reconciliation and branch-retention policy |
+| `docs/implementation/history/2026-07-21-redesign-main-reconciliation.md` | This executable implementation plan and safety gates |
 
 The following source-branch files are reference-only and must not be copied wholesale: `backend/server.py`, `backend/tests/backend_test.py`, `backend/tests/test_auth_security.py`, `backend/tests/test_repository_credential_hygiene.py`, `frontend/src/App.js`, `frontend/src/lib/api.js`, all current admin/operational pages, and all main-only foundation modules and migrations.
 
@@ -465,8 +465,8 @@ $allowed = [System.Collections.Generic.HashSet[string]]::new([System.StringCompa
   'backend/tests/test_storage.py',
   'backend/tests/test_storage_routes.py',
   'doc/PRODUCTION_DEPLOYMENT.md',
-  'docs/superpowers/specs/2026-07-21-redesign-main-reconciliation-design.md',
-  'docs/superpowers/plans/2026-07-21-redesign-main-reconciliation.md'
+  'docs/implementation/history/2026-07-21-redesign-main-reconciliation-design.md',
+  'docs/implementation/history/2026-07-21-redesign-main-reconciliation.md'
 ) | ForEach-Object { [void]$allowed.Add($_) }
 $changed = @(git diff --name-only origin/main...HEAD)
 $unexpected = @($changed | Where-Object { -not $allowed.Contains($_) })

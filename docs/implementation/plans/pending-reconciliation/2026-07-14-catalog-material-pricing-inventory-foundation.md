@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python, FastAPI, Pydantic, Motor/PyMongo, MongoDB replica-set transactions, pytest with the repository's fixed two-worker xdist configuration, React 19, React Router 7, Axios, CRACO/Jest, Tailwind, and existing shadcn/Radix components.
 
-**Design spec:** `docs/superpowers/specs/2026-07-14-catalog-material-pricing-inventory-foundation-design.md`
+**Design spec:** `docs/implementation/specs/active/2026-07-14-catalog-material-pricing-inventory-foundation-design.md`
 
 ## Global Constraints
 
