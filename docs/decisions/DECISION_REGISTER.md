@@ -1,0 +1,29 @@
+# Niuva Decision Register
+
+Status: **Approved Canonical**
+Register date: 23 July 2026
+Approval date: 23 July 2026
+Approval record: `docs/decisions/APPROVAL-NIUVA-CANONICAL-DOCUMENTATION-2026-07-23.md`
+
+This register indexes active product, experience, operational-design, and architecture decisions. It does not convert open consequences into approved decisions and does not provide implementation or go-live authorization.
+
+| ID | Decision | Status | Date | Scope | Source | Supersedes | Open consequences |
+|---|---|---|---|---|---|---|---|
+| `DEC-PROD-001` | One Niuva website and one operational platform with separate Retail and Business/B2B customer journeys | Approved Baseline | 14 Jul 2026 | Product definition and shared foundations | `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/decisions/evidence/APPROVAL_Platform_Niuva_v2_1_retail_b2b.md` | B2B-only and v2.0 hybrid-marketplace assumptions where scope overlaps | First Retail vertical slice, protected-scope implementation, production readiness |
+| `DEC-UX-001` | Homepage uses a Unified Homepage pattern with Business/B2B as the primary narrative and Retail as a secondary but clearly discoverable path. | Approved Decision | 23 Jul 2026 | Homepage pattern and hierarchy | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`; explicit user decision recorded during documentation consolidation, 23 July 2026 | Statements that Homepage pattern remains deferred, Retail-first assumptions, and Homepage plans that omit the v2.1 Retail journey | Detailed Retail/B2B navigation and implementation authorization |
+| `DEC-UX-002` | Homepage visual direction is Experimental Editorial Hybrid | Approved Decision | 13 Jul 2026; reconfirmed 23 Jul 2026 | Production Homepage design direction | `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`; `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md`; explicit user decision recorded during documentation consolidation, 23 July 2026 | Selecting either prototype unchanged or using generic Homepage composition | Reconciled implementation plan and rollout beyond Homepage |
+| `DEC-UX-002.1` | Public Homepage typography uses Poppins + Inter | Approved Decision | 13 Jul 2026; reconfirmed 23 Jul 2026 | Homepage typography | `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`; `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` | Manrope + Space Mono production experiment; Poppins-only public body on Homepage | Broader public-route typography rollout and Brand Guidelines v1.1 |
+| `DEC-UX-002.2` | U-curve is a semantic transformation path with two initial dominant placements | Approved Decision | 13 Jul 2026; reconfirmed 23 Jul 2026 | Homepage graphic behavior | `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`; `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` | Decorative/repeated U-curve usage on Homepage | Other-route motif rules and exact implementation geometry |
+| `DEC-OPS-001` | Admin Studio follows a role-aware, permission-aware, task-oriented, dense but calm, status-driven, auditable, recovery-aware operational experience direction | Approved Decision | 23 Jul 2026 | Admin Studio operational experience direction | `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-direction.md`; explicit user decision recorded during documentation consolidation, 23 July 2026 | Pseudo-terminal or telemetry decoration as operational design direction | Exact navigation, dashboard composition per role, KPI definitions, component implementation, rollout sequence, and implementation authorization |
+| `DEC-DATA-01` | Transaction-required cross-collection mutations use MongoDB replica-set multi-document transactions and fail closed when unavailable | Approved Baseline | 16 Jul 2026 | Transaction capability | `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` | Silent non-atomic fallback and standalone mutation assumptions for affected operations | Exact implementation modules, deployment topology, monitoring, production infrastructure authorization |
+| `DEC-STOR-01` | Production file architecture uses a provider-neutral storage port with private persistent object storage as the production adapter class | Approved with Open Decisions | 16 Jul 2026 | Production file storage | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` | Public bucket/static-directory access and local filesystem as production storage | Provider, RPO/RTO, retention, quota, owners, backup/restore, malware handling, migration, production readiness |
+| `DEC-PAY-01` | Retail production payment uses provider-neutral online-payment orchestration; no new manual-transfer adapter is enabled | Approved with Open Decisions | 16 Jul 2026 | Retail payment architecture | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` | Manual transfer as the default Retail production baseline and provider-specific core coupling | Gateway provider, state mapping, webhook authentication, Finance operations, reconciliation SLA, refund policy, retention, go-live |
+
+## Interpretation Rules
+
+- `Approved with Open Decisions` authorizes only the direction explicitly approved in the referenced ADR.
+- Provider, shipping, pickup, tax, reservation, cancellation, refund, return, and go-live decisions remain open.
+- Homepage pattern is resolved; detailed visual Retail/B2B navigation is not.
+- The Admin Studio direction is approved as an experience decision, but no Admin implementation is authorized by this register.
+- When this register summarizes an ADR, the ADR remains the technical authority.
+- Decision records do not override an approved requirement outside their stated scope.

@@ -102,9 +102,9 @@ Riwayat legacy (untuk audit): implementasi sebelum migrasi pernah membawa access
 ## Approved Architecture Gates
 
 Architecture references:
-- `doc/decisions/ADR-001-mongodb-transaction-capability.md`
-- `doc/decisions/ADR-002-production-file-storage-architecture.md`
-- `doc/decisions/ADR-003-retail-payment-orchestration-boundary.md`
+- `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
+- `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
+- `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
 
 - MongoDB replica-set transaction capability is required before transaction-dependent mutation flags in staging/production. Standalone MongoDB is limited to read-only or proven-safe single-document atomic writes. Transaction-required operations must fail closed with `503 transaction_unavailable`; silent fallback is prohibited.
 - Production storage uses a stable provider-neutral storage port and private persistent object storage. Local filesystem is development/demo only; production upload remains disabled until provider selection, database-backed ownership, token removal, MIME/signature validation, malware/quarantine, backup/restore, reconciliation, and operational readiness are approved.
