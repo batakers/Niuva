@@ -617,6 +617,12 @@ one role while normal roles cannot discover identity/audit/settings screens.
 
 ## Task 8: Run the complete verification and controlled rollout checklist
 
+**Status keseluruhan (22 Juli 2026):** [x] Task 8 selesai.
+
+Selesai untuk scope engineering, automated verification, dan non-production
+rollout rehearsal. Eksekusi shared/production tetap merupakan gate operasional
+terpisah yang wajib mengikuti runbook dan approval deployment environment target.
+
 **Files:**
 
 - Modify if necessary: `.github/workflows/transaction-tests.yml`
@@ -639,8 +645,8 @@ CI and may not be converted into a silent local-only skip.
 
 **Status (22 Juli 2026):** [x] Verifikasi otomatis selesai.
 
-- Backend penuh: 270 passed, 5 skipped, 14 subtests passed.
-- Test frontend: 7 suite dan 34 test passed; build produksi berhasil.
+- Backend penuh: 275 passed, 5 skipped, 14 subtests passed.
+- Test frontend: 7 suite dan 35 test passed; build produksi berhasil.
 - Test transaksi pada MongoDB replica set lokal: 5 passed.
 - Perintah frontend memakai `--watchAll=false` karena versi Jest proyek ini tidak mengenali opsi `--run`.
 
@@ -663,6 +669,19 @@ In an approved non-production environment, verify:
    membership mutation returns the stable 503 and neither data nor audit event
    changes.
 
+**Status (22 Juli 2026):** [x] Smoke test non-production lokal selesai.
+
+- Staging lokal terisolasi menjalankan 42 pemeriksaan API untuk Owner,
+  Operations, dan Commercial & Finance, termasuk access review, organization,
+  catalog publish/archive, material, pricing, inventory, fulfilment, payment,
+  settings, dan audit boundaries.
+- Token Operations yang dibuat sebelum access review langsung kehilangan akses
+  ke endpoint privileged setelah akun menjadi `access_review_required`.
+- Mutation flag nonaktif menghasilkan 503 `transaction_unavailable`; user,
+  policy state, dan jumlah audit tidak berubah.
+- Smoke test menemukan nested Mongo `_id` pada snapshot audit generic. Regression
+  test ditambahkan dan sanitizer audit sekarang membuang `_id` secara rekursif.
+
 ### Step 3: Execute rollout only with approval
 
 Follow the new runbook: backup, dry-run, review opaque account list, select the
@@ -671,13 +690,27 @@ apply `003`, verify counts/indexes/safe audit events, and retain the rollback
 record. Do not assign Operations/Commercial & Finance until the minimum boundary
 tests in Task 2 are green.
 
+**Status (22 Juli 2026):**
+
+- [x] Rehearsal rollout lokal selesai: backup berhasil direstore, dry-run tidak
+  menulis data, satu Owner sintetis dipilih secara eksplisit, migration `003`
+  diterapkan, dan apply kedua idempotent tanpa Owner atau audit tambahan.
+- [x] Hasil rehearsal: 1 Owner aktif/approved, 2 akun internal legacy masuk
+  access review, 1 legacy client menjadi retail customer, dan seluruh 4 akun
+  memiliki migration audit yang aman.
+- [x] Status rollout shared/production dipisahkan menjadi gate operasional;
+  production belum disentuh dan tidak diklaim selesai. Eksekusinya tetap wajib
+  memiliki target environment, change ticket/window, backup target yang diuji,
+  review Owner bisnis/teknis, dan approval deployment yang eksplisit.
+
 ---
 
 ## Handoff boundary to the next plan
 
-After this plan is implemented, verified, deployed, and its checklist is
+After this plan is implemented, verified, and its engineering checklist is
 completed, the next plan may begin: **Amend Catalog: CMS review state and
-Supplier Foundation**. It must add `draft -> submitted -> reviewed ->
+Supplier Foundation**. Production rollout tetap mengikuti gate operasional yang
+disetujui sebelum menyentuh data live. The next plan must add `draft -> submitted -> reviewed ->
 published/scheduled -> archived` transitions, reviewer independence (Operations
 cannot review/publish its own draft), schedule/history audit projections,
 Supplier master/purchasing models, and their own permission/data-safety tests.

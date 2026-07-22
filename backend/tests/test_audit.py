@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from bson import ObjectId
 
 from audit import (
     AuditValidationError,
@@ -113,6 +114,30 @@ def test_generic_catalog_audit_event_redacts_expanded_sensitive_fields():
     assert event["before"] == {"name": "Visible product"}
     assert event["after"] == {"name": "Updated product"}
     assert event["reason"] is None
+
+
+def test_generic_audit_event_strips_nested_mongo_ids():
+    db = AuditDatabase()
+
+    event = asyncio.run(
+        append_audit_event(
+            db,
+            actor={"id": "staff-1", "email": "staff@example.com"},
+            action="catalog.product_created",
+            target_type="product",
+            target_id="product-2",
+            after={
+                "_id": ObjectId(),
+                "name": "Visible product",
+                "nested": {"_id": ObjectId(), "label": "Visible label"},
+            },
+        )
+    )
+
+    assert event["after"] == {
+        "name": "Visible product",
+        "nested": {"label": "Visible label"},
+    }
 
 
 def test_identity_audit_event_stores_only_allowlisted_access_projection_and_forwards_session():
