@@ -220,6 +220,56 @@ def test_user_access_audit_rejects_superseded_internal_reason_code():
     assert db.audit_events.items == []
 
 
+@pytest.mark.parametrize(
+    "action",
+    [
+        "identity.policy_migrated",
+        "identity.bootstrap_owner_assigned",
+        "identity.policy_migration_rolled_back",
+    ],
+)
+def test_identity_policy_migration_actions_use_safe_user_projection(action):
+    db = AuditDatabase()
+    session = object()
+
+    event = asyncio.run(
+        append_identity_audit_event(
+            db,
+            actor_user_id="reviewed-bootstrap-owner",
+            action=action,
+            target_type="user",
+            target_id="opaque-user-id",
+            previous={
+                "roles": [],
+                "status": "active",
+                "access_state": "access_review_required",
+            },
+            result={
+                "roles": ["retail_customer"],
+                "status": "active",
+                "access_state": "approved",
+            },
+            reason_code="policy_migration_v1",
+            policy_version="2026-07-22-v1",
+            session=session,
+        )
+    )
+
+    assert set(event) == {
+        "id",
+        "actor_user_id",
+        "action",
+        "target_type",
+        "target_id",
+        "previous",
+        "result",
+        "reason_code",
+        "policy_version",
+        "created_at",
+    }
+    assert db.audit_events.insert_options == [{"session": session}]
+
+
 def test_organization_audit_event_rejects_raw_sensitive_snapshot_before_insert():
     db = AuditDatabase()
     unsafe_snapshot = {

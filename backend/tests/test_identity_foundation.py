@@ -1291,3 +1291,36 @@ async def run_legacy_admin_route_permission_matrix():
 
 def test_legacy_admin_routes_use_exact_backend_permissions():
     asyncio.run(run_legacy_admin_route_permission_matrix())
+
+
+async def run_canonical_account_creation_contract():
+    database = FakeDatabase([])
+    server.db = database
+    provisioned = await server.provision_client(
+        server.ClientProvisionReq(
+            name="Retail Customer",
+            email="retail@example.com",
+            password="SafePassword123",
+            phone="",
+            company="",
+        )
+    )
+
+    assert provisioned["roles"] == ["retail_customer"]
+    assert database.users.items[0]["role_policy_version"] == server.ROLE_POLICY_VERSION
+    assert "role" not in database.users.items[0]
+
+    await server.seed()
+    seeded_admin = next(
+        account
+        for account in database.users.items
+        if account["email"] == os.environ["ADMIN_EMAIL"].lower()
+    )
+    assert seeded_admin["roles"] == []
+    assert seeded_admin["access_state"] == "access_review_required"
+    assert seeded_admin["role_policy_version"] == server.ROLE_POLICY_VERSION
+    assert "role" not in seeded_admin
+
+
+def test_runtime_account_creation_never_recreates_legacy_or_owner_authority():
+    asyncio.run(run_canonical_account_creation_contract())

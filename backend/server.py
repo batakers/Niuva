@@ -280,6 +280,7 @@ async def provision_client(req: ClientProvisionReq) -> dict:
         "roles": ["retail_customer"],
         "status": "active",
         "access_state": "approved",
+        "role_policy_version": ROLE_POLICY_VERSION,
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
@@ -877,8 +878,10 @@ async def seed():
         await db.users.insert_one({
             "id": str(uuid.uuid4()), "name": "NIUVA Admin", "email": admin_email,
             "password_hash": hash_password(admin_password), "phone": "", "company": "PT Niuva Inovasi Utama",
-            "roles": ["super_admin"], "status": "active",
-            "access_state": "approved", "created_at": now_iso(),
+            "roles": [], "status": "active",
+            "access_state": "access_review_required",
+            "role_policy_version": ROLE_POLICY_VERSION,
+            "created_at": now_iso(),
         })
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})

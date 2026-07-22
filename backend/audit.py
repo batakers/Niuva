@@ -101,6 +101,9 @@ _USER_ACCESS_REASON_CODES = frozenset(
 
 _EVENT_REASON_CODES = {
     ("user.access_updated", "user"): _USER_ACCESS_REASON_CODES,
+    ("identity.policy_migrated", "user"): "policy_migration_v1",
+    ("identity.bootstrap_owner_assigned", "user"): "policy_migration_v1",
+    ("identity.policy_migration_rolled_back", "user"): "policy_migration_v1",
     ("organization.created", "organization"): "organization_created",
     ("organization.updated", "organization"): "organization_updated",
     (
