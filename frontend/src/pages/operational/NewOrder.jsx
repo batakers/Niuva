@@ -26,16 +26,16 @@ export default function NewOrder() {
   const onFile = (f) => {
     if (!f) return;
     const ext = f.name.split(".").pop().toLowerCase();
-    if (!["stl", "obj"].includes(ext)) return toast.error("Hanya file STL atau OBJ");
-    if (f.size > 50 * 1024 * 1024) return toast.error("File melebihi 50MB");
+    if (!["stl", "obj"].includes(ext)) return toast.error(t("order.invalidFileType"));
+    if (f.size > 50 * 1024 * 1024) return toast.error(t("order.fileTooLarge"));
     setFile(f);
   };
 
   const steps = [
-    { label: t("order.step1"), id: "UPLOAD_PAYLOAD" },
-    { label: t("order.step2"), id: "CONFIG_MATERIAL" },
-    { label: t("order.step3"), id: "ADD_DIRECTIVES" },
-    { label: t("order.step4"), id: "EXECUTE_TRANSMISSION" }
+    { label: t("order.step1"), id: "step-upload" },
+    { label: t("order.step2"), id: "step-material" },
+    { label: t("order.step3"), id: "step-notes" },
+    { label: t("order.step4"), id: "step-confirm" }
   ];
   
   const canNext = (step === 1 && file) || (step === 2 && materialId) || step === 3;
@@ -69,11 +69,11 @@ export default function NewOrder() {
             <div className="flex items-center gap-2">
               <TerminalSquare className="h-4 w-4 text-muted-foreground" />
               <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
-                ORDER_INITIALIZATION_ROUTINE
+                {t("order.headerLabel")}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-primary font-mono text-[10px] uppercase">
-              <Clock className="h-3 w-3" /> SLA_24H_ACTIVE
+            <div className="flex items-center gap-2 text-primary text-xs">
+              <Clock className="h-3 w-3" /> {t("order.etaBadge")}
             </div>
           </div>
           <div className="p-6">
@@ -96,10 +96,10 @@ export default function NewOrder() {
                   "border-border bg-surface-1 text-muted-foreground"
                 }`}>
                   <div className="flex justify-between items-center mb-1">
-                    <span>STEP_0{n}</span>
+                    <span>{t("order.stepLabel")} {n}</span>
                     {isPast ? <Check className="h-3 w-3" /> : null}
                   </div>
-                  <div className="truncate opacity-80">{s.id}</div>
+                  <div className="truncate opacity-80">{s.label}</div>
                 </div>
               </div>
             );
@@ -108,10 +108,6 @@ export default function NewOrder() {
 
         {/* Main Interface */}
         <div className="border border-border bg-surface-1 min-h-[360px] relative">
-          <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none hidden md:block">
-            <div className="font-mono text-8xl font-black leading-none tracking-tighter">0{step}</div>
-          </div>
-          
           <div className="p-6 sm:p-10 relative z-10">
             {step === 1 && (
               <div className="max-w-xl">
@@ -126,7 +122,7 @@ export default function NewOrder() {
                       <div>
                         <p className="text-foreground font-mono font-bold">{file.name}</p>
                         <p className="text-[10px] text-muted-foreground font-mono mt-1 uppercase tracking-widest">
-                          SIZE: {(file.size / 1024 / 1024).toFixed(2)} MB // CLICK_TO_REPLACE
+                          {(file.size / 1024 / 1024).toFixed(2)} MB · {t("order.replaceHint")}
                         </p>
                       </div>
                     </div>
@@ -137,7 +133,7 @@ export default function NewOrder() {
                       </div>
                       <div>
                         <p className="text-muted-foreground font-mono uppercase tracking-widest text-xs mb-1">{t("order.uploadHint")}</p>
-                        <p className="text-[10px] text-muted-foreground/60 font-mono uppercase tracking-widest">FORMATS: STL_OBJ // MAX_SIZE: 50MB</p>
+                        <p className="text-[10px] text-muted-foreground/60 font-mono uppercase tracking-widest">{t("order.formatsHint")}</p>
                       </div>
                     </div>
                   )}
@@ -180,12 +176,12 @@ export default function NewOrder() {
             {step === 4 && (
               <div className="max-w-2xl border border-border bg-surface-2 p-6" data-testid="order-confirm">
                 <h3 className="font-mono text-xs text-primary uppercase tracking-widest mb-6 pb-2 border-b border-border/50">
-                  CONFIRM_PAYLOAD_DATA
+                  {t("order.confirmTitle")}
                 </h3>
                 <div className="space-y-1">
-                  <Row label="PAYLOAD_FILE" value={file?.name} />
-                  <Row label="MATERIAL_CONFIG" value={material?.name} />
-                  <Row label="EXTRA_DIRECTIVES" value={notes || "NONE"} />
+                  <Row label={t("order.confirmFile")} value={file?.name} />
+                  <Row label={t("order.confirmMaterial")} value={material?.name} />
+                  <Row label={t("order.confirmNotes")} value={notes || t("order.confirmNone")} />
                 </div>
               </div>
             )}
@@ -199,7 +195,7 @@ export default function NewOrder() {
           </Button>
           
           <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
-            PHASE_0{step}/04
+            {t("order.phaseLabel")} {step}/4
           </div>
           
           {step < 4 ? (
@@ -208,7 +204,7 @@ export default function NewOrder() {
             </Button>
           ) : (
             <Button disabled={loading} onClick={submit} data-testid="order-submit" className="rounded-none font-mono uppercase tracking-widest text-[10px] h-10 px-6 bg-primary text-primary-foreground hover:bg-primary/90">
-              {loading ? "TRANSMITTING..." : "EXECUTE_ORDER"}
+              {loading ? t("order.sending") : t("order.submit")}
             </Button>
           )}
         </div>
