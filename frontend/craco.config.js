@@ -142,4 +142,25 @@ const configureDevServer = webpackConfig.devServer;
 webpackConfig.devServer = (devServerConfig) =>
   makeDevServerV5Compatible(configureDevServer(devServerConfig));
 
+webpackConfig.jest = {
+  configure: (jestConfig) => {
+    // jest-resolve (bundled with react-scripts 5) predates Node's
+    // package.json "exports" subpath resolution used by react-router v7's
+    // "react-router/dom" entry. Map it explicitly so component tests that
+    // transitively import react-router-dom can resolve under CRA's Jest
+    // runner.
+    jestConfig.moduleNameMapper = {
+      ...(jestConfig.moduleNameMapper || {}),
+      "^react-router/dom$": path.resolve(
+        __dirname,
+        "node_modules/react-router/dist/development/dom-export.js",
+      ),
+      // Mirror the webpack "@" alias (line 87-89) so Jest can resolve the
+      // same import paths used by application source.
+      "^@/(.*)$": path.resolve(__dirname, "src/$1"),
+    };
+    return jestConfig;
+  },
+};
+
 module.exports = webpackConfig;
