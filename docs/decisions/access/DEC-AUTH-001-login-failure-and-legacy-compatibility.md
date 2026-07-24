@@ -2,9 +2,9 @@
 
 Status: **Approved Decision**
 Decision ID: `DEC-AUTH-001`
-Decision date: 25 July 2026
+Decision date: 25 July 2026 (Asia/Jakarta; 24 July 2026 UTC)
 Approval source: Explicit user approval in the backend-authentication-hardening
-conversation on 25 July 2026
+conversation on 25 July 2026 (Asia/Jakarta)
 Scope: Login failure response, token issuance for blocked accounts, and
 compatibility for valid legacy customer records
 
@@ -96,4 +96,3 @@ This decision does not authorize:
 - persistent authentication-event storage;
 - granular-role migration;
 - production activation or go-live.
-

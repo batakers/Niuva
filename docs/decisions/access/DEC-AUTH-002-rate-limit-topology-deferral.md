@@ -2,9 +2,9 @@
 
 Status: **Approved Deferral Decision**
 Decision ID: `DEC-AUTH-002`
-Decision date: 25 July 2026
+Decision date: 25 July 2026 (Asia/Jakarta; 24 July 2026 UTC)
 Approval source: Explicit user approval in the backend-authentication-hardening
-conversation on 25 July 2026
+conversation on 25 July 2026 (Asia/Jakarta)
 Scope: Login rate-limit topology decision state and the next permitted planning
 slice
 
@@ -62,4 +62,3 @@ This decision does not authorize:
 - MongoDB, Redis, proxy, gateway, or another provider selection;
 - login thresholds or response headers;
 - production activation or go-live.
-

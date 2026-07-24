@@ -1,7 +1,7 @@
 # Niuva Backend Authentication Hardening Plan
 
-Status: **Context Only — One Decision Resolved; Remaining Security Decisions and Separate Implementation Approval Pending**
-Prepared: 25 July 2026
+Status: **Context Only — Two Decision Records Resolved; Remaining Security Decisions and Separate Implementation Approval Pending**
+Prepared: 25 July 2026 (Asia/Jakarta; 24 July 2026 UTC)
 Scope: Existing customer and internal login endpoints, access-token validation,
 password verification boundary, and login-abuse controls
 
@@ -138,7 +138,7 @@ authorization headers, secret values, or unredacted credential payloads.
 
 ### AUTH-DEC-01 — Disabled and review-blocked login response
 
-Status: **Approved as `DEC-AUTH-001` on 25 July 2026**
+Status: **Approved as `DEC-AUTH-001` on 25 July 2026 (Asia/Jakarta)**
 
 Customer and admin login return `401 Invalid email or password` and issue no
 token for unknown email, wrong password, disabled account, or
@@ -148,7 +148,7 @@ authorized by the decision alone.
 
 ### AUTH-DEC-02 — Login limiter topology and failure behavior
 
-Status: **Deferred by `DEC-AUTH-002` on 25 July 2026**
+Status: **Deferred by `DEC-AUTH-002` on 25 July 2026 (Asia/Jakarta)**
 
 Approve:
 
@@ -499,9 +499,14 @@ commits.
 
 This plan is ready for implementation review only when:
 
-- `DEC-AUTH-001` is applied exactly and `AUTH-DEC-02` through `AUTH-DEC-07`
-  have recorded answers for the intended slice;
-- exact files and topology-specific tests are approved;
+- `DEC-AUTH-001` is applied exactly for Phase A, and every other decision
+  applicable to the intended phase or slice has a recorded answer;
+- Phase A may proceed under `DEC-AUTH-002` without selecting limiter topology;
+- `AUTH-DEC-06` values are required only when the bounded-input or
+  password-policy sub-slice is included;
+- exact files and tests applicable to the intended slice are approved;
+- topology-specific tests are required only when a limiter implementation is
+  included;
 - no candidate/context document is being used as policy authority;
 - migration, compatibility, rollout, rollback, and operational owners are
   explicit;

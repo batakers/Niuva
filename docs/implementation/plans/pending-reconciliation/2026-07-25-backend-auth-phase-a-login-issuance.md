@@ -1,7 +1,7 @@
 # Niuva Backend Auth Phase A — Login Issuance Plan
 
 Status: **Context Only — Prepared for Review — Implementation Not Authorized**
-Prepared: 25 July 2026
+Prepared: 25 July 2026 (Asia/Jakarta; 24 July 2026 UTC)
 Scope: Generic login failure, blocked-account token issuance, supported legacy
 customer compatibility, and equivalent password-verification work
 
