@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BellRing, BookOpen, Boxes, Building2, GraduationCap, History, Image as ImageIcon, Layers, LayoutGrid, Mail, MessageSquare, Package, ScrollText, Settings as SettingsIcon, TerminalSquare, Users } from "lucide-react";
+import { BellRing, BookOpen, Boxes, Building2, FileText, GraduationCap, History, Image as ImageIcon, Layers, LayoutGrid, Mail, MessageSquare, Package, ScrollText, Settings as SettingsIcon, TerminalSquare, Users } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { OperationalLayout } from "@/components/layout/Layout";
 import { useAuth } from "../../context/AuthContext";
@@ -17,6 +17,7 @@ const ADMIN_ROUTES = [
   { path: "/admin/stock-movements", label: "admin.stockMovements", icon: History },
   { path: "/admin/restock-alerts", label: "admin.restockAlerts", icon: BellRing },
   { path: "/admin/portfolio", label: "admin.portfolio", icon: ImageIcon },
+  { path: "/admin/content", label: "admin.content", icon: FileText },
   { path: "/admin/internships", label: "admin.internships", icon: GraduationCap },
   { path: "/admin/contacts", label: "admin.contacts", icon: Mail },
   { path: "/admin/users", label: "admin.users", icon: Users },

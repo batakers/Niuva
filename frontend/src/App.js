@@ -14,6 +14,7 @@ const Projects = lazy(() => import("@/pages/marketing/ProjectsPage"));
 const Contact = lazy(() => import("@/pages/marketing/ContactPage"));
 const NotFound = lazy(() => import("@/pages/marketing/NotFoundPage"));
 const PrivacyPolicy = lazy(() => import("@/pages/marketing/PrivacyPolicyPage"));
+const Faq = lazy(() => import("@/pages/marketing/FaqPage"));
 const AdminLogin = lazy(() => import("@/pages/admin/AdminLogin"));
 const ClientDashboard = lazy(() => import("@/pages/operational/ClientDashboard"));
 const NewOrder = lazy(() => import("@/pages/operational/NewOrder"));
@@ -27,6 +28,7 @@ const AdminInventory = lazy(() => import("@/pages/admin/Inventory"));
 const AdminStockMovements = lazy(() => import("@/pages/admin/StockMovements"));
 const AdminRestockAlerts = lazy(() => import("@/pages/admin/RestockAlerts"));
 const AdminPortfolio = lazy(() => import("@/pages/admin/PortfolioAdmin"));
+const AdminContent = lazy(() => import("@/pages/admin/ContentEditor"));
 const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminInternships = lazy(() => import("@/pages/admin/Internships"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
@@ -102,6 +104,7 @@ function App() {
                   <Route path="/portfolio" element={<Projects />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/faq" element={<Faq />} />
                   <Route path="/dashboard" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
                   <Route path="/order" element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
                   <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
@@ -115,6 +118,7 @@ function App() {
                   <Route path="/admin/stock-movements" element={protectedPage("/admin/stock-movements", <AdminStockMovements />)} />
                   <Route path="/admin/restock-alerts" element={protectedPage("/admin/restock-alerts", <AdminRestockAlerts />)} />
                   <Route path="/admin/portfolio" element={protectedPage("/admin/portfolio", <AdminPortfolio />)} />
+                  <Route path="/admin/content" element={protectedPage("/admin/content", <AdminContent />)} />
                   <Route path="/admin/internships" element={protectedPage("/admin/internships", <AdminInternships />)} />
                   <Route path="/admin/contacts" element={protectedPage("/admin/contacts", <AdminContacts />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />

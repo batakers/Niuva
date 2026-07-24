@@ -10,6 +10,7 @@ export function Footer() {
     { label: "About", to: "/about" },
     { label: "Capabilities", to: "/capabilities" },
     { label: "Projects", to: "/projects" },
+    { label: "FAQ", to: "/faq" },
     { label: "Contact", to: "/contact" },
   ];
 

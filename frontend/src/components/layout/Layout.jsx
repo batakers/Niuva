@@ -54,6 +54,12 @@ const PUBLIC_ROUTE_META = {
       "Kebijakan privasi Niuva menjelaskan data yang dikumpulkan melalui form contact, pendaftaran magang, dan pemesanan, serta hak pengguna terkait data tersebut.",
     canonical: "/privacy",
   },
+  "/faq": {
+    title: "FAQ - PT Niuva Inovasi Utama",
+    description:
+      "Pertanyaan yang sering diajukan seputar riset, desain, prototyping, dan kolaborasi dengan Niuva.",
+    canonical: "/faq",
+  },
 };
 
 const configuredPublicSiteUrl = (process.env.REACT_APP_PUBLIC_SITE_URL || "").replace(/\/$/, "");

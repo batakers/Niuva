@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { MarketingLayout } from "@/components/layout/Layout";
 import {
   BrandButton,
@@ -16,6 +16,16 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { findBySlug, usePublicContent } from "../../lib/content";
+
+// CMS blocks (content_type=capability) override matching fallback services by
+// title. Unmatched or unpublished capabilities keep the hardcoded copy.
+function mergeCapabilities(cmsBlocks) {
+  return profileContent.services.map((service) => {
+    const match = cmsBlocks.find((block) => block.fields?.title === service.title);
+    return match ? { ...service, ...match.fields } : service;
+  });
+}
 
 const positioningEvidence = [
   { label: "Riset", value: "Memperjelas kebutuhan, peluang, dan batasan sebelum pengembangan dimulai." },
@@ -104,8 +114,10 @@ function HeroProofPanel() {
 }
 
 function CoreCapabilitiesSection() {
-  const primaryCapabilities = profileContent.services.filter((service) => service.priority === "primary");
-  const supportingCapabilities = profileContent.services.filter((service) => service.priority !== "primary");
+  const cmsBlocks = usePublicContent("capability");
+  const capabilities = useMemo(() => mergeCapabilities(cmsBlocks), [cmsBlocks]);
+  const primaryCapabilities = capabilities.filter((service) => service.priority === "primary");
+  const supportingCapabilities = capabilities.filter((service) => service.priority !== "primary");
 
   return (
     <MarketingSection id="capabilities" tone="default" className="overflow-hidden">
@@ -237,7 +249,18 @@ function WhyNiuvaSection() {
   );
 }
 
+const fallbackCta = {
+  label: "Kolaborasi",
+  title: "Diskusikan kebutuhan riset, desain, atau prototyping bersama Niuva.",
+  body: "Sampaikan konteks proyek, target hasil, batasan teknis, dan bentuk output yang dibutuhkan. Tim Niuva akan membantu menentukan titik mulai yang paling relevan.",
+  primaryActionLabel: "Diskusikan Project",
+  primaryActionTarget: "/contact",
+};
+
 export default function HomePage() {
+  const cmsCtaBlocks = usePublicContent("cta");
+  const cta = useMemo(() => findBySlug(cmsCtaBlocks, "default") || fallbackCta, [cmsCtaBlocks]);
+
   return (
     <MarketingLayout>
       <BrandPage>
@@ -282,10 +305,10 @@ export default function HomePage() {
         <WhyNiuvaSection />
 
         <CTASection
-          label="Kolaborasi"
-          title="Diskusikan kebutuhan riset, desain, atau prototyping bersama Niuva."
-          body="Sampaikan konteks proyek, target hasil, batasan teknis, dan bentuk output yang dibutuhkan. Tim Niuva akan membantu menentukan titik mulai yang paling relevan."
-          primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
+          label={cta.label}
+          title={cta.title}
+          body={cta.body}
+          primaryAction={<BrandButton to={cta.primaryActionTarget} variant="inverse">{cta.primaryActionLabel}</BrandButton>}
           secondaryAction={<BrandButton href={profileContent.contact.whatsappHref} variant="secondary">Hubungi Niuva</BrandButton>}
           contactEmphasis="Jalur cepat untuk kebutuhan proyek, proposal, atau kolaborasi teknis."
           whatsappHref={profileContent.contact.whatsappHref}

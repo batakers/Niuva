@@ -25,6 +25,7 @@ import storage
 import emailer
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
+from content_routes import build_content_router
 from database_capabilities import DatabaseCapabilities, probe_database_capabilities
 from identity_routes import build_identity_router
 from inventory_routes import build_inventory_router
@@ -989,6 +990,12 @@ api.include_router(
         ),
         require_permission=require_permission,
         has_permission=has_permission,
+    )
+)
+api.include_router(
+    build_content_router(
+        get_db=lambda: db,
+        require_permission=require_permission,
     )
 )
 

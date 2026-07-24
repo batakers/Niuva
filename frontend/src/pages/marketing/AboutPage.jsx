@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { MarketingLayout } from "@/components/layout/Layout";
 import {
   BrandButton,
@@ -15,8 +15,9 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { findBySlug, usePublicContent } from "../../lib/content";
 
-const dossierItems = [
+const fallbackDossierItems = [
   {
     label: "Positioning",
     title: "Mitra strategis inovasi dan pengembangan produk",
@@ -34,7 +35,7 @@ const dossierItems = [
   },
 ];
 
-const approachSteps = [
+const fallbackApproachSteps = [
   {
     label: "Discover",
     title: "Memahami konteks",
@@ -57,7 +58,7 @@ const approachSteps = [
   },
 ];
 
-const values = [
+const fallbackValues = [
   "Berbasis riset dan konteks nyata.",
   "Presisi dalam merumuskan masalah dan output.",
   "Kolaboratif dengan mitra, ahli, dan pemangku kepentingan.",
@@ -79,6 +80,13 @@ const backgroundPoints = [
 ];
 
 export default function AboutPage() {
+  const cmsBlocks = usePublicContent("about");
+  const cmsFields = useMemo(() => findBySlug(cmsBlocks, "company-profile"), [cmsBlocks]);
+  const dossierItems = cmsFields?.dossierItems || fallbackDossierItems;
+  const approachSteps = cmsFields?.approachSteps || fallbackApproachSteps;
+  const values = cmsFields?.values || fallbackValues;
+  const intro = cmsFields?.intro || profileContent.intro;
+
   return (
     <MarketingLayout>
       <BrandPage>
@@ -133,7 +141,7 @@ export default function AboutPage() {
               <div className="brand-reveal">
                 <p className="brand-eyebrow mb-5">Latar perusahaan</p>
                 <h2 className="type-heading-section text-text-primary">Menghubungkan kebutuhan organisasi dengan eksperimen yang dapat diuji.</h2>
-                <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary md:text-lg">{profileContent.intro}</p>
+                <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary md:text-lg">{intro}</p>
               </div>
               <ol className="border-y border-border-default">
                 {backgroundPoints.map((point, index) => (
