@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, TOKEN_KEY } from "../lib/api";
+import { api, clearStoredToken, getStoredToken, setStoredToken } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = getStoredToken();
     if (!token) {
       setLoading(false);
       return;
@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
       .get("/auth/me")
       .then((res) => setUser(res.data))
       .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
+        clearStoredToken();
         setUser(null);
       })
       .finally(() => setLoading(false));
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem(TOKEN_KEY);
+          clearStoredToken();
           setUser(null);
         }
         return Promise.reject(error);
@@ -39,12 +39,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback((token, userData) => {
-    localStorage.setItem(TOKEN_KEY, token);
+    setStoredToken(token);
     setUser(userData);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
+    clearStoredToken();
     setUser(null);
   }, []);
 

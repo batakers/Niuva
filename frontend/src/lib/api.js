@@ -7,8 +7,20 @@ export const TOKEN_KEY = "niuva_token";
 
 export const api = axios.create({ baseURL: API });
 
+export function getStoredToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setStoredToken(token) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearStoredToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = getStoredToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -23,7 +35,7 @@ export function fileUrl(path) {
 }
 
 export async function fetchFile(path) {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = getStoredToken();
   if (!token) throw new Error("Not authenticated");
   const response = await fetch(fileUrl(path), {
     headers: { Authorization: `Bearer ${token}` },
