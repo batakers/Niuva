@@ -205,7 +205,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
                   <CheckCircle2 className="h-4 w-4" /> TRANSACTION_VERIFIED
                 </div>
               ) : (
-                <Button disabled={busy} data-testid="verify-payment" onClick={() => act(() => api.post(`/admin/orders/${order.id}/verify-payment`))} className="w-full rounded-none h-10 font-mono text-xs uppercase tracking-widest bg-emerald-600 hover:bg-status-success text-white">
+                <Button disabled={busy} data-testid="verify-payment" onClick={() => act(() => api.post(`/admin/orders/${order.id}/verify-payment`))} className="w-full rounded-none h-10 font-mono text-xs uppercase tracking-widest bg-status-success hover:bg-status-success/90 text-white">
                   VERIFY_FUNDS
                 </Button>
               )}
@@ -217,7 +217,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
             <Button disabled={busy} variant="outline" data-testid="mark-process" onClick={() => act(() => api.post(`/admin/orders/${order.id}/status`, { status: "in_process", note: "Set to in process" }))} className="rounded-none border-border bg-background hover:bg-surface-2 text-foreground font-mono text-xs uppercase tracking-widest h-12">
               MARK_IN_PROGRESS
             </Button>
-            <Button disabled={busy} data-testid="mark-complete" onClick={() => act(() => api.post(`/admin/orders/${order.id}/status`, { status: "completed", note: "Order completed" }))} className="rounded-none bg-emerald-600 hover:bg-status-success text-white font-mono text-xs uppercase tracking-widest h-12">
+            <Button disabled={busy} data-testid="mark-complete" onClick={() => act(() => api.post(`/admin/orders/${order.id}/status`, { status: "completed", note: "Order completed" }))} className="rounded-none bg-status-success hover:bg-status-success/90 text-white font-mono text-xs uppercase tracking-widest h-12">
               MARK_COMPLETED
             </Button>
           </div>
