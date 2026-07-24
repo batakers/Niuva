@@ -111,6 +111,7 @@ class FakeDatabase:
         self.orders = FakeCollection(orders or [])
         self.admin_notification_log = FakeCollection()
         self.notifications = FakeCollection()
+        self.audit_events = FakeCollection()
 
 
 def bearer(token):
@@ -209,6 +210,12 @@ async def run_admin_notifications_matrix():
 
         history_forbidden = await api.get("/api/admin/notifications/sent", headers=bearer(warehouse_token))
         assert history_forbidden.status_code == 403
+
+        # Every successful send must also land in the shared audit_events log.
+        sent_audit_events = [event for event in server.db.audit_events.items if event["action"] == "notifications.sent"]
+        assert len(sent_audit_events) == 3
+        assert sent_audit_events[-1]["after"]["target"] == "broadcast"
+        assert sent_audit_events[-1]["after"]["recipient_count"] == 2
 
 
 def test_admin_notifications_permission_targets_and_history():

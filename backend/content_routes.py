@@ -33,11 +33,11 @@ class RollbackPayload(ReasonPayload):
     version_id: str
 
 
-def build_content_router(*, get_db, require_permission) -> APIRouter:
+def build_content_router(*, get_db, get_client, get_capabilities, require_permission) -> APIRouter:
     router = APIRouter(tags=["content"])
 
     def service() -> ContentService:
-        return ContentService(get_db())
+        return ContentService(get_db(), get_client(), get_capabilities())
 
     async def invoke(awaitable):
         try:

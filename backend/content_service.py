@@ -38,9 +38,23 @@ def clean_document(document: dict | None) -> dict | None:
     return value
 
 
+def _write_options(session=None) -> dict:
+    return {"session": session} if session is not None else {}
+
+
 class ContentService:
-    def __init__(self, db):
+    def __init__(self, db, client, capabilities):
         self.db = db
+        self.client = client
+        self.capabilities = capabilities
+
+    def _require_transactions(self):
+        if not self.capabilities.transactions:
+            raise ContentError(
+                503,
+                "transaction_unavailable",
+                "Operasi konten aman tidak tersedia karena database belum mendukung transaksi.",
+            )
 
     async def _get_block(self, block_id: str) -> dict:
         block = clean_document(await self.db.content_blocks.find_one({"id": block_id}, {"_id": 0}))
@@ -104,6 +118,7 @@ class ContentService:
         return validate_content_fields(block["content_type"], block["fields"])
 
     async def publish_block(self, block_id: str, *, actor: dict, reason: str, scheduled_at: str | None = None) -> dict:
+        self._require_transactions()
         block = await self._get_block(block_id)
         if block["status"] == "archived":
             raise ContentError(403, "content_lifecycle_forbidden", "Blok konten yang diarsipkan tidak dapat dipublikasikan.")
@@ -124,18 +139,27 @@ class ContentService:
         changes["published_version_id"] = version_snapshot["id"]
         after["published_version_id"] = version_snapshot["id"]
 
-        await self.db.content_block_versions.insert_one(dict(version_snapshot))
-        await self.db.content_blocks.update_one({"id": block_id}, {"$set": changes})
-        await append_audit_event(
-            self.db, actor=actor, action="content.block_published",
-            target_type="content_block", target_id=block_id,
-            before={"status": block["status"], "version": block["version"]},
-            after={"status": new_status, "version": after["version"], "published_version_id": version_snapshot["id"]},
-            reason=reason,
-        )
+        session = await self.client.start_session()
+        async with session:
+            async with session.start_transaction():
+                await self.db.content_block_versions.insert_one(
+                    dict(version_snapshot), **_write_options(session)
+                )
+                await self.db.content_blocks.update_one(
+                    {"id": block_id}, {"$set": changes}, **_write_options(session)
+                )
+                await append_audit_event(
+                    self.db, actor=actor, action="content.block_published",
+                    target_type="content_block", target_id=block_id,
+                    before={"status": block["status"], "version": block["version"]},
+                    after={"status": new_status, "version": after["version"], "published_version_id": version_snapshot["id"]},
+                    reason=reason,
+                    session=session,
+                )
         return after
 
     async def rollback_block(self, block_id: str, *, version_id: str, actor: dict, reason: str) -> dict:
+        self._require_transactions()
         block = await self._get_block(block_id)
         selected = clean_document(
             await self.db.content_block_versions.find_one(
@@ -158,15 +182,23 @@ class ContentService:
         changes["published_version_id"] = version_snapshot["id"]
         after["published_version_id"] = version_snapshot["id"]
 
-        await self.db.content_block_versions.insert_one(dict(version_snapshot))
-        await self.db.content_blocks.update_one({"id": block_id}, {"$set": changes})
-        await append_audit_event(
-            self.db, actor=actor, action="content.block_rolled_back",
-            target_type="content_block", target_id=block_id,
-            before={"version": block["version"], "published_version_id": block.get("published_version_id")},
-            after={"version": after["version"], "published_version_id": version_snapshot["id"]},
-            reason=reason,
-        )
+        session = await self.client.start_session()
+        async with session:
+            async with session.start_transaction():
+                await self.db.content_block_versions.insert_one(
+                    dict(version_snapshot), **_write_options(session)
+                )
+                await self.db.content_blocks.update_one(
+                    {"id": block_id}, {"$set": changes}, **_write_options(session)
+                )
+                await append_audit_event(
+                    self.db, actor=actor, action="content.block_rolled_back",
+                    target_type="content_block", target_id=block_id,
+                    before={"version": block["version"], "published_version_id": block.get("published_version_id")},
+                    after={"version": after["version"], "published_version_id": version_snapshot["id"]},
+                    reason=reason,
+                    session=session,
+                )
         return after
 
     async def archive_block(self, block_id: str, *, actor: dict, reason: str) -> dict:

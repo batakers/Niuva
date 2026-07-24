@@ -120,8 +120,8 @@ async def _seed_one(service: ContentService, *, content_type: str, slug: str, fi
     return {"content_type": content_type, "slug": slug, "action": "created_and_published", "id": block["id"]}
 
 
-async def seed(db, *, dry_run: bool) -> dict:
-    service = ContentService(db)
+async def seed(db, client, capabilities, *, dry_run: bool) -> dict:
+    service = ContentService(db, client, capabilities)
     results = []
     results.append(await _seed_one(service, content_type="about", slug="company-profile", fields=ABOUT_FIELDS, dry_run=dry_run))
     for item in CAPABILITY_SEEDS:
@@ -135,10 +135,14 @@ async def _run_cli(apply: bool) -> int:
     from dotenv import load_dotenv
     from motor.motor_asyncio import AsyncIOMotorClient
 
+    from database_capabilities import probe_database_capabilities
+
     load_dotenv()
+    database_name = os.environ["DB_NAME"]
     client = AsyncIOMotorClient(os.environ["MONGO_URL"])
     try:
-        report = await seed(client[os.environ["DB_NAME"]], dry_run=not apply)
+        capabilities = await probe_database_capabilities(client, database_name)
+        report = await seed(client[database_name], client, capabilities, dry_run=not apply)
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0
     finally:

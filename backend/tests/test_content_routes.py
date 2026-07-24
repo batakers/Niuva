@@ -8,6 +8,30 @@ from content_routes import build_content_router
 from permissions import has_permission
 
 
+class FakeTransaction:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+
+class FakeSession:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+    def start_transaction(self):
+        return FakeTransaction()
+
+
+class FakeClient:
+    async def start_session(self):
+        return FakeSession()
+
+
 class FakeCursor:
     def __init__(self, items):
         self.items = [dict(item) for item in items]
@@ -44,7 +68,7 @@ class FakeCollection:
                     result.pop(key, None)
         return result
 
-    async def find_one(self, query, projection=None):
+    async def find_one(self, query, projection=None, **_options):
         for item in self.items:
             if self.matches(item, query):
                 return self.project(item, projection)
@@ -53,11 +77,11 @@ class FakeCollection:
     def find(self, query, projection=None):
         return FakeCursor(self.project(item, projection) for item in self.items if self.matches(item, query))
 
-    async def insert_one(self, item):
+    async def insert_one(self, item, **_options):
         self.items.append(dict(item))
         return types.SimpleNamespace(inserted_id=item.get("id"))
 
-    async def update_one(self, query, update):
+    async def update_one(self, query, update, **_options):
         for item in self.items:
             if self.matches(item, query):
                 item.update(update.get("$set", {}))
@@ -90,9 +114,18 @@ def permission_dependency(permission):
 
 def build_test_context():
     db = FakeDatabase()
+    client = FakeClient()
+    capabilities = types.SimpleNamespace(transactions=True)
     app = FastAPI()
     api = APIRouter(prefix="/api")
-    api.include_router(build_content_router(get_db=lambda: db, require_permission=permission_dependency))
+    api.include_router(
+        build_content_router(
+            get_db=lambda: db,
+            get_client=lambda: client,
+            get_capabilities=lambda: capabilities,
+            require_permission=permission_dependency,
+        )
+    )
     app.include_router(api)
     return app, db
 

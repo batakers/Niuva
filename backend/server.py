@@ -25,6 +25,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 import storage
 import emailer
+from audit import append_audit_event
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
 from content_routes import build_content_router
@@ -1082,6 +1083,11 @@ async def send_admin_notification(
         "created_at": now_iso(),
     }
     await db.admin_notification_log.insert_one(dict(log_entry))
+    await append_audit_event(
+        db, actor=actor, action="notifications.sent",
+        target_type="notification", target_id=log_entry["id"],
+        after={"target": req.target, "segment": req.segment, "recipient_count": sent_count},
+    )
     log_entry.pop("_id", None)
     return log_entry
 
@@ -1169,6 +1175,8 @@ api.include_router(
 api.include_router(
     build_content_router(
         get_db=lambda: db,
+        get_client=lambda: client,
+        get_capabilities=lambda: app.state.database_capabilities,
         require_permission=require_permission,
     )
 )
