@@ -225,6 +225,14 @@ class ContactReq(BaseModel):
     message: str = Field(min_length=10, max_length=5000)
 
 
+class AdminNotificationReq(BaseModel):
+    target: str = Field(pattern="^(user|segment|broadcast)$")
+    user_id: Optional[str] = None
+    segment: Optional[str] = Field(default=None, pattern="^(active_orders)$")
+    subject: str = Field(min_length=3, max_length=180)
+    message: str = Field(min_length=3, max_length=2000)
+
+
 class PortfolioReq(BaseModel):
     title_id: str
     title_en: str
@@ -847,6 +855,68 @@ async def admin_stats(
 @api.get("/notifications")
 async def my_notifications(user: dict = Depends(get_current_user)):
     return await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+
+
+async def resolve_notification_recipients(req: AdminNotificationReq) -> list:
+    """Return safe recipient projections ({id, email, name}) for the requested target."""
+    if req.target == "user":
+        if not req.user_id:
+            raise HTTPException(status_code=400, detail="user_id is required for target=user")
+        recipient = await db.users.find_one({"id": req.user_id}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+        if not recipient:
+            raise HTTPException(status_code=404, detail="User not found")
+        return [recipient]
+
+    if req.target == "segment":
+        if req.segment == "active_orders":
+            order_user_ids = await db.orders.distinct(
+                "user_id", {"status": {"$in": ["awaiting_payment", "in_process"]}}
+            )
+            return await db.users.find(
+                {"id": {"$in": order_user_ids}}, {"_id": 0, "id": 1, "email": 1, "name": 1}
+            ).to_list(500)
+        raise HTTPException(status_code=400, detail="segment is required and must be a known segment for target=segment")
+
+    return await db.users.find(CUSTOMER_QUERY, {"_id": 0, "id": 1, "email": 1, "name": 1}).to_list(500)
+
+
+@api.post("/admin/notifications")
+async def send_admin_notification(
+    req: AdminNotificationReq,
+    actor: dict = Depends(require_permission("notifications.write")),
+):
+    rate_limit(f"admin_notify:{actor['id']}", limit=10, window=600)
+    recipients = await resolve_notification_recipients(req)
+    sent_count = 0
+    for recipient in recipients:
+        await emailer.send_email(
+            recipient["email"], req.subject, req.subject,
+            html.escape(req.message).replace(chr(10), "<br>"),
+            db=db, user_id=recipient["id"],
+        )
+        sent_count += 1
+    log_entry = {
+        "id": str(uuid.uuid4()),
+        "target": req.target,
+        "user_id": req.user_id,
+        "segment": req.segment,
+        "subject": req.subject,
+        "message": req.message,
+        "recipient_count": sent_count,
+        "sent_by": actor["id"],
+        "created_at": now_iso(),
+    }
+    await db.admin_notification_log.insert_one(dict(log_entry))
+    log_entry.pop("_id", None)
+    return log_entry
+
+
+@api.get("/admin/notifications/sent")
+async def list_sent_notifications(
+    limit: int = 50,
+    _actor: dict = Depends(require_permission("notifications.write")),
+):
+    return await db.admin_notification_log.find({}, {"_id": 0}).sort("created_at", -1).to_list(min(limit, 200))
 
 
 @api.get("/health")

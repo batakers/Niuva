@@ -33,6 +33,7 @@ const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
 const AdminOrganizations = lazy(() => import("@/pages/admin/Organizations"));
 const AdminAuditLog = lazy(() => import("@/pages/admin/AuditLog"));
+const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
 const EditorialHomepagePrototype = brandLabEnabled
   ? lazy(() => import("@/pages/brand-lab/EditorialHomepagePrototype"))
@@ -119,6 +120,7 @@ function App() {
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
                   <Route path="/admin/organizations" element={protectedPage("/admin/organizations", <AdminOrganizations />)} />
                   <Route path="/admin/audit" element={protectedPage("/admin/audit", <AdminAuditLog />)} />
+                  <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotifications />)} />
                   <Route path="/admin/settings" element={protectedPage("/admin/settings", <AdminSettings />)} />
                   {brandLabEnabled && <><Route path="/__brand-lab/editorial" element={<EditorialHomepagePrototype />} /><Route path="/__brand-lab/experimental" element={<ExperimentalHomepagePrototype />} /></>}
                   <Route path="*" element={<NotFound />} />
