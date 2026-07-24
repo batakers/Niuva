@@ -167,7 +167,7 @@ export default function ContactPage() {
             <ol className="grid gap-5 md:grid-cols-3">
               {responseSteps.map((step, index) => (
                 <li key={step.title} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6">
-                  <span className="font-mono-tech text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="font-heading text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
                   <h3 className="type-heading-card mt-5 text-text-primary">{step.title}</h3>
                   <p className="mt-3 text-sm leading-7 text-text-secondary">{step.body}</p>
                 </li>

@@ -138,7 +138,7 @@ export default function AboutPage() {
               <ol className="border-y border-border-default">
                 {backgroundPoints.map((point, index) => (
                   <li key={point} className="brand-reveal grid gap-3 border-b border-border-default py-5 last:border-b-0 sm:grid-cols-[3rem_1fr] sm:gap-5">
-                    <span className="font-mono-tech text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="font-heading text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
                     <p className="text-base leading-7 text-text-primary">{point}</p>
                   </li>
                 ))}
@@ -159,7 +159,7 @@ export default function AboutPage() {
               <article className="brand-reveal relative overflow-hidden rounded-panel bg-action-primary p-6 text-text-inverse shadow-surface sm:p-8 md:p-10">
                 <DecorativeMotif light className="-right-24 -top-20 h-80 w-80 opacity-45" density="sparse" />
                 <div className="relative z-10">
-                  <p className="font-mono-tech text-xs font-bold text-text-inverse">VISION</p>
+                  <p className="font-heading text-xs font-bold uppercase tracking-widest text-text-inverse">VISION</p>
                   <h3 className="brand-heading mt-8 max-w-2xl text-3xl leading-tight text-text-inverse md:text-4xl">
                     Menjadi mitra strategis inovasi dan pengembangan produk yang terpercaya.
                   </h3>
@@ -169,7 +169,7 @@ export default function AboutPage() {
                 </div>
               </article>
               <article className="brand-reveal rounded-panel bg-surface-default p-6 shadow-surface ring-1 ring-border-default sm:p-8 md:p-10">
-                <p className="font-mono-tech text-xs font-bold text-action-primary">MISSION</p>
+                <p className="font-heading text-xs font-bold uppercase tracking-widest text-action-primary">MISSION</p>
                 <h3 className="brand-heading mt-8 max-w-2xl text-3xl leading-tight text-text-primary md:text-4xl">
                   Menghasilkan solusi kreatif berbasis riset yang dapat diterapkan.
                 </h3>
@@ -199,7 +199,7 @@ export default function AboutPage() {
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
               {values.map((value, index) => (
                 <article key={value} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-5">
-                  <span className="font-mono-tech text-xs font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="font-heading text-xs font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
                   <p className="mt-4 text-sm font-semibold leading-6 text-text-primary">{value}</p>
                 </article>
               ))}

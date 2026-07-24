@@ -310,7 +310,7 @@ export function CapabilityPanel({
           <p className="text-sm font-semibold text-action-primary">
             {item.accent || "Kapabilitas utama"}
           </p>
-          <span className="font-mono-tech text-xs font-semibold text-text-secondary">
+          <span className="font-heading text-xs font-semibold text-text-secondary">
             {String(index + 1).padStart(2, "0")}
           </span>
         </div>
@@ -357,7 +357,7 @@ export function CapabilityPanel({
               <p className="text-sm font-semibold text-action-primary">{item.accent || "Kapabilitas"}</p>
               {featured && <p className="mt-1 text-sm text-text-secondary">Kapabilitas utama</p>}
             </div>
-            <span className="font-mono-tech text-sm font-semibold text-action-primary">
+            <span className="font-heading text-sm font-semibold text-action-primary">
               {String(index + 1).padStart(2, "0")}
             </span>
           </div>
@@ -408,7 +408,7 @@ export function ServiceCard({ service, index, featured = false, className }) {
           <p className="text-sm font-semibold text-action-primary">{service.accent}</p>
           <p className="mt-1 text-sm text-text-secondary">Kapabilitas pendukung</p>
         </div>
-        <span className="font-mono-tech text-xs font-semibold text-text-secondary">
+        <span className="font-heading text-xs font-semibold text-text-secondary">
           {String(index + 1).padStart(2, "0")}
         </span>
       </div>
@@ -461,7 +461,7 @@ export function ProcessTimeline({ items = [], className }) {
       {items.map((item, index) => (
         <li key={`${item.title}-${index}`} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
-            <span className="font-mono-tech text-sm font-semibold text-action-primary">
+            <span className="font-heading text-sm font-semibold text-action-primary">
               {String(index + 1).padStart(2, "0")}
             </span>
             <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 rounded-full bg-brand-primary" />
@@ -493,9 +493,9 @@ function ProjectMotifFallback({ index }) {
     <div aria-hidden="true" className="absolute inset-0 bg-surface-muted">
       <ULineMotif className="absolute -right-12 -top-14 hidden h-48 w-48 opacity-20 sm:block" />
       <div className="relative flex h-full flex-col justify-between p-6 sm:p-8">
-        <span className="font-mono-tech text-xs font-semibold text-text-secondary">PROJECT DOSSIER</span>
+        <span className="font-heading text-xs font-semibold uppercase tracking-widest text-text-secondary">PROJECT DOSSIER</span>
         <div className="flex items-end justify-between gap-6">
-          <span className="font-mono-tech text-6xl font-semibold leading-none text-decoration-brand-line sm:text-7xl">
+          <span className="font-heading text-6xl font-semibold leading-none text-decoration-brand-line sm:text-7xl">
             {String(index + 1).padStart(2, "0")}
           </span>
           <span className="h-3 w-3 rounded-full bg-brand-primary" />
@@ -561,7 +561,7 @@ export function ProjectCaseStudyCard({
         <div className={cn("flex min-w-0 flex-col px-5 pb-6 sm:px-7 sm:pb-8 lg:p-8", reverse && "lg:order-1")}>
           <div className="flex items-start justify-between gap-5">
             <p className="text-sm font-semibold leading-6 text-action-primary">{project.category}</p>
-            <span className="shrink-0 font-mono-tech text-xs font-semibold text-text-secondary">
+            <span className="shrink-0 font-heading text-xs font-semibold uppercase tracking-widest text-text-secondary">
               CASE {String(index + 1).padStart(2, "0")}
             </span>
           </div>
