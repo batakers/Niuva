@@ -56,6 +56,9 @@ export function Footer() {
         </div>
         <div className="mt-10 flex flex-col gap-3 border-t border-border-default pt-6 text-xs font-semibold leading-6 text-text-secondary md:flex-row md:items-center md:justify-between">
           <p>(c) {currentYear} PT Niuva Inovasi Utama</p>
+          <Link to="/privacy" className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
+            Privacy Policy
+          </Link>
           <p>Bandung Techno Park - Mitra inovasi dan pengembangan produk</p>
         </div>
       </div>

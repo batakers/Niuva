@@ -1,6 +1,6 @@
 import "@/App.css";
 import { Component, lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 import { AuthProvider } from "@/context/AuthContext";
@@ -12,6 +12,8 @@ const About = lazy(() => import("@/pages/marketing/AboutPage"));
 const Capabilities = lazy(() => import("@/pages/marketing/CapabilitiesPage"));
 const Projects = lazy(() => import("@/pages/marketing/ProjectsPage"));
 const Contact = lazy(() => import("@/pages/marketing/ContactPage"));
+const NotFound = lazy(() => import("@/pages/marketing/NotFoundPage"));
+const PrivacyPolicy = lazy(() => import("@/pages/marketing/PrivacyPolicyPage"));
 const AdminLogin = lazy(() => import("@/pages/admin/AdminLogin"));
 const ClientDashboard = lazy(() => import("@/pages/operational/ClientDashboard"));
 const NewOrder = lazy(() => import("@/pages/operational/NewOrder"));
@@ -98,6 +100,7 @@ function App() {
                   <Route path="/projects" element={<Projects />} />
                   <Route path="/portfolio" element={<Projects />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/dashboard" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
                   <Route path="/order" element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
                   <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
@@ -118,7 +121,7 @@ function App() {
                   <Route path="/admin/audit" element={protectedPage("/admin/audit", <AdminAuditLog />)} />
                   <Route path="/admin/settings" element={protectedPage("/admin/settings", <AdminSettings />)} />
                   {brandLabEnabled && <><Route path="/__brand-lab/editorial" element={<EditorialHomepagePrototype />} /><Route path="/__brand-lab/experimental" element={<ExperimentalHomepagePrototype />} /></>}
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
             </AppErrorBoundary>

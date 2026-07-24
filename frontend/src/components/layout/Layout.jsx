@@ -48,6 +48,12 @@ const PUBLIC_ROUTE_META = {
       "Hubungi Niuva melalui WhatsApp, email, atau form project intake untuk kebutuhan riset, desain, prototyping, EV/product development, simulator, workshop, apparel, dan merchandise.",
     canonical: "/contact",
   },
+  "/privacy": {
+    title: "Privacy Policy - PT Niuva Inovasi Utama",
+    description:
+      "Kebijakan privasi Niuva menjelaskan data yang dikumpulkan melalui form contact, pendaftaran magang, dan pemesanan, serta hak pengguna terkait data tersebut.",
+    canonical: "/privacy",
+  },
 };
 
 const configuredPublicSiteUrl = (process.env.REACT_APP_PUBLIC_SITE_URL || "").replace(/\/$/, "");
