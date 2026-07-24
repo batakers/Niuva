@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MarketingLayout } from "@/components/layout/Layout";
 import { api, formatApiError } from "../../lib/api";
@@ -17,6 +17,7 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { findBySlug, usePublicContent } from "../../lib/content";
 
 const initialForm = {
   name: "",
@@ -63,6 +64,9 @@ export default function ContactPage() {
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
+  const cmsBlocks = usePublicContent("contact");
+  const cmsFields = useMemo(() => findBySlug(cmsBlocks, "primary"), [cmsBlocks]);
+  const contact = { ...profileContent.contact, ...cmsFields };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -100,7 +104,7 @@ export default function ContactPage() {
           eyebrow="Contact"
           title="Mulai diskusi proyek dengan brief yang siap."
           body="Sampaikan kebutuhan riset, design engineering, prototyping, EV/product development, simulator, workshop, atau produk kreatif. Tim Niuva akan meninjau konteks awal sebelum diskusi lanjutan."
-          primaryAction={<BrandButton href={profileContent.contact.whatsappHref}>Diskusikan Project</BrandButton>}
+          primaryAction={<BrandButton href={contact.whatsappHref}>Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton href="#form-konsultasi" variant="secondary">Isi Formulir Project</BrandButton>}
           variant="contact"
           visual={
@@ -123,7 +127,7 @@ export default function ContactPage() {
               body="Gunakan WhatsApp untuk respons awal tercepat, email untuk dokumen formal, atau formulir untuk menyampaikan konteks proyek secara terstruktur."
               align="split"
             />
-            <ContactSummary contact={profileContent.contact} showMapLink />
+            <ContactSummary contact={contact} showMapLink />
           </PageContainer>
         </MarketingSection>
 
@@ -187,7 +191,7 @@ export default function ContactPage() {
             <div className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default">
               <iframe
                 title="Lokasi Niuva di Bandung Techno Park"
-                src={profileContent.contact.mapsEmbed}
+                src={contact.mapsEmbed}
                 className="h-[320px] w-full border-0 md:h-[430px]"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"

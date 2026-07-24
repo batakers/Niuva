@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { MarketingLayout } from "@/components/layout/Layout";
 import {
   BrandButton,
@@ -15,9 +15,16 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { usePublicContent } from "../../lib/content";
 
-const primaryCapabilities = profileContent.services.filter((service) => service.priority === "primary");
-const supportingCapabilities = profileContent.services.filter((service) => service.priority === "supporting");
+// CMS blocks (content_type=capability) override matching fallback services by
+// title. Unmatched or unpublished capabilities keep the hardcoded copy.
+function mergeCapabilities(cmsBlocks) {
+  return profileContent.services.map((service) => {
+    const match = cmsBlocks.find((block) => block.fields?.title === service.title);
+    return match ? { ...service, ...match.fields } : service;
+  });
+}
 
 const engagementSteps = [
   {
@@ -43,6 +50,11 @@ const engagementSteps = [
 ];
 
 export default function CapabilitiesPage() {
+  const cmsBlocks = usePublicContent("capability");
+  const capabilities = useMemo(() => mergeCapabilities(cmsBlocks), [cmsBlocks]);
+  const primaryCapabilities = capabilities.filter((service) => service.priority === "primary");
+  const supportingCapabilities = capabilities.filter((service) => service.priority === "supporting");
+
   return (
     <MarketingLayout>
       <BrandPage>

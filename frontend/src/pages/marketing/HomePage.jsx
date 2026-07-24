@@ -17,6 +17,10 @@ import {
   SectionHeader,
 } from "../../components/brand/BrandSystem";
 
+// ponytail: Homepage stays fully hardcoded (no CMS) — Homepage schema is out of
+// scope per NIUVA_MASTER_SPEC.md and requires separate DEC-UX authorization.
+// Add CMS wiring here only after that approval.
+
 const positioningEvidence = [
   { label: "Riset", value: "Memperjelas kebutuhan, peluang, dan batasan sebelum pengembangan dimulai." },
   { label: "Engineering", value: "Menghubungkan keputusan desain dengan fungsi, material, dan implementasi." },

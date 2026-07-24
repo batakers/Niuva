@@ -1,9 +1,11 @@
-from datetime import datetime
+import csv
+import io
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from inventory_service import InventoryError
@@ -76,6 +78,20 @@ class ReasonPayload(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+def _csv_response(fieldnames: list, rows: list, filename: str) -> Response:
+    """Serialize dict rows to a CSV download. Bounded data (<=500 rows), no disk write."""
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: row.get(key, "") for key in fieldnames})
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 def build_inventory_router(
     *,
     get_service,
@@ -124,6 +140,45 @@ def build_inventory_router(
                 limit=limit,
             )
         )
+
+    @router.get("/balances/export")
+    async def export_balances(
+        subject_type: SubjectType | None = None,
+        _actor: dict = Depends(require_permission("inventory.read")),
+    ):
+        balances = await invoke(
+            get_service().list_balances(subject_type=subject_type, limit=500)
+        )
+        fieldnames = [
+            "subject_type", "subject_id", "subject_name", "sku",
+            "on_hand", "reserved", "available", "incoming",
+            "planned_demand", "projected", "version",
+        ]
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+        return _csv_response(fieldnames, balances, f"niuva-inventory-balances-{stamp}.csv")
+
+    @router.get("/movements/export")
+    async def export_movements(
+        subject_type: SubjectType | None = None,
+        subject_id: str | None = Query(default=None, max_length=200),
+        reference_id: str | None = Query(default=None, max_length=200),
+        _actor: dict = Depends(require_permission("inventory.read")),
+    ):
+        movements = await invoke(
+            get_service().list_movements(
+                subject_type=subject_type,
+                subject_id=subject_id,
+                reference_id=reference_id,
+                limit=500,
+            )
+        )
+        fieldnames = [
+            "created_at", "subject_type", "subject_id", "movement_type",
+            "quantity", "balance_version_before", "balance_version_after",
+            "reference_type", "reference_id", "reason", "created_by",
+        ]
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+        return _csv_response(fieldnames, movements, f"niuva-stock-movements-{stamp}.csv")
 
     @router.post("/movements")
     async def apply_movement(

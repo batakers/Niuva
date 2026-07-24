@@ -662,3 +662,35 @@ async def run_operations_cannot_set_variant_status_without_publish_permission():
 
 def test_variant_status_requires_catalog_publish_permission():
     asyncio.run(run_operations_cannot_set_variant_status_without_publish_permission())
+
+
+async def run_bulk_archive_reports_per_item_results():
+    app, _db, _capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        _category, product = await create_publishable_product(api)
+
+        forbidden = await api.post(
+            "/api/admin/products/bulk-archive",
+            json={"product_ids": [product["id"]], "reason": "Warehouse cannot archive"},
+            headers=headers("warehouse"),
+        )
+        assert forbidden.status_code == 403
+
+        result = await api.post(
+            "/api/admin/products/bulk-archive",
+            json={"product_ids": [product["id"], "missing-product"], "reason": "Bulk archive cleanup"},
+            headers=headers(),
+        )
+        assert result.status_code == 200
+        rows = {row["id"]: row for row in result.json()["results"]}
+        assert rows[product["id"]]["success"] is True
+        assert rows["missing-product"]["success"] is False
+        assert rows["missing-product"]["error"] is not None
+
+        public = await api.get("/api/catalog/products/desk-sign")
+        assert public.status_code == 404
+
+
+def test_bulk_archive_reports_per_item_results_and_requires_permission():
+    asyncio.run(run_bulk_archive_reports_per_item_results())

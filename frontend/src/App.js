@@ -1,6 +1,6 @@
 import "@/App.css";
 import { Component, lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 import { AuthProvider } from "@/context/AuthContext";
@@ -12,7 +12,12 @@ const About = lazy(() => import("@/pages/marketing/AboutPage"));
 const Capabilities = lazy(() => import("@/pages/marketing/CapabilitiesPage"));
 const Projects = lazy(() => import("@/pages/marketing/ProjectsPage"));
 const Contact = lazy(() => import("@/pages/marketing/ContactPage"));
+const NotFound = lazy(() => import("@/pages/marketing/NotFoundPage"));
+const PrivacyPolicy = lazy(() => import("@/pages/marketing/PrivacyPolicyPage"));
+const Faq = lazy(() => import("@/pages/marketing/FaqPage"));
 const AdminLogin = lazy(() => import("@/pages/admin/AdminLogin"));
+const ForgotPassword = lazy(() => import("@/pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/auth/ResetPassword"));
 const ClientDashboard = lazy(() => import("@/pages/operational/ClientDashboard"));
 const NewOrder = lazy(() => import("@/pages/operational/NewOrder"));
 const OrderDetail = lazy(() => import("@/pages/operational/OrderDetail"));
@@ -25,12 +30,14 @@ const AdminInventory = lazy(() => import("@/pages/admin/Inventory"));
 const AdminStockMovements = lazy(() => import("@/pages/admin/StockMovements"));
 const AdminRestockAlerts = lazy(() => import("@/pages/admin/RestockAlerts"));
 const AdminPortfolio = lazy(() => import("@/pages/admin/PortfolioAdmin"));
+const AdminContent = lazy(() => import("@/pages/admin/ContentEditor"));
 const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminInternships = lazy(() => import("@/pages/admin/Internships"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
 const AdminOrganizations = lazy(() => import("@/pages/admin/Organizations"));
 const AdminAuditLog = lazy(() => import("@/pages/admin/AuditLog"));
+const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
 const EditorialHomepagePrototype = brandLabEnabled
   ? lazy(() => import("@/pages/brand-lab/EditorialHomepagePrototype"))
@@ -98,10 +105,14 @@ function App() {
                   <Route path="/projects" element={<Projects />} />
                   <Route path="/portfolio" element={<Projects />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/faq" element={<Faq />} />
                   <Route path="/dashboard" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
                   <Route path="/order" element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
                   <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
                   <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/admin" element={protectedPage("/admin", <AdminDashboard />)} />
                   <Route path="/admin/orders" element={protectedPage("/admin/orders", <AdminOrders />)} />
                   <Route path="/admin/catalog" element={protectedPage("/admin/catalog", <AdminCatalog />)} />
@@ -111,14 +122,16 @@ function App() {
                   <Route path="/admin/stock-movements" element={protectedPage("/admin/stock-movements", <AdminStockMovements />)} />
                   <Route path="/admin/restock-alerts" element={protectedPage("/admin/restock-alerts", <AdminRestockAlerts />)} />
                   <Route path="/admin/portfolio" element={protectedPage("/admin/portfolio", <AdminPortfolio />)} />
+                  <Route path="/admin/content" element={protectedPage("/admin/content", <AdminContent />)} />
                   <Route path="/admin/internships" element={protectedPage("/admin/internships", <AdminInternships />)} />
                   <Route path="/admin/contacts" element={protectedPage("/admin/contacts", <AdminContacts />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
                   <Route path="/admin/organizations" element={protectedPage("/admin/organizations", <AdminOrganizations />)} />
                   <Route path="/admin/audit" element={protectedPage("/admin/audit", <AdminAuditLog />)} />
+                  <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotifications />)} />
                   <Route path="/admin/settings" element={protectedPage("/admin/settings", <AdminSettings />)} />
                   {brandLabEnabled && <><Route path="/__brand-lab/editorial" element={<EditorialHomepagePrototype />} /><Route path="/__brand-lab/experimental" element={<ExperimentalHomepagePrototype />} /></>}
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
             </AppErrorBoundary>

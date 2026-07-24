@@ -5,9 +5,13 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import os
+import csv
+import io
 import uuid
 import logging
 import asyncio
+import hashlib
+import secrets
 import html
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
@@ -21,8 +25,10 @@ from pydantic import BaseModel, EmailStr, Field
 
 import storage
 import emailer
+from audit import append_audit_event
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
+from content_routes import build_content_router
 from database_capabilities import DatabaseCapabilities, probe_database_capabilities
 from identity_routes import build_identity_router
 from inventory_routes import build_inventory_router
@@ -110,11 +116,12 @@ def verify_password(p: str, h: str) -> bool:
         return False
 
 
-def create_token(user_id: str, email: str, role: str) -> str:
+def create_token(user_id: str, email: str, role: str, token_version: int = 0) -> str:
     payload = {
         "sub": user_id,
         "email": email,
         "role": role,
+        "token_version": token_version,
         "exp": datetime.now(timezone.utc) + timedelta(days=7),
         "type": "access",
     }
@@ -144,6 +151,11 @@ async def get_user_from_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="User not found")
     if user.get("status", "active") == "disabled":
         raise HTTPException(status_code=403, detail="User account is disabled")
+    # Sessions issued before a password reset (or before this field existed)
+    # carry a stale/absent token_version and must be rejected, even if the
+    # JWT itself has not expired yet.
+    if payload.get("token_version", 0) != user.get("token_version", 0):
+        raise HTTPException(status_code=401, detail="Session expired, please log in again")
     return user
 
 
@@ -188,12 +200,27 @@ class LoginReq(BaseModel):
     password: str
 
 
+class ForgotPasswordReq(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordReq(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=6)
+
+
 class EstimateReq(BaseModel):
     amount: float
     note: Optional[str] = ""
 
 
 class StatusReq(BaseModel):
+    status: str
+    note: Optional[str] = ""
+
+
+class BulkStatusReq(BaseModel):
+    order_ids: List[str] = Field(min_length=1, max_length=100)
     status: str
     note: Optional[str] = ""
 
@@ -215,6 +242,14 @@ class ContactReq(BaseModel):
     email: EmailStr
     subject: str = Field(min_length=3, max_length=180)
     message: str = Field(min_length=10, max_length=5000)
+
+
+class AdminNotificationReq(BaseModel):
+    target: str = Field(pattern="^(user|segment|broadcast)$")
+    user_id: Optional[str] = None
+    segment: Optional[str] = Field(default=None, pattern="^(active_orders)$")
+    subject: str = Field(min_length=3, max_length=180)
+    message: str = Field(min_length=3, max_length=2000)
 
 
 class PortfolioReq(BaseModel):
@@ -261,7 +296,7 @@ def safe_user(user: dict) -> dict:
 def auth_response(user: dict) -> dict:
     roles = canonical_roles(user)
     primary_role = roles[0] if roles else user.get("role", "")
-    token = create_token(user["id"], user["email"], primary_role)
+    token = create_token(user["id"], user["email"], primary_role, user.get("token_version", 0))
     return {"token": token, "user": safe_user(user)}
 
 
@@ -370,6 +405,91 @@ async def me(user: dict = Depends(get_current_user)):
     return safe_user(user)
 
 
+RESET_TOKEN_TTL_MINUTES = 30
+_GENERIC_FORGOT_PASSWORD_RESPONSE = {
+    "ok": True,
+    "message": "Jika email terdaftar, instruksi reset password telah dikirim.",
+}
+
+
+def _hash_reset_token(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode()).hexdigest()
+
+
+@api.post("/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordReq, request: Request):
+    client_host = request.client.host if request.client else "unknown"
+    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
+        client_host = request.headers.get("x-forwarded-for", client_host).split(",", 1)[0].strip()
+    rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
+    rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
+
+    # Always return the same generic response whether or not the email is
+    # registered, to avoid leaking account existence (user-enumeration).
+    user = await db.users.find_one({"email": req.email.lower()}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+    if not user:
+        return _GENERIC_FORGOT_PASSWORD_RESPONSE
+
+    # Invalidate any earlier unused tokens for this user before issuing a new one.
+    await db.password_reset_tokens.update_many(
+        {"user_id": user["id"], "used_at": None},
+        {"$set": {"used_at": now_iso()}},
+    )
+    raw_token = secrets.token_urlsafe(32)
+    created_at = datetime.now(timezone.utc)
+    await db.password_reset_tokens.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "token_hash": _hash_reset_token(raw_token),
+        "expires_at": (created_at + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)).isoformat(),
+        "used_at": None,
+        "created_at": created_at.isoformat(),
+    })
+
+    site_url = (os.environ.get("REACT_APP_PUBLIC_SITE_URL") or "").rstrip("/")
+    reset_link = f"{site_url}/reset-password?token={raw_token}"
+    await emailer.send_email(
+        user["email"],
+        "Reset Password — NIUVA",
+        "Permintaan reset password",
+        f"<p>Kami menerima permintaan untuk mereset password akun Anda.</p>"
+        f"<p>Link ini berlaku selama {RESET_TOKEN_TTL_MINUTES} menit: "
+        f"<a href=\"{reset_link}\">{reset_link}</a></p>"
+        f"<p>Jika Anda tidak meminta ini, abaikan email ini.</p>",
+        db=db, user_id=user["id"],
+    )
+    return _GENERIC_FORGOT_PASSWORD_RESPONSE
+
+
+@api.post("/auth/reset-password")
+async def reset_password(req: ResetPasswordReq):
+    token_hash = _hash_reset_token(req.token)
+    now = datetime.now(timezone.utc).isoformat()
+    record = await db.password_reset_tokens.find_one(
+        {"token_hash": token_hash, "used_at": None, "expires_at": {"$gt": now}},
+        {"_id": 0},
+    )
+    if not record:
+        raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
+
+    user = await db.users.find_one({"id": record["user_id"]}, {"_id": 0, "id": 1, "token_version": 1})
+    if not user:
+        raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
+
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$set": {"password_hash": hash_password(req.new_password)},
+            "$inc": {"token_version": 1},
+        },
+    )
+    await db.password_reset_tokens.update_many(
+        {"user_id": user["id"], "used_at": None},
+        {"$set": {"used_at": now}},
+    )
+    return {"ok": True, "message": "Password berhasil diubah. Silakan login dengan password baru."}
+
+
 # ----------------------------- Orders -----------------------------
 async def get_settings():
     s = await db.settings.find_one({"key": "site"}, {"_id": 0})
@@ -467,6 +587,20 @@ async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dic
 
 
 # ----------------------------- Admin orders -----------------------------
+def rows_to_csv_response(fieldnames: list, rows: list, filename: str) -> Response:
+    """Serialize dict rows to a CSV download. Bounded data (<=500 rows), no disk write."""
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: row.get(key, "") for key in fieldnames})
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 def serialize_admin_order_for(actor: dict, order: dict) -> dict:
     """Return a role-safe order representation for internal readers."""
     value = {key: item for key, item in order.items() if key != "_id"}
@@ -487,6 +621,48 @@ async def admin_orders(
 ):
     q = {"status": status} if status else {}
     return [serialize_admin_order_for(user, order) for order in await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)]
+
+
+@api.get("/admin/orders/export")
+async def export_orders(
+    status: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(require_permission("orders.read")),
+):
+    q = {}
+    if status:
+        q["status"] = status
+    created = {}
+    if date_from:
+        created["$gte"] = date_from
+    if date_to:
+        created["$lte"] = date_to
+    if created:
+        q["created_at"] = created
+
+    include_payment = has_permission(user, "payments.read")
+    fieldnames = [
+        "order_number", "user_name", "user_email", "material_name",
+        "status", "created_at", "updated_at",
+    ]
+    if include_payment:
+        fieldnames += ["estimate_amount", "estimate_currency", "payment_verified"]
+
+    rows = []
+    for order in await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500):
+        safe = serialize_admin_order_for(user, order)
+        row = {key: safe.get(key, "") for key in fieldnames if not key.startswith(("estimate_", "payment_"))}
+        if include_payment:
+            estimate = order.get("estimate") or {}
+            payment = order.get("payment") or {}
+            row["estimate_amount"] = estimate.get("amount", "")
+            row["estimate_currency"] = estimate.get("currency", "")
+            row["payment_verified"] = payment.get("verified", "")
+        rows.append(row)
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return rows_to_csv_response(fieldnames, rows, f"niuva-orders-{stamp}.csv")
 
 
 @api.post("/admin/orders/{oid}/estimate")
@@ -547,23 +723,19 @@ async def verify_payment(
     return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
-@api.post("/admin/orders/{oid}/status")
-async def update_status(
-    oid: str,
-    req: StatusReq,
-    user: dict = Depends(require_permission("orders.write")),
-):
-    if req.status not in ORDER_STATUSES:
+async def apply_order_status(oid: str, status: str, note: str) -> dict:
+    """Advance one order's status and append status history. Raises HTTPException on invalid input."""
+    if status not in ORDER_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status")
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     await db.orders.update_one(
         {"id": oid},
-        {"$set": {"status": req.status, "updated_at": now_iso()},
-         "$push": {"status_history": {"status": req.status, "at": now_iso(), "note": req.note}}},
+        {"$set": {"status": status, "updated_at": now_iso()},
+         "$push": {"status_history": {"status": status, "at": now_iso(), "note": note}}},
     )
-    if req.status == "completed":
+    if status == "completed":
         await emailer.send_email(
             order["user_email"],
             f"Pesanan Selesai — {order['order_number']}",
@@ -572,7 +744,33 @@ async def update_status(
             f"Tim kami akan menghubungi Anda untuk pengambilan/pengiriman.</p>",
             db=db, user_id=order["user_id"],
         )
-    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
+    return await db.orders.find_one({"id": oid}, {"_id": 0})
+
+
+@api.post("/admin/orders/{oid}/status")
+async def update_status(
+    oid: str,
+    req: StatusReq,
+    user: dict = Depends(require_permission("orders.write")),
+):
+    return serialize_admin_order_for(user, await apply_order_status(oid, req.status, req.note))
+
+
+@api.post("/admin/orders/bulk-status")
+async def bulk_update_status(
+    req: BulkStatusReq,
+    user: dict = Depends(require_permission("orders.write")),
+):
+    if req.status not in ORDER_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    results = []
+    for oid in req.order_ids:
+        try:
+            await apply_order_status(oid, req.status, req.note)
+            results.append({"id": oid, "success": True, "error": None})
+        except HTTPException as exc:
+            results.append({"id": oid, "success": False, "error": exc.detail})
+    return {"results": results}
 
 
 # ----------------------------- File download -----------------------------
@@ -758,9 +956,148 @@ async def admin_stats(
     }
 
 
+def _validate_date(value: str, label: str) -> str:
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"{label} must be YYYY-MM-DD")
+    return value
+
+
+def _date_bucket(timestamp: str) -> str:
+    return (timestamp or "")[:10]
+
+
+@api.get("/admin/stats/timeseries")
+async def admin_stats_timeseries(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(require_permission("dashboard.read")),
+):
+    """Aggregate real order/payment/stock-movement history into a daily trend.
+
+    Series composition depends on the actor's permissions (DEC-OPS-001: no
+    identical dashboard for every role) — operations sees production/stock
+    trends, commercial_finance sees revenue trends. Every value here is a
+    direct count or sum over existing transaction records, never a fabricated
+    metric.
+    """
+    now = datetime.now(timezone.utc)
+    start = _validate_date(date_from or (now - timedelta(days=30)).strftime("%Y-%m-%d"), "date_from")
+    end = _validate_date(date_to or now.strftime("%Y-%m-%d"), "date_to")
+
+    orders = await db.orders.find(
+        {"created_at": {"$gte": start, "$lte": f"{end}T23:59:59"}},
+        {"_id": 0, "created_at": 1, "status": 1, "payment": 1, "estimate": 1},
+    ).to_list(5000)
+
+    orders_by_status: dict = {}
+    for order in orders:
+        bucket = _date_bucket(order.get("created_at"))
+        row = orders_by_status.setdefault(bucket, {status: 0 for status in ORDER_STATUSES})
+        status = order.get("status")
+        if status in row:
+            row[status] += 1
+
+    series = {"orders_by_status": [{"date": date, **counts} for date, counts in sorted(orders_by_status.items())]}
+
+    if has_permission(user, "inventory.read"):
+        movements = await db.stock_movements.find(
+            {"created_at": {"$gte": start, "$lte": f"{end}T23:59:59"}},
+            {"_id": 0, "created_at": 1, "movement_type": 1},
+        ).to_list(5000)
+        movement_totals: dict = {}
+        for movement in movements:
+            bucket = _date_bucket(movement.get("created_at"))
+            row = movement_totals.setdefault(bucket, {})
+            movement_type = movement.get("movement_type", "unknown")
+            row[movement_type] = row.get(movement_type, 0) + 1
+        series["stock_movements"] = [{"date": date, **counts} for date, counts in sorted(movement_totals.items())]
+
+    if has_permission(user, "payments.read"):
+        revenue_totals: dict = {}
+        for order in orders:
+            payment = order.get("payment") or {}
+            if not payment.get("verified"):
+                continue
+            bucket = _date_bucket(payment.get("verified_at") or order.get("created_at"))
+            amount = (order.get("estimate") or {}).get("amount") or 0
+            revenue_totals[bucket] = revenue_totals.get(bucket, 0) + amount
+        series["revenue"] = [{"date": date, "amount": amount} for date, amount in sorted(revenue_totals.items())]
+
+    return {"date_from": start, "date_to": end, "series": series}
+
+
 @api.get("/notifications")
 async def my_notifications(user: dict = Depends(get_current_user)):
     return await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+
+
+async def resolve_notification_recipients(req: AdminNotificationReq) -> list:
+    """Return safe recipient projections ({id, email, name}) for the requested target."""
+    if req.target == "user":
+        if not req.user_id:
+            raise HTTPException(status_code=400, detail="user_id is required for target=user")
+        recipient = await db.users.find_one({"id": req.user_id}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+        if not recipient:
+            raise HTTPException(status_code=404, detail="User not found")
+        return [recipient]
+
+    if req.target == "segment":
+        if req.segment == "active_orders":
+            order_user_ids = await db.orders.distinct(
+                "user_id", {"status": {"$in": ["awaiting_payment", "in_process"]}}
+            )
+            return await db.users.find(
+                {"id": {"$in": order_user_ids}}, {"_id": 0, "id": 1, "email": 1, "name": 1}
+            ).to_list(500)
+        raise HTTPException(status_code=400, detail="segment is required and must be a known segment for target=segment")
+
+    return await db.users.find(CUSTOMER_QUERY, {"_id": 0, "id": 1, "email": 1, "name": 1}).to_list(500)
+
+
+@api.post("/admin/notifications")
+async def send_admin_notification(
+    req: AdminNotificationReq,
+    actor: dict = Depends(require_permission("notifications.write")),
+):
+    rate_limit(f"admin_notify:{actor['id']}", limit=10, window=600)
+    recipients = await resolve_notification_recipients(req)
+    sent_count = 0
+    for recipient in recipients:
+        await emailer.send_email(
+            recipient["email"], req.subject, req.subject,
+            html.escape(req.message).replace(chr(10), "<br>"),
+            db=db, user_id=recipient["id"],
+        )
+        sent_count += 1
+    log_entry = {
+        "id": str(uuid.uuid4()),
+        "target": req.target,
+        "user_id": req.user_id,
+        "segment": req.segment,
+        "subject": req.subject,
+        "message": req.message,
+        "recipient_count": sent_count,
+        "sent_by": actor["id"],
+        "created_at": now_iso(),
+    }
+    await db.admin_notification_log.insert_one(dict(log_entry))
+    await append_audit_event(
+        db, actor=actor, action="notifications.sent",
+        target_type="notification", target_id=log_entry["id"],
+        after={"target": req.target, "segment": req.segment, "recipient_count": sent_count},
+    )
+    log_entry.pop("_id", None)
+    return log_entry
+
+
+@api.get("/admin/notifications/sent")
+async def list_sent_notifications(
+    limit: int = 50,
+    _actor: dict = Depends(require_permission("notifications.write")),
+):
+    return await db.admin_notification_log.find({}, {"_id": 0}).sort("created_at", -1).to_list(min(limit, 200))
 
 
 @api.get("/health")
@@ -833,6 +1170,14 @@ api.include_router(
         ),
         require_permission=require_permission,
         has_permission=has_permission,
+    )
+)
+api.include_router(
+    build_content_router(
+        get_db=lambda: db,
+        get_client=lambda: client,
+        get_capabilities=lambda: app.state.database_capabilities,
+        require_permission=require_permission,
     )
 )
 

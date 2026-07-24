@@ -314,3 +314,33 @@ async def run_reservation_listing_and_generic_movement_guard():
 
 def test_reservations_can_be_listed_and_cannot_bypass_lifecycle_routes():
     asyncio.run(run_reservation_listing_and_generic_movement_guard())
+
+
+async def run_csv_export_routes():
+    app, service = build_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        balances = await api.get(
+            "/api/admin/inventory/balances/export?subject_type=material",
+            headers=headers("inventory.read"),
+        )
+        assert balances.status_code == 200
+        assert balances.headers["content-type"].startswith("text/csv")
+        assert "attachment" in balances.headers["content-disposition"]
+        lines = balances.text.strip().splitlines()
+        assert lines[0].startswith("subject_type,subject_id,subject_name")
+        assert "mat-1" in lines[1]
+
+        movements = await api.get(
+            "/api/admin/inventory/movements/export",
+            headers=headers("inventory.read"),
+        )
+        assert movements.status_code == 200
+        assert movements.text.strip().splitlines()[0].startswith("created_at,subject_type")
+
+        forbidden = await api.get("/api/admin/inventory/balances/export")
+        assert forbidden.status_code == 403
+
+
+def test_csv_export_requires_read_permission_and_streams_csv():
+    asyncio.run(run_csv_export_routes())

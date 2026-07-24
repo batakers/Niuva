@@ -89,6 +89,10 @@ class RollbackPayload(ReasonPayload):
     publication_id: str
 
 
+class BulkArchivePayload(ReasonPayload):
+    product_ids: list[str] = Field(min_length=1, max_length=100)
+
+
 def build_catalog_router(
     *,
     get_db,
@@ -289,6 +293,20 @@ def build_catalog_router(
         return await invoke(
             service().archive_product(product_id, actor, payload.reason)
         )
+
+    @router.post("/admin/products/bulk-archive")
+    async def bulk_archive_products(
+        payload: BulkArchivePayload,
+        actor: dict = Depends(require_permission("catalog.archive")),
+    ):
+        results = []
+        for product_id in payload.product_ids:
+            try:
+                await service().archive_product(product_id, actor, payload.reason)
+                results.append({"id": product_id, "success": True, "error": None})
+            except CatalogError as exc:
+                results.append({"id": product_id, "success": False, "error": exc.payload()})
+        return {"results": results}
 
     @router.get("/catalog/categories")
     async def public_categories():
