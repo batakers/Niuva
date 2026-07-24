@@ -1,4 +1,5 @@
-import { api } from "./api";
+import { api, unwrap } from "./api";
+import { isReasonInRange } from "./utils";
 
 
 export const SUPPORTED_MATERIAL_UNITS = Object.freeze([
@@ -24,8 +25,7 @@ export function materialFormFromRecord(record = {}) {
 }
 
 export function validReason(reason) {
-  const length = String(reason || "").trim().length;
-  return length >= 3 && length <= 500;
+  return isReasonInRange(reason);
 }
 
 export function formatIdr(amount) {
@@ -57,14 +57,12 @@ export function visibleMaterialActions(permissions = []) {
   return actions;
 }
 
-const data = (request) => request.then((response) => response.data);
-
 export const materialsApi = {
-  list: () => data(api.get("/admin/materials")),
-  create: (payload) => data(api.post("/admin/materials", payload)),
-  update: (id, payload) => data(api.put(`/admin/materials/${id}`, payload)),
-  archive: (id, reason) => data(api.post(`/admin/materials/${id}/archive`, { reason })),
-  priceVersions: (id) => data(api.get(`/admin/materials/${id}/price-versions`)),
-  effectivePrice: (id) => data(api.get(`/admin/materials/${id}/effective-price`)),
-  appendPrice: (id, payload) => data(api.post(`/admin/materials/${id}/price-versions`, payload)),
+  list: () => unwrap(api.get("/admin/materials")),
+  create: (payload) => unwrap(api.post("/admin/materials", payload)),
+  update: (id, payload) => unwrap(api.put(`/admin/materials/${id}`, payload)),
+  archive: (id, reason) => unwrap(api.post(`/admin/materials/${id}/archive`, { reason })),
+  priceVersions: (id) => unwrap(api.get(`/admin/materials/${id}/price-versions`)),
+  effectivePrice: (id) => unwrap(api.get(`/admin/materials/${id}/effective-price`)),
+  appendPrice: (id, payload) => unwrap(api.post(`/admin/materials/${id}/price-versions`, payload)),
 };

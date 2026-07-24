@@ -13,6 +13,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export function unwrap(request) {
+  return request.then((response) => response.data);
+}
+
 export function fileUrl(path) {
   const normalized = String(path || "").split("/").map(encodeURIComponent).join("/");
   return `${API}/files/${normalized}`;

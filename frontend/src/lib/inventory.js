@@ -1,4 +1,5 @@
-import { api } from "./api";
+import { api, unwrap } from "./api";
+import { isReasonInRange } from "./utils";
 
 
 export const MATERIAL_MOVEMENTS = Object.freeze([
@@ -86,8 +87,7 @@ export function buildReservationTransitionPayload(form) {
 }
 
 export function validInventoryReason(reason) {
-  const length = String(reason || "").trim().length;
-  return length >= 3 && length <= 500;
+  return isReasonInRange(reason);
 }
 
 const CONFLICT_MESSAGES = {
@@ -110,18 +110,17 @@ export function alertActions(permissions = []) {
   return permissions.includes("*") || permissions.includes("restock_alerts.manage") ? ["resolve"] : [];
 }
 
-const data = (request) => request.then((response) => response.data);
 const query = (values) => ({ params: Object.fromEntries(Object.entries(values).filter(([, value]) => value !== "" && value != null)) });
 
 export const inventoryApi = {
-  balances: (filters = {}) => data(api.get("/admin/inventory/balances", query(filters))),
-  balance: (subjectType, subjectId) => data(api.get(`/admin/inventory/balances/${subjectType}/${subjectId}`)),
-  movements: (filters = {}) => data(api.get("/admin/inventory/movements", query(filters))),
-  apply: (payload) => data(api.post("/admin/inventory/movements", payload)),
-  reserve: (payload) => data(api.post("/admin/inventory/reservations", payload)),
-  reservations: (filters = {}) => data(api.get("/admin/inventory/reservations", query(filters))),
-  release: (id, payload) => data(api.post(`/admin/inventory/reservations/${id}/release`, payload)),
-  consume: (id, payload) => data(api.post(`/admin/inventory/reservations/${id}/consume`, payload)),
-  alerts: (filters = {}) => data(api.get("/admin/inventory/restock-alerts", query(filters))),
-  resolveAlert: (id, reason) => data(api.post(`/admin/inventory/restock-alerts/${id}/resolve`, { reason })),
+  balances: (filters = {}) => unwrap(api.get("/admin/inventory/balances", query(filters))),
+  balance: (subjectType, subjectId) => unwrap(api.get(`/admin/inventory/balances/${subjectType}/${subjectId}`)),
+  movements: (filters = {}) => unwrap(api.get("/admin/inventory/movements", query(filters))),
+  apply: (payload) => unwrap(api.post("/admin/inventory/movements", payload)),
+  reserve: (payload) => unwrap(api.post("/admin/inventory/reservations", payload)),
+  reservations: (filters = {}) => unwrap(api.get("/admin/inventory/reservations", query(filters))),
+  release: (id, payload) => unwrap(api.post(`/admin/inventory/reservations/${id}/release`, payload)),
+  consume: (id, payload) => unwrap(api.post(`/admin/inventory/reservations/${id}/consume`, payload)),
+  alerts: (filters = {}) => unwrap(api.get("/admin/inventory/restock-alerts", query(filters))),
+  resolveAlert: (id, reason) => unwrap(api.post(`/admin/inventory/restock-alerts/${id}/resolve`, { reason })),
 };
