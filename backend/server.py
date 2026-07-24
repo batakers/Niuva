@@ -10,6 +10,8 @@ import io
 import uuid
 import logging
 import asyncio
+import hashlib
+import secrets
 import html
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
@@ -113,11 +115,12 @@ def verify_password(p: str, h: str) -> bool:
         return False
 
 
-def create_token(user_id: str, email: str, role: str) -> str:
+def create_token(user_id: str, email: str, role: str, token_version: int = 0) -> str:
     payload = {
         "sub": user_id,
         "email": email,
         "role": role,
+        "token_version": token_version,
         "exp": datetime.now(timezone.utc) + timedelta(days=7),
         "type": "access",
     }
@@ -147,6 +150,11 @@ async def get_user_from_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="User not found")
     if user.get("status", "active") == "disabled":
         raise HTTPException(status_code=403, detail="User account is disabled")
+    # Sessions issued before a password reset (or before this field existed)
+    # carry a stale/absent token_version and must be rejected, even if the
+    # JWT itself has not expired yet.
+    if payload.get("token_version", 0) != user.get("token_version", 0):
+        raise HTTPException(status_code=401, detail="Session expired, please log in again")
     return user
 
 
@@ -189,6 +197,15 @@ class ClientProvisionReq(BaseModel):
 class LoginReq(BaseModel):
     email: EmailStr
     password: str
+
+
+class ForgotPasswordReq(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordReq(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=6)
 
 
 class EstimateReq(BaseModel):
@@ -278,7 +295,7 @@ def safe_user(user: dict) -> dict:
 def auth_response(user: dict) -> dict:
     roles = canonical_roles(user)
     primary_role = roles[0] if roles else user.get("role", "")
-    token = create_token(user["id"], user["email"], primary_role)
+    token = create_token(user["id"], user["email"], primary_role, user.get("token_version", 0))
     return {"token": token, "user": safe_user(user)}
 
 
@@ -385,6 +402,91 @@ async def admin_login(req: LoginReq):
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
     return safe_user(user)
+
+
+RESET_TOKEN_TTL_MINUTES = 30
+_GENERIC_FORGOT_PASSWORD_RESPONSE = {
+    "ok": True,
+    "message": "Jika email terdaftar, instruksi reset password telah dikirim.",
+}
+
+
+def _hash_reset_token(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode()).hexdigest()
+
+
+@api.post("/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordReq, request: Request):
+    client_host = request.client.host if request.client else "unknown"
+    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
+        client_host = request.headers.get("x-forwarded-for", client_host).split(",", 1)[0].strip()
+    rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
+    rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
+
+    # Always return the same generic response whether or not the email is
+    # registered, to avoid leaking account existence (user-enumeration).
+    user = await db.users.find_one({"email": req.email.lower()}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+    if not user:
+        return _GENERIC_FORGOT_PASSWORD_RESPONSE
+
+    # Invalidate any earlier unused tokens for this user before issuing a new one.
+    await db.password_reset_tokens.update_many(
+        {"user_id": user["id"], "used_at": None},
+        {"$set": {"used_at": now_iso()}},
+    )
+    raw_token = secrets.token_urlsafe(32)
+    created_at = datetime.now(timezone.utc)
+    await db.password_reset_tokens.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "token_hash": _hash_reset_token(raw_token),
+        "expires_at": (created_at + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)).isoformat(),
+        "used_at": None,
+        "created_at": created_at.isoformat(),
+    })
+
+    site_url = (os.environ.get("REACT_APP_PUBLIC_SITE_URL") or "").rstrip("/")
+    reset_link = f"{site_url}/reset-password?token={raw_token}"
+    await emailer.send_email(
+        user["email"],
+        "Reset Password — NIUVA",
+        "Permintaan reset password",
+        f"<p>Kami menerima permintaan untuk mereset password akun Anda.</p>"
+        f"<p>Link ini berlaku selama {RESET_TOKEN_TTL_MINUTES} menit: "
+        f"<a href=\"{reset_link}\">{reset_link}</a></p>"
+        f"<p>Jika Anda tidak meminta ini, abaikan email ini.</p>",
+        db=db, user_id=user["id"],
+    )
+    return _GENERIC_FORGOT_PASSWORD_RESPONSE
+
+
+@api.post("/auth/reset-password")
+async def reset_password(req: ResetPasswordReq):
+    token_hash = _hash_reset_token(req.token)
+    now = datetime.now(timezone.utc).isoformat()
+    record = await db.password_reset_tokens.find_one(
+        {"token_hash": token_hash, "used_at": None, "expires_at": {"$gt": now}},
+        {"_id": 0},
+    )
+    if not record:
+        raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
+
+    user = await db.users.find_one({"id": record["user_id"]}, {"_id": 0, "id": 1, "token_version": 1})
+    if not user:
+        raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
+
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$set": {"password_hash": hash_password(req.new_password)},
+            "$inc": {"token_version": 1},
+        },
+    )
+    await db.password_reset_tokens.update_many(
+        {"user_id": user["id"], "used_at": None},
+        {"$set": {"used_at": now}},
+    )
+    return {"ok": True, "message": "Password berhasil diubah. Silakan login dengan password baru."}
 
 
 # ----------------------------- Orders -----------------------------

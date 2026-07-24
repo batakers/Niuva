@@ -26,7 +26,7 @@ const dataCollected = [
   },
   {
     title: "Data Akun",
-    body: "Email dan kredensial login untuk pengguna dengan akun yang disediakan oleh tim Niuva.",
+    body: "Email dan kredensial login untuk pengguna dengan akun yang disediakan oleh tim Niuva. Saat Anda meminta reset password, sistem membuat token reset sekali pakai yang berlaku 30 menit dan otomatis kedaluwarsa atau tidak berlaku lagi setelah digunakan.",
   },
   {
     title: "Preferensi Lokal",

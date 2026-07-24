@@ -160,3 +160,28 @@ nanti diimplementasi lalu perlu dibatalkan:
 
 Tidak ada item yang diselesaikan diam-diam oleh plan ini. Status tetap **Pending
 Separate Implementation Approval**.
+
+## Addendum (25 Juli 2026) — Implementasi Diotorisasi dan Selesai
+
+Pemilik proyek memberi otorisasi implementasi eksplisit pada 25 Juli 2026, termasuk
+menerima efek samping logout massal satu kali saat perubahan skema JWT (`token_version`)
+di-deploy. Implementasi selesai sesuai desain di dokumen ini, tanpa deviasi:
+
+- Backend: `create_token()` dan `get_user_from_token()` di `server.py` diperluas dengan
+  klaim/pembanding `token_version` (default `0`, backward-compatible dengan token lama).
+- Backend: koleksi `password_reset_tokens`, endpoint `POST /auth/forgot-password` (respons
+  generik, rate-limit 3x/15menit per IP dan per email) dan `POST /auth/reset-password`
+  (TTL 30 menit, single-use, menaikkan `token_version` saat berhasil).
+- `token_hash` ditambahkan ke daftar redaction di `audit.py`.
+- Frontend: `AuthShell.jsx` (diekstrak dari `AdminLogin.jsx` untuk dipakai bersama),
+  halaman baru `pages/auth/ForgotPassword.jsx` dan `pages/auth/ResetPassword.jsx`, link
+  "Lupa password?" ditambahkan di `AdminLogin.jsx`.
+- `PrivacyPolicyPage.jsx` diperbarui menyebutkan token reset sekali pakai 30 menit.
+
+Verifikasi: 280 backend tests passed (5 skipped) — termasuk test baru yang memverifikasi
+respons generik forgot-password (tidak membedakan email terdaftar/tidak), rate-limit,
+invalidasi sesi lama pasca-reset (JWT lama ditolak walau belum expired), penolakan token
+reused/expired/unknown. 58 frontend tests passed. `npx craco build` sukses.
+
+Status akhir: **Implemented**. Belum di-PR — menunggu dibuka bersamaan dengan item lain
+sesuai preferensi pemilik proyek.

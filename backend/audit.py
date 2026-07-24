@@ -8,6 +8,7 @@ SENSITIVE_KEYS = frozenset(
         "password",
         "password_hash",
         "token",
+        "token_hash",
         "access_token",
         "refresh_token",
         "secret",
