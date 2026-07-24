@@ -7,6 +7,7 @@ Approved architecture pointers:
 - `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
 - `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
 - `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
+- `docs/decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md`
 - `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 Dokumen ini merevisi candidate spec pada commit `a433141` berdasarkan review stakeholder. BRD/PRS v2.1, PRD v2.1, `PRODUCT.md`, `AGENTS.md`, dan keputusan stakeholder terbaru menjadi sumber kebenaran. Revision pass ini hanya mengubah dokumen desain; tidak ada production code yang diubah.
@@ -43,7 +44,7 @@ Status document ini tetap candidate dan tidak memberi implementation approval.
 | Pajak | Treatment dan display | Tetap open; memerlukan Finance decision |
 | Reservation duration | Tidak ditetapkan oleh candidate ini | Tetap open |
 | Payment architecture | Provider-neutral online-payment orchestration | Approved architecture direction melalui ADR-003; provider tetap deferred |
-| Manual transfer | Bukan Retail production baseline; tidak ada adapter baru yang enabled | Transitional adapter tetap open dan memerlukan written approval terpisah |
+| Manual transfer | Legacy records read-only; no new instruction, attempt, proof upload, or proof-driven transition | Resolved by `DEC-PAY-02`; not an open application fallback |
 | Cancellation/refund/return | Boundary wajib ada; policy detail belum dipilih | Tetap open |
 | Protected scope | Implementation permission | Tetap open |
 
@@ -369,9 +370,9 @@ Normative invariants:
 
 - Manual transfer is not the Retail production baseline.
 - Existing legacy manual-transfer records and proof metadata remain readable.
-- No new transitional manual-transfer adapter or payment-proof upload is enabled.
+- `DEC-PAY-02` disables new manual-transfer instructions, attempts,
+  payment-proof uploads, and proof-driven transitions.
 - Payment proof is not part of the primary production path.
-- A future transitional adapter requires a separate written decision, Finance owner, feature flag, SLA, expiry date, exit criteria, approved production storage, refund and late-payment handling, audit, and rollback controls.
 
 ### 7.5 Fulfillment and after-sales boundary
 
@@ -433,7 +434,7 @@ Admin transitions require least privilege, allowed-state validation, audit, and 
 - Customer APIs enforce `customer_id` ownership; guest APIs enforce order-scoped session ownership.
 - Magic links adalah hashed, short-lived, single-use exchange credentials dan tidak dipakai sebagai bearer URL berulang.
 - Guest session HttpOnly, Secure in production, SameSite, order-scoped, dan dilindungi dari CSRF/origin abuse.
-- ADR-002 applies to design files and every upload-dependent flow. Payment proof remains legacy-readable only and cannot be enabled for new production orders without a separately approved transitional adapter and production storage readiness.
+- ADR-002 applies to design files and every upload-dependent flow. Payment proof remains legacy-readable only; `DEC-PAY-02` disables new proof uploads.
 - Rate limits apply to checkout, magic-link issuance, token exchange, payment retries, and reconciliation-sensitive actions.
 - Sensitive events mencatat actor, timestamp, target, before/after, reason, dan correlation/idempotency reference.
 
@@ -526,7 +527,7 @@ Retail and B2B must both remain discoverable, but this candidate does not lock t
 
 - ADR-002 applies to design files and every upload-dependent flow.
 - Production upload remains blocked by provider, authorization/ownership, validation, malware/quarantine, backup/restore, reconciliation, ownership, and readiness conditions.
-- Manual payment proof cannot be enabled without a separately approved transitional adapter and approved production storage.
+- Historical manual-payment proof remains read-only; `DEC-PAY-02` disables new proof uploads regardless of storage readiness.
 - Local development storage does not satisfy production persistence.
 
 ### Payment gate — `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
@@ -542,7 +543,6 @@ The following remain open:
 - tax treatment;
 - reservation duration;
 - cancellation, refund, and return policy;
-- transitional manual-transfer adapter;
 - protected-scope implementation permission;
 - payment provider;
 - production storage provider;
@@ -594,7 +594,6 @@ Before a Retail Order & Checkout implementation plan, Retail checkout implementa
 - tax treatment;
 - reservation duration;
 - cancellation, refund, and return policy;
-- any transitional manual-transfer adapter and its Finance controls;
 - protected-scope implementation permission;
 - payment gateway provider and provider activation;
 - production storage provider and ADR-002 readiness;

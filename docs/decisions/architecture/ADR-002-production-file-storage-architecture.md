@@ -22,7 +22,8 @@ This ADR covers **all persistent uploads**, not only payment proof:
 - B2B/RFQ attachments.
 - Design versions and review artifacts.
 - Operational files, QC evidence, fulfillment evidence, and customer-approved files.
-- Payment proof if the manual-transfer adapter is explicitly approved.
+- Historical payment-proof objects retained under `DEC-PAY-02`; no new
+  payment-proof upload is enabled.
 
 The ADR defines a provider-neutral production contract. It does not choose a storage vendor or write credentials. Approval is limited to internal architecture, documentation, and future implementation planning; production upload remains blocked by the open operational decisions and readiness gates below.
 

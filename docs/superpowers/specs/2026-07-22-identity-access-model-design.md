@@ -1,6 +1,11 @@
 # Identity Access Model Amendment Design
 
-**Status:** Proposed — approved design awaiting written-spec review
+**Status:** Superseded for role direction by `DEC-ACCESS-001` on 24 July 2026;
+retained as Context Only for historical gap and implementation analysis
+
+> Do not use this document to authorize the aggregate three-role model, account
+> migration, permission rollout, or Task 8. The granular internal role model in
+> the Master Spec remains canonical.
 
 **Purpose:** Replace the over-granular internal role model with a balanced
 three-person startup model, while correcting the identity foundation's

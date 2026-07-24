@@ -32,8 +32,8 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
 - **Options:**
   1. Fixed-price ready-stock, guest-first checkout, authoritative preview, reservation, provider-neutral online-payment lifecycle, dan tracking.
   2. Read-only catalog dan product detail terlebih dahulu, tanpa checkout mutation.
-  3. Manual-transfer checkout sebagai slice awal.
-- **Recommended baseline:** Option 1 dengan online payment sebagai production target; Option 3 tidak menjadi baseline dan hanya dapat hidup sebagai transitional adapter terkontrol.
+  3. Manual-transfer checkout sebagai slice awal — rejected for the current baseline by `DEC-PAY-02`.
+- **Recommended baseline:** Option 1 atau Option 2 tetap memerlukan stakeholder decision. Option 3 tidak dapat dipilih pada baseline saat ini.
 - **Rationale:** Memberi vertical slice Retail yang terukur tanpa mengunci provider atau mengubah B2B lifecycle.
 - **Impact:** Retail catalog, cart, checkout, inventory reservation, payment, storage, tracking, public discovery, dan operational support.
 - **Dependencies:** `DEC-PAY-01`, `DEC-FUL-01`, `DEC-TAX-01`, `DEC-INV-01`, `DEC-DATA-01`, `DEC-STOR-01`, `DEC-SCOPE-01`.
@@ -47,21 +47,34 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
 - **Approver:** Acting Technical Owner; Business/Finance approver: Acting Business and Finance Owner
 - **Operations acknowledgement:** Acting Operations Owner
 - **Decision date:** 16 July 2026
-- **Options:**
+- **Historical options at original approval:**
   1. Provider-neutral online payment tanpa manual-transfer adapter.
   2. Provider-neutral online payment dengan manual transfer sebagai transitional adapter yang dibatasi dan disetujui secara eksplisit.
 - **Excluded baseline alternative:**
   Manual transfer as the Retail production baseline.
 
   This alternative conflicts with the approved v2.1 online-payment direction and is not selectable through DEC-PAY-01. It would require an explicit amendment to the approved v2.1 baseline.
-- **Recommended baseline:** Option 1 untuk production; Option 2 hanya jika disetujui eksplisit dengan Finance owner, reconciliation SLA, expiry date, dan exit criteria.
+- **Current baseline after `DEC-PAY-02`:** Option 1. Option 2 is no longer an open application fallback; legacy records are read-only.
 - **Approval scope:** Internal architecture direction, documentation, and future implementation planning.
 - **Open decision categories:** Gateway provider, payment state machine, Finance operations, reconciliation SLA, refund policy, event retention, webhook authentication, and production readiness.
 - **Rationale:** v2.1 mengunci online payment sebagai target production, sementara provider tetap deferred.
 - **Impact:** Payment lifecycle, payment proof storage, reconciliation queue, inventory hold, customer messaging, finance operations, dan go-live gate.
 - **Dependencies:** `DEC-STOR-01`, `DEC-READY-01`, payment contract ADR.
 - **Related ADR:** `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`, `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`.
-- **Final decision:** Approved with Open Decisions. No new transitional manual-transfer adapter is enabled by this approval; gateway provider, reconciliation SLA, refund policy, payment event retention, and production go-live remain open.
+- **Final decision:** Approved with Open Decisions. `DEC-PAY-02` subsequently resolved manual-transfer compatibility as read-only and disabled new manual-transfer/payment-proof activity. Gateway provider, reconciliation SLA, refund policy, payment event retention, and production go-live remain open.
+
+## DEC-PAY-02 — Legacy Manual Transfer Is Read-Only
+
+- **Status:** Approved Decision
+- **Decision owner:** User / Product decision authority
+- **Decision date:** 24 July 2026
+- **Approval source:** Explicit user approval in the backend-audit conversation.
+- **Decision:** Existing manual-transfer records and proof metadata remain readable through authorized compatibility projections. New manual-transfer instructions, attempts, payment-proof uploads, and proof-driven transitions are disabled.
+- **Rationale:** Preserve historical commercial truth without allowing the legacy flow to become a new Retail fallback.
+- **Impact:** Legacy order/payment compatibility, payment-proof retention, customer/staff projection, and protected-scope route remediation.
+- **Dependencies:** `DEC-PAY-01`, `DEC-STOR-01`, `DEC-SCOPE-01`.
+- **Related decision:** `docs/decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md`.
+- **Excluded:** Code changes, destructive record cleanup, provider selection, Finance activation, production readiness, and go-live.
 
 ## DEC-FUL-01 — Shipping and Pickup Policy
 
@@ -183,7 +196,7 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
 - **Approval scope:** Internal architecture direction, documentation, and future implementation planning.
 - **Open decision categories:** Provider, operations, production readiness, RPO/RTO, retention, quota, ownership, backup/restore, malware handling, and Emergent migration.
 - **Rationale:** Local filesystem hanya aman untuk development/demo dan tidak memenuhi production persistence.
-- **Impact:** Retail design files, B2B/RFQ attachments, design versions, operational files, QC/fulfillment evidence, dan payment proof jika manual-transfer adapter disetujui.
+- **Impact:** Retail design files, B2B/RFQ attachments, design versions, operational files, QC/fulfillment evidence, dan historical payment-proof objects retained under `DEC-PAY-02`; no new proof upload.
 - **Dependencies:** `DEC-RT-01`, `DEC-PAY-01`, `DEC-SCOPE-01`, `DEC-READY-01`.
 - **Related ADR:** `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`.
 - **Final decision:** Approved with Open Decisions. Actual provider, RPO, RTO, retention duration, quota values, storage/backup/restore/malware/incident owners, dan Emergent migration/decommission policy tetap open.
