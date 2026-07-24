@@ -117,7 +117,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="bg-surface-1 border-border text-foreground max-w-2xl max-h-[90vh] overflow-y-auto p-0 rounded-none">
         
         {/* Header */}
