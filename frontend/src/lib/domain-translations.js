@@ -1,6 +1,6 @@
 export const domainTranslations = {
   id: {
-    "common.refresh": "Muat ulang", "common.search": "Cari", "common.all": "Semua",
+    "common.refresh": "Muat ulang", "common.search": "Cari", "common.all": "Semua", "common.exportCsv": "Ekspor CSV",
     "common.updated": "Diperbarui", "common.actions": "Aksi", "common.open": "Buka",
     "common.add": "Tambah", "common.date": "Tanggal", "common.status": "Status",
     "common.reason": "Alasan", "common.days": "hari", "common.yes": "Ya", "common.no": "Tidak",
@@ -75,7 +75,7 @@ export const domainTranslations = {
     "inventory.resolveSuccess": "Peringatan restock berhasil diselesaikan.",
   },
   en: {
-    "common.refresh": "Refresh", "common.search": "Search", "common.all": "All",
+    "common.refresh": "Refresh", "common.search": "Search", "common.all": "All", "common.exportCsv": "Export CSV",
     "common.updated": "Updated", "common.actions": "Actions", "common.open": "Open",
     "common.add": "Add", "common.date": "Date", "common.status": "Status",
     "common.reason": "Reason", "common.days": "days", "common.yes": "Yes", "common.no": "No",

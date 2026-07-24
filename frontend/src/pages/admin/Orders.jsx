@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Eye, Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../../i18n";
-import { api, downloadFile, fetchFile, formatApiError } from "../../lib/api";
+import { api, downloadCsv, downloadFile, fetchFile, formatApiError } from "../../lib/api";
 import { fmtDay } from "../../lib/format";
 import { AdminLayout } from "./AdminLayout";
 import { StatusBadge } from "@/components/operational/StatusStepper";
@@ -30,11 +30,19 @@ export default function AdminOrders() {
   
   useEffect(() => { load(); }, []);
 
+  const exportCsv = async () => {
+    try { await downloadCsv("/admin/orders/export", "niuva-orders.csv"); }
+    catch (exportError) { toast.error(exportError.message); }
+  };
+
   return (
     <AdminLayout title={t("admin.orders")} subtitle="Order Management Log">
       <div className="border border-border bg-surface-1">
-        <div className="border-b border-border bg-surface-2 px-6 py-3">
+        <div className="flex items-center justify-between border-b border-border bg-surface-2 px-6 py-3">
           <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">ORDER_REGISTRY // TOTAL: {orders.length}</span>
+          <Button variant="outline" size="sm" onClick={exportCsv} className="h-8 rounded-none border-border font-mono text-[10px] uppercase tracking-widest">
+            <Download className="mr-2 h-3.5 w-3.5" />{t("common.exportCsv")}
+          </Button>
         </div>
 
         {loading ? (

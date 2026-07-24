@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, SlidersHorizontal } from "lucide-react";
+import { Download, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "../../components/ui/button";
@@ -24,6 +24,7 @@ import {
   visibleMovementTypes,
 } from "../../lib/inventory";
 import { hasPermission } from "../../lib/permissions";
+import { downloadCsv } from "../../lib/api";
 import { AdminLayout } from "./AdminLayout";
 
 
@@ -60,6 +61,12 @@ export default function Inventory() {
 
   useEffect(() => { load(); }, [load]);
 
+  const exportCsv = async () => {
+    const query = filters.subject_type ? `?subject_type=${encodeURIComponent(filters.subject_type)}` : "";
+    try { await downloadCsv(`/admin/inventory/balances/export${query}`, "niuva-inventory-balances.csv"); }
+    catch (exportError) { toast.error(exportError.message); }
+  };
+
   const visible = useMemo(() => balances.filter((balance) => (
     [balance.subject_id, balance.subject_name, balance.sku]
       .some((value) => String(value || "").toLowerCase().includes(filters.search.toLowerCase()))
@@ -82,9 +89,14 @@ export default function Inventory() {
       <SurfacePanel>
         <SurfacePanelHeader padding="sm" className="flex flex-wrap items-center justify-between gap-3">
           <TechnicalLabel>{t("inventory.balances")}</TechnicalLabel>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className="mr-2 h-4 w-4" />{t("common.refresh")}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={exportCsv}>
+              <Download className="mr-2 h-4 w-4" />{t("common.exportCsv")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+              <RefreshCw className="mr-2 h-4 w-4" />{t("common.refresh")}
+            </Button>
+          </div>
         </SurfacePanelHeader>
         <div className="grid gap-3 p-4 md:grid-cols-2">
           <label className="space-y-1">

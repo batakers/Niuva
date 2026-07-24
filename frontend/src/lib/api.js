@@ -44,8 +44,7 @@ export async function fetchFile(path) {
   return response.blob();
 }
 
-export async function downloadFile(path, filename = "download") {
-  const blob = await fetchFile(path);
+function triggerBlobDownload(blob, filename) {
   const objectUrl = URL.createObjectURL(blob);
   try {
     const anchor = document.createElement("a");
@@ -56,6 +55,20 @@ export async function downloadFile(path, filename = "download") {
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+export async function downloadFile(path, filename = "download") {
+  triggerBlobDownload(await fetchFile(path), filename);
+}
+
+export async function downloadCsv(apiPath, filename = "export.csv") {
+  const token = getStoredToken();
+  if (!token) throw new Error("Not authenticated");
+  const response = await fetch(`${API}${apiPath}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error(`Export failed (${response.status})`);
+  triggerBlobDownload(await response.blob(), filename);
 }
 
 export function formatApiError(detail) {

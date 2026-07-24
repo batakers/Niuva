@@ -5,6 +5,8 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import os
+import csv
+import io
 import uuid
 import logging
 import asyncio
@@ -467,6 +469,20 @@ async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dic
 
 
 # ----------------------------- Admin orders -----------------------------
+def rows_to_csv_response(fieldnames: list, rows: list, filename: str) -> Response:
+    """Serialize dict rows to a CSV download. Bounded data (<=500 rows), no disk write."""
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: row.get(key, "") for key in fieldnames})
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 def serialize_admin_order_for(actor: dict, order: dict) -> dict:
     """Return a role-safe order representation for internal readers."""
     value = {key: item for key, item in order.items() if key != "_id"}
@@ -487,6 +503,48 @@ async def admin_orders(
 ):
     q = {"status": status} if status else {}
     return [serialize_admin_order_for(user, order) for order in await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)]
+
+
+@api.get("/admin/orders/export")
+async def export_orders(
+    status: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(require_permission("orders.read")),
+):
+    q = {}
+    if status:
+        q["status"] = status
+    created = {}
+    if date_from:
+        created["$gte"] = date_from
+    if date_to:
+        created["$lte"] = date_to
+    if created:
+        q["created_at"] = created
+
+    include_payment = has_permission(user, "payments.read")
+    fieldnames = [
+        "order_number", "user_name", "user_email", "material_name",
+        "status", "created_at", "updated_at",
+    ]
+    if include_payment:
+        fieldnames += ["estimate_amount", "estimate_currency", "payment_verified"]
+
+    rows = []
+    for order in await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500):
+        safe = serialize_admin_order_for(user, order)
+        row = {key: safe.get(key, "") for key in fieldnames if not key.startswith(("estimate_", "payment_"))}
+        if include_payment:
+            estimate = order.get("estimate") or {}
+            payment = order.get("payment") or {}
+            row["estimate_amount"] = estimate.get("amount", "")
+            row["estimate_currency"] = estimate.get("currency", "")
+            row["payment_verified"] = payment.get("verified", "")
+        rows.append(row)
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return rows_to_csv_response(fieldnames, rows, f"niuva-orders-{stamp}.csv")
 
 
 @api.post("/admin/orders/{oid}/estimate")
