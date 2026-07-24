@@ -150,6 +150,8 @@ const translations = {
 
     "admin.title": "Dashboard Admin",
     "admin.overview": "Ringkasan",
+    "admin.overviewSubtitle": "Ringkasan Operasional",
+    "admin.totalOrders": "Total Pesanan",
     "admin.orders": "Pesanan",
     "admin.materials": "Material",
     "admin.portfolio": "Portofolio",
@@ -314,6 +316,8 @@ const translations = {
 
     "admin.title": "Admin Dashboard",
     "admin.overview": "Overview",
+    "admin.overviewSubtitle": "Operations Overview",
+    "admin.totalOrders": "Total Orders",
     "admin.orders": "Orders",
     "admin.materials": "Materials",
     "admin.portfolio": "Portfolio",
