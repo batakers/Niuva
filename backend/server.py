@@ -853,6 +853,78 @@ async def admin_stats(
     }
 
 
+def _validate_date(value: str, label: str) -> str:
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"{label} must be YYYY-MM-DD")
+    return value
+
+
+def _date_bucket(timestamp: str) -> str:
+    return (timestamp or "")[:10]
+
+
+@api.get("/admin/stats/timeseries")
+async def admin_stats_timeseries(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(require_permission("dashboard.read")),
+):
+    """Aggregate real order/payment/stock-movement history into a daily trend.
+
+    Series composition depends on the actor's permissions (DEC-OPS-001: no
+    identical dashboard for every role) — operations sees production/stock
+    trends, commercial_finance sees revenue trends. Every value here is a
+    direct count or sum over existing transaction records, never a fabricated
+    metric.
+    """
+    now = datetime.now(timezone.utc)
+    start = _validate_date(date_from or (now - timedelta(days=30)).strftime("%Y-%m-%d"), "date_from")
+    end = _validate_date(date_to or now.strftime("%Y-%m-%d"), "date_to")
+
+    orders = await db.orders.find(
+        {"created_at": {"$gte": start, "$lte": f"{end}T23:59:59"}},
+        {"_id": 0, "created_at": 1, "status": 1, "payment": 1, "estimate": 1},
+    ).to_list(5000)
+
+    orders_by_status: dict = {}
+    for order in orders:
+        bucket = _date_bucket(order.get("created_at"))
+        row = orders_by_status.setdefault(bucket, {status: 0 for status in ORDER_STATUSES})
+        status = order.get("status")
+        if status in row:
+            row[status] += 1
+
+    series = {"orders_by_status": [{"date": date, **counts} for date, counts in sorted(orders_by_status.items())]}
+
+    if has_permission(user, "inventory.read"):
+        movements = await db.stock_movements.find(
+            {"created_at": {"$gte": start, "$lte": f"{end}T23:59:59"}},
+            {"_id": 0, "created_at": 1, "movement_type": 1},
+        ).to_list(5000)
+        movement_totals: dict = {}
+        for movement in movements:
+            bucket = _date_bucket(movement.get("created_at"))
+            row = movement_totals.setdefault(bucket, {})
+            movement_type = movement.get("movement_type", "unknown")
+            row[movement_type] = row.get(movement_type, 0) + 1
+        series["stock_movements"] = [{"date": date, **counts} for date, counts in sorted(movement_totals.items())]
+
+    if has_permission(user, "payments.read"):
+        revenue_totals: dict = {}
+        for order in orders:
+            payment = order.get("payment") or {}
+            if not payment.get("verified"):
+                continue
+            bucket = _date_bucket(payment.get("verified_at") or order.get("created_at"))
+            amount = (order.get("estimate") or {}).get("amount") or 0
+            revenue_totals[bucket] = revenue_totals.get(bucket, 0) + amount
+        series["revenue"] = [{"date": date, "amount": amount} for date, amount in sorted(revenue_totals.items())]
+
+    return {"date_from": start, "date_to": end, "series": series}
+
+
 @api.get("/notifications")
 async def my_notifications(user: dict = Depends(get_current_user)):
     return await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)

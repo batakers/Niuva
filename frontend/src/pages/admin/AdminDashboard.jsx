@@ -1,12 +1,61 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useI18n } from "../../i18n";
+import { useAuth } from "../../context/AuthContext";
+import { hasPermission } from "../../lib/permissions";
 import { api, formatApiError } from "../../lib/api";
 import { AdminLayout } from "./AdminLayout";
 
+function isoDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function defaultDateFrom() {
+  const date = new Date();
+  date.setDate(date.getDate() - 30);
+  return isoDate(date);
+}
+
+/**
+ * Sum every numeric field on a row except "date" into a single total —
+ * lets one <Line> render a combined trend without hardcoding field names
+ * that vary by series (order statuses vs movement types).
+ */
+function totalForRow(row) {
+  return Object.entries(row).reduce((sum, [key, value]) => (key === "date" ? sum : sum + (Number(value) || 0)), 0);
+}
+
+function TrendChart({ title, rows, valueLabel, formatValue }) {
+  const { t } = useI18n();
+  const data = rows.map((row) => ({ date: row.date, value: valueLabel === "revenue" ? row.amount : totalForRow(row) }));
+  return (
+    <div className="border border-border bg-surface-1 p-6">
+      <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-4 border-b border-border/50 pb-2">{title}</p>
+      {data.length === 0 ? (
+        <p className="text-sm text-muted-foreground" role="status">{t("dashboard.noDataInRange")}</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} />
+            <Tooltip formatter={formatValue} />
+            <Line type="monotone" dataKey="value" stroke="var(--color-action-primary, #2563eb)" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loadError, setLoadError] = useState("");
+  const [dateFrom, setDateFrom] = useState(defaultDateFrom());
+  const [dateTo, setDateTo] = useState(isoDate(new Date()));
+  const [series, setSeries] = useState(null);
+  const [seriesError, setSeriesError] = useState("");
 
   useEffect(() => {
     api
@@ -14,6 +63,19 @@ export default function AdminDashboard() {
       .then((r) => setStats(r.data))
       .catch((err) => setLoadError(formatApiError(err.response?.data?.detail)));
   }, []);
+
+  const loadSeries = useCallback(() => {
+    setSeriesError("");
+    api
+      .get("/admin/stats/timeseries", { params: { date_from: dateFrom, date_to: dateTo } })
+      .then((r) => setSeries(r.data.series))
+      .catch((err) => setSeriesError(formatApiError(err.response?.data?.detail)));
+  }, [dateFrom, dateTo]);
+
+  useEffect(() => { loadSeries(); }, [loadSeries]);
+
+  const canSeeInventory = hasPermission(user, "inventory.read");
+  const canSeeRevenue = hasPermission(user, "payments.read");
 
   if (loadError) {
     return (
@@ -61,7 +123,31 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      <div className="mt-8 flex flex-wrap items-end gap-3">
+        <label className="space-y-1">
+          <span className="block font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{t("dashboard.dateFrom")}</span>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-border bg-background px-3" />
+        </label>
+        <label className="space-y-1">
+          <span className="block font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{t("dashboard.dateTo")}</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-border bg-background px-3" />
+        </label>
+      </div>
+
+      {seriesError && <p className="mt-4 text-sm text-destructive" role="alert">{seriesError}</p>}
+
+      {series && (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <TrendChart title={t("dashboard.ordersTrend")} rows={series.orders_by_status || []} />
+          {canSeeInventory && series.stock_movements && (
+            <TrendChart title={t("dashboard.stockMovementsTrend")} rows={series.stock_movements} />
+          )}
+          {canSeeRevenue && series.revenue && (
+            <TrendChart title={t("dashboard.revenueTrend")} rows={series.revenue} valueLabel="revenue" formatValue={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
+          )}
+        </div>
+      )}
     </AdminLayout>
   );
 }
-
