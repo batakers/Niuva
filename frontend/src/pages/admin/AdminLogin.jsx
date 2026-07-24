@@ -80,10 +80,11 @@ export default function AdminLogin() {
 
           <form onSubmit={submit} className="space-y-6" data-testid="admin-login-form">
             <div className="space-y-2">
-              <Label className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <Label htmlFor="admin-login-email" className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 CREDENTIAL_ID (EMAIL)
               </Label>
               <Input
+                id="admin-login-email"
                 data-testid="admin-login-email"
                 type="email"
                 value={email}
@@ -95,10 +96,11 @@ export default function AdminLogin() {
             </div>
 
             <div className="space-y-2">
-              <Label className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <Label htmlFor="admin-login-password" className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 AUTHORIZATION_KEY
               </Label>
               <Input
+                id="admin-login-password"
                 data-testid="admin-login-password"
                 type="password"
                 value={password}

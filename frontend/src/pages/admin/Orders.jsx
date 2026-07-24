@@ -16,10 +16,16 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [sel, setSel] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const load = () => {
     setLoading(true);
-    api.get("/admin/orders").then((r) => setOrders(r.data)).catch(() => {}).finally(() => setLoading(false));
+    setLoadError("");
+    api
+      .get("/admin/orders")
+      .then((r) => setOrders(r.data))
+      .catch((err) => setLoadError(formatApiError(err.response?.data?.detail)))
+      .finally(() => setLoading(false));
   };
   
   useEffect(() => { load(); }, []);
@@ -32,8 +38,12 @@ export default function AdminOrders() {
         </div>
 
         {loading ? (
-          <div className="p-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest">
+          <div className="p-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest" role="status">
             [ FETCHING_DATA... ]
+          </div>
+        ) : loadError ? (
+          <div className="p-12 text-center font-mono text-xs text-destructive uppercase tracking-widest" role="alert">
+            {loadError}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -137,7 +147,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
               <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2">PAYLOAD_FILE</p>
               <div className="flex items-center justify-between gap-3">
                 <span className="font-mono text-sm text-foreground truncate">{order.file?.original_filename}</span>
-                <Button type="button" onClick={() => downloadStoredFile(order.file?.storage_path, order.file?.original_filename)} data-testid="admin-download-design" size="sm" variant="outline" className="rounded-none border-border hover:border-primary uppercase tracking-widest font-mono text-[10px] h-8 px-3">
+                <Button type="button" onClick={() => downloadStoredFile(order.file?.storage_path, order.file?.original_filename)} data-testid="admin-download-design" aria-label={`${t("detail.download")}: ${order.file?.original_filename || ""}`} size="sm" variant="outline" className="rounded-none border-border hover:border-primary uppercase tracking-widest font-mono text-[10px] h-8 px-3">
                   <Download className="h-3.5 w-3.5" />
                 </Button>
               </div>

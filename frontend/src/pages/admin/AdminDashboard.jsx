@@ -1,21 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { useI18n } from "../../i18n";
-import { api } from "../../lib/api";
+import { api, formatApiError } from "../../lib/api";
 import { AdminLayout } from "./AdminLayout";
 
 export default function AdminDashboard() {
   const { t } = useI18n();
   const [stats, setStats] = useState(null);
-  
-  useEffect(() => { 
-    api.get("/admin/stats").then((r) => setStats(r.data)).catch(() => {}); 
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    api
+      .get("/admin/stats")
+      .then((r) => setStats(r.data))
+      .catch((err) => setLoadError(formatApiError(err.response?.data?.detail)));
   }, []);
+
+  if (loadError) {
+    return (
+      <AdminLayout title={t("admin.overview")} subtitle="System Operations Hub">
+        <div className="border border-border bg-surface-1 p-12 text-center">
+          <p className="font-mono text-xs text-destructive uppercase tracking-widest" role="alert">{loadError}</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   if (!stats) {
     return (
       <AdminLayout title={t("admin.overview")} subtitle="System Operations Hub">
         <div className="border border-border bg-surface-1 p-12 text-center">
-          <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest">[ FETCHING_TELEMETRY... ]</p>
+          <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest" role="status">[ FETCHING_TELEMETRY... ]</p>
         </div>
       </AdminLayout>
     );

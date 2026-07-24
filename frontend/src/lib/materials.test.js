@@ -2,7 +2,6 @@ import {
   SUPPORTED_MATERIAL_UNITS,
   formatIdr,
   materialFormFromRecord,
-  materialSetupReady,
   priceVersionPayload,
   validReason,
   visibleMaterialActions,
@@ -43,9 +42,7 @@ test("material price helpers preserve integer IDR and supported units", () => {
 });
 
 
-test("setup readiness, reason, and material actions follow exact rules", () => {
-  expect(materialSetupReady({ setup_status: "ready", base_unit: "kg", sku: "PLA-1" })).toBe(true);
-  expect(materialSetupReady({ setup_status: "ready", base_unit: "", sku: "PLA-1" })).toBe(false);
+test("reason and material actions follow exact rules", () => {
   expect(validReason("ok")).toBe(false);
   expect(validReason("Stock supplier dihentikan")).toBe(true);
   expect(visibleMaterialActions(["pricing.read"])).toEqual(["price_history"]);

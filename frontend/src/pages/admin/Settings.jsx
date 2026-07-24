@@ -15,11 +15,15 @@ export default function AdminSettings() {
   const { t } = useI18n();
   const [form, setForm] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   useEffect(() => {
-    api.get("/settings").then((r) => setForm(r.data)).catch(() => {});
+    api
+      .get("/settings")
+      .then((r) => setForm(r.data))
+      .catch((err) => setLoadError(formatApiError(err.response?.data?.detail)));
   }, []);
 
   const save = async () => {
@@ -34,10 +38,18 @@ export default function AdminSettings() {
     }
   };
 
+  if (loadError) {
+    return (
+      <AdminLayout title={t("admin.settings")} subtitle="System Configuration Panel">
+        <EmptyState frame="solid"><span role="alert">{loadError}</span></EmptyState>
+      </AdminLayout>
+    );
+  }
+
   if (!form) {
     return (
       <AdminLayout title={t("admin.settings")} subtitle="System Configuration Panel">
-        <EmptyState frame="solid">[ FETCHING_CONFIG... ]</EmptyState>
+        <EmptyState frame="solid"><span role="status">[ FETCHING_CONFIG... ]</span></EmptyState>
       </AdminLayout>
     );
   }

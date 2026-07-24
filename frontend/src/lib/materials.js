@@ -23,10 +23,6 @@ export function materialFormFromRecord(record = {}) {
   };
 }
 
-export function materialSetupReady(form) {
-  return form?.setup_status === "ready" && Boolean(form?.base_unit) && String(form?.sku || "").trim().length >= 2;
-}
-
 export function validReason(reason) {
   const length = String(reason || "").trim().length;
   return length >= 3 && length <= 500;
