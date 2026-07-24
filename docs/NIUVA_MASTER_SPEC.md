@@ -102,7 +102,9 @@ Organization members may access only assigned organizations and projects. Approv
 
 Authorization must be enforced in backend handlers, services, and data queries. Hiding a control is a usability measure, not authorization. Use least privilege, conflict-safe approval behavior, and audit records for sensitive actions.
 
-Sources: `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` for procedure only.
+The granular internal role model remains canonical. Operational staff do not receive a general user directory, complete role definitions, or the full audit log. Domain-scoped audit visibility may be granted only through an approved granular permission and query-scope matrix; until that matrix is approved and implemented, non-governance audit access fails closed. Safe self-role metadata and minimal order/project-scoped customer projections are not a general user directory.
+
+Sources: `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md`; `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` for procedure only.
 
 ## 5. Product Structure
 
@@ -346,7 +348,7 @@ Detailed rollout, migration, correction, rollback, and recovery procedures remai
 - Transaction-required operations fail closed with `503 transaction_unavailable` when capability is unavailable.
 - Retail production payment uses provider-neutral online-payment orchestration with separate adapters.
 - Provider events and webhooks must be idempotent and have explicit refund and reconciliation boundaries.
-- Manual transfer is not the Retail production baseline. No new transitional adapter is enabled without a separate written decision.
+- Manual transfer is not the Retail production baseline. `DEC-PAY-02` makes existing manual-transfer records read-only and disables new manual-transfer instructions, attempts, payment-proof uploads, and proof-driven transitions.
 - Credentials, secret values, API keys, and raw provider secrets must not be stored in product documentation or committed to the repository.
 - Logs must avoid unnecessary personal, financial, file, and provider data.
 
@@ -388,9 +390,11 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Admin Studio follows the approved operational experience direction | Approved Decision | `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-direction.md` |
 | Commercial history uses versions and snapshots | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
 | Real milestones and ETA replace fake percentage progress | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Granular internal roles remain canonical; operational staff have no general user directory, complete role definitions, or full audit log | Approved Decision | `docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md` |
 | Replica-set transaction capability | Approved Baseline | `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` |
 | Provider-neutral private production storage boundary | Approved with Open Decisions | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` |
 | Provider-neutral Retail online-payment orchestration | Approved with Open Decisions | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` |
+| Existing manual-transfer records are read-only; no new manual-transfer or payment-proof activity is enabled | Approved Decision | `docs/decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md` |
 
 ## 16. Deferred Decisions
 
@@ -407,7 +411,6 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Tax treatment and rounding policy | Open | Price display, invoice, payment, refund, and reconciliation |
 | Reservation duration | Open | Checkout expiry, stock availability, and payment timing |
 | Cancellation, refund, and return policy | Open | Checkout terms, Finance, fulfillment, and support |
-| Transitional manual-transfer adapter | Not enabled | Retail payment fallback, proof storage, and Finance workflow |
 | First Retail vertical slice | Open | Retail implementation sequencing |
 | Protected-scope implementation permission | Open | Legacy order, auth, payment, fulfillment, and compatibility changes |
 | Production readiness | Open | Feature activation and operational handover |

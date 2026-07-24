@@ -178,7 +178,7 @@ File divalidasi berdasarkan tipe, ukuran, ownership, dan keamanan. Produksi tida
 
 Approved storage direction (`docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`): application memakai stable provider-neutral storage port dengan private persistent object storage sebagai production adapter class. Local filesystem hanya development/demo; production objects private by default; backend authorization adalah default; signed access harus short-lived, telah diotorisasi backend, dan scoped ke satu object/action. Database-backed ownership menggantikan path-substring authorization; public bucket/static directory dilarang.
 
-Boundary ini mencakup seluruh persistent Retail, B2B, design, operational, QC, fulfillment, dan payment-proof uploads bila transitional manual-transfer adapter kelak disetujui. Provider, RPO/RTO, retention, quota, owners, backup/restore, malware/quarantine, Emergent migration/decommission, dan production readiness tetap open. Query-string access tokens, ownership, MIME/signature validation, malware quarantine, backup/restore, dan metadata/object reconciliation adalah prerequisite; production upload tetap disabled sampai operational readiness disetujui.
+Boundary ini mencakup seluruh persistent Retail, B2B, design, operational, QC, fulfillment, dan historical payment-proof objects yang dipertahankan berdasarkan `DEC-PAY-02`; tidak ada payment-proof upload baru. Provider, RPO/RTO, retention, quota, owners, backup/restore, malware/quarantine, Emergent migration/decommission, dan production readiness tetap open. Query-string access tokens, ownership, MIME/signature validation, malware quarantine, backup/restore, dan metadata/object reconciliation adalah prerequisite; production upload tetap disabled sampai operational readiness disetujui.
 
 ## 6. Retail Checkout, Payment, dan Tracking
 
@@ -192,8 +192,7 @@ Boundary ini mencakup seluruh persistent Retail, B2B, design, operational, QC, f
 - Online payment seperti VA, QRIS, atau e-wallet melalui provider yang dipilih kemudian.
 - Provider-neutral payment orchestration adalah Retail production architecture; provider adapters berada di luar core order/payment domain.
 - Provider events dan webhooks harus idempotent, refund/reconciliation memiliki boundary eksplisit, dan customer responses memakai customer-safe payment projections.
-- Gateway provider tetap deferred. Manual transfer bukan Retail production baseline; legacy records tetap readable dan tidak ada transitional adapter baru yang diaktifkan.
-- Transitional adapter masa depan memerlukan written decision, Finance owner, feature flag, SLA, expiry, exit criteria, storage approval, refund/late-payment handling, audit, dan rollback controls.
+- Gateway provider tetap deferred. Manual transfer bukan Retail production baseline; `DEC-PAY-02` menetapkan legacy records sebagai read-only dan menonaktifkan instruksi transfer, attempt, payment-proof upload, serta proof-driven transition baru.
 
 Ready-stock direservasi saat checkout. Reservasi dilepas jika pembayaran kedaluwarsa.
 
@@ -545,7 +544,6 @@ Kedua journey dapat terlihat pada website, tetapi kapabilitas transaksinya diakt
 - Tax treatment.
 - Reservation duration.
 - Cancellation, refund, and return policy.
-- Transitional manual-transfer adapter.
 - Protected-scope implementation permission.
 - Production readiness and go-live.
 

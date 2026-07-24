@@ -9,13 +9,20 @@ Operations acknowledgement: Acting Operations Owner
 Decision date: 16 July 2026
 Approval source: Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
 Recorded by: Project documentation owner
+Compatibility amendment: `DEC-PAY-02`, approved by explicit user decision on
+24 July 2026, makes existing manual-transfer records read-only and disables new
+manual-transfer/payment-proof activity.
 Open decision categories: Gateway provider, payment state machine, Finance operations, reconciliation SLA, refund policy, event retention, webhook authentication, and production readiness.
 Related baseline: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 Decision log: `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 ## Context
 
-Approved v2.1 requirements establish **online payment as the Retail production target**, while the payment gateway provider remains deferred. The Retail checkout candidate currently describes manual transfer and payment proof as its primary slice. That is not an acceptable production baseline without an explicit transitional decision.
+Approved v2.1 requirements establish **online payment as the Retail production
+target**, while the payment gateway provider remains deferred. An earlier
+checkout direction considered manual transfer and payment proof as a possible
+slice. `DEC-PAY-02` now resolves that legacy boundary as read-only and disables
+new manual-transfer/payment-proof activity.
 
 This ADR defines the boundary between the Retail payment experience, a provider-neutral payment contract, provider adapters, and exceptional manual-transfer handling. It does not select a gateway provider or authorize production go-live.
 
@@ -61,22 +68,19 @@ The application contract should represent, at minimum:
 
 ## Manual Transfer Policy
 
-Manual transfer is **disabled by default** and is not the Retail production target.
+Manual transfer is not the Retail production target. `DEC-PAY-02` resolves the
+compatibility boundary for the current baseline:
 
-It may be enabled only as a transitional adapter after all of the following are approved in writing:
+- existing manual-transfer records remain readable through authenticated,
+  authorized, ownership-scoped compatibility projections;
+- no new manual-transfer instruction or payment attempt is created;
+- no new payment proof is uploaded;
+- no new proof-driven verification or payment transition is performed;
+- historical commercial and proof metadata is preserved rather than deleted or
+  rewritten.
 
-- explicit stakeholder and Finance approval;
-- dedicated feature flag and rollout boundary;
-- named Finance owner;
-- payment review and reconciliation SLA;
-- expiry date for the transitional adapter;
-- exit criteria and migration path to online payment;
-- approved private persistent storage for payment proof;
-- audit, retry, refund, and late-payment handling.
-
-Manual transfer must not change the provider-neutral core contract or silently become the default payment experience.
-
-No new transitional manual-transfer adapter is enabled by this approval.
+Manual transfer must not change the provider-neutral core contract or silently
+become a fallback payment experience.
 
 ## Options
 
@@ -86,7 +90,8 @@ Lock the lifecycle and contract now, then select a gateway adapter later.
 
 ### Option B — Manual transfer as a time-bound transitional adapter
 
-Keep the same core contract, but enable a separate proof/reconciliation adapter only after explicit approval and expiry controls.
+This option was not enabled by the original approval and is no longer an open
+application fallback for the current baseline after `DEC-PAY-02`.
 
 ### Option C — Provider-specific payment flow in the core domain
 
@@ -94,13 +99,18 @@ Rejected as a baseline because it locks gateway choice, couples domain data to v
 
 ## Approved Architecture Direction
 
-**Option A — provider-neutral online-payment orchestration** is approved as the Retail production architecture. Option B is not enabled by this approval and would require a separate written decision. Option C remains rejected. The gateway provider remains deferred.
+**Option A — provider-neutral online-payment orchestration** is approved as the
+Retail production architecture. `DEC-PAY-02` limits Option B to read-only
+historical compatibility and disables new manual-transfer/payment-proof
+activity. Option C remains rejected. The gateway provider remains deferred.
 
 ## Dependencies and Impact
 
 - Retail checkout candidate must use the provider-neutral contract and separate adapter boundary.
 - Online payment remains the production target even while gateway provider is deferred.
-- Manual payment proof requires the production-storage decision from `ADR-002`.
+- Retained legacy payment-proof objects remain governed by the ownership,
+  authorization, retention, backup, and recovery boundaries in `ADR-002`; no
+  new proof upload is enabled.
 - Checkout/order/reservation mutation requires the transaction-capability decision from `ADR-001`.
 - Refund, shipping, tax, reservation, protected-scope, and production-readiness decisions remain separate entries in the central decision log.
 - Payment provider integration is not authorized by this ADR.
@@ -129,3 +139,14 @@ Rejected as a baseline because it locks gateway choice, couples domain data to v
 - **Open provider and operational decisions:** Gateway provider, exact payment state machine, reconciliation SLA, refund policy, payment event retention, provider-specific webhook authentication, and production go-live approval.
 - **Excluded from this approval:** Company-wide production authorization, infrastructure procurement approval, Finance operational sign-off for future payment operations, payment gateway activation approval, and production go-live approval.
 - **Final decision:** Approved with Open Decisions.
+
+## Compatibility Amendment Record
+
+- **Decision:** Existing manual-transfer records are read-only; new
+  manual-transfer instructions, attempts, payment-proof uploads, and
+  proof-driven transitions are disabled.
+- **Decision ID:** `DEC-PAY-02`
+- **Decision date:** 24 July 2026
+- **Approval source:** Explicit user approval in the backend-audit conversation.
+- **Implementation status:** Decision recorded; protected-scope implementation
+  remains separately gated.

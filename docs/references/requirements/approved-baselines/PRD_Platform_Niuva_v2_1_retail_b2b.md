@@ -344,7 +344,7 @@ Model detail ditetapkan dalam implementation plan dan schema design, tetapi haru
 - Local filesystem hanya untuk development/demo. Production objects private by default; backend authorization adalah access model default.
 - Signed access hanya setelah authorization backend, short-lived, dan scoped ke satu object serta satu action. Database-backed ownership menggantikan path-substring authorization.
 - Public bucket dan public static directory dilarang.
-- Boundary mencakup seluruh persistent uploads Retail, B2B, design, operational, QC, fulfillment, dan payment proof bila transitional manual-transfer adapter kelak disetujui.
+- Boundary mencakup seluruh persistent uploads Retail, B2B, design, operational, QC, fulfillment, dan historical payment-proof objects yang dipertahankan berdasarkan `DEC-PAY-02`; tidak ada payment-proof upload baru.
 - Provider, RPO/RTO, retention, quota, operational owners, backup/restore ownership, malware/quarantine ownership, Emergent migration/decommission, dan production readiness tetap open.
 - Production upload tetap disabled sampai query-string access tokens dihapus, database-backed ownership dan MIME/signature validation diterapkan, malware scanning/quarantine serta backup/restore diuji, metadata/object reconciliation diuji, dan operational readiness disetujui.
 
@@ -353,7 +353,7 @@ Model detail ditetapkan dalam implementation plan dan schema design, tetapi haru
 - Retail production target tetap online payment dengan provider-neutral core orchestration dan provider adapters di luar core order/payment domain.
 - Provider events/webhooks harus idempotent; refund dan reconciliation memiliki boundary eksplisit; customer responses memakai customer-safe payment projections.
 - Gateway provider tetap deferred dan tidak dipilih oleh PRD ini.
-- Manual transfer bukan Retail production baseline. Legacy manual-transfer records tetap readable; tidak ada transitional adapter baru yang diaktifkan. Adapter masa depan memerlukan written decision terpisah, Finance owner, feature flag, SLA, expiry, exit criteria, storage approval, refund/late-payment handling, audit, dan rollback controls.
+- Manual transfer bukan Retail production baseline. `DEC-PAY-02` menetapkan legacy manual-transfer records sebagai read-only dan menonaktifkan instruksi transfer, attempt, payment-proof upload, serta proof-driven transition baru. Historical records tetap dipertahankan.
 
 ADR approval scope tetap terbatas pada internal architecture, documentation, dan future implementation planning; bukan production authorization.
 

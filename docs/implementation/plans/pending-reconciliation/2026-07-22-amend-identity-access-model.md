@@ -1,5 +1,11 @@
 # Amend Identity Access, Least-Privilege Migration, Transactional Audit, and Redaction Implementation Plan
 
+> **Status: Context Only — target role direction superseded by
+> `DEC-ACCESS-001` on 24 July 2026.** Do not execute Task 8 or use this plan to
+> authorize the aggregate three-role model. Tasks already implemented remain
+> historical evidence to audit and reconcile against the canonical granular
+> role model.
+>
 > **For implementation:** use `superpowers:executing-plans` and execute tasks in
 > order. Do not begin the Catalog CMS/Supplier plan until every required test and
 > rollout check in this plan is green.

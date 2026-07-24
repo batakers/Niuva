@@ -182,6 +182,8 @@ Status vocabulary:
 - `partial`: implementasi ada, tetapi acceptance/verification belum lengkap;
 - `environment_blocked`: verifikasi diblokir oleh environment;
 - `resolved`: masalah sudah ditangani dan bukti tercatat;
+- `decision_resolved_implementation_open`: authority sudah diputuskan, tetapi
+  source, test, migration, atau rollout belum direkonsiliasi;
 - `accepted_risk`: hanya boleh digunakan dengan owner dan tanggal review.
 
 ### BA-001 — Local and GitHub main divergence
@@ -202,7 +204,7 @@ Status vocabulary:
 ### BA-002 — Canonical role model conflicts with runtime role model
 
 - Severity: P0
-- Status: `blocked_by_decision`
+- Status: `decision_resolved_implementation_open`
 - Canonical evidence:
   - Master Spec menetapkan role internal granular, dari Content Editor, Catalog
     Manager, Warehouse, dan seterusnya sampai Super Admin.
@@ -216,10 +218,16 @@ Status vocabulary:
     Register;
   - implementation plan mengklaim model tiga role sebagai approved, tetapi
     implementation plan bukan authority untuk mengubah Master Spec.
-- Required decision:
-  - pertahankan model role granular kanonis; atau
-  - formally amend canonical requirements dan Decision Register ke model tiga
-    role.
+- Decision:
+  - granular internal role model remains canonical;
+  - recorded in
+    [`DEC-ACCESS-001`](../decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md);
+  - explicit user approval: 24 July 2026.
+- Implementation still open:
+  - exact granular technical identifiers and permission matrix;
+  - existing-account migration;
+  - replacement of the aggregate runtime role model;
+  - smoke test and authorized rollout.
 - Do not:
   - mengubah test, migration, atau permission matrix untuk memilih salah satu
     model tanpa keputusan tertulis.
@@ -227,7 +235,7 @@ Status vocabulary:
 ### BA-003 — Operations user/audit access conflicts with design and test
 
 - Severity: P0
-- Status: `blocked_by_decision`
+- Status: `decision_resolved_implementation_open`
 - Runtime:
   - role `operations` memiliki `users.read` dan `audit.read`.
 - Design:
@@ -238,11 +246,20 @@ Status vocabulary:
   - least-privilege contract tidak konsisten;
   - test suite merah;
   - perubahan test saja dapat menyembunyikan authorization regression.
-- Required decision:
-  - apakah Operations boleh mempunyai `users.read`;
-  - apakah Operations boleh mempunyai `audit.read`;
-  - apakah `/api/admin/roles` termasuk safe metadata atau privileged identity
-    administration.
+- Decision:
+  - operational staff do not receive a general user directory;
+  - operational staff do not receive complete role definitions;
+  - operational staff do not receive the full audit log;
+  - domain-scoped audit requires an approved granular role/action/query/field
+    matrix and fails closed until that matrix exists.
+- Source:
+  - [`DEC-ACCESS-001`](../decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md),
+    approved 24 July 2026.
+- Implementation still open:
+  - current broad `operations` grants;
+  - exact domain-scoped audit matrix;
+  - full-audit governance matrix;
+  - code, migration, tests, and rollout.
 
 ### BA-004 — Approved framework security upgrade is not implemented
 
@@ -294,7 +311,7 @@ Status vocabulary:
 ### BA-006 — Legacy manual-transfer flow can create new transactions
 
 - Severity: P1
-- Status: `blocked_by_decision`
+- Status: `decision_resolved_implementation_open`
 - Runtime:
   - estimate route mengirim instruksi transfer bank;
   - customer dapat mengunggah payment proof;
@@ -302,14 +319,23 @@ Status vocabulary:
   - public settings dapat mengekspos konfigurasi bank legacy.
 - Canonical conflict:
   - Retail production baseline adalah provider-neutral online payment;
-  - tidak ada transitional manual-transfer adapter baru tanpa keputusan tertulis;
+  - `DEC-PAY-02` now limits manual transfer to read-only historical
+    compatibility and disables new activity;
   - candidate checkout hanya mengizinkan legacy records tetap readable.
 - Authority:
   - [`docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`](../decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md)
-- Required decision:
-  - ubah flow menjadi read-only legacy compatibility; atau
-  - izinkan creation hanya pada environment tertentu dengan decision, expiry,
-    Finance control, storage boundary, dan feature flag tertulis.
+- Decision:
+  - existing manual-transfer records remain read-only;
+  - new manual-transfer instructions, attempts, payment-proof uploads, and
+    proof-driven transitions are disabled;
+  - recorded in
+    [`DEC-PAY-02`](../decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md);
+  - explicit user approval: 24 July 2026.
+- Implementation still open:
+  - protected-scope plan to disable current mutation behavior;
+  - legacy compatibility projections;
+  - unresolved historical-case procedure;
+  - proof retention.
 
 ### BA-007 — Legacy order lifecycle and monetary integrity are unsafe
 
@@ -472,7 +498,7 @@ bagian ini sudah dibandingkan dengan Document Register, source, dan test.
 | Plan or scope | Audit status | Safe interpretation |
 |---|---|---|
 | Backend Framework Security Upgrade | `approved_not_started` | Sudah approved dalam bounded security scope; requirements masih versi lama |
-| Amend Identity Access Model | `partial` + `blocked_by_decision` | Task 1–7 tampak diterapkan, Task 8 tertunda; role authority masih bertentangan |
+| Amend Identity Access Model | `context only` + superseded role direction | Task 1–7 menjadi implementation evidence; Task 8 must not execute; DEC-ACCESS-001 keeps granular roles canonical |
 | Foundation Transaction Capability | recorded complete | 120/120 checklist selesai dan implementation exists; real local verification tidak direproduksi |
 | Catalog/Material/Inventory Foundation | `partial` | Real transaction verification dan browser permission/workflow QA masih unchecked |
 | Remove Emergent/Local Storage | backend substantially complete | Fresh optimized frontend build masih unchecked; production storage tidak termasuk |
@@ -547,9 +573,11 @@ Sebelum mulai sebuah item, pastikan scope mempunyai approval yang sesuai.
 
 - [x] Simpan posisi local main lama pada branch backup.
 - [x] Selaraskan local `main` dengan GitHub `origin/main`.
-- [ ] Putuskan canonical role model.
-- [ ] Putuskan akses Operations terhadap user metadata, role metadata, dan audit.
-- [ ] Putuskan boundary legacy manual transfer.
+- [x] Putuskan canonical role model: granular roles remain canonical.
+- [x] Putuskan operational access: no general user directory, complete role
+      definitions, or full audit; scoped audit requires an approved matrix.
+- [x] Putuskan boundary legacy manual transfer: historical records read-only;
+      new manual-transfer/payment-proof activity disabled.
 - [ ] Selesaikan redacted credential rotation/revocation evidence.
 - [ ] Dapatkan approval khusus sebelum NIV-001 rewrite rehearsal.
 - [ ] Rekonsiliasi status identity amendment dengan Master Spec, Document
@@ -680,70 +708,63 @@ tertulis.
 
 ### DEC-AUD-BE-001 — Internal role model
 
-Status: **Open**
-
-Choose one:
-
-- keep granular canonical internal roles; or
-- formally adopt Owner, Operations, and Commercial & Finance, then amend
-  canonical requirements and decision records.
+Status: **Approved — recorded as `DEC-ACCESS-001`**
 
 Decision:
 
 ```text
-Pending user decision.
+Keep the granular canonical internal role model.
+The aggregate Owner/Operations/Commercial & Finance model is not the canonical
+target.
 ```
 
 Approval source/date:
 
 ```text
-Pending.
+Explicit user approval in the backend-audit conversation, 24 July 2026.
+Formal source:
+docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md
 ```
 
 ### DEC-AUD-BE-002 — Operations access boundary
 
-Status: **Open**
-
-Questions:
-
-- May Operations read the user list?
-- May Operations read role definitions?
-- May Operations inspect full audit events?
-- If only safe summaries are allowed, what fields and scopes are permitted?
+Status: **Approved direction — exact granular matrix remains open**
 
 Decision:
 
 ```text
-Pending user decision.
+Operational staff may not read the general user directory, complete role
+definitions, or full audit events. Domain-scoped audit may be enabled only
+through an approved granular role/action/query/field matrix; until then it
+fails closed.
 ```
 
 Approval source/date:
 
 ```text
-Pending.
+Explicit user approval in the backend-audit conversation, 24 July 2026.
+Formal source:
+docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md
 ```
 
 ### DEC-AUD-BE-003 — Legacy manual-transfer boundary
 
-Status: **Open**
-
-Choose one:
-
-- existing records remain readable, but new manual-transfer creation is
-  disabled; or
-- allow a bounded non-production transitional flow with explicit environment,
-  expiry, Finance control, storage, audit, and feature-flag rules.
+Status: **Approved — recorded as `DEC-PAY-02`**
 
 Decision:
 
 ```text
-Pending user decision.
+Existing manual-transfer records remain read-only. New manual-transfer
+instructions, attempts, payment-proof uploads, and proof-driven transitions
+are disabled.
 ```
 
 Approval source/date:
 
 ```text
-Pending.
+Explicit user approval in the backend-audit conversation, 24 July 2026.
+Formal source:
+docs/decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md
 ```
 
 ### DEC-AUD-BE-004 — First Retail vertical slice
@@ -814,3 +835,19 @@ Pada sesi berikutnya:
 - Synchronized local `main` to GitHub `0b0b556`.
 - Confirmed changes after the tested backend baseline were frontend-only.
 - Created this tracker as Context Only; no product implementation was performed.
+
+### 24 July 2026 — Phase 0 access and legacy-payment decisions
+
+- Recorded explicit user approval to retain the granular canonical internal
+  role model.
+- Recorded that operational staff have no general user directory, complete
+  role definitions, or full audit access.
+- Recorded domain-scoped audit as a separately gated granular-matrix direction
+  that fails closed until approved and implemented.
+- Recorded legacy manual-transfer records as read-only and disabled all new
+  manual-transfer/payment-proof application activity.
+- Added `DEC-ACCESS-001` and `DEC-PAY-02`.
+- Reconciled the Master Spec, Decision Register, Document Register, ADR-003,
+  superseded identity design/plan status, and this tracker.
+- No backend, frontend, migration, provider, production, or go-live
+  implementation was authorized or performed.
