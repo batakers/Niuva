@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, TOKEN_KEY } from "../lib/api";
 
 const AuthContext = createContext(null);
@@ -38,18 +38,23 @@ export function AuthProvider({ children }) {
     return () => api.interceptors.response.eject(interceptor);
   }, []);
 
-  const login = (token, userData) => {
+  const login = useCallback((token, userData) => {
     localStorage.setItem(TOKEN_KEY, token);
     setUser(userData);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, loading, login, logout }),
+    [user, loading, login, logout],
+  );
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

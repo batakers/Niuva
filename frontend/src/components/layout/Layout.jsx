@@ -125,31 +125,6 @@ export function MarketingLayout({ children, hideFooter = false }) {
 }
 
 /**
- * ConversionLayout
- * For focused task pages such as Contact and internal operational forms.
- * Narrow centered content, minimal distraction.
- */
-export function ConversionLayout({ children, title, subtitle, hideFooter = false }) {
-  return (
-    <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20 selection:text-foreground">
-      <Navbar />
-      <main className="flex-1 px-4 pb-[clamp(var(--space-section-standard-mobile), 5.8vw, var(--space-section-standard-desktop))] pt-[var(--space-page-start)] sm:px-6 flex flex-col items-center">
-        <div className="w-full max-w-2xl">
-          {(title || subtitle) && (
-            <div className="mb-10 text-center">
-              {title && <h1 className="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">{title}</h1>}
-              {subtitle && <p className="mt-3 text-muted-foreground text-lg">{subtitle}</p>}
-            </div>
-          )}
-          {children}
-        </div>
-      </main>
-      {!hideFooter && <Footer />}
-    </div>
-  );
-}
-
-/**
  * OperationalLayout
  * For dense, data-rich views: Dashboard, Order Detail, Admin
  * Max-width, compact spacing.

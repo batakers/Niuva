@@ -24,10 +24,14 @@ export default function AdminPortfolio() {
   
   useEffect(() => { load(); }, []);
   
-  const remove = async (id) => { 
-    await api.delete(`/admin/portfolio/${id}`); 
-    load(); 
-    toast.success("RECORD_DELETED"); 
+  const remove = async (id) => {
+    try {
+      await api.delete(`/admin/portfolio/${id}`);
+      toast.success("RECORD_DELETED");
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
   };
 
   return (
@@ -65,7 +69,7 @@ export default function AdminPortfolio() {
                   <Button size="sm" variant="outline" onClick={() => setEditing(p)} className="flex-1 rounded-none border-border bg-background hover:bg-surface-2 text-foreground font-mono text-[10px] uppercase tracking-widest h-8">
                     <Pencil className="h-3 w-3 mr-2" /> MODIFY
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => remove(p.id)} className="shrink-0 rounded-none border border-border bg-background hover:bg-red-500 hover:border-red-500 text-red-400 hover:text-white h-8 w-10 p-0">
+                  <Button size="sm" variant="ghost" onClick={() => remove(p.id)} aria-label={`${t("common.delete")}: ${lang === "id" ? p.title_id : p.title_en}`} className="shrink-0 rounded-none border border-border bg-background hover:bg-red-500 hover:border-red-500 text-red-400 hover:text-white h-8 w-10 p-0">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

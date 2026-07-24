@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
-export function ProtectedRoute({ children, adminOnly = false, permission }) {
+export function ProtectedRoute({ children, permission }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) {
@@ -22,8 +22,7 @@ export function ProtectedRoute({ children, adminOnly = false, permission }) {
       />
     );
   }
-  const requiredPermission = permission || (adminOnly ? "admin.access" : null);
-  if (requiredPermission && !hasPermission(user, requiredPermission)) {
+  if (permission && !hasPermission(user, permission)) {
     return <Navigate to="/dashboard" replace />;
   }
   return children;
