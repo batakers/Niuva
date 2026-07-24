@@ -33,7 +33,7 @@ import {
 import { TechnicalLabel } from "../../components/ui/technical-label";
 
 
-function StatusBadge({ status }) {
+function AccountStatusBadge({ status }) {
   const active = status === "active";
   return (
     <span
@@ -199,7 +199,7 @@ export default function AdminUsers() {
                       <p className="font-semibold text-foreground">{item.name || "Unnamed user"}</p>
                       <p className="mt-1 font-mono text-[11px] text-primary">{item.email}</p>
                     </td>
-                    <td className="px-6 py-4"><StatusBadge status={item.status} /></td>
+                    <td className="px-6 py-4"><AccountStatusBadge status={item.status} /></td>
                     <td className="min-w-64 px-6 py-4"><RoleList user={item} policy={accessPolicy} /></td>
                     <td className="px-6 py-4"><AccessStateBadge accessState={item.access_state} /></td>
                     <td className="whitespace-nowrap px-6 py-4 font-mono text-muted-foreground">
