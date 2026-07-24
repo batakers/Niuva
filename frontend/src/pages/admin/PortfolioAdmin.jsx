@@ -110,7 +110,7 @@ function PortfolioDialog({ item, onClose, onSaved }) {
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="bg-surface-1 border-border text-foreground max-w-2xl max-h-[90vh] overflow-y-auto p-0 rounded-none">
         <div className="border-b border-border bg-surface-2 p-5">
           <DialogHeader className="p-0 space-y-0 text-left">
