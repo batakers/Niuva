@@ -205,7 +205,7 @@ function WhyNiuvaSection() {
             <DecorativeMotif light density="sparse" className="-right-16 -top-14 h-72 w-72 opacity-55" />
             <div className="relative z-10 flex h-full flex-col justify-between gap-10">
               <div>
-                <p className="font-mono-tech text-xs font-semibold text-text-inverse">WHY NIUVA</p>
+                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-text-inverse">WHY NIUVA</p>
                 <h2 className="brand-heading mt-5 text-3xl leading-tight text-text-inverse md:text-4xl xl:text-5xl">
                   Cukup strategis untuk bisnis, cukup teknis untuk eksekusi.
                 </h2>

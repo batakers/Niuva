@@ -91,7 +91,7 @@ export default function CapabilitiesPage() {
                 <article key={service.title} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6 sm:p-8">
                   <div className="flex items-start justify-between gap-6">
                     <p className="text-sm font-semibold text-action-primary">Kapabilitas pendukung</p>
-                    <span className="font-mono-tech text-xs font-semibold text-text-secondary">{String(index + 3).padStart(2, "0")}</span>
+                    <span className="font-heading text-xs font-semibold text-text-secondary">{String(index + 3).padStart(2, "0")}</span>
                   </div>
                   <h3 className="type-heading-subsection mt-5 text-text-primary">{service.title}</h3>
                   <p className="mt-4 max-w-xl text-base leading-7 text-text-secondary">{service.body}</p>
