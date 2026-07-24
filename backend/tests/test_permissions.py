@@ -18,6 +18,8 @@ from permissions import (
         ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "inventory.write", True),
         ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "pricing.write", False),
         ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "catalog.publish", False),
+        ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "users.read", False),
+        ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "audit.read", False),
 ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "dashboard.read", True),
         ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "organizations.fulfilment.read", True),
         ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "supplier_reference.read", False),
