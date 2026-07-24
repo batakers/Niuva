@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api, unwrap } from "./api";
 
 export function emptyCategoryDraft() {
   return {
@@ -70,21 +70,19 @@ export function visibleCatalogActions(permissions = []) {
   return actions;
 }
 
-const data = (request) => request.then((response) => response.data);
-
 export const catalogApi = {
-  listCategories: () => data(api.get("/admin/categories")),
-  createCategory: (payload) => data(api.post("/admin/categories", payload)),
-  updateCategory: (id, payload) => data(api.put(`/admin/categories/${id}`, payload)),
-  archiveCategory: (id, reason) => data(api.post(`/admin/categories/${id}/archive`, { reason })),
-  listProducts: () => data(api.get("/admin/products")),
-  getProduct: (id) => data(api.get(`/admin/products/${id}`)),
-  createProduct: (payload) => data(api.post("/admin/products", payload)),
-  updateProduct: (id, payload) => data(api.put(`/admin/products/${id}`, payload)),
-  replaceVariants: (id, variants) => data(api.put(`/admin/products/${id}/variants`, { variants })),
-  replaceOptions: (id, options) => data(api.put(`/admin/products/${id}/options`, { options })),
-  validateProduct: (id) => data(api.post(`/admin/products/${id}/validate`)),
-  publishProduct: (id, reason) => data(api.post(`/admin/products/${id}/publish`, { reason })),
-  rollbackProduct: (id, publicationId, reason) => data(api.post(`/admin/products/${id}/rollback`, { publication_id: publicationId, reason })),
-  archiveProduct: (id, reason) => data(api.post(`/admin/products/${id}/archive`, { reason })),
+  listCategories: () => unwrap(api.get("/admin/categories")),
+  createCategory: (payload) => unwrap(api.post("/admin/categories", payload)),
+  updateCategory: (id, payload) => unwrap(api.put(`/admin/categories/${id}`, payload)),
+  archiveCategory: (id, reason) => unwrap(api.post(`/admin/categories/${id}/archive`, { reason })),
+  listProducts: () => unwrap(api.get("/admin/products")),
+  getProduct: (id) => unwrap(api.get(`/admin/products/${id}`)),
+  createProduct: (payload) => unwrap(api.post("/admin/products", payload)),
+  updateProduct: (id, payload) => unwrap(api.put(`/admin/products/${id}`, payload)),
+  replaceVariants: (id, variants) => unwrap(api.put(`/admin/products/${id}/variants`, { variants })),
+  replaceOptions: (id, options) => unwrap(api.put(`/admin/products/${id}/options`, { options })),
+  validateProduct: (id) => unwrap(api.post(`/admin/products/${id}/validate`)),
+  publishProduct: (id, reason) => unwrap(api.post(`/admin/products/${id}/publish`, { reason })),
+  rollbackProduct: (id, publicationId, reason) => unwrap(api.post(`/admin/products/${id}/rollback`, { publication_id: publicationId, reason })),
+  archiveProduct: (id, reason) => unwrap(api.post(`/admin/products/${id}/archive`, { reason })),
 };
