@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Eye, Download, CheckCircle2 } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Eye, Download, CheckCircle2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../../i18n";
 import { api, downloadCsv, downloadFile, fetchFile, formatApiError } from "../../lib/api";
@@ -17,6 +17,9 @@ export default function AdminOrders() {
   const [sel, setSel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkStatus, setBulkStatus] = useState("in_process");
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -30,9 +33,29 @@ export default function AdminOrders() {
   
   useEffect(() => { load(); }, []);
 
+  const orderIds = useMemo(() => orders.map((o) => o.id), [orders]);
+  const toggleOne = (id) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const toggleAll = () => setSelectedIds((current) => current.length === orderIds.length ? [] : orderIds);
+
   const exportCsv = async () => {
     try { await downloadCsv("/admin/orders/export", "niuva-orders.csv"); }
     catch (exportError) { toast.error(exportError.message); }
+  };
+
+  const bulkUpdateStatus = async () => {
+    setBulkBusy(true);
+    try {
+      const { data } = await api.post("/admin/orders/bulk-status", { order_ids: selectedIds, status: bulkStatus, note: "Bulk status update" });
+      const failed = data.results.filter((row) => !row.success).length;
+      if (failed === 0) toast.success(`${data.results.length} pesanan diperbarui.`);
+      else toast.warning(`${data.results.length - failed} berhasil, ${failed} gagal.`);
+      setSelectedIds([]);
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    } finally {
+      setBulkBusy(false);
+    }
   };
 
   return (
@@ -44,6 +67,25 @@ export default function AdminOrders() {
             <Download className="mr-2 h-3.5 w-3.5" />{t("common.exportCsv")}
           </Button>
         </div>
+
+        {selectedIds.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2/60 px-6 py-3">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-foreground">{selectedIds.length} {t("orders.selectedCount")}</span>
+            <div className="flex items-center gap-2">
+              <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)} aria-label={t("orders.bulkStatusLabel")} className="h-8 rounded-none border border-border bg-background px-2 font-mono text-[10px] uppercase tracking-widest">
+                <option value="in_process">in_process</option>
+                <option value="completed">completed</option>
+                <option value="cancelled">cancelled</option>
+                <option value="awaiting_payment">awaiting_payment</option>
+                <option value="pending_estimate">pending_estimate</option>
+              </select>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="h-8 font-mono text-[10px] uppercase tracking-widest">{t("common.cancel")}</Button>
+              <Button size="sm" disabled={bulkBusy} onClick={bulkUpdateStatus} className="h-8 rounded-none font-mono text-[10px] uppercase tracking-widest">
+                <Layers className="mr-2 h-3.5 w-3.5" />{t("orders.applyBulkStatus")}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="p-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest" role="status">
@@ -58,6 +100,7 @@ export default function AdminOrders() {
             <table className="w-full text-left border-collapse" data-testid="admin-orders-table">
               <thead>
                 <tr className="border-b border-border/50 bg-background/50 text-muted-foreground font-mono text-[10px] uppercase tracking-widest">
+                  <th className="w-10 px-6 py-4"><input type="checkbox" aria-label={t("orders.selectAll")} checked={orderIds.length > 0 && selectedIds.length === orderIds.length} onChange={toggleAll} /></th>
                   <th className="font-normal px-6 py-4">Order_ID</th>
                   <th className="font-normal px-6 py-4">Client_Entity</th>
                   <th className="font-normal px-6 py-4">Config</th>
@@ -69,6 +112,7 @@ export default function AdminOrders() {
               <tbody className="font-mono text-xs text-foreground divide-y divide-border/50">
                 {orders.map((o) => (
                   <tr key={o.id} className="hover:bg-surface-2/50 transition-colors group">
+                    <td className="px-6 py-4"><input type="checkbox" aria-label={`${t("orders.select")} ${o.order_number}`} checked={selectedIds.includes(o.id)} onChange={() => toggleOne(o.id)} /></td>
                     <td className="px-6 py-4 whitespace-nowrap text-primary">{o.order_number}</td>
                     <td className="px-6 py-4 text-muted-foreground">{o.user_name}</td>
                     <td className="px-6 py-4 text-muted-foreground">{o.material_name}</td>
@@ -83,7 +127,7 @@ export default function AdminOrders() {
                 ))}
                 {orders.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest">NO_ORDERS_FOUND</td>
+                    <td colSpan={7} className="px-6 py-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest">NO_ORDERS_FOUND</td>
                   </tr>
                 )}
               </tbody>

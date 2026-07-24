@@ -200,6 +200,12 @@ class StatusReq(BaseModel):
     note: Optional[str] = ""
 
 
+class BulkStatusReq(BaseModel):
+    order_ids: List[str] = Field(min_length=1, max_length=100)
+    status: str
+    note: Optional[str] = ""
+
+
 class InternshipReq(BaseModel):
     full_name: str
     email: EmailStr
@@ -605,23 +611,19 @@ async def verify_payment(
     return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
-@api.post("/admin/orders/{oid}/status")
-async def update_status(
-    oid: str,
-    req: StatusReq,
-    user: dict = Depends(require_permission("orders.write")),
-):
-    if req.status not in ORDER_STATUSES:
+async def apply_order_status(oid: str, status: str, note: str) -> dict:
+    """Advance one order's status and append status history. Raises HTTPException on invalid input."""
+    if status not in ORDER_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status")
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     await db.orders.update_one(
         {"id": oid},
-        {"$set": {"status": req.status, "updated_at": now_iso()},
-         "$push": {"status_history": {"status": req.status, "at": now_iso(), "note": req.note}}},
+        {"$set": {"status": status, "updated_at": now_iso()},
+         "$push": {"status_history": {"status": status, "at": now_iso(), "note": note}}},
     )
-    if req.status == "completed":
+    if status == "completed":
         await emailer.send_email(
             order["user_email"],
             f"Pesanan Selesai — {order['order_number']}",
@@ -630,7 +632,33 @@ async def update_status(
             f"Tim kami akan menghubungi Anda untuk pengambilan/pengiriman.</p>",
             db=db, user_id=order["user_id"],
         )
-    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
+    return await db.orders.find_one({"id": oid}, {"_id": 0})
+
+
+@api.post("/admin/orders/{oid}/status")
+async def update_status(
+    oid: str,
+    req: StatusReq,
+    user: dict = Depends(require_permission("orders.write")),
+):
+    return serialize_admin_order_for(user, await apply_order_status(oid, req.status, req.note))
+
+
+@api.post("/admin/orders/bulk-status")
+async def bulk_update_status(
+    req: BulkStatusReq,
+    user: dict = Depends(require_permission("orders.write")),
+):
+    if req.status not in ORDER_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    results = []
+    for oid in req.order_ids:
+        try:
+            await apply_order_status(oid, req.status, req.note)
+            results.append({"id": oid, "success": True, "error": None})
+        except HTTPException as exc:
+            results.append({"id": oid, "success": False, "error": exc.detail})
+    return {"results": results}
 
 
 # ----------------------------- File download -----------------------------

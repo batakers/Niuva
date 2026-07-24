@@ -85,4 +85,5 @@ export const catalogApi = {
   publishProduct: (id, reason) => unwrap(api.post(`/admin/products/${id}/publish`, { reason })),
   rollbackProduct: (id, publicationId, reason) => unwrap(api.post(`/admin/products/${id}/rollback`, { publication_id: publicationId, reason })),
   archiveProduct: (id, reason) => unwrap(api.post(`/admin/products/${id}/archive`, { reason })),
+  bulkArchiveProducts: (productIds, reason) => unwrap(api.post("/admin/products/bulk-archive", { product_ids: productIds, reason })),
 };

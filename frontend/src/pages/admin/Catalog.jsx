@@ -56,6 +56,9 @@ export default function Catalog() {
   const [categoryEditor, setCategoryEditor] = useState(null);
   const [categoryArchiveTarget, setCategoryArchiveTarget] = useState(null);
   const [categoryArchiveReason, setCategoryArchiveReason] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
+  const [bulkReason, setBulkReason] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -105,6 +108,33 @@ export default function Catalog() {
       toast.success(t("catalog.archiveSuccess"));
       setArchiveTarget(null);
       setArchiveReason("");
+      await load();
+    } catch (requestError) {
+      toast.error(formatApiError(requestError.response?.data?.detail));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const archivableIds = useMemo(
+    () => filtered.filter((product) => product.workflow_status !== "archived").map((product) => product.id),
+    [filtered],
+  );
+  const selectedInView = selectedIds.filter((id) => archivableIds.includes(id));
+  const toggleOne = (id) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const toggleAll = () => setSelectedIds((current) => selectedInView.length === archivableIds.length ? current.filter((id) => !archivableIds.includes(id)) : [...new Set([...current, ...archivableIds])]);
+
+  const bulkArchive = async () => {
+    if (bulkReason.trim().length < 3) return;
+    setBusy(true);
+    try {
+      const { results } = await catalogApi.bulkArchiveProducts(selectedInView, bulkReason.trim());
+      const failed = results.filter((row) => !row.success).length;
+      if (failed === 0) toast.success(t("catalog.bulkArchiveSuccess"));
+      else toast.warning(`${results.length - failed} berhasil, ${failed} gagal.`);
+      setBulkArchiveOpen(false);
+      setBulkReason("");
+      setSelectedIds([]);
       await load();
     } catch (requestError) {
       toast.error(formatApiError(requestError.response?.data?.detail));
@@ -175,16 +205,29 @@ export default function Catalog() {
         </div>
       </SurfacePanel>
 
+      {actions.includes("archive") && selectedInView.length > 0 && (
+        <SurfacePanel className="mt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <TechnicalLabel>{selectedInView.length} {t("catalog.selectedCount")}</TechnicalLabel>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>{t("common.cancel")}</Button>
+              <Button variant="destructive" size="sm" onClick={() => setBulkArchiveOpen(true)}><Archive className="mr-2 h-4 w-4" />{t("catalog.bulkArchive")}</Button>
+            </div>
+          </div>
+        </SurfacePanel>
+      )}
+
       <SurfacePanel className="mt-4">
         {loading ? <EmptyState frame="solid">{t("common.loading")}</EmptyState>
           : error ? <EmptyState frame="dashed"><span role="alert">{error}</span></EmptyState>
             : filtered.length === 0 ? <EmptyState frame="dashed">{t("catalog.empty")}</EmptyState>
-              : <Table><TableHeader><TableRow><TableHead>{t("catalog.product")}</TableHead><TableHead>{t("catalog.category")}</TableHead><TableHead>{t("catalog.variants")}</TableHead><TableHead>{t("catalog.pricingMode")}</TableHead><TableHead>{t("catalog.publication")}</TableHead><TableHead>{t("catalog.stockPolicy")}</TableHead><TableHead>{t("common.updated")}</TableHead><TableHead className="text-right">{t("common.actions")}</TableHead></TableRow></TableHeader><TableBody>{filtered.map((product) => <TableRow key={product.id}><TableCell><div className="font-semibold text-foreground">{product.name}</div><TechnicalLabel size="micro">/{product.slug}</TechnicalLabel></TableCell><TableCell>{categoryById[product.category_id]?.name || "—"}</TableCell><TableCell>{product.active_variant_count ?? "—"}</TableCell><TableCell>{product.pricing_mode}</TableCell><TableCell><TechnicalLabel tone={product.active_publication_id ? "success" : "muted"}>{product.workflow_status || "draft"}</TechnicalLabel></TableCell><TableCell>{product.stock_visibility}</TableCell><TableCell className="whitespace-nowrap">{product.updated_at ? new Date(product.updated_at).toLocaleString() : "—"}</TableCell><TableCell><div className="flex justify-end gap-1"><Button asChild variant="ghost" size="sm" aria-label={`${t("common.open")} ${product.name}`}><Link to={`/admin/catalog/${product.id}`}><Edit3 className="h-4 w-4" /></Link></Button>{actions.includes("archive") && product.workflow_status !== "archived" && <Button variant="ghost" size="sm" onClick={() => setArchiveTarget(product)} aria-label={`${t("catalog.archive")} ${product.name}`}><Archive className="h-4 w-4" /></Button>}</div></TableCell></TableRow>)}</TableBody></Table>}
+              : <Table><TableHeader><TableRow>{actions.includes("archive") && <TableHead className="w-10"><input type="checkbox" aria-label={t("catalog.selectAll")} checked={archivableIds.length > 0 && selectedInView.length === archivableIds.length} onChange={toggleAll} disabled={archivableIds.length === 0} /></TableHead>}<TableHead>{t("catalog.product")}</TableHead><TableHead>{t("catalog.category")}</TableHead><TableHead>{t("catalog.variants")}</TableHead><TableHead>{t("catalog.pricingMode")}</TableHead><TableHead>{t("catalog.publication")}</TableHead><TableHead>{t("catalog.stockPolicy")}</TableHead><TableHead>{t("common.updated")}</TableHead><TableHead className="text-right">{t("common.actions")}</TableHead></TableRow></TableHeader><TableBody>{filtered.map((product) => <TableRow key={product.id}>{actions.includes("archive") && <TableCell>{product.workflow_status !== "archived" && <input type="checkbox" aria-label={`${t("catalog.select")} ${product.name}`} checked={selectedIds.includes(product.id)} onChange={() => toggleOne(product.id)} />}</TableCell>}<TableCell><div className="font-semibold text-foreground">{product.name}</div><TechnicalLabel size="micro">/{product.slug}</TechnicalLabel></TableCell><TableCell>{categoryById[product.category_id]?.name || "—"}</TableCell><TableCell>{product.active_variant_count ?? "—"}</TableCell><TableCell>{product.pricing_mode}</TableCell><TableCell><TechnicalLabel tone={product.active_publication_id ? "success" : "muted"}>{product.workflow_status || "draft"}</TechnicalLabel></TableCell><TableCell>{product.stock_visibility}</TableCell><TableCell className="whitespace-nowrap">{product.updated_at ? new Date(product.updated_at).toLocaleString() : "—"}</TableCell><TableCell><div className="flex justify-end gap-1"><Button asChild variant="ghost" size="sm" aria-label={`${t("common.open")} ${product.name}`}><Link to={`/admin/catalog/${product.id}`}><Edit3 className="h-4 w-4" /></Link></Button>{actions.includes("archive") && product.workflow_status !== "archived" && <Button variant="ghost" size="sm" onClick={() => setArchiveTarget(product)} aria-label={`${t("catalog.archive")} ${product.name}`}><Archive className="h-4 w-4" /></Button>}</div></TableCell></TableRow>)}</TableBody></Table>}
       </SurfacePanel>
 
       <CategoryEditorDialog value={categoryEditor} busy={busy} onChange={setCategoryEditor} onClose={() => setCategoryEditor(null)} onSave={saveCategory} />
       <ReasonDialog open={Boolean(categoryArchiveTarget)} title={t("catalog.archiveCategory")} target={categoryArchiveTarget?.name} reason={categoryArchiveReason} setReason={setCategoryArchiveReason} busy={busy} onClose={() => setCategoryArchiveTarget(null)} onConfirm={archiveCategory} confirmLabel={t("catalog.archiveCategory")} />
       <ReasonDialog open={Boolean(archiveTarget)} title={t("catalog.archive")} target={archiveTarget?.name} reason={archiveReason} setReason={setArchiveReason} busy={busy} onClose={() => setArchiveTarget(null)} onConfirm={archive} confirmLabel={t("catalog.archive")} />
+      <ReasonDialog open={bulkArchiveOpen} title={t("catalog.bulkArchive")} target={`${selectedInView.length} ${t("catalog.selectedCount")}`} reason={bulkReason} setReason={setBulkReason} busy={busy} onClose={() => setBulkArchiveOpen(false)} onConfirm={bulkArchive} confirmLabel={t("catalog.bulkArchive")} />
     </AdminLayout>
   );
 }
