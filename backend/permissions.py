@@ -35,8 +35,6 @@ ROLE_PERMISSIONS = {
         {
             "admin.access",
             "dashboard.read",
-            "users.read",
-            "audit.read",
             "catalog.read",
             "catalog.write",
             "content.read",

@@ -282,10 +282,16 @@ async def run_staff_access_matrix():
     async with httpx.AsyncClient(
         transport=transport, base_url="http://testserver"
     ) as api:
-        denied_roles = await api.get(
-            "/api/admin/roles", headers=bearer(warehouse_token)
-        )
-        assert denied_roles.status_code == 403
+        for restricted_path in (
+            "/api/admin/roles",
+            "/api/admin/access-policy",
+            "/api/admin/users",
+            "/api/admin/audit-events",
+        ):
+            denied_response = await api.get(
+                restricted_path, headers=bearer(warehouse_token)
+            )
+            assert denied_response.status_code == 403
 
         manager_users = await api.get("/api/admin/users", headers=bearer(manager_token))
         assert manager_users.status_code == 403
