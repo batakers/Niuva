@@ -54,8 +54,8 @@ export default function OrderDetail() {
 
   if (!order) return (
     <OperationalLayout>
-      <div className="w-full text-center py-24 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-        [ RETRIEVING_DATA_FROM_SERVER... ]
+      <div className="w-full text-center py-24 text-sm text-muted-foreground" role="status">
+        {t("common.loading")}
       </div>
     </OperationalLayout>
   );
@@ -74,15 +74,12 @@ export default function OrderDetail() {
             <div className="flex items-center gap-2">
               <TerminalSquare className="h-4 w-4 text-muted-foreground" />
               <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
-                ORDER_MANIFEST // ID: {order.id.substring(0,8)}
+                {t("detail.headerLabel")} · ID: {order.id.substring(0,8)}
               </span>
             </div>
             <StatusBadge status={order.status} />
           </div>
           <div className="p-6 sm:p-8 flex items-end justify-between flex-wrap gap-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
-              <div className="font-mono text-8xl font-black leading-none tracking-tighter">{order.order_number.substring(4)}</div>
-            </div>
             <div className="relative z-10">
               <p className="font-mono text-primary font-bold text-sm tracking-widest mb-2">{order.order_number}</p>
               <h1 className="font-heading text-3xl font-bold text-foreground uppercase tracking-tight">{t("detail.title")}</h1>
@@ -92,7 +89,7 @@ export default function OrderDetail() {
 
         {/* Stepper HUD */}
         <div className="border border-border bg-surface-1 p-6 sm:p-8">
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-6">PRODUCTION_STATUS</p>
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-6">{t("detail.productionStatus")}</p>
           <StatusStepper status={order.status} />
         </div>
 
@@ -101,7 +98,7 @@ export default function OrderDetail() {
           <div className="border border-primary/50 bg-primary/10 p-4 flex items-center gap-3" data-testid="sla-banner">
             <Clock className="h-5 w-5 text-primary flex-shrink-0" strokeWidth={1.5} />
             <div>
-              <p className="font-mono text-[10px] text-primary uppercase tracking-widest">SYSTEM_NOTICE</p>
+              <p className="font-mono text-[10px] text-primary uppercase tracking-widest">{t("detail.notice")}</p>
               <p className="text-sm text-foreground">{t("order.sla")}</p>
             </div>
           </div>
@@ -111,7 +108,7 @@ export default function OrderDetail() {
           {/* File & Details Specs */}
           <div className="border border-border bg-surface-1 h-full flex flex-col">
             <div className="border-b border-border/50 p-4 bg-surface-2">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">PAYLOAD_SPECIFICATIONS</p>
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{t("detail.specifications")}</p>
             </div>
             <div className="p-6 space-y-6 flex-1">
               <div>
@@ -132,7 +129,7 @@ export default function OrderDetail() {
                   <p className="font-heading font-bold text-foreground">{order.material_name}</p>
                 </div>
                 <div className="border border-border p-4 bg-background">
-                  <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1">DATE_LOGGED</p>
+                  <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1">{t("detail.dateLogged")}</p>
                   <p className="font-heading font-bold text-foreground text-sm truncate">{fmtDate(order.created_at)}</p>
                 </div>
               </div>
@@ -148,7 +145,7 @@ export default function OrderDetail() {
           {/* Estimate + Payment */}
           <div className="border border-border bg-surface-1 h-full flex flex-col">
             <div className="border-b border-border/50 p-4 bg-surface-2 flex justify-between items-center">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">COMMERCIAL_EVALUATION</p>
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{t("detail.costEstimate")}</p>
               {!order.estimate && (
                 <span className="flex items-center gap-1.5 text-[10px] font-mono text-warm uppercase tracking-widest">
                   <AlertTriangle className="h-3 w-3" /> PENDING
@@ -190,14 +187,14 @@ export default function OrderDetail() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-warm font-mono text-xs uppercase tracking-widest p-4 border border-warm/30 bg-warm/5" data-testid="proof-uploaded">
-                          <Clock className="h-4 w-4 animate-pulse" /> {t("detail.proofUploaded")} // AWAITING_VERIFICATION
+                          <Clock className="h-4 w-4 animate-pulse" /> {t("detail.proofUploaded")} · {t("detail.awaitingVerification")}
                         </div>
                       )
                     ) : order.status === "awaiting_payment" ? (
                       <>
                         <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" data-testid="proof-input" onChange={(e) => uploadProof(e.target.files[0])} />
                         <Button onClick={() => fileRef.current.click()} disabled={uploading} data-testid="upload-proof-btn" className="w-full rounded-none h-12 font-mono text-xs uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-                          <Upload className="mr-2 h-4 w-4" /> {uploading ? "TRANSMITTING..." : t("detail.uploadProof")}
+                          <Upload className="mr-2 h-4 w-4" /> {uploading ? t("detail.sending") : t("detail.uploadProof")}
                         </Button>
                       </>
                     ) : null}
@@ -216,7 +213,7 @@ export default function OrderDetail() {
         {/* Timeline Log */}
         <div className="border border-border bg-surface-1">
           <div className="border-b border-border/50 p-4 bg-surface-2">
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">SYSTEM_EVENT_LOG</p>
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{t("detail.eventLog")}</p>
           </div>
           <div className="p-6 sm:p-8">
             <div className="space-y-0 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-px before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
