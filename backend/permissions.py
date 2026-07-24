@@ -35,6 +35,8 @@ ROLE_PERMISSIONS = {
         {
             "admin.access",
             "dashboard.read",
+            "users.read",
+            "audit.read",
             "catalog.read",
             "catalog.write",
             "content.read",
@@ -89,6 +91,7 @@ ROLE_PERMISSIONS = {
             "orders.read",
             "projects.read",
             "notifications.write",
+            "settings.write",
         }
     ),
     "retail_customer": frozenset(),
