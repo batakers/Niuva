@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Archive, Building2, Plus, Users } from "lucide-react";
+import { AlertCircle, Archive, Building2, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
   Table,
@@ -219,19 +220,23 @@ export default function AdminOrganizations() {
         </SurfacePanelHeader>
 
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
         ) : permissionDenied ? (
-          <EmptyState>
+          <EmptyState icon={AlertCircle} className="py-16">
             <span role="alert" className="text-status-error">
               {t("organizations.permissionDenied")}
             </span>
           </EmptyState>
         ) : error ? (
-          <EmptyState>
+          <EmptyState icon={AlertCircle} className="py-16">
             <span role="alert" className="text-status-error">{error}</span>
           </EmptyState>
         ) : items.length === 0 ? (
-          <EmptyState>{t("organizations.empty")}</EmptyState>
+          <EmptyState icon={Building2} className="py-16">{t("organizations.empty")}</EmptyState>
         ) : (
           <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((organization) => {

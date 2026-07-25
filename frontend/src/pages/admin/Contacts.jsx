@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { Mail } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonText } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { TechnicalLabel } from "@/components/ui/technical-label";
 import { useI18n } from "@/i18n";
@@ -34,9 +36,15 @@ export default function AdminContacts() {
         </SurfacePanelHeader>
 
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <div className="divide-y divide-border-default">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-6">
+                <SkeletonText lines={3} />
+              </div>
+            ))}
+          </div>
         ) : items.length === 0 ? (
-          <EmptyState>{t("contacts.empty")}</EmptyState>
+          <EmptyState icon={Mail} className="py-16">{t("contacts.empty")}</EmptyState>
         ) : (
           <div className="divide-y divide-border-default">
             {items.map((item) => (

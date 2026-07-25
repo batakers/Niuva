@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { AlertCircle, Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
   Table,
@@ -195,13 +196,30 @@ export default function StockMovements() {
       {/* Data Table */}
       <SurfacePanel className="mt-4">
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("common.date")}</TableHead>
+                <TableHead>{t("inventory.subject")}</TableHead>
+                <TableHead>{t("inventory.movementType")}</TableHead>
+                <TableHead>{t("inventory.quantity")}</TableHead>
+                <TableHead>{t("inventory.referenceId")}</TableHead>
+                <TableHead>{t("inventory.actor")}</TableHead>
+                <TableHead>{t("common.reason")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTableRow key={i} columns={7} />
+              ))}
+            </TableBody>
+          </Table>
         ) : error ? (
-          <EmptyState>
-            <span role="alert">{error}</span>
+          <EmptyState icon={AlertCircle} className="py-16">
+            <span role="alert" className="text-status-error">{error}</span>
           </EmptyState>
         ) : visible.length === 0 ? (
-          <EmptyState>{t("inventory.noMovements")}</EmptyState>
+          <EmptyState className="py-16">{t("inventory.noMovements")}</EmptyState>
         ) : (
           <Table>
             <TableHeader>

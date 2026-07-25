@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
   Table,
@@ -102,13 +103,32 @@ export default function RestockAlerts() {
       {/* Data Table */}
       <SurfacePanel className="mt-4">
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("inventory.subject")}</TableHead>
+                <TableHead>{t("inventory.trigger")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("inventory.metrics")}</TableHead>
+                <TableHead>{t("inventory.recipients")}</TableHead>
+                <TableHead>{t("common.updated")}</TableHead>
+                {actions.includes("resolve") && (
+                  <TableHead className="text-right">{t("common.actions")}</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTableRow key={i} columns={actions.includes("resolve") ? 7 : 6} />
+              ))}
+            </TableBody>
+          </Table>
         ) : error ? (
-          <EmptyState>
-            <span role="alert">{error}</span>
+          <EmptyState icon={AlertCircle} className="py-16">
+            <span role="alert" className="text-status-error">{error}</span>
           </EmptyState>
         ) : rows.length === 0 ? (
-          <EmptyState>{t("inventory.noAlerts")}</EmptyState>
+          <EmptyState className="py-16">{t("inventory.noAlerts")}</EmptyState>
         ) : (
           <Table>
             <TableHeader>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, Coins, Pencil, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Archive, Coins, Package, Pencil, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -172,13 +173,35 @@ export default function AdminMaterials() {
       {/* Data Panel */}
       <SurfacePanel className="mt-4">
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>SKU / {t("common.name")}</TableHead>
+                  <TableHead>{t("materials.unit")}</TableHead>
+                  <TableHead>{t("materials.supplier")}</TableHead>
+                  <TableHead>{t("materials.setup")}</TableHead>
+                  <TableHead>{t("materials.currentPrice")}</TableHead>
+                  <TableHead>{t("materials.nextPrice")}</TableHead>
+                  <TableHead>{t("materials.reorderPoint")}</TableHead>
+                  <TableHead>{t("materials.leadTime")}</TableHead>
+                  <TableHead>{t("inventory.tracking")}</TableHead>
+                  <TableHead className="text-right">{t("common.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <SkeletonTableRow key={i} columns={10} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         ) : error ? (
-          <EmptyState>
-            <span role="alert">{error}</span>
+          <EmptyState icon={AlertCircle} className="py-16">
+            <span role="alert" className="text-status-error">{error}</span>
           </EmptyState>
         ) : filtered.length === 0 ? (
-          <EmptyState>{t("materials.empty")}</EmptyState>
+          <EmptyState icon={Package} className="py-16">{t("materials.empty")}</EmptyState>
         ) : (
           <>
             {/* Desktop Table */}

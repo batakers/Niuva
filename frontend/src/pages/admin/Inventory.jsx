@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { AlertCircle, Download, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
   Table,
@@ -180,13 +181,34 @@ export default function Inventory() {
       {/* Balances Table */}
       <SurfacePanel className="mt-4">
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("inventory.subject")}</TableHead>
+                <TableHead>On hand</TableHead>
+                <TableHead>Reserved</TableHead>
+                <TableHead>Available</TableHead>
+                <TableHead>Incoming</TableHead>
+                <TableHead>Planned demand</TableHead>
+                <TableHead>Projected</TableHead>
+                <TableHead>Version</TableHead>
+                {canWrite && (
+                  <TableHead className="text-right">{t("common.actions")}</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTableRow key={i} columns={canWrite ? 9 : 8} />
+              ))}
+            </TableBody>
+          </Table>
         ) : error ? (
-          <EmptyState>
-            <span role="alert">{error}</span>
+          <EmptyState icon={AlertCircle} className="py-16">
+            <span role="alert" className="text-status-error">{error}</span>
           </EmptyState>
         ) : visible.length === 0 ? (
-          <EmptyState>{t("inventory.empty")}</EmptyState>
+          <EmptyState className="py-16">{t("inventory.empty")}</EmptyState>
         ) : (
           <Table>
             <TableHeader>
@@ -256,9 +278,26 @@ export default function Inventory() {
         </SurfacePanelHeader>
 
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("inventory.subject")}</TableHead>
+                <TableHead>{t("inventory.quantity")}</TableHead>
+                <TableHead>{t("inventory.reference")}</TableHead>
+                <TableHead>{t("inventory.expiresAt")}</TableHead>
+                {canWrite && (
+                  <TableHead className="text-right">{t("common.actions")}</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3].map((i) => (
+                <SkeletonTableRow key={i} columns={canWrite ? 5 : 4} />
+              ))}
+            </TableBody>
+          </Table>
         ) : reservations.length === 0 ? (
-          <EmptyState>{t("inventory.noActiveReservations")}</EmptyState>
+          <EmptyState className="py-16">{t("inventory.noActiveReservations")}</EmptyState>
         ) : (
           <Table>
             <TableHeader>

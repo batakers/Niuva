@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Eye } from "lucide-react";
+import { AlertCircle, Eye, ScrollText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
   Table,
@@ -105,19 +106,35 @@ export default function AdminAuditLog() {
         </SurfacePanelHeader>
 
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("audit.timestamp")}</TableHead>
+                <TableHead>{t("audit.actor")}</TableHead>
+                <TableHead>{t("audit.action")}</TableHead>
+                <TableHead>{t("audit.target")}</TableHead>
+                <TableHead>{t("audit.reason")}</TableHead>
+                <TableHead className="text-right">{t("common.detail")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTableRow key={i} columns={6} />
+              ))}
+            </TableBody>
+          </Table>
         ) : permissionDenied ? (
-          <EmptyState>
+          <EmptyState icon={AlertCircle} className="py-16">
             <span role="alert" className="text-status-error">
               {t("audit.permissionDenied")}
             </span>
           </EmptyState>
         ) : error ? (
-          <EmptyState>
+          <EmptyState icon={AlertCircle} className="py-16">
             <span role="alert" className="text-status-error">{error}</span>
           </EmptyState>
         ) : items.length === 0 ? (
-          <EmptyState>{t("audit.empty")}</EmptyState>
+          <EmptyState icon={ScrollText} className="py-16">{t("audit.empty")}</EmptyState>
         ) : (
           <Table>
             <TableHeader>
