@@ -237,13 +237,13 @@ export default function Inventory() {
                       {balance.subject_type} · {balance.subject_id}
                     </TechnicalLabel>
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums">{balance.on_hand}</TableCell>
-                  <TableCell className="font-mono tabular-nums">{balance.reserved}</TableCell>
-                  <TableCell className="font-mono tabular-nums">{balance.available}</TableCell>
-                  <TableCell className="font-mono tabular-nums">{balance.incoming}</TableCell>
-                  <TableCell className="font-mono tabular-nums">{balance.planned_demand}</TableCell>
+                  <TableCell className="tabular-nums">{balance.on_hand}</TableCell>
+                  <TableCell className="tabular-nums">{balance.reserved}</TableCell>
+                  <TableCell className="tabular-nums">{balance.available}</TableCell>
+                  <TableCell className="tabular-nums">{balance.incoming}</TableCell>
+                  <TableCell className="tabular-nums">{balance.planned_demand}</TableCell>
                   <TableCell
-                    className={`font-mono tabular-nums ${
+                    className={`tabular-nums ${
                       Number(balance.projected) < 0
                         ? "font-semibold text-status-error"
                         : ""
@@ -322,7 +322,7 @@ export default function Inventory() {
                       {reservation.subject_type} · {reservation.id}
                     </TechnicalLabel>
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums">{reservation.quantity}</TableCell>
+                  <TableCell className="tabular-nums">{reservation.quantity}</TableCell>
                   <TableCell className="font-mono text-xs text-text-secondary">
                     {reservation.reference_type} · {reservation.reference_id}
                   </TableCell>

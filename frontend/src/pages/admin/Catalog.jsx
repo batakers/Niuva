@@ -340,7 +340,7 @@ export default function Catalog() {
                       {category.status}
                     </TechnicalLabel>
                   </TableCell>
-                  <TableCell className="font-mono text-text-secondary">
+                  <TableCell className="tabular-nums text-text-secondary">
                     {category.sort_order}
                   </TableCell>
                   <TableCell>
@@ -592,7 +592,7 @@ export default function Catalog() {
                   <TableCell className="text-text-secondary">
                     {categoryById[product.category_id]?.name || "—"}
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums text-text-secondary">
+                  <TableCell className="tabular-nums text-text-secondary">
                     {product.active_variant_count ?? "—"}
                   </TableCell>
                   <TableCell className="text-text-secondary">

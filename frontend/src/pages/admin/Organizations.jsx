@@ -272,12 +272,12 @@ export default function AdminOrganizations() {
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-border-default pt-4 font-mono text-xs tabular-nums text-text-secondary">
-                    <span className="inline-flex items-center gap-2">
+                  <div className="flex items-center justify-between border-t border-border-default pt-4 text-xs text-text-secondary">
+                    <span className="inline-flex items-center gap-2 tabular-nums">
                       <Users className="h-4 w-4" /> {activeMembers}{" "}
                       {t("organizations.activeMembers")}
                     </span>
-                    <span>{fmtDay(organization.created_at)}</span>
+                    <span className="font-mono">{fmtDay(organization.created_at)}</span>
                   </div>
 
                   <Button

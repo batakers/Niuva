@@ -177,10 +177,10 @@ export default function RestockAlerts() {
 
                   {/* Metrics */}
                   <TableCell>
-                    <div className="font-mono text-xs tabular-nums text-text-secondary">
+                    <div className="text-xs tabular-nums text-text-secondary">
                       Available: {alert.last_balance?.available ?? "—"}
                     </div>
-                    <div className="font-mono text-xs tabular-nums text-text-secondary">
+                    <div className="text-xs tabular-nums text-text-secondary">
                       Reserved: {alert.last_balance?.reserved ?? "—"}
                     </div>
                   </TableCell>
