@@ -134,7 +134,7 @@ export default function AdminAuditLog() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between">
-          <TechnicalLabel>
+          <TechnicalLabel className="tabular-nums">
             {t("audit.total")}: {items.length}
           </TechnicalLabel>
         </SurfacePanelHeader>

@@ -213,7 +213,7 @@ export default function AdminUsers() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between gap-3">
-          <TechnicalLabel>
+          <TechnicalLabel className="tabular-nums">
             {t("users.total")}: {items.length}
           </TechnicalLabel>
           {canCreateUser && (

@@ -30,7 +30,7 @@ export default function AdminContacts() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between">
-          <TechnicalLabel>
+          <TechnicalLabel className="tabular-nums">
             {t("contacts.total")}: {items.length}
           </TechnicalLabel>
         </SurfacePanelHeader>

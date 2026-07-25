@@ -30,7 +30,7 @@ export default function AdminInternships() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between">
-          <TechnicalLabel>
+          <TechnicalLabel className="tabular-nums">
             {t("internships.total")}: {items.length}
           </TechnicalLabel>
         </SurfacePanelHeader>
