@@ -111,6 +111,7 @@ const translations = {
     "portfolio.imageUrls": "URL Gambar",
     "portfolio.imageUrlsHint": "Satu URL per baris. Gambar pertama menjadi sampul.",
     "portfolio.markFeatured": "Tandai Unggulan",
+    "portfolio.featuredBadge": "Unggulan",
     "portfolio.deleteConfirmTitle": "Hapus proyek ini?",
     "portfolio.deleteConfirmDesc": "Tindakan ini permanen dan tidak dapat dibatalkan.",
 
@@ -541,6 +542,7 @@ const translations = {
     "portfolio.imageUrls": "Image URLs",
     "portfolio.imageUrlsHint": "One URL per line. The first image becomes the cover.",
     "portfolio.markFeatured": "Mark as Featured",
+    "portfolio.featuredBadge": "Featured",
     "portfolio.deleteConfirmTitle": "Delete this project?",
     "portfolio.deleteConfirmDesc": "This action is permanent and cannot be undone.",
 

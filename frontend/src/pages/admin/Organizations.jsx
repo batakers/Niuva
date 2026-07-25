@@ -208,7 +208,7 @@ export default function AdminOrganizations() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between gap-4">
-          <TechnicalLabel>
+          <TechnicalLabel className="font-mono tabular-nums">
             {t("organizations.total")}: {items.length}
           </TechnicalLabel>
           {canManage && (
@@ -245,18 +245,21 @@ export default function AdminOrganizations() {
                   (membership) => membership.status === "active"
                 ).length || 0;
 
+              const accentClass =
+                organization.status === "active"
+                  ? "border-l-status-success"
+                  : "border-l-border-strong";
+
               return (
                 <SurfacePanel
                   key={organization.id}
-                  className="space-y-5 p-4"
+                  className={`space-y-5 border-l-4 p-4 ${accentClass}`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="grid h-10 w-10 place-items-center rounded-control border border-border-default bg-surface-muted">
                       <Building2 className="h-5 w-5 text-action-primary" />
                     </div>
-                    <span className="type-body-small text-text-secondary">
-                      {organization.status}
-                    </span>
+                    <TechnicalLabel>{organization.status}</TechnicalLabel>
                   </div>
 
                   <div>
@@ -268,7 +271,7 @@ export default function AdminOrganizations() {
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-border-default pt-4 text-xs text-text-secondary">
+                  <div className="flex items-center justify-between border-t border-border-default pt-4 font-mono text-xs tabular-nums text-text-secondary">
                     <span className="inline-flex items-center gap-2">
                       <Users className="h-4 w-4" /> {activeMembers}{" "}
                       {t("organizations.activeMembers")}
@@ -515,8 +518,14 @@ export default function AdminOrganizations() {
                             roleLabel(membership.member_role)
                           )}
                         </TableCell>
-                        <TableCell className="type-body-small text-text-secondary">
-                          {membership.status}
+                        <TableCell>
+                          <TechnicalLabel
+                            tone={
+                              membership.status === "active" ? "success" : "muted"
+                            }
+                          >
+                            {membership.status}
+                          </TechnicalLabel>
                         </TableCell>
                         {canManage && (
                           <TableCell className="text-right">

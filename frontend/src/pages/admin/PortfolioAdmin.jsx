@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { SurfacePanel } from "@/components/ui/surface-panel";
+import { TechnicalLabel } from "@/components/ui/technical-label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/i18n";
@@ -86,12 +87,9 @@ export default function AdminPortfolio() {
     >
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <p className="type-label text-text-secondary">
-          {t("portfolio.published")}:{" "}
-          <span className="font-heading font-semibold text-text-primary">
-            {items.length}
-          </span>
-        </p>
+        <TechnicalLabel className="font-mono tabular-nums">
+          {t("portfolio.published")}: {items.length}
+        </TechnicalLabel>
         <Button data-testid="add-project-btn" onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> {t("portfolio.addProject")}
         </Button>
@@ -111,7 +109,9 @@ export default function AdminPortfolio() {
           {items.map((p) => (
             <SurfacePanel
               key={p.id}
-              className="flex flex-col group overflow-hidden p-0"
+              className={`flex flex-col group overflow-hidden border-l-4 p-0 ${
+                p.featured ? "border-l-status-warning" : "border-l-border-default"
+              }`}
             >
               {/* Image */}
               <div className="relative aspect-video bg-surface-muted border-b border-border-default overflow-hidden">
@@ -120,9 +120,17 @@ export default function AdminPortfolio() {
                   alt=""
                   className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-300"
                 />
-                <span className="absolute top-2 left-2 rounded-control bg-surface-default/90 px-2 py-0.5 border border-border-default font-mono text-[10px] text-text-secondary">
+                <span className="absolute top-2 left-2 rounded-control bg-surface-default/90 px-2 py-0.5 border border-border-default font-mono text-[10px] tabular-nums text-text-secondary">
                   {p.id.substring(0, 6)}
                 </span>
+                {p.featured && (
+                  <TechnicalLabel
+                    tone="warning"
+                    className="absolute top-2 right-2 rounded-control bg-surface-default/90 px-2 py-0.5 border border-border-default"
+                  >
+                    {t("portfolio.featuredBadge")}
+                  </TechnicalLabel>
+                )}
               </div>
 
               {/* Content */}
