@@ -5,9 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SurfacePanel } from "@/components/ui/surface-panel";
 
 /**
- * StatCard — technical-console styling: status-coded left accent, mono
- * eyebrow label, tabular figures. `hero` spans 2 grid columns to break an
- * otherwise-uniform stat grid.
+ * StatCard — status-coded left accent, tabular figure. `hero` spans 2 grid
+ * columns to break an otherwise-uniform stat grid.
  */
 function StatCard({ label, value, colorClass, accentClass, hero, delay, className }) {
   return (
@@ -20,10 +19,10 @@ function StatCard({ label, value, colorClass, accentClass, hero, delay, classNam
       )}
       style={delay ? { animationDelay: `${delay}ms` } : undefined}
     >
-      <p className="type-technical-metadata text-text-secondary mb-3">{label}</p>
+      <p className="type-label text-text-secondary mb-3">{label}</p>
       <p
         className={cn(
-          "font-mono font-bold tabular-nums tracking-tight",
+          "font-heading font-bold tabular-nums tracking-tight",
           hero ? "text-5xl" : "text-3xl",
           colorClass
         )}

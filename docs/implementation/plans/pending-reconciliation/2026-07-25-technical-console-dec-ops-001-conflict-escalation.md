@@ -1,7 +1,20 @@
 # Technical Console Rollout vs DEC-OPS-001 — Conflict Escalation
 
 Tanggal: 25 Juli 2026
-Status: **Context Only — Escalation, Pending Owner Decision**
+Status: **Resolved — Remediated 25 Juli 2026**
+
+## 0. Resolusi
+
+Pemilik `DEC-OPS-001` (pengguna) memutuskan Opsi 1 (§6): revert pola mono-dekoratif,
+pertahankan genuine technical data sebagai mono. Dieksekusi pada commit yang mengikuti
+dokumen ini di branch `feat/admin-cms-redesign`. Elemen yang direvert ke Poppins/sans
+(`type-label`/`font-heading`): `TableHead`, eyebrow label `StatCard`, label grup navigasi
+sidebar, dan seluruh counter "Total: X" / label section header yang sebelumnya dikonversi
+ke `TechnicalLabel`. Elemen yang dipertahankan mono karena genuine technical data (slug,
+SKU, subject_type/id, status/workflow code, reason code) — lihat §5 di bawah, sekarang
+diperluas untuk mencakup identifier serupa yang sudah ada di 15 halaman admin. Aksen warna
+kiri status (Fase C card grid) dipertahankan sesuai arahan pengguna eksplisit — tidak
+melanggar teks `DEC-OPS-001`.
 Scope: Melaporkan konflik antara commit yang sudah dibuat di branch
 `feat/admin-cms-redesign` (Fase A-D, "Technical Console" visual direction) dengan
 `DEC-OPS-001-admin-studio-operational-direction.md` (Approved Decision). Dokumen ini

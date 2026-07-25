@@ -233,7 +233,7 @@ function ItemListField({ field, value, onChange, disabled }) {
         {items.map((item, index) => (
           <div key={index} className="rounded-md border border-border-default p-3">
             <div className="mb-2 flex items-center justify-between">
-              <TechnicalLabel size="micro">Item {index + 1}</TechnicalLabel>
+              <span className="type-label text-text-secondary">Item {index + 1}</span>
               {!disabled && <Button variant="ghost" size="icon" onClick={() => remove(index)} aria-label="Hapus item"><Trash2 className="h-4 w-4" /></Button>}
             </div>
             <div className="grid gap-2">
@@ -377,7 +377,7 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
 
       {!isArchived && (
         <SurfacePanel className="mt-4">
-          <SurfacePanelHeader padding="sm"><TechnicalLabel>{t("content.publish")}</TechnicalLabel></SurfacePanelHeader>
+          <SurfacePanelHeader padding="sm"><p className="type-label text-text-secondary">{t("content.publish")}</p></SurfacePanelHeader>
           <div className="grid gap-4 p-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>{t("common.reason")}</Label>
@@ -395,7 +395,7 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
       )}
 
       <SurfacePanel className="mt-4">
-        <SurfacePanelHeader padding="sm"><TechnicalLabel>{t("content.versionHistory")}</TechnicalLabel></SurfacePanelHeader>
+        <SurfacePanelHeader padding="sm"><p className="type-label text-text-secondary">{t("content.versionHistory")}</p></SurfacePanelHeader>
         {versions.length === 0 ? <EmptyState>{t("content.noVersions")}</EmptyState> : (
           <Table>
             <TableHeader><TableRow><TableHead>{t("common.date")}</TableHead><TableHead>{t("content.event")}</TableHead><TableHead>{t("common.reason")}</TableHead><TableHead className="text-right">{t("common.actions")}</TableHead></TableRow></TableHeader>

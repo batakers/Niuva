@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/select";
 import { Skeleton, SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
-import { TechnicalLabel } from "@/components/ui/technical-label";
 import {
   Table,
   TableBody,
@@ -169,14 +168,16 @@ export default function AdminOrders() {
       <SurfacePanel className="overflow-hidden">
         {/* Header */}
         <SurfacePanelHeader className="flex items-center justify-between">
-          <TechnicalLabel className="tabular-nums">
+          <p className="type-label text-text-secondary">
             {t("orders.total")}:{" "}
-            {loading
-              ? "—"
-              : hasActiveFilters
-                ? `${filteredOrders.length} / ${orders.length}`
-                : orders.length}
-          </TechnicalLabel>
+            <span className="font-heading font-semibold text-text-primary">
+              {loading
+                ? "—"
+                : hasActiveFilters
+                  ? `${filteredOrders.length} / ${orders.length}`
+                  : orders.length}
+            </span>
+          </p>
           <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="mr-2 h-3.5 w-3.5" />
             {t("common.exportCsv")}

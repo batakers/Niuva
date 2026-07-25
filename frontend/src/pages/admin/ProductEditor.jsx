@@ -33,7 +33,7 @@ const emptyOption = () => ({
 function Field({ label, error, children }) {
   return (
     <label className="block space-y-1">
-      <TechnicalLabel as="span" size="micro">{label}</TechnicalLabel>
+      <span className="type-label text-text-secondary">{label}</span>
       {children}
       {error?.map((message) => <span key={message} className="block text-xs text-destructive" role="alert">{message}</span>)}
     </label>
@@ -43,7 +43,7 @@ function Field({ label, error, children }) {
 function Section({ title, children, action }) {
   return (
     <SurfacePanel>
-      <SurfacePanelHeader padding="sm" className="flex items-center justify-between gap-3"><TechnicalLabel>{title}</TechnicalLabel>{action}</SurfacePanelHeader>
+      <SurfacePanelHeader padding="sm" className="flex items-center justify-between gap-3"><p className="type-label text-text-secondary">{title}</p>{action}</SurfacePanelHeader>
       <div className="space-y-4 p-5">{children}</div>
     </SurfacePanel>
   );
@@ -215,7 +215,7 @@ export default function ProductEditor() {
       <Tabs defaultValue="basic" className="space-y-4">
         <TabsList className="h-auto w-full flex-wrap justify-start rounded-none border border-border-default bg-surface-default">
           {["basic", "media", "variants", "options", "pricing", "publish"].map((tab) => (
-            <TabsTrigger key={tab} value={tab} className="rounded-none font-mono text-xs">{t(`catalog.tab.${tab}`)}</TabsTrigger>
+            <TabsTrigger key={tab} value={tab} className="rounded-none">{t(`catalog.tab.${tab}`)}</TabsTrigger>
           ))}
         </TabsList>
 
@@ -280,7 +280,7 @@ export default function ProductEditor() {
             {canPublish && !isNew && <Button onClick={publish} disabled={busy || reason.trim().length < 3}>{t("catalog.publish")}</Button>}
             {canArchive && !isNew && <Button variant="destructive" onClick={archive} disabled={busy || reason.trim().length < 3}>{t("catalog.archive")}</Button>}
           </div>
-          <div className="border-t border-border-default pt-4"><TechnicalLabel>{t("catalog.revisionHistory")}</TechnicalLabel>
+          <div className="border-t border-border-default pt-4"><p className="type-label text-text-secondary">{t("catalog.revisionHistory")}</p>
             {publications.length === 0 ? <p className="mt-2 text-sm text-text-secondary">{t("catalog.noPublications")}</p> : <div className="mt-2 space-y-2">{publications.map((publication) => <label key={publication.id} className="flex items-center gap-3 border border-border-default p-3"><input type="radio" name="revision" checked={selectedRevision === publication.id} onChange={() => setSelectedRevision(publication.id)} /><span className="flex-1">Revision {publication.revision} · {new Date(publication.published_at).toLocaleString()}</span><TechnicalLabel size="micro">{publication.publish_reason}</TechnicalLabel></label>)}</div>}
             {canPublish && publications.length > 0 && <Button className="mt-3" variant="outline" onClick={rollback} disabled={busy || !selectedRevision || reason.trim().length < 3}>{t("catalog.rollback")}</Button>}
           </div>

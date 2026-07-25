@@ -134,7 +134,7 @@ export default function Inventory() {
       {/* Balances Panel */}
       <SurfacePanel>
         <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
-          <TechnicalLabel>{t("inventory.balances")}</TechnicalLabel>
+          <p className="type-label text-text-secondary">{t("inventory.balances")}</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv}>
               <Download className="mr-2 h-4 w-4" />
@@ -274,7 +274,7 @@ export default function Inventory() {
       {/* Reservations Panel */}
       <SurfacePanel className="mt-4">
         <SurfacePanelHeader>
-          <TechnicalLabel>{t("inventory.activeReservations")}</TechnicalLabel>
+          <p className="type-label text-text-secondary">{t("inventory.activeReservations")}</p>
         </SurfacePanelHeader>
 
         {loading ? (

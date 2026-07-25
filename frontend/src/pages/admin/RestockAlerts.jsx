@@ -77,7 +77,7 @@ export default function RestockAlerts() {
       {/* Filters */}
       <SurfacePanel>
         <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
-          <TechnicalLabel>{t("inventory.alerts")}</TechnicalLabel>
+          <p className="type-label text-text-secondary">{t("inventory.alerts")}</p>
           <Button variant="outline" size="sm" onClick={load}>
             <RefreshCw className="mr-2 h-4 w-4" />
             {t("common.refresh")}

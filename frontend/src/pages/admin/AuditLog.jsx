@@ -22,7 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TechnicalLabel } from "@/components/ui/technical-label";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
@@ -54,7 +53,7 @@ function AuditSnapshot({ title, value }) {
   return (
     <SurfacePanel>
       <SurfacePanelHeader>
-        <TechnicalLabel>{title}</TechnicalLabel>
+        <p className="type-label text-text-secondary">{title}</p>
       </SurfacePanelHeader>
       <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-6 text-text-secondary">
         {JSON.stringify(value || {}, null, 2)}
@@ -134,9 +133,9 @@ export default function AdminAuditLog() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between">
-          <TechnicalLabel className="tabular-nums">
+          <p className="type-label text-text-secondary">
             {t("audit.total")}: {items.length}
-          </TechnicalLabel>
+          </p>
         </SurfacePanelHeader>
 
         {/* Filter bar */}

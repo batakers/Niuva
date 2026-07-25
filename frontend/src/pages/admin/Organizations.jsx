@@ -208,9 +208,9 @@ export default function AdminOrganizations() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between gap-4">
-          <TechnicalLabel className="font-mono tabular-nums">
+          <p className="type-label text-text-secondary">
             {t("organizations.total")}: {items.length}
-          </TechnicalLabel>
+          </p>
           {canManage && (
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -403,7 +403,7 @@ export default function AdminOrganizations() {
           {/* Add Member */}
           {canManage && (
             <SurfacePanel className="space-y-4 p-4">
-              <TechnicalLabel>{t("organizations.addMember")}</TechnicalLabel>
+              <p className="type-label text-text-secondary">{t("organizations.addMember")}</p>
               <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
                 <Select value={memberUserId} onValueChange={setMemberUserId}>
                   <SelectTrigger>

@@ -147,7 +147,7 @@ export default function AdminMaterials() {
       {/* Header Panel */}
       <SurfacePanel>
         <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
-          <TechnicalLabel>{t("materials.registry")}</TechnicalLabel>
+          <p className="type-label text-text-secondary">{t("materials.registry")}</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={load}>
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -716,13 +716,13 @@ function PriceHistory({ material, canAppend, onClose, onChanged }) {
         {/* Current/Next Price Summary */}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-control border border-border-default p-3">
-            <TechnicalLabel>{t("materials.currentPrice")}</TechnicalLabel>
+            <p className="type-label text-text-secondary">{t("materials.currentPrice")}</p>
             <p className="mt-2 font-mono text-lg font-semibold tabular-nums text-text-primary">
               {formatIdr(summary.current?.amount)}
             </p>
           </div>
           <div className="rounded-control border border-border-default p-3">
-            <TechnicalLabel>{t("materials.nextPrice")}</TechnicalLabel>
+            <p className="type-label text-text-secondary">{t("materials.nextPrice")}</p>
             <p className="mt-2 font-mono text-lg font-semibold tabular-nums text-text-primary">
               {formatIdr(summary.next_scheduled?.amount)}
             </p>
@@ -789,7 +789,7 @@ function PriceHistory({ material, canAppend, onClose, onChanged }) {
                 <span className="font-mono text-xs text-text-secondary">
                   {new Date(version.effective_from).toLocaleString()}
                 </span>
-                <TechnicalLabel size="micro">{version.reason}</TechnicalLabel>
+                <span className="type-body-small text-text-secondary">{version.reason}</span>
               </div>
             ))
           )}

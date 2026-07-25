@@ -87,9 +87,9 @@ export default function AdminPortfolio() {
     >
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <TechnicalLabel className="font-mono tabular-nums">
+        <p className="type-label text-text-secondary">
           {t("portfolio.published")}: {items.length}
-        </TechnicalLabel>
+        </p>
         <Button data-testid="add-project-btn" onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> {t("portfolio.addProject")}
         </Button>

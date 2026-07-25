@@ -268,7 +268,7 @@ export default function Catalog() {
       <SurfacePanel>
         <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <TechnicalLabel>{t("catalog.categoryRegistry")}</TechnicalLabel>
+            <p className="type-label text-text-secondary">{t("catalog.categoryRegistry")}</p>
             <p className="mt-1 type-body-small text-text-secondary">
               {t("catalog.categoryHint")}
             </p>
@@ -383,7 +383,7 @@ export default function Catalog() {
       {/* Products Filter Panel */}
       <SurfacePanel className="mt-6">
         <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
-          <TechnicalLabel>{t("catalog.registry")}</TechnicalLabel>
+          <p className="type-label text-text-secondary">{t("catalog.registry")}</p>
           <div className="flex gap-2">
             <Button 
               variant="outline" 

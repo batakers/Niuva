@@ -109,7 +109,7 @@ export default function StockMovements() {
       {/* Filters Panel */}
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between">
-          <TechnicalLabel>{t("inventory.immutableHistory")}</TechnicalLabel>
+          <p className="type-label text-text-secondary">{t("inventory.immutableHistory")}</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv}>
               <Download className="mr-2 h-4 w-4" />

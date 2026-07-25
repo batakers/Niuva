@@ -31,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TechnicalLabel } from "@/components/ui/technical-label";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
@@ -213,9 +212,9 @@ export default function AdminUsers() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between gap-3">
-          <TechnicalLabel className="tabular-nums">
+          <p className="type-label text-text-secondary">
             {t("users.total")}: {items.length}
-          </TechnicalLabel>
+          </p>
           {canCreateUser && (
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />

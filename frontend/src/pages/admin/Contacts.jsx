@@ -4,7 +4,6 @@ import { Mail } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
-import { TechnicalLabel } from "@/components/ui/technical-label";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/api";
 import { fmtDate } from "@/lib/format";
@@ -30,9 +29,9 @@ export default function AdminContacts() {
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between">
-          <TechnicalLabel className="tabular-nums">
+          <p className="type-label text-text-secondary">
             {t("contacts.total")}: {items.length}
-          </TechnicalLabel>
+          </p>
         </SurfacePanelHeader>
 
         {loading ? (

@@ -27,7 +27,6 @@ import { useAuth } from "../../context/AuthContext";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { ADMIN_ROUTE_PERMISSIONS, hasPermission } from "../../lib/permissions";
 import { Button } from "../../components/ui/button";
-import { TechnicalLabel } from "../../components/ui/technical-label";
 
 const ADMIN_MENU_GROUPS = [
   {
@@ -175,9 +174,9 @@ export function AdminLayout({ children, title, subtitle }) {
               key={group.label} 
               className={groupIndex > 0 ? "mt-4 pt-4 border-t border-border-default/50" : ""}
             >
-              <TechnicalLabel as="p" className="mb-2 px-3">
+              <p className="mb-2 px-3 type-label text-text-disabled uppercase text-[11px] tracking-wide">
                 {t(group.label)}
-              </TechnicalLabel>
+              </p>
               <div className="space-y-0.5">
                 {group.items.map(({ path, label, icon: Icon }) => {
                   const active = isActive(path);
