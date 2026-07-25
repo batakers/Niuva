@@ -47,25 +47,37 @@ function totalForRow(row) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Stat Card Component
+ * Stat Card Component — technical-console styling: status-coded left accent,
+ * mono eyebrow label, tabular figures. Hero variant breaks the uniform grid.
  * ────────────────────────────────────────────────────────────────────────── */
 
-function StatCard({ label, value, colorClass }) {
+function StatCard({ label, value, colorClass, accentClass, hero, delay }) {
   return (
-    <SurfacePanel className="p-6 transition-all duration-fast hover:shadow-navigation hover:-translate-y-0.5">
-      <p className="type-label text-text-secondary mb-3">{label}</p>
-      <p className={`font-heading text-4xl font-bold tracking-tight ${colorClass}`}>
+    <SurfacePanel
+      className={`reveal border-l-4 p-6 transition-all duration-fast hover:shadow-navigation hover:-translate-y-0.5 ${accentClass} ${
+        hero ? "col-span-2" : ""
+      }`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <p className="type-technical-metadata text-text-secondary mb-3">
+        {label}
+      </p>
+      <p
+        className={`font-mono font-bold tabular-nums tracking-tight ${
+          hero ? "text-5xl" : "text-3xl"
+        } ${colorClass}`}
+      >
         {value}
       </p>
     </SurfacePanel>
   );
 }
 
-function StatCardSkeleton() {
+function StatCardSkeleton({ hero }) {
   return (
-    <SurfacePanel className="p-6">
-      <Skeleton className="h-4 w-24 mb-4" />
-      <Skeleton className="h-10 w-20" />
+    <SurfacePanel className={`border-l-4 border-l-border-default p-6 ${hero ? "col-span-2" : ""}`}>
+      <Skeleton className="h-3 w-24 mb-4" />
+      <Skeleton className={hero ? "h-12 w-32" : "h-8 w-16"} />
     </SurfacePanel>
   );
 }
@@ -214,13 +226,13 @@ export default function AdminDashboard() {
   }
 
   const statItems = [
-    ["total_orders", t("admin.totalOrders"), "text-action-primary"],
-    ["pending_estimate", t("status.pending_estimate"), "text-status-warning"],
-    ["awaiting_payment", t("status.awaiting_payment"), "text-action-primary"],
-    ["in_process", t("status.in_process"), "text-action-primary"],
-    ["completed", t("status.completed"), "text-status-success"],
-    ["clients", t("admin.users"), "text-text-primary"],
-    ["internships", t("admin.internships"), "text-text-primary"],
+    ["total_orders", t("admin.totalOrders"), "text-action-primary", "border-l-action-primary", true],
+    ["pending_estimate", t("status.pending_estimate"), "text-status-warning", "border-l-status-warning"],
+    ["awaiting_payment", t("status.awaiting_payment"), "text-action-primary", "border-l-action-primary"],
+    ["in_process", t("status.in_process"), "text-action-primary", "border-l-action-primary"],
+    ["completed", t("status.completed"), "text-status-success", "border-l-status-success"],
+    ["clients", t("admin.users"), "text-text-primary", "border-l-border-strong"],
+    ["internships", t("admin.internships"), "text-text-primary", "border-l-border-strong"],
   ];
 
   return (
@@ -228,19 +240,25 @@ export default function AdminDashboard() {
       title={t("admin.overview")}
       subtitle={t("admin.overviewSubtitle")}
     >
-      {/* Stats Grid */}
+      {/* Stats Grid — hero card (Total Orders) spans 2 cols, breaking the
+          uniform grid; status-coded left accents replace flat sameness. */}
       <div
         className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
         data-testid="admin-overview"
       >
         {!stats
-          ? statItems.slice(0, 4).map((_, i) => <StatCardSkeleton key={i} />)
-          : statItems.map(([key, label, colorClass]) => (
+          ? statItems.map(([, , , , hero], i) => (
+              <StatCardSkeleton key={i} hero={hero} />
+            ))
+          : statItems.map(([key, label, colorClass, accentClass, hero], i) => (
               <StatCard
                 key={key}
                 label={label}
                 value={stats[key]}
                 colorClass={colorClass}
+                accentClass={accentClass}
+                hero={hero}
+                delay={i * 60}
               />
             ))}
       </div>
