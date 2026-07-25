@@ -236,7 +236,7 @@ export default function StockMovements() {
             <TableBody>
               {visible.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell className="whitespace-nowrap font-mono text-xs">
+                  <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
                     {row.created_at}
                   </TableCell>
                   <TableCell>
