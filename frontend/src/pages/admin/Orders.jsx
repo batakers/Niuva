@@ -49,6 +49,17 @@ const BULK_STATUS_OPTIONS = [
   { value: "pending_estimate", labelKey: "status.pending_estimate" },
 ];
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", labelKey: "orders.filterAllStatus" },
+  { value: "pending_estimate", labelKey: "status.pending_estimate" },
+  { value: "awaiting_payment", labelKey: "status.awaiting_payment" },
+  { value: "in_process", labelKey: "status.in_process" },
+  { value: "completed", labelKey: "status.completed" },
+  { value: "cancelled", labelKey: "status.cancelled" },
+];
+
+const INITIAL_FILTERS = { status: "all", search: "", dateFrom: "", dateTo: "" };
+
 export default function AdminOrders() {
   const { t } = useI18n();
   const [orders, setOrders] = useState([]);
@@ -58,6 +69,7 @@ export default function AdminOrders() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkStatus, setBulkStatus] = useState("in_process");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
 
   const load = () => {
     setLoading(true);
@@ -73,7 +85,40 @@ export default function AdminOrders() {
     load();
   }, []);
 
-  const orderIds = useMemo(() => orders.map((o) => o.id), [orders]);
+  const filteredOrders = useMemo(() => {
+    const term = filters.search.trim().toLowerCase();
+    const from = filters.dateFrom ? new Date(filters.dateFrom) : null;
+    const to = filters.dateTo ? new Date(`${filters.dateTo}T23:59:59`) : null;
+    return orders.filter((o) => {
+      if (filters.status !== "all" && o.status !== filters.status) return false;
+      if (
+        term &&
+        ![o.order_number, o.user_name, o.user_email, o.material_name]
+          .some((field) => field?.toLowerCase().includes(term))
+      )
+        return false;
+      if (from || to) {
+        const created = new Date(o.created_at);
+        if (from && created < from) return false;
+        if (to && created > to) return false;
+      }
+      return true;
+    });
+  }, [orders, filters]);
+
+  const orderIds = useMemo(
+    () => filteredOrders.map((o) => o.id),
+    [filteredOrders]
+  );
+
+  const hasActiveFilters =
+    filters.status !== "all" ||
+    filters.search.trim() !== "" ||
+    filters.dateFrom !== "" ||
+    filters.dateTo !== "";
+
+  const updateFilter = (key) => (value) =>
+    setFilters((current) => ({ ...current, [key]: value }));
 
   const toggleOne = (id) =>
     setSelectedIds((current) =>
@@ -126,7 +171,11 @@ export default function AdminOrders() {
           <p className="type-label text-text-secondary">
             {t("orders.total")}:{" "}
             <span className="font-heading font-semibold text-text-primary">
-              {loading ? "—" : orders.length}
+              {loading
+                ? "—"
+                : hasActiveFilters
+                  ? `${filteredOrders.length} / ${orders.length}`
+                  : orders.length}
             </span>
           </p>
           <Button variant="outline" size="sm" onClick={exportCsv}>
@@ -134,6 +183,73 @@ export default function AdminOrders() {
             {t("common.exportCsv")}
           </Button>
         </SurfacePanelHeader>
+
+        {/* Filter bar */}
+        {!loading && !loadError && orders.length > 0 && (
+          <div className="flex flex-wrap items-end gap-3 border-b border-border-default px-6 py-4">
+            <div className="min-w-[200px] flex-1 space-y-1.5">
+              <Label className="type-label text-text-secondary">
+                {t("common.search")}
+              </Label>
+              <Input
+                value={filters.search}
+                onChange={(e) => updateFilter("search")(e.target.value)}
+                placeholder={t("orders.searchPlaceholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="type-label text-text-secondary">
+                {t("common.status")}
+              </Label>
+              <Select
+                value={filters.status}
+                onValueChange={updateFilter("status")}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {t(option.labelKey)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="type-label text-text-secondary">
+                {t("dashboard.dateFrom")}
+              </Label>
+              <Input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => updateFilter("dateFrom")(e.target.value)}
+                className="w-auto"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="type-label text-text-secondary">
+                {t("dashboard.dateTo")}
+              </Label>
+              <Input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => updateFilter("dateTo")(e.target.value)}
+                className="w-auto"
+              />
+            </div>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilters(INITIAL_FILTERS)}
+              >
+                {t("common.reset")}
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Bulk actions bar - sticky */}
         {selectedIds.length > 0 && (
@@ -203,6 +319,10 @@ export default function AdminOrders() {
           <EmptyState icon={Package} className="py-16">
             {t("orders.empty")}
           </EmptyState>
+        ) : filteredOrders.length === 0 ? (
+          <EmptyState icon={Package} className="py-16">
+            {t("orders.noMatch")}
+          </EmptyState>
         ) : (
           <div className="overflow-x-auto">
             <Table data-testid="admin-orders-table">
@@ -231,7 +351,7 @@ export default function AdminOrders() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((o) => (
+                {filteredOrders.map((o) => (
                   <TableRow 
                     key={o.id}
                     data-state={selectedIds.includes(o.id) ? "selected" : undefined}

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { AlertCircle, Pencil, Users } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Pencil, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -110,6 +111,8 @@ export default function AdminUsers() {
   const [accessPolicy, setAccessPolicy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
   // Dialog state
   const [selected, setSelected] = useState(null);
@@ -121,8 +124,12 @@ export default function AdminUsers() {
   const [mutationError, setMutationError] = useState("");
 
   const canManageRoles = hasPermission(user, "roles.manage");
+  const canCreateUser = hasPermission(user, "customers.manage");
   const availableRoles = internalRoles(accessPolicy);
   const availableReasonCodes = reasonCodes(accessPolicy);
+
+  const loadUsers = () =>
+    api.get("/admin/users").then((usersResponse) => setItems(usersResponse.data));
 
   useEffect(() => {
     let active = true;
@@ -143,6 +150,16 @@ export default function AdminUsers() {
       active = false;
     };
   }, []);
+
+  const filteredItems = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return items;
+    return items.filter((item) =>
+      [item.name, item.email].some((field) =>
+        field?.toLowerCase().includes(term)
+      )
+    );
+  }, [items, search]);
 
   const openAccessDialog = (item) => {
     setSelected(item);
@@ -195,11 +212,29 @@ export default function AdminUsers() {
       subtitle={t("users.subtitle")}
     >
       <SurfacePanel>
-        <SurfacePanelHeader className="flex items-center justify-between">
+        <SurfacePanelHeader className="flex items-center justify-between gap-3">
           <TechnicalLabel>
             {t("users.total")}: {items.length}
           </TechnicalLabel>
+          {canCreateUser && (
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("users.addUser")}
+            </Button>
+          )}
         </SurfacePanelHeader>
+
+        {!loading && !error && items.length > 0 && (
+          <div className="border-b border-border-default px-4 py-3">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("users.searchPlaceholder")}
+              aria-label={t("common.search")}
+              className="max-w-sm"
+            />
+          </div>
+        )}
 
         {loading ? (
           <div className="overflow-x-auto">
@@ -231,6 +266,10 @@ export default function AdminUsers() {
           <EmptyState icon={Users} className="py-16">
             {t("users.empty")}
           </EmptyState>
+        ) : filteredItems.length === 0 ? (
+          <EmptyState icon={Users} className="py-16">
+            {t("users.noMatch")}
+          </EmptyState>
         ) : (
           <Table data-testid="admin-users-table">
             <TableHeader>
@@ -246,7 +285,7 @@ export default function AdminUsers() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <p className="font-semibold text-text-primary">
@@ -393,6 +432,125 @@ export default function AdminUsers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create User Dialog */}
+      {canCreateUser && (
+        <CreateUserDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onCreated={() => {
+            setCreateOpen(false);
+            loadUsers();
+          }}
+        />
+      )}
     </AdminLayout>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Create User Dialog — provisions a retail client via POST /admin/users
+ * ────────────────────────────────────────────────────────────────────────── */
+
+function CreateUserDialog({ open, onOpenChange, onCreated }) {
+  const { t } = useI18n();
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    company: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const update = (field) => (e) =>
+    setForm((current) => ({ ...current, [field]: e.target.value }));
+
+  // Mirrors backend ClientProvisionReq: name/email/password(min 6) required.
+  const canSubmit =
+    form.name.trim() &&
+    form.email.trim() &&
+    form.password.length >= 6 &&
+    !busy;
+
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await api.post("/admin/users", {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        phone: form.phone.trim() || null,
+        company: form.company.trim() || null,
+      });
+      toast.success(t("users.created"));
+      setForm({ name: "", email: "", password: "", phone: "", company: "" });
+      onCreated();
+    } catch (requestError) {
+      setError(formatApiError(requestError.response?.data?.detail));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t("users.addUser")}</DialogTitle>
+          <DialogDescription>{t("users.addUserDesc")}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>{t("common.name")}</Label>
+            <Input value={form.name} onChange={update("name")} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("common.email")}</Label>
+            <Input type="email" value={form.email} onChange={update("email")} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("common.password")}</Label>
+            <Input
+              type="password"
+              value={form.password}
+              onChange={update("password")}
+              placeholder={t("users.passwordHint")}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>{t("users.phone")}</Label>
+              <Input value={form.phone} onChange={update("phone")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("users.company")}</Label>
+              <Input value={form.company} onChange={update("company")} />
+            </div>
+          </div>
+
+          {error && (
+            <p
+              className="rounded-control border border-status-error/40 bg-status-error/10 p-3 text-sm text-status-error"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            {t("common.cancel")}
+          </Button>
+          <Button onClick={submit} disabled={!canSubmit} loading={busy}>
+            {t("users.createUser")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

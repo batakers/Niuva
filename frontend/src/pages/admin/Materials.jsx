@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, Archive, Coins, Package, Pencil, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Archive, Coins, Package, Pencil, Plus, RefreshCw, Truck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,7 @@ export default function AdminMaterials() {
   const [editing, setEditing] = useState(null);
   const [pricing, setPricing] = useState(null);
   const [archiving, setArchiving] = useState(null);
+  const [supplierRef, setSupplierRef] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -261,6 +262,7 @@ export default function AdminMaterials() {
                           onEdit={setEditing}
                           onPrice={setPricing}
                           onArchive={setArchiving}
+                          onSupplierRef={setSupplierRef}
                         />
                       </TableCell>
                     </TableRow>
@@ -318,6 +320,7 @@ export default function AdminMaterials() {
                       onEdit={setEditing}
                       onPrice={setPricing}
                       onArchive={setArchiving}
+                      onSupplierRef={setSupplierRef}
                     />
                   </div>
                 </article>
@@ -356,7 +359,101 @@ export default function AdminMaterials() {
           }}
         />
       )}
+      {supplierRef && (
+        <SupplierReferenceDialog
+          material={supplierRef}
+          canWrite={actions.includes("edit_supplier_reference")}
+          onClose={() => setSupplierRef(null)}
+          onSaved={() => {
+            setSupplierRef(null);
+            load();
+          }}
+        />
+      )}
     </AdminLayout>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Supplier Reference Dialog — gated read/write of confidential supplier ref
+ * ────────────────────────────────────────────────────────────────────────── */
+
+function SupplierReferenceDialog({ material, canWrite, onClose, onSaved }) {
+  const { t } = useI18n();
+  const [value, setValue] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    materialsApi
+      .supplierReference(material.id)
+      .then((data) => {
+        if (active) setValue(data.supplier_reference || "");
+      })
+      .catch((error) => {
+        if (active) toast.error(apiMessage(error));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [material.id]);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await materialsApi.updateSupplierReference(material.id, value.trim());
+      toast.success(t("materials.supplierRefSaved"));
+      onSaved();
+    } catch (error) {
+      toast.error(apiMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t("materials.supplierRefTitle")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <p className="type-body-small text-text-secondary">
+            {material.name}
+            {material.sku ? ` · ${material.sku}` : ""}
+          </p>
+          <div className="space-y-1.5">
+            <Label>{t("materials.supplier")}</Label>
+            <Input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              disabled={loading || !canWrite}
+              maxLength={200}
+              placeholder={loading ? t("common.loading") : ""}
+            />
+          </div>
+          {!canWrite && (
+            <p className="type-body-small text-text-secondary">
+              {t("materials.supplierRefReadOnly")}
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            {t("common.cancel")}
+          </Button>
+          {canWrite && (
+            <Button onClick={save} disabled={loading} loading={busy}>
+              {t("common.save")}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -364,7 +461,7 @@ export default function AdminMaterials() {
  * Material Actions
  * ────────────────────────────────────────────────────────────────────────── */
 
-function MaterialActions({ material, actions, onEdit, onPrice, onArchive }) {
+function MaterialActions({ material, actions, onEdit, onPrice, onArchive, onSupplierRef }) {
   return (
     <div className="flex justify-end gap-1">
       {actions.includes("edit") && (
@@ -375,6 +472,16 @@ function MaterialActions({ material, actions, onEdit, onPrice, onArchive }) {
           aria-label={`Edit ${material.name}`}
         >
           <Pencil className="h-4 w-4" />
+        </Button>
+      )}
+      {actions.includes("supplier_reference") && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onSupplierRef(material)}
+          aria-label={`Supplier reference ${material.name}`}
+        >
+          <Truck className="h-4 w-4" />
         </Button>
       )}
       {actions.includes("price_history") && (
