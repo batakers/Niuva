@@ -1,17 +1,20 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Archive, Edit3, Plus, RefreshCw } from "lucide-react";
+import { Archive, Edit3, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { EmptyState } from "../../components/ui/empty-state";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { TechnicalLabel } from "../../components/ui/technical-label";
+import { Textarea } from "../../components/ui/textarea";
 import { useI18n } from "../../i18n";
 import { formatApiError } from "../../lib/api";
-import { CONTENT_TYPES, contentApi, emptyFieldsFor, statusTone } from "../../lib/content";
+import { CONTENT_TYPES, CONTENT_TYPE_SCHEMAS, contentApi, emptyFieldsFor, statusTone } from "../../lib/content";
 import { AdminLayout } from "./AdminLayout";
 
 export default function ContentEditor() {
@@ -80,16 +83,16 @@ export default function ContentEditor() {
     <AdminLayout title={t("admin.content")} subtitle={t("content.subtitle")}>
       <SurfacePanel>
         <SurfacePanelHeader padding="sm" className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {CONTENT_TYPES.map((type) => (
-              <Button key={type} variant={type === contentType ? "technical" : "outline"} size="sm" onClick={() => setContentType(type)}>
+              <Button key={type} variant={type === contentType ? "default" : "outline"} size="sm" onClick={() => setContentType(type)}>
                 {t(`content.type.${type}`)}
               </Button>
             ))}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={load} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />{t("common.refresh")}</Button>
-            <Button variant="technical" size="sm" onClick={() => setCreating({ slug: "" })}><Plus className="mr-2 h-4 w-4" />{t("content.create")}</Button>
+            <Button size="sm" onClick={() => setCreating({ slug: "" })}><Plus className="mr-2 h-4 w-4" />{t("content.create")}</Button>
           </div>
         </SurfacePanelHeader>
       </SurfacePanel>
@@ -115,8 +118,8 @@ export default function ContentEditor() {
                       <TableCell className="whitespace-nowrap">{item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => setEditingId(item.id)} aria-label={`${t("common.open")} ${item.slug}`}><Edit3 className="h-4 w-4" /></Button>
-                          {item.status !== "archived" && <Button variant="ghost" size="sm" onClick={() => setArchiveTarget(item)} aria-label={`${t("content.archive")} ${item.slug}`}><Archive className="h-4 w-4" /></Button>}
+                          <Button variant="ghost" size="icon" onClick={() => setEditingId(item.id)} aria-label={`${t("common.open")} ${item.slug}`}><Edit3 className="h-4 w-4" /></Button>
+                          {item.status !== "archived" && <Button variant="ghost" size="icon" onClick={() => setArchiveTarget(item)} aria-label={`${t("content.archive")} ${item.slug}`}><Archive className="h-4 w-4" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -128,7 +131,10 @@ export default function ContentEditor() {
       <Dialog open={Boolean(creating)} onOpenChange={(open) => !open && setCreating(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{t("content.create")} · {t(`content.type.${contentType}`)}</DialogTitle></DialogHeader>
-          <label className="space-y-1"><TechnicalLabel>Slug</TechnicalLabel><Input value={creating?.slug || ""} onChange={(event) => setCreating({ slug: event.target.value })} placeholder="mis. company-profile" /></label>
+          <div className="space-y-2">
+            <Label>Slug</Label>
+            <Input value={creating?.slug || ""} onChange={(event) => setCreating({ slug: event.target.value })} placeholder="mis. company-profile" />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreating(null)}>{t("common.cancel")}</Button>
             <Button disabled={busy || !creating?.slug.trim()} onClick={createDraft}>{t("common.save")}</Button>
@@ -139,7 +145,10 @@ export default function ContentEditor() {
       <Dialog open={Boolean(archiveTarget)} onOpenChange={(open) => !open && setArchiveTarget(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{t("content.archive")} · {archiveTarget?.slug}</DialogTitle></DialogHeader>
-          <label className="space-y-1"><TechnicalLabel>{t("common.reason")}</TechnicalLabel><Input value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} minLength={3} maxLength={500} /></label>
+          <div className="space-y-2">
+            <Label>{t("common.reason")}</Label>
+            <Input value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} minLength={3} maxLength={500} />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setArchiveTarget(null)}>{t("common.cancel")}</Button>
             <Button variant="destructive" disabled={busy || archiveReason.trim().length < 3} onClick={archive}>{t("content.archive")}</Button>
@@ -150,11 +159,113 @@ export default function ContentEditor() {
   );
 }
 
+/** Single scalar field: text / textarea / select / number, per schema entry. */
+function ScalarField({ field, value, onChange, disabled }) {
+  const commonProps = {
+    id: `content-field-${field.key}`,
+    value: value ?? "",
+    onChange: (event) => onChange(event.target.value),
+    disabled,
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={commonProps.id}>{field.label}{!field.optional && <span className="text-destructive"> *</span>}</Label>
+      {field.type === "textarea" ? (
+        <Textarea {...commonProps} rows={4} />
+      ) : field.type === "select" ? (
+        <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
+          <SelectTrigger id={commonProps.id}><SelectValue placeholder={`Pilih ${field.label.toLowerCase()}`} /></SelectTrigger>
+          <SelectContent>
+            {field.options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ) : (
+        <Input {...commonProps} type={field.type === "number" ? "number" : "text"} />
+      )}
+    </div>
+  );
+}
+
+/** A list of plain strings (e.g. About.values) with add/remove rows. */
+function StringListField({ field, value, onChange, disabled }) {
+  const items = value || [];
+  const update = (index, next) => onChange(items.map((item, i) => (i === index ? next : item)));
+  const remove = (index) => onChange(items.filter((_, i) => i !== index));
+  return (
+    <div className="space-y-2">
+      <Label>{field.label}<span className="text-destructive"> *</span></Label>
+      <div className="space-y-2">
+        {items.map((item, index) => (
+          <div key={index} className="flex gap-2">
+            <Input value={item} onChange={(event) => update(index, event.target.value)} disabled={disabled} />
+            {!disabled && <Button variant="ghost" size="icon" onClick={() => remove(index)} aria-label="Hapus item"><Trash2 className="h-4 w-4" /></Button>}
+          </div>
+        ))}
+      </div>
+      {!disabled && <Button variant="outline" size="sm" onClick={() => onChange([...items, ""])}><Plus className="mr-2 h-4 w-4" />Tambah item</Button>}
+    </div>
+  );
+}
+
+/** A list of objects with fixed sub-fields (e.g. About.dossierItems: {label, title, body}). */
+function ItemListField({ field, value, onChange, disabled }) {
+  const items = value || [];
+  const emptyItem = () => Object.fromEntries(field.itemFields.map((key) => [key, ""]));
+  const update = (index, key, next) => onChange(items.map((item, i) => (i === index ? { ...item, [key]: next } : item)));
+  const remove = (index) => onChange(items.filter((_, i) => i !== index));
+  return (
+    <div className="space-y-2">
+      <Label>{field.label}<span className="text-destructive"> *</span></Label>
+      <div className="space-y-3">
+        {items.map((item, index) => (
+          <div key={index} className="rounded-md border border-border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <TechnicalLabel size="micro">Item {index + 1}</TechnicalLabel>
+              {!disabled && <Button variant="ghost" size="icon" onClick={() => remove(index)} aria-label="Hapus item"><Trash2 className="h-4 w-4" /></Button>}
+            </div>
+            <div className="grid gap-2">
+              {field.itemFields.map((key) => (
+                <Input
+                  key={key}
+                  value={item?.[key] || ""}
+                  onChange={(event) => update(index, key, event.target.value)}
+                  placeholder={key}
+                  disabled={disabled}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {!disabled && <Button variant="outline" size="sm" onClick={() => onChange([...items, emptyItem()])}><Plus className="mr-2 h-4 w-4" />Tambah item</Button>}
+    </div>
+  );
+}
+
+function ContentFieldsForm({ contentType, fields, onChange, disabled }) {
+  const schema = CONTENT_TYPE_SCHEMAS[contentType] || [];
+  const setField = (key) => (value) => onChange({ ...fields, [key]: value });
+
+  return (
+    <div className="grid gap-5">
+      {schema.map((field) => {
+        if (field.type === "stringList") {
+          return <StringListField key={field.key} field={field} value={fields[field.key]} onChange={setField(field.key)} disabled={disabled} />;
+        }
+        if (field.type === "itemList") {
+          return <ItemListField key={field.key} field={field} value={fields[field.key]} onChange={setField(field.key)} disabled={disabled} />;
+        }
+        return <ScalarField key={field.key} field={field} value={fields[field.key]} onChange={setField(field.key)} disabled={disabled} />;
+      })}
+    </div>
+  );
+}
+
 export function ContentBlockEditorPanel({ blockId, onBack }) {
   const { t } = useI18n();
   const [block, setBlock] = useState(null);
-  const [fieldsJson, setFieldsJson] = useState("");
-  const [jsonError, setJsonError] = useState("");
+  const [fields, setFields] = useState({});
   const [versions, setVersions] = useState([]);
   const [reason, setReason] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -164,24 +275,18 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
   const load = useCallback(async () => {
     const [current, history] = await Promise.all([contentApi.get(blockId), contentApi.versions(blockId)]);
     setBlock(current);
-    setFieldsJson(JSON.stringify(current.fields, null, 2));
+    setFields(current.fields || {});
     setVersions(history);
   }, [blockId]);
 
   useEffect(() => { load().catch((error) => toast.error(formatApiError(error.response?.data?.detail))); }, [load]);
 
+  const isArchived = block?.status === "archived";
+
   const saveDraft = async () => {
-    let parsed;
-    try {
-      parsed = JSON.parse(fieldsJson);
-      setJsonError("");
-    } catch {
-      setJsonError(t("content.invalidJson"));
-      return;
-    }
     setBusy(true);
     try {
-      await contentApi.update(blockId, parsed);
+      await contentApi.update(blockId, fields);
       toast.success(t("content.saveSuccess"));
       await load();
     } catch (error) {
@@ -243,36 +348,33 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
         <SurfacePanelHeader padding="sm" className="flex items-center justify-between">
           <TechnicalLabel tone={statusTone(block.status)}>{block.status} · v{block.version}</TechnicalLabel>
         </SurfacePanelHeader>
-        <div className="p-4 space-y-3">
-          <label className="space-y-1 block">
-            <TechnicalLabel>{t("content.fieldsJson")}</TechnicalLabel>
-            <textarea
-              value={fieldsJson}
-              onChange={(event) => setFieldsJson(event.target.value)}
-              rows={12}
-              className="w-full border border-border bg-background p-3 font-mono text-xs"
-              disabled={block.status === "archived"}
-            />
-          </label>
-          {jsonError && <p className="text-sm text-destructive" role="alert">{jsonError}</p>}
+        <div className="p-4 space-y-4">
+          <ContentFieldsForm contentType={block.content_type} fields={fields} onChange={setFields} disabled={isArchived} />
+
           {validationErrors.length > 0 && (
-            <div className="border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
               {validationErrors.map((err) => <p key={err.field}>{err.field}: {err.message}</p>)}
             </div>
           )}
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={saveDraft} disabled={busy || block.status === "archived"}>{t("common.save")}</Button>
-            <Button variant="outline" size="sm" onClick={runValidate} disabled={block.status === "archived"}>{t("content.validate")}</Button>
+            <Button variant="outline" size="sm" onClick={saveDraft} disabled={busy || isArchived}>{t("common.save")}</Button>
+            <Button variant="outline" size="sm" onClick={runValidate} disabled={isArchived}>{t("content.validate")}</Button>
           </div>
         </div>
       </SurfacePanel>
 
-      {block.status !== "archived" && (
+      {!isArchived && (
         <SurfacePanel className="mt-4">
           <SurfacePanelHeader padding="sm"><TechnicalLabel>{t("content.publish")}</TechnicalLabel></SurfacePanelHeader>
-          <div className="grid gap-3 p-4 md:grid-cols-2">
-            <label className="space-y-1"><TechnicalLabel>{t("common.reason")}</TechnicalLabel><Input value={reason} onChange={(event) => setReason(event.target.value)} minLength={3} maxLength={500} /></label>
-            <label className="space-y-1"><TechnicalLabel>{t("content.scheduleOptional")}</TechnicalLabel><Input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} /></label>
+          <div className="grid gap-4 p-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t("common.reason")}</Label>
+              <Input value={reason} onChange={(event) => setReason(event.target.value)} minLength={3} maxLength={500} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("content.scheduleOptional")}</Label>
+              <Input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
+            </div>
           </div>
           <div className="p-4 pt-0">
             <Button disabled={busy || reason.trim().length < 3} onClick={publish}>{scheduledAt ? t("content.schedule") : t("content.publishNow")}</Button>

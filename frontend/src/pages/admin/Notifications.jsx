@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/empty-state";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { TechnicalLabel } from "../../components/ui/technical-label";
@@ -58,43 +60,49 @@ export default function AdminNotifications() {
           <TechnicalLabel>{t("notifications.compose")}</TechnicalLabel>
         </SurfacePanelHeader>
         <div className="grid gap-4 p-4">
-          <label className="space-y-1">
-            <TechnicalLabel>{t("notifications.target")}</TechnicalLabel>
-            <select value={form.target} onChange={set("target")} className="h-10 w-full border border-border bg-background px-3">
-              <option value="user">{t("notifications.targetUser")}</option>
-              <option value="segment">{t("notifications.targetSegment")}</option>
-              <option value="broadcast">{t("notifications.targetBroadcast")}</option>
-            </select>
-          </label>
+          <div className="space-y-2">
+            <Label>{t("notifications.target")}</Label>
+            <Select value={form.target} onValueChange={(value) => setForm((current) => ({ ...current, target: value }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">{t("notifications.targetUser")}</SelectItem>
+                <SelectItem value="segment">{t("notifications.targetSegment")}</SelectItem>
+                <SelectItem value="broadcast">{t("notifications.targetBroadcast")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {form.target === "user" && (
-            <label className="space-y-1">
-              <TechnicalLabel>User ID</TechnicalLabel>
+            <div className="space-y-2">
+              <Label>User ID</Label>
               <Input value={form.user_id} onChange={set("user_id")} placeholder={t("notifications.userIdHint")} />
-            </label>
+            </div>
           )}
 
           {form.target === "segment" && (
-            <label className="space-y-1">
-              <TechnicalLabel>{t("notifications.segment")}</TechnicalLabel>
-              <select value={form.segment} onChange={set("segment")} className="h-10 w-full border border-border bg-background px-3">
-                <option value="active_orders">{t("notifications.segmentActiveOrders")}</option>
-              </select>
-            </label>
+            <div className="space-y-2">
+              <Label>{t("notifications.segment")}</Label>
+              <Select value={form.segment} onValueChange={(value) => setForm((current) => ({ ...current, segment: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active_orders">{t("notifications.segmentActiveOrders")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           )}
 
           {form.target === "broadcast" && (
             <p className="text-sm text-muted-foreground" role="alert">{t("notifications.broadcastWarning")}</p>
           )}
 
-          <label className="space-y-1">
-            <TechnicalLabel>{t("notifications.subject")}</TechnicalLabel>
+          <div className="space-y-2">
+            <Label>{t("notifications.subject")}</Label>
             <Input value={form.subject} onChange={set("subject")} maxLength={180} />
-          </label>
-          <label className="space-y-1">
-            <TechnicalLabel>{t("notifications.message")}</TechnicalLabel>
+          </div>
+          <div className="space-y-2">
+            <Label>{t("notifications.message")}</Label>
             <Textarea value={form.message} onChange={set("message")} maxLength={2000} rows={5} />
-          </label>
+          </div>
           <Button disabled={sending || !valid} onClick={send} className="w-full sm:w-auto">
             <Send className="mr-2 h-4 w-4" />{t("notifications.send")}
           </Button>
