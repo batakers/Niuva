@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, Eye, Layers } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, Eye, Layers, Package } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SurfacePanel } from "@/components/ui/surface-panel";
+import { Skeleton, SkeletonTableRow } from "@/components/ui/skeleton";
+import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
   Table,
   TableBody,
@@ -120,23 +122,23 @@ export default function AdminOrders() {
     <AdminLayout title={t("admin.orders")} subtitle={t("orders.subtitle")}>
       <SurfacePanel className="overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border-default bg-surface-muted px-6 py-4">
+        <SurfacePanelHeader className="flex items-center justify-between">
           <p className="type-label text-text-secondary">
             {t("orders.total")}:{" "}
             <span className="font-heading font-semibold text-text-primary">
-              {orders.length}
+              {loading ? "—" : orders.length}
             </span>
           </p>
           <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="mr-2 h-3.5 w-3.5" />
             {t("common.exportCsv")}
           </Button>
-        </div>
+        </SurfacePanelHeader>
 
-        {/* Bulk actions bar */}
+        {/* Bulk actions bar - sticky */}
         {selectedIds.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-default bg-surface-page px-6 py-3">
-            <span className="type-body-small text-text-primary">
+          <div className="sticky top-16 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-action-primary/20 bg-action-primary/5 px-6 py-3">
+            <span className="type-body-small font-medium text-action-primary">
               {selectedIds.length} {t("orders.selectedCount")}
             </span>
             <div className="flex items-center gap-2">
@@ -159,7 +161,11 @@ export default function AdminOrders() {
               >
                 {t("common.cancel")}
               </Button>
-              <Button size="sm" disabled={bulkBusy} onClick={bulkUpdateStatus}>
+              <Button 
+                size="sm" 
+                loading={bulkBusy} 
+                onClick={bulkUpdateStatus}
+              >
                 <Layers className="mr-2 h-3.5 w-3.5" />
                 {t("orders.applyBulkStatus")}
               </Button>
@@ -169,21 +175,34 @@ export default function AdminOrders() {
 
         {/* Content */}
         {loading ? (
-          <div className="p-12 text-center" role="status">
-            <p className="type-body-small text-text-secondary">
-              {t("common.loading")}
-            </p>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10" />
+                  <TableHead>{t("orders.col.number")}</TableHead>
+                  <TableHead>{t("orders.col.client")}</TableHead>
+                  <TableHead>{t("orders.col.config")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
+                  <TableHead>{t("orders.col.date")}</TableHead>
+                  <TableHead className="text-right">{t("common.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <SkeletonTableRow key={i} columns={7} />
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : loadError ? (
-          <div className="p-12 text-center" role="alert">
-            <p className="type-body text-status-error">{loadError}</p>
-          </div>
+          <EmptyState icon={AlertCircle} className="py-16">
+            <span className="text-status-error">{loadError}</span>
+          </EmptyState>
         ) : orders.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="type-body-small text-text-secondary">
-              {t("orders.empty")}
-            </p>
-          </div>
+          <EmptyState icon={Package} className="py-16">
+            {t("orders.empty")}
+          </EmptyState>
         ) : (
           <div className="overflow-x-auto">
             <Table data-testid="admin-orders-table">
@@ -198,6 +217,7 @@ export default function AdminOrders() {
                         selectedIds.length === orderIds.length
                       }
                       onChange={toggleAll}
+                      className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
                     />
                   </TableHead>
                   <TableHead>{t("orders.col.number")}</TableHead>
@@ -212,22 +232,26 @@ export default function AdminOrders() {
               </TableHeader>
               <TableBody>
                 {orders.map((o) => (
-                  <TableRow key={o.id}>
+                  <TableRow 
+                    key={o.id}
+                    data-state={selectedIds.includes(o.id) ? "selected" : undefined}
+                  >
                     <TableCell>
                       <input
                         type="checkbox"
                         aria-label={`${t("orders.select")} ${o.order_number}`}
                         checked={selectedIds.includes(o.id)}
                         onChange={() => toggleOne(o.id)}
+                        className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
                       />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-sm text-action-primary">
+                    <TableCell className="whitespace-nowrap font-mono text-sm font-medium text-action-primary">
                       {o.order_number}
                     </TableCell>
-                    <TableCell className="type-body-small text-text-primary">
-                      {o.user_name}
+                    <TableCell>
+                      <span className="font-medium text-text-primary">{o.user_name}</span>
                     </TableCell>
-                    <TableCell className="type-body-small text-text-secondary">
+                    <TableCell className="text-text-secondary">
                       {o.material_name}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
@@ -239,11 +263,11 @@ export default function AdminOrders() {
                     <TableCell className="whitespace-nowrap text-right">
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         data-testid={`manage-order-${o.order_number}`}
                         onClick={() => setSel(o)}
                       >
-                        <Eye className="h-3.5 w-3.5 mr-2" />
+                        <Eye className="h-4 w-4 mr-1.5" />
                         {t("orders.inspect")}
                       </Button>
                     </TableCell>
@@ -322,7 +346,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
         <div className="p-6 space-y-6">
           {/* Client & Design File */}
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="rounded-control border border-border-default bg-surface-page p-4">
+            <div className="rounded-control border border-border-default bg-surface-page p-4 transition-colors hover:border-border-strong">
               <p className="type-label text-text-secondary mb-2">
                 {t("orders.clientData")}
               </p>
@@ -334,7 +358,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
               </p>
             </div>
 
-            <div className="rounded-control border border-border-default bg-surface-page p-4 flex flex-col justify-between">
+            <div className="rounded-control border border-border-default bg-surface-page p-4 flex flex-col justify-between transition-colors hover:border-border-strong">
               <p className="type-label text-text-secondary mb-2">
                 {t("detail.designFile")}
               </p>
@@ -375,12 +399,14 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
 
           {/* Estimate Section */}
           <div className="rounded-control border border-border-default bg-surface-muted p-6">
-            <p className="type-label text-action-primary mb-4 pb-2 border-b border-border-default">
+            <p className="type-label text-action-primary mb-4 pb-3 border-b border-border-default">
               {t("orders.estimateSection")}
             </p>
             <div className="grid sm:grid-cols-2 gap-4 mb-4">
               <div className="space-y-1.5">
-                <Label>{t("orders.estimateAmount")}</Label>
+                <Label className="type-label text-text-secondary">
+                  {t("orders.estimateAmount")}
+                </Label>
                 <Input
                   data-testid="estimate-amount"
                   type="number"
@@ -389,7 +415,9 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>{t("orders.estimateNote")}</Label>
+                <Label className="type-label text-text-secondary">
+                  {t("orders.estimateNote")}
+                </Label>
                 <Input
                   data-testid="estimate-note"
                   placeholder={t("orders.estimateNotePlaceholder")}
@@ -399,7 +427,8 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
               </div>
             </div>
             <Button
-              disabled={busy || !amount}
+              loading={busy}
+              disabled={!amount}
               data-testid="submit-estimate"
               onClick={() =>
                 act(() =>
@@ -418,7 +447,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
           {/* Payment Section */}
           {order.payment && (
             <div className="rounded-control border border-border-default bg-surface-muted p-6">
-              <p className="type-label text-action-primary mb-4 pb-2 border-b border-border-default">
+              <p className="type-label text-action-primary mb-4 pb-3 border-b border-border-default">
                 {t("orders.paymentSection")}
               </p>
               <AuthenticatedFilePreview
@@ -427,12 +456,12 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
               />
 
               {order.payment.verified ? (
-                <div className="flex items-center justify-center gap-2 rounded-control border border-status-success/40 bg-status-success/10 p-3 type-body-small text-status-success">
+                <div className="flex items-center justify-center gap-2 rounded-control border border-status-success/40 bg-status-success/10 p-4 type-body-small font-medium text-status-success">
                   <CheckCircle2 className="h-4 w-4" /> {t("detail.verified")}
                 </div>
               ) : (
                 <Button
-                  disabled={busy}
+                  loading={busy}
                   data-testid="verify-payment"
                   onClick={() =>
                     act(() => api.post(`/admin/orders/${order.id}/verify-payment`))
@@ -447,9 +476,9 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
           )}
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 pt-2">
             <Button
-              disabled={busy}
+              loading={busy}
               variant="outline"
               size="lg"
               data-testid="mark-process"
@@ -465,7 +494,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
               {t("orders.markInProcess")}
             </Button>
             <Button
-              disabled={busy}
+              loading={busy}
               variant="success"
               size="lg"
               data-testid="mark-complete"
@@ -493,18 +522,25 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
 
 function AuthenticatedFilePreview({ path, filename }) {
   const [source, setSource] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     let objectUrl = "";
-    if (!path) return undefined;
+    if (!path) {
+      setLoading(false);
+      return undefined;
+    }
 
     fetchFile(path)
       .then((blob) => {
         objectUrl = URL.createObjectURL(blob);
         if (!cancelled) setSource(objectUrl);
       })
-      .catch(() => setSource(""));
+      .catch(() => setSource(""))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
       cancelled = true;
@@ -512,18 +548,26 @@ function AuthenticatedFilePreview({ path, filename }) {
     };
   }, [path]);
 
+  if (loading) {
+    return (
+      <div className="mb-4">
+        <Skeleton className="h-48 w-full rounded-control" />
+      </div>
+    );
+  }
+
   if (!source) return null;
 
   return (
     <button
       type="button"
       onClick={() => downloadFile(path, filename)}
-      className="block w-full mb-4 rounded-control border border-border-default bg-surface-page p-2 group hover:border-action-primary/50 transition-colors"
+      className="block w-full mb-4 rounded-control border border-border-default bg-surface-page p-2 group hover:border-action-primary/50 transition-all duration-fast"
     >
       <img
         src={source}
         alt="proof"
-        className="max-h-48 w-full object-contain mix-blend-luminosity group-hover:mix-blend-normal transition-all"
+        className="max-h-48 w-full object-contain mix-blend-luminosity group-hover:mix-blend-normal transition-all duration-fast"
       />
     </button>
   );

@@ -128,24 +128,27 @@ export function AdminLayout({ children, title, subtitle }) {
 
   return (
     <div className="flex min-h-screen w-full bg-surface-page">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-text-primary/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* Mobile overlay with fade transition */}
+      <div
+        className={`fixed inset-0 z-40 bg-text-primary/50 transition-opacity duration-standard lg:hidden ${
+          sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border-default bg-surface-default transition-transform duration-standard ease-snap lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border-default bg-surface-default shadow-navigation transition-transform duration-standard ease-snap lg:static lg:translate-x-0 lg:shadow-none ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Sidebar header */}
         <div className="flex h-16 items-center justify-between border-b border-border-default px-4">
-          <Link to="/admin" className="flex items-center gap-2">
+          <Link 
+            to="/admin" 
+            className="flex items-center gap-2 transition-opacity duration-fast hover:opacity-80"
+          >
             <BrandIdentity variant="mark" size={28} />
             <span className="font-heading text-sm font-bold text-text-primary">
               {t("admin.console")}
@@ -154,7 +157,7 @@ export function AdminLayout({ children, title, subtitle }) {
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="rounded-control p-1.5 text-text-secondary hover:bg-surface-muted hover:text-text-primary lg:hidden"
+            className="rounded-control p-1.5 text-text-secondary transition-colors duration-fast hover:bg-surface-muted hover:text-text-primary lg:hidden"
             aria-label={t("common.close")}
           >
             <X className="h-5 w-5" />
@@ -167,11 +170,14 @@ export function AdminLayout({ children, title, subtitle }) {
           aria-label={t("admin.navigation")}
         >
           {visibleGroups.map((group, groupIndex) => (
-            <div key={group.label} className={groupIndex > 0 ? "mt-6" : ""}>
-              <p className="mb-2 px-3 type-label text-text-disabled">
+            <div 
+              key={group.label} 
+              className={groupIndex > 0 ? "mt-4 pt-4 border-t border-border-default/50" : ""}
+            >
+              <p className="mb-2 px-3 type-label text-text-disabled uppercase text-[11px] tracking-wide">
                 {t(group.label)}
               </p>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {group.items.map(({ path, label, icon: Icon }) => {
                   const active = isActive(path);
                   return (
@@ -179,9 +185,9 @@ export function AdminLayout({ children, title, subtitle }) {
                       key={path}
                       to={path}
                       aria-current={active ? "page" : undefined}
-                      className={`flex items-center gap-3 rounded-control px-3 py-2 type-navigation transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
+                      className={`flex items-center gap-3 rounded-control px-3 py-2.5 type-navigation transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
                         active
-                          ? "bg-action-primary text-text-inverse"
+                          ? "bg-action-primary text-text-inverse shadow-sm"
                           : "text-text-secondary hover:bg-surface-muted hover:text-text-primary"
                       }`}
                     >
@@ -196,7 +202,7 @@ export function AdminLayout({ children, title, subtitle }) {
         </nav>
 
         {/* Sidebar footer - user info */}
-        <div className="border-t border-border-default p-4">
+        <div className="border-t border-border-default p-4 bg-surface-muted/30">
           <div className="mb-3">
             <p className="font-heading text-sm font-semibold text-text-primary truncate">
               {user?.name}
@@ -206,10 +212,10 @@ export function AdminLayout({ children, title, subtitle }) {
             </p>
           </div>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="w-full justify-start"
+            className="w-full justify-start text-text-secondary hover:text-status-error hover:bg-status-error/5"
           >
             <LogOut className="mr-2 h-4 w-4" />
             {t("nav.logout")}
@@ -220,34 +226,34 @@ export function AdminLayout({ children, title, subtitle }) {
       {/* Main content area */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Admin header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border-default bg-surface-default px-4 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border-default bg-surface-default/95 backdrop-blur-sm px-4 sm:px-6 shadow-surface">
           {/* Mobile menu button */}
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="rounded-control p-2 text-text-secondary hover:bg-surface-muted hover:text-text-primary lg:hidden"
+            className="rounded-control p-2 text-text-secondary transition-colors duration-fast hover:bg-surface-muted hover:text-text-primary lg:hidden"
             aria-label={t("admin.openMenu")}
           >
             <Menu className="h-5 w-5" />
           </button>
 
           {/* Breadcrumb / Page title */}
-          <div className="flex items-center gap-2 text-text-secondary">
+          <nav className="flex items-center gap-1.5 text-text-secondary" aria-label="Breadcrumb">
             <Link
               to="/admin"
-              className="type-body-small hover:text-text-primary transition-colors"
+              className="type-body-small transition-colors duration-fast hover:text-action-primary"
             >
               {t("admin.console")}
             </Link>
             {title && (
               <>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5 text-text-disabled" />
                 <span className="type-body-small text-text-primary font-medium">
                   {title}
                 </span>
               </>
             )}
-          </div>
+          </nav>
 
           {/* Spacer */}
           <div className="flex-1" />
@@ -260,7 +266,7 @@ export function AdminLayout({ children, title, subtitle }) {
               </p>
               <p className="text-xs text-text-secondary">{accessLevel}</p>
             </div>
-            <div className="h-9 w-9 rounded-full bg-action-primary flex items-center justify-center text-text-inverse font-heading font-bold text-sm">
+            <div className="h-9 w-9 rounded-full bg-action-primary flex items-center justify-center text-text-inverse font-heading font-bold text-sm ring-2 ring-transparent transition-all duration-fast hover:ring-action-primary/30 hover:ring-offset-2">
               {user?.name?.charAt(0)?.toUpperCase() || "A"}
             </div>
           </div>

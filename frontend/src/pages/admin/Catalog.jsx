@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, Edit3, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Archive, BookOpen, Edit3, FolderOpen, Plus, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
   Table,
@@ -268,7 +269,7 @@ export default function Catalog() {
         <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <TechnicalLabel>{t("catalog.categoryRegistry")}</TechnicalLabel>
-            <p className="mt-1 text-sm text-text-secondary">
+            <p className="mt-1 type-body-small text-text-secondary">
               {t("catalog.categoryHint")}
             </p>
           </div>
@@ -287,9 +288,26 @@ export default function Catalog() {
         </SurfacePanelHeader>
 
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("catalog.category")}</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("catalog.displayOrder")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3].map((i) => (
+                <SkeletonTableRow key={i} columns={5} />
+              ))}
+            </TableBody>
+          </Table>
         ) : categories.length === 0 ? (
-          <EmptyState>{t("catalog.noCategories")}</EmptyState>
+          <EmptyState icon={FolderOpen} className="py-12">
+            {t("catalog.noCategories")}
+          </EmptyState>
         ) : (
           <Table>
             <TableHeader>
@@ -308,7 +326,7 @@ export default function Catalog() {
                     <div className="font-semibold text-text-primary">
                       {category.name}
                     </div>
-                    <span className="text-sm text-text-secondary">
+                    <span className="type-body-small text-text-secondary">
                       {category.description || "—"}
                     </span>
                   </TableCell>
@@ -322,7 +340,9 @@ export default function Catalog() {
                       {category.status}
                     </TechnicalLabel>
                   </TableCell>
-                  <TableCell>{category.sort_order}</TableCell>
+                  <TableCell className="font-mono text-text-secondary">
+                    {category.sort_order}
+                  </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       {actions.includes("edit") && (
@@ -361,11 +381,16 @@ export default function Catalog() {
       </SurfacePanel>
 
       {/* Products Filter Panel */}
-      <SurfacePanel className="mt-4">
+      <SurfacePanel className="mt-6">
         <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
           <TechnicalLabel>{t("catalog.registry")}</TechnicalLabel>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={load} 
+              loading={loading}
+            >
               <RefreshCw className="mr-2 h-4 w-4" />
               {t("common.refresh")}
             </Button>
@@ -382,7 +407,7 @@ export default function Catalog() {
 
         <div className="grid gap-4 p-4 md:grid-cols-3 xl:grid-cols-6">
           <div className="space-y-1.5 md:col-span-2">
-            <Label>{t("common.search")}</Label>
+            <Label className="type-label text-text-secondary">{t("common.search")}</Label>
             <Input
               value={filters.search}
               onChange={changeFilterEvent("search")}
@@ -391,7 +416,7 @@ export default function Catalog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t("catalog.category")}</Label>
+            <Label className="type-label text-text-secondary">{t("catalog.category")}</Label>
             <Select value={filters.category} onValueChange={changeFilter("category")}>
               <SelectTrigger>
                 <SelectValue />
@@ -408,7 +433,7 @@ export default function Catalog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t("catalog.workflow")}</Label>
+            <Label className="type-label text-text-secondary">{t("catalog.workflow")}</Label>
             <Select value={filters.workflow} onValueChange={changeFilter("workflow")}>
               <SelectTrigger>
                 <SelectValue />
@@ -423,7 +448,7 @@ export default function Catalog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t("catalog.pricingMode")}</Label>
+            <Label className="type-label text-text-secondary">{t("catalog.pricingMode")}</Label>
             <Select value={filters.pricing} onValueChange={changeFilter("pricing")}>
               <SelectTrigger>
                 <SelectValue />
@@ -438,7 +463,7 @@ export default function Catalog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t("catalog.stockPolicy")}</Label>
+            <Label className="type-label text-text-secondary">{t("catalog.stockPolicy")}</Label>
             <Select value={filters.stock} onValueChange={changeFilter("stock")}>
               <SelectTrigger>
                 <SelectValue />
@@ -453,40 +478,63 @@ export default function Catalog() {
         </div>
       </SurfacePanel>
 
-      {/* Bulk Selection Bar */}
+      {/* Bulk Selection Bar - Sticky */}
       {actions.includes("archive") && selectedInView.length > 0 && (
-        <SurfacePanel className="mt-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <TechnicalLabel>
-              {selectedInView.length} {t("catalog.selectedCount")}
-            </TechnicalLabel>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-                {t("common.cancel")}
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setBulkArchiveOpen(true)}
-              >
-                <Archive className="mr-2 h-4 w-4" />
-                {t("catalog.bulkArchive")}
-              </Button>
+        <div className="sticky top-16 z-20 mt-4">
+          <SurfacePanel className="border-action-primary/20 bg-action-primary/5">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <span className="type-body-small font-medium text-action-primary">
+                {selectedInView.length} {t("catalog.selectedCount")}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setBulkArchiveOpen(true)}
+                >
+                  <Archive className="mr-2 h-4 w-4" />
+                  {t("catalog.bulkArchive")}
+                </Button>
+              </div>
             </div>
-          </div>
-        </SurfacePanel>
+          </SurfacePanel>
+        </div>
       )}
 
       {/* Products Table */}
       <SurfacePanel className="mt-4">
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {actions.includes("archive") && <TableHead className="w-10" />}
+                <TableHead>{t("catalog.product")}</TableHead>
+                <TableHead>{t("catalog.category")}</TableHead>
+                <TableHead>{t("catalog.variants")}</TableHead>
+                <TableHead>{t("catalog.pricingMode")}</TableHead>
+                <TableHead>{t("catalog.publication")}</TableHead>
+                <TableHead>{t("catalog.stockPolicy")}</TableHead>
+                <TableHead>{t("common.updated")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTableRow key={i} columns={actions.includes("archive") ? 9 : 8} />
+              ))}
+            </TableBody>
+          </Table>
         ) : error ? (
-          <EmptyState>
-            <span role="alert">{error}</span>
+          <EmptyState icon={AlertCircle} className="py-16">
+            <span className="text-status-error">{error}</span>
           </EmptyState>
         ) : filtered.length === 0 ? (
-          <EmptyState>{t("catalog.empty")}</EmptyState>
+          <EmptyState icon={BookOpen} className="py-16">
+            {t("catalog.empty")}
+          </EmptyState>
         ) : (
           <Table>
             <TableHeader>
@@ -502,6 +550,7 @@ export default function Catalog() {
                       }
                       onChange={toggleAll}
                       disabled={archivableIds.length === 0}
+                      className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
                     />
                   </TableHead>
                 )}
@@ -517,7 +566,10 @@ export default function Catalog() {
             </TableHeader>
             <TableBody>
               {filtered.map((product) => (
-                <TableRow key={product.id}>
+                <TableRow 
+                  key={product.id}
+                  data-state={selectedIds.includes(product.id) ? "selected" : undefined}
+                >
                   {actions.includes("archive") && (
                     <TableCell>
                       {product.workflow_status !== "archived" && (
@@ -526,6 +578,7 @@ export default function Catalog() {
                           aria-label={`${t("catalog.select")} ${product.name}`}
                           checked={selectedIds.includes(product.id)}
                           onChange={() => toggleOne(product.id)}
+                          className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
                         />
                       )}
                     </TableCell>
@@ -536,11 +589,15 @@ export default function Catalog() {
                     </div>
                     <TechnicalLabel size="micro">/{product.slug}</TechnicalLabel>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-text-secondary">
                     {categoryById[product.category_id]?.name || "—"}
                   </TableCell>
-                  <TableCell>{product.active_variant_count ?? "—"}</TableCell>
-                  <TableCell>{product.pricing_mode}</TableCell>
+                  <TableCell className="font-mono text-text-secondary">
+                    {product.active_variant_count ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-text-secondary">
+                    {product.pricing_mode}
+                  </TableCell>
                   <TableCell>
                     <TechnicalLabel
                       tone={product.active_publication_id ? "success" : "muted"}
@@ -548,10 +605,12 @@ export default function Catalog() {
                       {product.workflow_status || "draft"}
                     </TechnicalLabel>
                   </TableCell>
-                  <TableCell>{product.stock_visibility}</TableCell>
-                  <TableCell className="whitespace-nowrap text-text-secondary">
+                  <TableCell className="text-text-secondary">
+                    {product.stock_visibility}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
                     {product.updated_at
-                      ? new Date(product.updated_at).toLocaleString()
+                      ? new Date(product.updated_at).toLocaleDateString()
                       : "—"}
                   </TableCell>
                   <TableCell>
@@ -651,9 +710,11 @@ function CategoryEditorDialog({ value, busy, onChange, onClose, onSave }) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <div className="grid gap-4 py-2">
           <div className="space-y-1.5">
-            <Label>{t("catalog.categoryName")}</Label>
+            <Label className="type-label text-text-secondary">
+              {t("catalog.categoryName")}
+            </Label>
             <Input
               value={value.form.name}
               onChange={updateField("name")}
@@ -662,32 +723,39 @@ function CategoryEditorDialog({ value, busy, onChange, onClose, onSave }) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Slug</Label>
+            <Label className="type-label text-text-secondary">Slug</Label>
             <Input
               value={value.form.slug}
               onChange={updateField("slug")}
               maxLength={200}
               placeholder={t("catalog.slugAutoHint")}
+              className="font-mono"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t("catalog.categoryDescription")}</Label>
+            <Label className="type-label text-text-secondary">
+              {t("catalog.categoryDescription")}
+            </Label>
             <Textarea
               value={value.form.description}
               onChange={updateField("description")}
               maxLength={2000}
+              rows={3}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t("catalog.displayOrder")}</Label>
+            <Label className="type-label text-text-secondary">
+              {t("catalog.displayOrder")}
+            </Label>
             <Input
               value={value.form.sort_order}
               onChange={updateField("sort_order")}
               type="number"
               min="0"
               step="1"
+              className="w-24"
             />
           </div>
         </div>
@@ -696,7 +764,11 @@ function CategoryEditorDialog({ value, busy, onChange, onClose, onSave }) {
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button disabled={busy || !validCategoryDraft(value.form)} onClick={onSave}>
+          <Button 
+            loading={busy} 
+            disabled={!validCategoryDraft(value.form)} 
+            onClick={onSave}
+          >
             {t("common.save")}
           </Button>
         </DialogFooter>
@@ -729,15 +801,18 @@ function ReasonDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <p className="text-sm text-text-secondary">{target}</p>
+        <p className="type-body-small text-text-secondary py-2">{target}</p>
 
         <div className="space-y-1.5">
-          <Label>{t("common.reason")}</Label>
+          <Label className="type-label text-text-secondary">
+            {t("common.reason")}
+          </Label>
           <Input
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             minLength={3}
             maxLength={500}
+            placeholder={t("catalog.reasonPlaceholder") || "Alasan archive..."}
           />
         </div>
 
@@ -747,7 +822,8 @@ function ReasonDialog({
           </Button>
           <Button
             variant="destructive"
-            disabled={busy || reason.trim().length < 3}
+            loading={busy}
+            disabled={reason.trim().length < 3}
             onClick={onConfirm}
           >
             {confirmLabel}

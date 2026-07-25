@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { AlertCircle, BarChart3 } from "lucide-react";
 import {
   Line,
   LineChart,
@@ -8,8 +9,10 @@ import {
   YAxis,
 } from "recharts";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SurfacePanel } from "@/components/ui/surface-panel";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
@@ -44,10 +47,34 @@ function totalForRow(row) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+ * Stat Card Component
+ * ────────────────────────────────────────────────────────────────────────── */
+
+function StatCard({ label, value, colorClass }) {
+  return (
+    <SurfacePanel className="p-6 transition-all duration-fast hover:shadow-navigation hover:-translate-y-0.5">
+      <p className="type-label text-text-secondary mb-3">{label}</p>
+      <p className={`font-heading text-4xl font-bold tracking-tight ${colorClass}`}>
+        {value}
+      </p>
+    </SurfacePanel>
+  );
+}
+
+function StatCardSkeleton() {
+  return (
+    <SurfacePanel className="p-6">
+      <Skeleton className="h-4 w-24 mb-4" />
+      <Skeleton className="h-10 w-20" />
+    </SurfacePanel>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
  * Trend Chart Component
  * ────────────────────────────────────────────────────────────────────────── */
 
-function TrendChart({ title, rows, valueLabel, formatValue }) {
+function TrendChart({ title, rows, valueLabel, formatValue, loading }) {
   const { t } = useI18n();
   const data = rows.map((row) => ({
     date: row.date,
@@ -57,10 +84,16 @@ function TrendChart({ title, rows, valueLabel, formatValue }) {
   return (
     <SurfacePanel className="p-6">
       <p className="type-label text-text-secondary mb-4">{title}</p>
-      {data.length === 0 ? (
-        <p className="type-body-small text-text-secondary" role="status">
-          {t("dashboard.noDataInRange")}
-        </p>
+      {loading ? (
+        <div className="h-[220px] flex items-center justify-center">
+          <Skeleton className="h-full w-full rounded-control" />
+        </div>
+      ) : data.length === 0 ? (
+        <div className="h-[220px] flex items-center justify-center">
+          <EmptyState icon={BarChart3}>
+            {t("dashboard.noDataInRange")}
+          </EmptyState>
+        </div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <LineChart
@@ -75,6 +108,8 @@ function TrendChart({ title, rows, valueLabel, formatValue }) {
                 fontFamily: "var(--font-family-mono)",
               }}
               stroke="var(--color-border-default)"
+              tickLine={false}
+              axisLine={{ stroke: "var(--color-border-default)" }}
             />
             <YAxis
               tick={{
@@ -83,14 +118,22 @@ function TrendChart({ title, rows, valueLabel, formatValue }) {
                 fontFamily: "var(--font-family-mono)",
               }}
               stroke="var(--color-border-default)"
+              tickLine={false}
+              axisLine={false}
             />
             <Tooltip
               formatter={formatValue}
               contentStyle={{
-                borderRadius: "0.75rem",
+                borderRadius: "var(--radius-control)",
                 border: "1px solid var(--color-border-default)",
                 boxShadow: "var(--shadow-navigation)",
                 fontFamily: "var(--font-family-body)",
+                backgroundColor: "var(--color-surface-default)",
+              }}
+              labelStyle={{
+                color: "var(--color-text-secondary)",
+                fontSize: "12px",
+                marginBottom: "4px",
               }}
             />
             <Line
@@ -99,6 +142,12 @@ function TrendChart({ title, rows, valueLabel, formatValue }) {
               stroke="var(--color-action-primary)"
               strokeWidth={2}
               dot={false}
+              activeDot={{
+                r: 4,
+                fill: "var(--color-action-primary)",
+                stroke: "var(--color-surface-default)",
+                strokeWidth: 2,
+              }}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -120,6 +169,7 @@ export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState(defaultDateFrom());
   const [dateTo, setDateTo] = useState(isoDate(new Date()));
   const [series, setSeries] = useState(null);
+  const [seriesLoading, setSeriesLoading] = useState(true);
   const [seriesError, setSeriesError] = useState("");
 
   useEffect(() => {
@@ -131,12 +181,14 @@ export default function AdminDashboard() {
 
   const loadSeries = useCallback(() => {
     setSeriesError("");
+    setSeriesLoading(true);
     api
       .get("/admin/stats/timeseries", {
         params: { date_from: dateFrom, date_to: dateTo },
       })
       .then((r) => setSeries(r.data.series))
-      .catch((err) => setSeriesError(formatApiError(err.response?.data?.detail)));
+      .catch((err) => setSeriesError(formatApiError(err.response?.data?.detail)))
+      .finally(() => setSeriesLoading(false));
   }, [dateFrom, dateTo]);
 
   useEffect(() => {
@@ -152,31 +204,16 @@ export default function AdminDashboard() {
         title={t("admin.overview")}
         subtitle={t("admin.overviewSubtitle")}
       >
-        <SurfacePanel className="p-12 text-center">
-          <p className="type-body text-status-error" role="alert">
-            {loadError}
-          </p>
+        <SurfacePanel className="p-12">
+          <EmptyState icon={AlertCircle}>
+            <span className="text-status-error">{loadError}</span>
+          </EmptyState>
         </SurfacePanel>
       </AdminLayout>
     );
   }
 
-  if (!stats) {
-    return (
-      <AdminLayout
-        title={t("admin.overview")}
-        subtitle={t("admin.overviewSubtitle")}
-      >
-        <SurfacePanel className="p-12 text-center">
-          <p className="type-body-small text-text-secondary" role="status">
-            {t("common.loading")}
-          </p>
-        </SurfacePanel>
-      </AdminLayout>
-    );
-  }
-
-  const items = [
+  const statItems = [
     ["total_orders", t("admin.totalOrders"), "text-action-primary"],
     ["pending_estimate", t("status.pending_estimate"), "text-status-warning"],
     ["awaiting_payment", t("status.awaiting_payment"), "text-action-primary"],
@@ -196,69 +233,80 @@ export default function AdminDashboard() {
         className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
         data-testid="admin-overview"
       >
-        {items.map(([k, label, color]) => (
-          <SurfacePanel key={k} className="p-6">
-            <p className="type-label text-text-secondary mb-3">{label}</p>
-            <p
-              className={`font-heading text-4xl font-bold tracking-tight ${color}`}
-            >
-              {stats[k]}
-            </p>
-          </SurfacePanel>
-        ))}
+        {!stats
+          ? statItems.slice(0, 4).map((_, i) => <StatCardSkeleton key={i} />)
+          : statItems.map(([key, label, colorClass]) => (
+              <StatCard
+                key={key}
+                label={label}
+                value={stats[key]}
+                colorClass={colorClass}
+              />
+            ))}
       </div>
 
       {/* Date Range Filters */}
-      <div className="mt-8 flex flex-wrap items-end gap-4">
-        <div className="space-y-1.5">
-          <Label>{t("dashboard.dateFrom")}</Label>
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
+      <SurfacePanel className="mt-8 p-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1.5">
+            <Label className="type-label text-text-secondary">
+              {t("dashboard.dateFrom")}
+            </Label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-auto"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="type-label text-text-secondary">
+              {t("dashboard.dateTo")}
+            </Label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-auto"
+            />
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <Label>{t("dashboard.dateTo")}</Label>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-        </div>
-      </div>
+      </SurfacePanel>
 
       {seriesError && (
-        <p className="mt-4 type-body-small text-status-error" role="alert">
-          {seriesError}
-        </p>
+        <SurfacePanel className="mt-4 p-4 border-status-error/30 bg-status-error/5">
+          <p className="type-body-small text-status-error" role="alert">
+            {seriesError}
+          </p>
+        </SurfacePanel>
       )}
 
       {/* Trend Charts */}
-      {series && (
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <TrendChart
+          title={t("dashboard.ordersTrend")}
+          rows={series?.orders_by_status || []}
+          loading={seriesLoading}
+        />
+        {canSeeInventory && (
           <TrendChart
-            title={t("dashboard.ordersTrend")}
-            rows={series.orders_by_status || []}
+            title={t("dashboard.stockMovementsTrend")}
+            rows={series?.stock_movements || []}
+            loading={seriesLoading}
           />
-          {canSeeInventory && series.stock_movements && (
-            <TrendChart
-              title={t("dashboard.stockMovementsTrend")}
-              rows={series.stock_movements}
-            />
-          )}
-          {canSeeRevenue && series.revenue && (
-            <TrendChart
-              title={t("dashboard.revenueTrend")}
-              rows={series.revenue}
-              valueLabel="revenue"
-              formatValue={(value) =>
-                `Rp ${Number(value).toLocaleString("id-ID")}`
-              }
-            />
-          )}
-        </div>
-      )}
+        )}
+        {canSeeRevenue && (
+          <TrendChart
+            title={t("dashboard.revenueTrend")}
+            rows={series?.revenue || []}
+            valueLabel="revenue"
+            formatValue={(value) =>
+              `Rp ${Number(value).toLocaleString("id-ID")}`
+            }
+            loading={seriesLoading}
+          />
+        )}
+      </div>
     </AdminLayout>
   );
 }

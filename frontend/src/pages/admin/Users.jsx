@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Pencil } from "lucide-react";
+import { AlertCircle, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
   Table,
@@ -201,13 +202,35 @@ export default function AdminUsers() {
         </SurfacePanelHeader>
 
         {loading ? (
-          <EmptyState>{t("common.loading")}</EmptyState>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("users.identity")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
+                  <TableHead>{t("users.role")}</TableHead>
+                  <TableHead>{t("users.accessReview")}</TableHead>
+                  <TableHead>{t("common.created")}</TableHead>
+                  {canManageRoles && (
+                    <TableHead className="text-right">{t("common.actions")}</TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <SkeletonTableRow key={i} columns={canManageRoles ? 6 : 5} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         ) : error ? (
-          <EmptyState>
+          <EmptyState icon={AlertCircle} className="py-16">
             <span role="alert" className="text-status-error">{error}</span>
           </EmptyState>
         ) : items.length === 0 ? (
-          <EmptyState>{t("users.empty")}</EmptyState>
+          <EmptyState icon={Users} className="py-16">
+            {t("users.empty")}
+          </EmptyState>
         ) : (
           <Table data-testid="admin-users-table">
             <TableHeader>
@@ -364,8 +387,8 @@ export default function AdminUsers() {
             <Button variant="outline" onClick={() => setSelected(null)}>
               {t("common.cancel")}
             </Button>
-            <Button onClick={saveAccess} disabled={saveDisabled}>
-              {saving ? t("common.saving") : t("users.saveAccess")}
+            <Button onClick={saveAccess} disabled={saveDisabled} loading={saving}>
+              {t("users.saveAccess")}
             </Button>
           </DialogFooter>
         </DialogContent>
