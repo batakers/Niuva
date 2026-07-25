@@ -8,7 +8,7 @@ import { EmptyState } from "../../components/ui/empty-state";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { SkeletonTableRow } from "../../components/ui/skeleton";
+import { Skeleton, SkeletonTableRow } from "../../components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { TechnicalLabel } from "../../components/ui/technical-label";
@@ -350,7 +350,7 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
     }
   };
 
-  if (!block) return <AdminLayout title={t("admin.content")}><EmptyState>{t("common.loading")}</EmptyState></AdminLayout>;
+  if (!block) return <AdminLayout title={t("admin.content")}><div className="space-y-6 p-6"><Skeleton variant="heading" className="w-64" /><Skeleton className="h-10 w-full" /><Skeleton className="h-32 w-full" /></div></AdminLayout>;
 
   return (
     <AdminLayout title={`${t(`content.type.${block.content_type}`)} · ${block.slug}`} subtitle={t("content.editorSubtitle")}>
