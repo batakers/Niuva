@@ -257,7 +257,7 @@ export default function StockMovements() {
                       {row.movement_type}
                     </TechnicalLabel>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">
+                  <TableCell className="font-mono text-sm tabular-nums">
                     {row.quantity > 0 ? `+${row.quantity}` : row.quantity}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-text-secondary">

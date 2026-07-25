@@ -126,8 +126,8 @@ export default function ContentEditor() {
                     <TableRow key={item.id}>
                       <TableCell><div className="font-semibold">{item.slug}</div></TableCell>
                       <TableCell><TechnicalLabel tone={statusTone(item.status)}>{item.status}</TechnicalLabel></TableCell>
-                      <TableCell>{item.version}</TableCell>
-                      <TableCell className="whitespace-nowrap">{item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}</TableCell>
+                      <TableCell className="font-mono tabular-nums text-text-secondary">{item.version}</TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">{item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => setEditingId(item.id)} aria-label={`${t("common.open")} ${item.slug}`}><Edit3 className="h-4 w-4" /></Button>
@@ -401,7 +401,7 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
             <TableHeader><TableRow><TableHead>{t("common.date")}</TableHead><TableHead>{t("content.event")}</TableHead><TableHead>{t("common.reason")}</TableHead><TableHead className="text-right">{t("common.actions")}</TableHead></TableRow></TableHeader>
             <TableBody>{versions.map((version) => (
               <TableRow key={version.id}>
-                <TableCell className="whitespace-nowrap">{new Date(version.created_at).toLocaleString()}</TableCell>
+                <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">{new Date(version.created_at).toLocaleString()}</TableCell>
                 <TableCell>{version.event}</TableCell>
                 <TableCell>{version.reason}</TableCell>
                 <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => rollback(version.id)} disabled={busy}>{t("content.rollback")}</Button></TableCell>

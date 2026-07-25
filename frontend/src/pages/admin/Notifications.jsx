@@ -323,7 +323,7 @@ export default function AdminNotifications() {
                             {row.subject}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
+                        <TableCell className="text-right font-mono text-sm tabular-nums">
                           {row.recipient_count}
                         </TableCell>
                       </TableRow>

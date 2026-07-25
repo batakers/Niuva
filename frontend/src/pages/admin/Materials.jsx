@@ -240,14 +240,14 @@ export default function AdminMaterials() {
                       <TableCell>
                         <Status material={material} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="font-mono tabular-nums">
                         {formatIdr(material.price_summary?.current?.amount)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="font-mono tabular-nums text-text-secondary">
                         {formatIdr(material.price_summary?.next_scheduled?.amount)}
                       </TableCell>
-                      <TableCell>{material.reorder_point ?? "0"}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-mono tabular-nums">{material.reorder_point ?? "0"}</TableCell>
+                      <TableCell className="font-mono tabular-nums">
                         {material.lead_time_days ?? 0} {t("common.days")}
                       </TableCell>
                       <TableCell>
@@ -717,13 +717,13 @@ function PriceHistory({ material, canAppend, onClose, onChanged }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-control border border-border-default p-3">
             <TechnicalLabel>{t("materials.currentPrice")}</TechnicalLabel>
-            <p className="mt-2 text-lg font-semibold text-text-primary">
+            <p className="mt-2 font-mono text-lg font-semibold tabular-nums text-text-primary">
               {formatIdr(summary.current?.amount)}
             </p>
           </div>
           <div className="rounded-control border border-border-default p-3">
             <TechnicalLabel>{t("materials.nextPrice")}</TechnicalLabel>
-            <p className="mt-2 text-lg font-semibold text-text-primary">
+            <p className="mt-2 font-mono text-lg font-semibold tabular-nums text-text-primary">
               {formatIdr(summary.next_scheduled?.amount)}
             </p>
           </div>
@@ -783,10 +783,10 @@ function PriceHistory({ material, canAppend, onClose, onChanged }) {
                 key={version.id}
                 className="flex flex-wrap justify-between gap-2 border-b border-border-default py-3"
               >
-                <span className="text-text-primary">
+                <span className="font-mono tabular-nums text-text-primary">
                   {formatIdr(version.amount)} / {version.price_unit}
                 </span>
-                <span className="text-text-secondary">
+                <span className="font-mono text-xs text-text-secondary">
                   {new Date(version.effective_from).toLocaleString()}
                 </span>
                 <TechnicalLabel size="micro">{version.reason}</TechnicalLabel>
