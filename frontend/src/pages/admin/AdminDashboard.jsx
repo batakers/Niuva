@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
 import { SurfacePanel } from "@/components/ui/surface-panel";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
@@ -43,42 +44,6 @@ function totalForRow(row) {
   return Object.entries(row).reduce(
     (sum, [key, value]) => (key === "date" ? sum : sum + (Number(value) || 0)),
     0
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
- * Stat Card Component — technical-console styling: status-coded left accent,
- * mono eyebrow label, tabular figures. Hero variant breaks the uniform grid.
- * ────────────────────────────────────────────────────────────────────────── */
-
-function StatCard({ label, value, colorClass, accentClass, hero, delay }) {
-  return (
-    <SurfacePanel
-      className={`reveal border-l-4 p-6 transition-all duration-fast hover:shadow-navigation hover:-translate-y-0.5 ${accentClass} ${
-        hero ? "col-span-2" : ""
-      }`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <p className="type-technical-metadata text-text-secondary mb-3">
-        {label}
-      </p>
-      <p
-        className={`font-mono font-bold tabular-nums tracking-tight ${
-          hero ? "text-5xl" : "text-3xl"
-        } ${colorClass}`}
-      >
-        {value}
-      </p>
-    </SurfacePanel>
-  );
-}
-
-function StatCardSkeleton({ hero }) {
-  return (
-    <SurfacePanel className={`border-l-4 border-l-border-default p-6 ${hero ? "col-span-2" : ""}`}>
-      <Skeleton className="h-3 w-24 mb-4" />
-      <Skeleton className={hero ? "h-12 w-32" : "h-8 w-16"} />
-    </SurfacePanel>
   );
 }
 
