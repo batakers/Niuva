@@ -1,56 +1,69 @@
 import React, { useEffect, useState } from "react";
 import { Eye } from "lucide-react";
-import { useI18n } from "../../i18n";
-import { useAuth } from "../../context/AuthContext";
-import { api, formatApiError } from "../../lib/api";
-import { hasPermission } from "../../lib/permissions";
-import { safeAuditEvent } from "../../lib/identityAccess";
-import { AdminLayout } from "./AdminLayout";
-import { Button } from "../../components/ui/button";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { EmptyState } from "../../components/ui/empty-state";
+} from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
-  SurfacePanel,
-  SurfacePanelHeader,
-} from "../../components/ui/surface-panel";
-import { TechnicalLabel } from "../../components/ui/technical-label";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TechnicalLabel } from "@/components/ui/technical-label";
+import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/i18n";
+import { api, formatApiError } from "@/lib/api";
+import { safeAuditEvent } from "@/lib/identityAccess";
+import { hasPermission } from "@/lib/permissions";
+import { AdminLayout } from "./AdminLayout";
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Helpers
+ * ────────────────────────────────────────────────────────────────────────── */
 
 function formatTimestamp(value) {
-  if (!value) return "-";
+  if (!value) return "—";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
 }
 
-
 function AuditSnapshot({ title, value }) {
   return (
     <SurfacePanel>
-      <SurfacePanelHeader padding="sm">
+      <SurfacePanelHeader>
         <TechnicalLabel>{title}</TechnicalLabel>
       </SurfacePanelHeader>
-      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-6 text-muted-foreground">
+      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-6 text-text-secondary">
         {JSON.stringify(value || {}, null, 2)}
       </pre>
     </SurfacePanel>
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Main Component
+ * ────────────────────────────────────────────────────────────────────────── */
 
 export default function AdminAuditLog() {
   const { t } = useI18n();
   const { user } = useAuth();
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [selected, setSelected] = useState(null);
+
   const canReadAudit = hasPermission(user, "audit.read");
 
   useEffect(() => {
@@ -59,7 +72,11 @@ export default function AdminAuditLog() {
       .get("/admin/audit-events?limit=100")
       .then((response) => {
         if (active) {
-          setItems(Array.isArray(response.data) ? response.data.map(safeAuditEvent) : []);
+          setItems(
+            Array.isArray(response.data)
+              ? response.data.map(safeAuditEvent)
+              : []
+          );
         }
       })
       .catch((requestError) => {
@@ -76,79 +93,112 @@ export default function AdminAuditLog() {
   }, []);
 
   return (
-    <AdminLayout title={t("admin.audit")} subtitle="Read-only Change Ledger">
+    <AdminLayout
+      title={t("admin.audit")}
+      subtitle={t("audit.subtitle")}
+    >
       <SurfacePanel>
-        <SurfacePanelHeader>
-          <TechnicalLabel>AUDIT_EVENTS // LATEST: {items.length}</TechnicalLabel>
+        <SurfacePanelHeader className="flex items-center justify-between">
+          <TechnicalLabel>
+            {t("audit.total")}: {items.length}
+          </TechnicalLabel>
         </SurfacePanelHeader>
 
-        {loading ? <EmptyState>[ FETCHING_AUDIT_EVENTS... ]</EmptyState> : null}
-        {!loading && permissionDenied ? (
-          <EmptyState frame="dashed" className="text-destructive">
-            Anda tidak memiliki izin membaca audit log.
+        {loading ? (
+          <EmptyState>{t("common.loading")}</EmptyState>
+        ) : permissionDenied ? (
+          <EmptyState>
+            <span role="alert" className="text-status-error">
+              {t("audit.permissionDenied")}
+            </span>
           </EmptyState>
-        ) : null}
-        {!loading && !permissionDenied && error ? (
-          <EmptyState frame="dashed" className="text-destructive">{error}</EmptyState>
-        ) : null}
-        {!loading && !error && items.length === 0 ? (
-          <EmptyState>NO_AUDIT_EVENTS_FOUND</EmptyState>
-        ) : null}
-        {!loading && !error && items.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border-default bg-surface-page">
-                  <th className="px-5 py-3 type-label text-text-secondary">Timestamp</th>
-                  <th className="px-5 py-3 type-label text-text-secondary">Actor</th>
-                  <th className="px-5 py-3 type-label text-text-secondary">Action</th>
-                  <th className="px-5 py-3 type-label text-text-secondary">Target</th>
-                  <th className="px-5 py-3 type-label text-text-secondary">Reason</th>
-                  <th className="px-5 py-3 text-right type-label text-text-secondary">Detail</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50 text-xs">
-                {items.map((event) => (
-                  <tr key={event.id} className="align-top transition-colors hover:bg-surface-2/50">
-                    <td className="whitespace-nowrap px-5 py-4 font-mono text-muted-foreground">
-                      {formatTimestamp(event.created_at)}
-                    </td>
-                    <td className="px-5 py-4 text-foreground">{event.actor_user_id || "system"}</td>
-                    <td className="px-5 py-4 font-mono text-primary">{event.action}</td>
-                    <td className="px-5 py-4 text-muted-foreground">
-                      <span className="block">{event.target_type}</span>
-                      <span className="mt-1 block font-mono text-[10px]">{event.target_id}</span>
-                    </td>
-                    <td className="max-w-xs px-5 py-4 text-muted-foreground">{event.reason_code || "-"}</td>
-                    <td className="px-5 py-4 text-right">
-                      {canReadAudit ? (
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(event)}>
-                          <Eye /> View
-                        </Button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
+        ) : error ? (
+          <EmptyState>
+            <span role="alert" className="text-status-error">{error}</span>
+          </EmptyState>
+        ) : items.length === 0 ? (
+          <EmptyState>{t("audit.empty")}</EmptyState>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("audit.timestamp")}</TableHead>
+                <TableHead>{t("audit.actor")}</TableHead>
+                <TableHead>{t("audit.action")}</TableHead>
+                <TableHead>{t("audit.target")}</TableHead>
+                <TableHead>{t("audit.reason")}</TableHead>
+                <TableHead className="text-right">{t("common.detail")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((event) => (
+                <TableRow key={event.id} className="align-top">
+                  <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
+                    {formatTimestamp(event.created_at)}
+                  </TableCell>
+                  <TableCell className="text-text-primary">
+                    {event.actor_user_id || "system"}
+                  </TableCell>
+                  <TableCell className="font-mono text-action-primary">
+                    {event.action}
+                  </TableCell>
+                  <TableCell className="text-text-secondary">
+                    <span className="block">{event.target_type}</span>
+                    <span className="mt-1 block font-mono text-[10px]">
+                      {event.target_id}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-xs text-text-secondary">
+                    {event.reason_code || "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {canReadAudit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelected(event)}
+                      >
+                        <Eye className="mr-2 h-3.5 w-3.5" />
+                        {t("common.view")}
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </SurfacePanel>
 
-      <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto rounded-none border-border bg-surface-1 text-foreground">
+      {/* Detail Dialog */}
+      <Dialog
+        open={Boolean(selected)}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selected?.action}</DialogTitle>
             <DialogDescription>
-              {selected?.actor_user_id || "system"} · {formatTimestamp(selected?.created_at)} · {selected?.reason_code || "No reason code"}
+              {selected?.actor_user_id || "system"} ·{" "}
+              {formatTimestamp(selected?.created_at)} ·{" "}
+              {selected?.reason_code || t("audit.noReasonCode")}
             </DialogDescription>
           </DialogHeader>
-          {canReadAudit ? (
+
+          {canReadAudit && (
             <div className="grid gap-4 md:grid-cols-2">
-              <AuditSnapshot title="PREVIOUS PROJECTION" value={selected?.previous} />
-              <AuditSnapshot title="RESULT PROJECTION" value={selected?.result} />
+              <AuditSnapshot
+                title={t("audit.previousState")}
+                value={selected?.previous}
+              />
+              <AuditSnapshot
+                title={t("audit.resultState")}
+                value={selected?.result}
+              />
             </div>
-          ) : null}
+          )}
         </DialogContent>
       </Dialog>
     </AdminLayout>

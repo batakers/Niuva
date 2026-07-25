@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Save, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Save } from "lucide-react";
 import { toast } from "sonner";
-import { useI18n } from "../../i18n";
-import { api, formatApiError } from "../../lib/api";
+
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
+import { useI18n } from "@/i18n";
+import { api, formatApiError } from "@/lib/api";
 import { AdminLayout } from "./AdminLayout";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { EmptyState } from "../../components/ui/empty-state";
-import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
-import { TechnicalLabel } from "../../components/ui/technical-label";
 
 export default function AdminSettings() {
   const { t } = useI18n();
@@ -17,7 +17,8 @@ export default function AdminSettings() {
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState("");
 
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const updateField = (field) => (e) =>
+    setForm((current) => ({ ...current, [field]: e.target.value }));
 
   useEffect(() => {
     api
@@ -30,7 +31,7 @@ export default function AdminSettings() {
     setBusy(true);
     try {
       await api.put("/admin/settings", form);
-      toast.success("SYSTEM_CONFIG_SAVED");
+      toast.success(t("settings.saved"));
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
     } finally {
@@ -40,74 +41,89 @@ export default function AdminSettings() {
 
   if (loadError) {
     return (
-      <AdminLayout title={t("admin.settings")} subtitle="System Configuration Panel">
-        <EmptyState frame="solid"><span role="alert">{loadError}</span></EmptyState>
+      <AdminLayout
+        title={t("admin.settings")}
+        subtitle={t("settings.subtitle")}
+      >
+        <EmptyState>
+          <span role="alert" className="text-status-error">{loadError}</span>
+        </EmptyState>
       </AdminLayout>
     );
   }
 
   if (!form) {
     return (
-      <AdminLayout title={t("admin.settings")} subtitle="System Configuration Panel">
-        <EmptyState frame="solid"><span role="status">[ FETCHING_CONFIG... ]</span></EmptyState>
+      <AdminLayout
+        title={t("admin.settings")}
+        subtitle={t("settings.subtitle")}
+      >
+        <EmptyState>{t("common.loading")}</EmptyState>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title={t("admin.settings")} subtitle="System Configuration Panel">
+    <AdminLayout
+      title={t("admin.settings")}
+      subtitle={t("settings.subtitle")}
+    >
       <SurfacePanel className="max-w-2xl" data-testid="settings-panel">
-        <SurfacePanelHeader padding="lg" className="flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-warm shrink-0 mt-0.5" />
+        {/* Warning Header */}
+        <SurfacePanelHeader className="flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-status-warning shrink-0 mt-0.5" />
           <div>
-            <TechnicalLabel as="h3" size="sm" tone="foreground" className="mb-1">GLOBAL_VARIABLES // PAYMENT_GATEWAY</TechnicalLabel>
-            <TechnicalLabel as="p" className="leading-relaxed">
-              These settings control the financial routing for all client orders. Changes take effect immediately upon commit.
-            </TechnicalLabel>
+            <h3 className="font-heading font-semibold text-text-primary mb-1">
+              {t("settings.paymentTitle")}
+            </h3>
+            <p className="type-body-small text-text-secondary">
+              {t("settings.paymentDesc")}
+            </p>
           </div>
         </SurfacePanelHeader>
 
+        {/* Form */}
         <div className="p-6 sm:p-8 space-y-6">
-          <div className="space-y-2">
-            <TechnicalLabel as={Label} className="block">INSTITUTION_NAME (BANK)</TechnicalLabel>
+          <div className="space-y-1.5">
+            <Label>{t("settings.bankName")}</Label>
             <Input
               data-testid="settings-bank"
               value={form.bank_name}
-              onChange={set("bank_name")}
-              className="rounded-none bg-background border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 font-mono text-sm h-12"
+              onChange={updateField("bank_name")}
             />
           </div>
 
-          <div className="space-y-2">
-            <TechnicalLabel as={Label} className="block">ROUTING_ID (ACCOUNT NUMBER)</TechnicalLabel>
+          <div className="space-y-1.5">
+            <Label>{t("settings.accountNumber")}</Label>
             <Input
               data-testid="settings-account"
               value={form.account_number}
-              onChange={set("account_number")}
-              className="rounded-none bg-background border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 font-mono text-lg font-bold h-12 tracking-wider"
+              onChange={updateField("account_number")}
+              className="font-mono text-lg tracking-wider"
             />
           </div>
 
-          <div className="space-y-2">
-            <TechnicalLabel as={Label} className="block">ENTITY_HOLDER (NAME)</TechnicalLabel>
+          <div className="space-y-1.5">
+            <Label>{t("settings.accountHolder")}</Label>
             <Input
               data-testid="settings-holder"
               value={form.account_holder}
-              onChange={set("account_holder")}
-              className="rounded-none bg-background border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 font-mono text-sm h-12"
+              onChange={updateField("account_holder")}
             />
           </div>
         </div>
 
-        <div className="border-t border-border bg-background p-6">
+        {/* Footer */}
+        <div className="border-t border-border-default bg-surface-page p-6">
           <Button
             disabled={busy}
             data-testid="save-settings"
             onClick={save}
-            variant="technical"
-            className="w-full h-12"
+            className="w-full"
+            size="lg"
           >
-            <Save className="mr-2 h-4 w-4" /> {busy ? "COMMITTING..." : "COMMIT_CONFIGURATION"}
+            <Save className="mr-2 h-4 w-4" />
+            {busy ? t("common.saving") : t("settings.save")}
           </Button>
         </div>
       </SurfacePanel>

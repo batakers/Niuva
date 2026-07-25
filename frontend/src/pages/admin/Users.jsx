@@ -1,14 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { Pencil } from "lucide-react";
-import { useI18n } from "../../i18n";
-import { useAuth } from "../../context/AuthContext";
-import { api, formatApiError } from "../../lib/api";
-import { fmtDay } from "../../lib/format";
-import { hasPermission } from "../../lib/permissions";
-import { accessStateLabel, accountStatusLabel, internalRoles, reasonCodes, roleLabels } from "../../lib/identityAccess";
-import { AdminLayout } from "./AdminLayout";
-import { Button } from "../../components/ui/button";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -16,22 +10,43 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { EmptyState } from "../../components/ui/empty-state";
-import { Label } from "../../components/ui/label";
+} from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
+} from "@/components/ui/select";
+import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
-  SurfacePanel,
-  SurfacePanelHeader,
-} from "../../components/ui/surface-panel";
-import { TechnicalLabel } from "../../components/ui/technical-label";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TechnicalLabel } from "@/components/ui/technical-label";
+import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/i18n";
+import { api, formatApiError } from "@/lib/api";
+import { fmtDay } from "@/lib/format";
+import {
+  accessStateLabel,
+  accountStatusLabel,
+  internalRoles,
+  reasonCodes,
+  roleLabels,
+} from "@/lib/identityAccess";
+import { hasPermission } from "@/lib/permissions";
+import { AdminLayout } from "./AdminLayout";
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Badge Components
+ * ────────────────────────────────────────────────────────────────────────── */
 
 function AccountStatusBadge({ status }) {
   const active = status === "active";
@@ -63,11 +78,10 @@ function AccessStateBadge({ accessState }) {
   );
 }
 
-
 function RoleList({ user, policy }) {
   const labels = roleLabels(user, policy);
   if (labels.length === 0) {
-    return <span className="text-muted-foreground">UNASSIGNED</span>;
+    return <span className="text-text-secondary">—</span>;
   }
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -83,14 +97,20 @@ function RoleList({ user, policy }) {
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Main Component
+ * ────────────────────────────────────────────────────────────────────────── */
 
 export default function AdminUsers() {
   const { t } = useI18n();
   const { user } = useAuth();
+
   const [items, setItems] = useState([]);
   const [accessPolicy, setAccessPolicy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Dialog state
   const [selected, setSelected] = useState(null);
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("active");
@@ -98,6 +118,7 @@ export default function AdminUsers() {
   const [selectedReasonCode, setSelectedReasonCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState("");
+
   const canManageRoles = hasPermission(user, "roles.manage");
   const availableRoles = internalRoles(accessPolicy);
   const availableReasonCodes = reasonCodes(accessPolicy);
@@ -147,15 +168,19 @@ export default function AdminUsers() {
         reason_code: selectedReasonCode,
       });
       setItems((current) =>
-        current.map((item) => (item.id === response.data.id ? response.data : item))
+        current.map((item) =>
+          item.id === response.data.id ? response.data : item
+        )
       );
       setSelected(null);
-      toast.success("Akses pengguna berhasil diperbarui.");
+      toast.success(t("users.accessUpdated"));
     } catch (requestError) {
       const detail = formatApiError(requestError.response?.data?.detail);
-      setMutationError(requestError.response?.status === 503
-        ? `Perubahan akses belum disimpan: ${detail}`
-        : detail);
+      setMutationError(
+        requestError.response?.status === 503
+          ? `${t("users.accessNotSaved")}: ${detail}`
+          : detail
+      );
     } finally {
       setSaving(false);
     }
@@ -164,97 +189,118 @@ export default function AdminUsers() {
   const saveDisabled = saving || !selectedRole || !selectedReasonCode;
 
   return (
-    <AdminLayout title={t("admin.users")} subtitle="Platform Identity & Access">
+    <AdminLayout
+      title={t("admin.users")}
+      subtitle={t("users.subtitle")}
+    >
       <SurfacePanel>
-        <SurfacePanelHeader>
-          <TechnicalLabel>IDENTITY_DIRECTORY // TOTAL: {items.length}</TechnicalLabel>
+        <SurfacePanelHeader className="flex items-center justify-between">
+          <TechnicalLabel>
+            {t("users.total")}: {items.length}
+          </TechnicalLabel>
         </SurfacePanelHeader>
 
-        {loading ? <EmptyState>[ FETCHING_IDENTITIES... ]</EmptyState> : null}
-        {!loading && error ? (
-          <EmptyState frame="dashed" className="text-destructive">
-            {error}
+        {loading ? (
+          <EmptyState>{t("common.loading")}</EmptyState>
+        ) : error ? (
+          <EmptyState>
+            <span role="alert" className="text-status-error">{error}</span>
           </EmptyState>
-        ) : null}
-        {!loading && !error && items.length === 0 ? (
-          <EmptyState>NO_IDENTITIES_FOUND</EmptyState>
-        ) : null}
-        {!loading && !error && items.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left" data-testid="admin-users-table">
-              <thead>
-                <tr className="border-b border-border-default bg-surface-page">
-                  <th className="px-6 py-3 type-label text-text-secondary">Identity</th>
-                  <th className="px-6 py-3 type-label text-text-secondary">Status</th>
-                  <th className="px-6 py-3 type-label text-text-secondary">Role</th>
-                  <th className="px-6 py-3 type-label text-text-secondary">Access review</th>
-                  <th className="px-6 py-3 type-label text-text-secondary">Created</th>
-                  {canManageRoles ? <th className="px-6 py-3 text-right type-label text-text-secondary">Action</th> : null}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50 text-xs text-foreground">
-                {items.map((item) => (
-                  <tr key={item.id} className="transition-colors hover:bg-surface-2/50">
-                    <td className="px-6 py-4">
-                      <p className="font-semibold text-foreground">{item.name || "Unnamed user"}</p>
-                      <p className="mt-1 font-mono text-[11px] text-primary">{item.email}</p>
-                    </td>
-                    <td className="px-6 py-4"><AccountStatusBadge status={item.status} /></td>
-                    <td className="min-w-64 px-6 py-4"><RoleList user={item} policy={accessPolicy} /></td>
-                    <td className="px-6 py-4"><AccessStateBadge accessState={item.access_state} /></td>
-                    <td className="whitespace-nowrap px-6 py-4 font-mono text-muted-foreground">
-                      {fmtDay(item.created_at)}
-                    </td>
-                    {canManageRoles ? (
-                      <td className="px-6 py-4 text-right">
-                        <Button
-                          type="button"
-                          variant="technicalOutline"
-                          size="sm"
-                          onClick={() => openAccessDialog(item)}
-                        >
-                          <Pencil /> Edit access
-                        </Button>
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
+        ) : items.length === 0 ? (
+          <EmptyState>{t("users.empty")}</EmptyState>
+        ) : (
+          <Table data-testid="admin-users-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("users.identity")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("users.role")}</TableHead>
+                <TableHead>{t("users.accessReview")}</TableHead>
+                <TableHead>{t("common.created")}</TableHead>
+                {canManageRoles && (
+                  <TableHead className="text-right">{t("common.actions")}</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <p className="font-semibold text-text-primary">
+                      {item.name || t("users.unnamed")}
+                    </p>
+                    <p className="mt-1 font-mono text-xs text-action-primary">
+                      {item.email}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <AccountStatusBadge status={item.status} />
+                  </TableCell>
+                  <TableCell className="min-w-64">
+                    <RoleList user={item} policy={accessPolicy} />
+                  </TableCell>
+                  <TableCell>
+                    <AccessStateBadge accessState={item.access_state} />
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
+                    {fmtDay(item.created_at)}
+                  </TableCell>
+                  {canManageRoles && (
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAccessDialog(item)}
+                      >
+                        <Pencil className="mr-2 h-3.5 w-3.5" />
+                        {t("users.editAccess")}
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </SurfacePanel>
 
+      {/* Edit Access Dialog */}
       <Dialog
         open={Boolean(selected)}
         onOpenChange={(open) => {
           if (!open) setSelected(null);
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-none border-border bg-surface-1 text-foreground">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Peran & Akses</DialogTitle>
+            <DialogTitle>{t("users.rolesAndAccess")}</DialogTitle>
             <DialogDescription>
-              Ubah akses {selected?.name || selected?.email}. Alasan perubahan akan dicatat di audit log.
+              {t("users.editAccessDesc", { name: selected?.name || selected?.email })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-2">
-            <div className="space-y-2">
-              <Label>Status akun</Label>
+            {/* Account Status */}
+            <div className="space-y-1.5">
+              <Label>{t("users.accountStatus")}</Label>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Aktif</SelectItem>
-                  <SelectItem value="disabled">Dinonaktifkan</SelectItem>
+                  <SelectItem value="active">{t("users.statusActive")}</SelectItem>
+                  <SelectItem value="disabled">{t("users.statusDisabled")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Peran internal</Label>
+            {/* Internal Role */}
+            <div className="space-y-1.5">
+              <Label>{t("users.internalRole")}</Label>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger><SelectValue placeholder="Pilih peran internal" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("users.selectRole")} />
+                </SelectTrigger>
                 <SelectContent>
                   {availableRoles.map((role) => (
                     <SelectItem key={role.role} value={role.role}>
@@ -265,21 +311,35 @@ export default function AdminUsers() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Status review akses</Label>
-              <Select value={selectedAccessState} onValueChange={setSelectedAccessState}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+            {/* Access Review Status */}
+            <div className="space-y-1.5">
+              <Label>{t("users.accessReviewStatus")}</Label>
+              <Select
+                value={selectedAccessState}
+                onValueChange={setSelectedAccessState}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="access_review_required">Access review required</SelectItem>
+                  <SelectItem value="access_review_required">
+                    Access review required
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Reason code</Label>
-              <Select value={selectedReasonCode} onValueChange={setSelectedReasonCode}>
-                <SelectTrigger><SelectValue placeholder="Pilih reason code" /></SelectTrigger>
+            {/* Reason Code */}
+            <div className="space-y-1.5">
+              <Label>{t("users.reasonCode")}</Label>
+              <Select
+                value={selectedReasonCode}
+                onValueChange={setSelectedReasonCode}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("users.selectReasonCode")} />
+                </SelectTrigger>
                 <SelectContent>
                   {availableReasonCodes.map((reason) => (
                     <SelectItem key={reason.code} value={reason.code}>
@@ -290,19 +350,22 @@ export default function AdminUsers() {
               </Select>
             </div>
 
-            {mutationError ? (
-              <p className="border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+            {mutationError && (
+              <p
+                className="rounded-control border border-status-error/40 bg-status-error/10 p-3 text-sm text-status-error"
+                role="alert"
+              >
                 {mutationError}
               </p>
-            ) : null}
+            )}
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setSelected(null)}>
-              Batal
+            <Button variant="outline" onClick={() => setSelected(null)}>
+              {t("common.cancel")}
             </Button>
-            <Button type="button" onClick={saveAccess} disabled={saveDisabled}>
-              {saving ? "Menyimpan..." : "Simpan akses"}
+            <Button onClick={saveAccess} disabled={saveDisabled}>
+              {saving ? t("common.saving") : t("users.saveAccess")}
             </Button>
           </DialogFooter>
         </DialogContent>

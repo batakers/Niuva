@@ -1,12 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Archive, Building2, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
-import { useI18n } from "../../i18n";
-import { useAuth } from "../../context/AuthContext";
-import { api, formatApiError } from "../../lib/api";
-import { fmtDay } from "../../lib/format";
-import { hasPermission } from "../../lib/permissions";
-import { AdminLayout } from "./AdminLayout";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,8 +11,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../../components/ui/alert-dialog";
-import { Button } from "../../components/ui/button";
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -25,25 +20,36 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { EmptyState } from "../../components/ui/empty-state";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+} from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
+} from "@/components/ui/select";
+import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
-  SurfacePanel,
-  SurfacePanelHeader,
-} from "../../components/ui/surface-panel";
-import { TechnicalLabel } from "../../components/ui/technical-label";
-
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TechnicalLabel } from "@/components/ui/technical-label";
+import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/i18n";
+import { api, formatApiError } from "@/lib/api";
+import { fmtDay } from "@/lib/format";
+import { hasPermission } from "@/lib/permissions";
+import { AdminLayout } from "./AdminLayout";
 
 const MEMBER_ROLES = ["owner", "project_pic", "approver", "finance", "viewer"];
+
 const EMPTY_ORGANIZATION_FORM = {
   name: "",
   legal_name: "",
@@ -51,30 +57,38 @@ const EMPTY_ORGANIZATION_FORM = {
   status: "active",
 };
 
-
 function roleLabel(value) {
   return value.replaceAll("_", " ");
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Main Component
+ * ────────────────────────────────────────────────────────────────────────── */
 
 export default function AdminOrganizations() {
   const { t } = useI18n();
   const { user } = useAuth();
+
   const [items, setItems] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [permissionDenied, setPermissionDenied] = useState(false);
+
+  // Dialog state
   const [selectedId, setSelectedId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_ORGANIZATION_FORM);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Membership state
   const [memberUserId, setMemberUserId] = useState("");
   const [memberRole, setMemberRole] = useState("viewer");
   const [membershipBusy, setMembershipBusy] = useState(false);
   const [membershipError, setMembershipError] = useState("");
   const [archiveTarget, setArchiveTarget] = useState(null);
+
   const canManage = hasPermission(user, "organizations.manage");
 
   const loadData = useCallback(async () => {
@@ -122,7 +136,7 @@ export default function AdminOrganizations() {
       setCreateOpen(false);
       setForm(EMPTY_ORGANIZATION_FORM);
       await loadData();
-      toast.success("Organisasi berhasil dibuat.");
+      toast.success(t("organizations.created"));
     } catch (requestError) {
       setFormError(formatApiError(requestError.response?.data?.detail));
     } finally {
@@ -142,7 +156,7 @@ export default function AdminOrganizations() {
       setMemberUserId("");
       setMemberRole("viewer");
       await loadData();
-      toast.success("Anggota organisasi berhasil ditambahkan.");
+      toast.success(t("organizations.memberAdded"));
     } catch (requestError) {
       setMembershipError(formatApiError(requestError.response?.data?.detail));
     } finally {
@@ -160,7 +174,7 @@ export default function AdminOrganizations() {
         { member_role: nextRole }
       );
       await loadData();
-      toast.success("Peran anggota berhasil diperbarui.");
+      toast.success(t("organizations.roleUpdated"));
     } catch (requestError) {
       setMembershipError(formatApiError(requestError.response?.data?.detail));
     } finally {
@@ -178,7 +192,7 @@ export default function AdminOrganizations() {
       );
       setArchiveTarget(null);
       await loadData();
-      toast.success("Membership berhasil diarsipkan.");
+      toast.success(t("organizations.memberArchived"));
     } catch (requestError) {
       setMembershipError(formatApiError(requestError.response?.data?.detail));
     } finally {
@@ -187,93 +201,179 @@ export default function AdminOrganizations() {
   };
 
   return (
-    <AdminLayout title={t("admin.organizations")} subtitle="B2B Organization Directory">
+    <AdminLayout
+      title={t("admin.organizations")}
+      subtitle={t("organizations.subtitle")}
+    >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between gap-4">
-          <TechnicalLabel>ORGANIZATIONS // TOTAL: {items.length}</TechnicalLabel>
-          {canManage ? (
-            <Button type="button" variant="technical" size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus /> Tambah organisasi
+          <TechnicalLabel>
+            {t("organizations.total")}: {items.length}
+          </TechnicalLabel>
+          {canManage && (
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("organizations.add")}
             </Button>
-          ) : null}
+          )}
         </SurfacePanelHeader>
 
-        {loading ? <EmptyState>[ FETCHING_ORGANIZATIONS... ]</EmptyState> : null}
-        {!loading && permissionDenied ? (
-          <EmptyState frame="dashed" className="text-destructive">
-            Anda tidak memiliki izin untuk melihat organisasi.
+        {loading ? (
+          <EmptyState>{t("common.loading")}</EmptyState>
+        ) : permissionDenied ? (
+          <EmptyState>
+            <span role="alert" className="text-status-error">
+              {t("organizations.permissionDenied")}
+            </span>
           </EmptyState>
-        ) : null}
-        {!loading && !permissionDenied && error ? (
-          <EmptyState frame="dashed" className="text-destructive">{error}</EmptyState>
-        ) : null}
-        {!loading && !error && items.length === 0 ? (
-          <EmptyState>NO_ORGANIZATIONS_FOUND</EmptyState>
-        ) : null}
-        {!loading && !error && items.length > 0 ? (
+        ) : error ? (
+          <EmptyState>
+            <span role="alert" className="text-status-error">{error}</span>
+          </EmptyState>
+        ) : items.length === 0 ? (
+          <EmptyState>{t("organizations.empty")}</EmptyState>
+        ) : (
           <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((organization) => {
-              const activeMembers = organization.memberships?.filter(
-                (membership) => membership.status === "active"
-              ).length;
+              const activeMembers =
+                organization.memberships?.filter(
+                  (membership) => membership.status === "active"
+                ).length || 0;
+
               return (
-                <SurfacePanel key={organization.id} padding="md" className="space-y-5">
+                <SurfacePanel
+                  key={organization.id}
+                  className="space-y-5 p-4"
+                >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="grid h-10 w-10 place-items-center border border-border bg-surface-2">
-                      <Building2 className="h-5 w-5 text-primary" />
+                    <div className="grid h-10 w-10 place-items-center rounded-control border border-border-default bg-surface-muted">
+                      <Building2 className="h-5 w-5 text-action-primary" />
                     </div>
                     <span className="type-body-small text-text-secondary">
                       {organization.status}
                     </span>
                   </div>
+
                   <div>
-                    <h2 className="font-heading text-lg font-bold text-foreground">{organization.name}</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">{organization.legal_name}</p>
+                    <h2 className="font-heading text-lg font-bold text-text-primary">
+                      {organization.name}
+                    </h2>
+                    <p className="mt-1 text-sm text-text-secondary">
+                      {organization.legal_name}
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-2"><Users className="h-4 w-4" /> {activeMembers || 0} active</span>
+
+                  <div className="flex items-center justify-between border-t border-border-default pt-4 text-xs text-text-secondary">
+                    <span className="inline-flex items-center gap-2">
+                      <Users className="h-4 w-4" /> {activeMembers}{" "}
+                      {t("organizations.activeMembers")}
+                    </span>
                     <span>{fmtDay(organization.created_at)}</span>
                   </div>
-                  <Button type="button" variant="technicalOutline" className="w-full" onClick={() => setSelectedId(organization.id)}>
-                    Lihat detail
+
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setSelectedId(organization.id)}
+                  >
+                    {t("common.viewDetails")}
                   </Button>
                 </SurfacePanel>
               );
             })}
           </div>
-        ) : null}
+        )}
       </SurfacePanel>
 
+      {/* Create Organization Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-xl rounded-none border-border bg-surface-1 text-foreground">
+        <DialogContent className="max-w-xl">
           <form onSubmit={createOrganization}>
             <DialogHeader>
-              <DialogTitle>Tambah organisasi B2B</DialogTitle>
-              <DialogDescription>Identitas organisasi ini menjadi induk membership pelanggan B2B.</DialogDescription>
+              <DialogTitle>{t("organizations.addTitle")}</DialogTitle>
+              <DialogDescription>
+                {t("organizations.addDesc")}
+              </DialogDescription>
             </DialogHeader>
+
             <div className="space-y-4 py-6">
-              <div className="space-y-2">
-                <Label htmlFor="organization-name">Nama singkat</Label>
-                <Input id="organization-name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
+              <div className="space-y-1.5">
+                <Label htmlFor="organization-name">
+                  {t("organizations.shortName")}
+                </Label>
+                <Input
+                  id="organization-name"
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                  required
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="organization-legal-name">Nama legal</Label>
-                <Input id="organization-legal-name" value={form.legal_name} onChange={(event) => setForm((current) => ({ ...current, legal_name: event.target.value }))} required />
+
+              <div className="space-y-1.5">
+                <Label htmlFor="organization-legal-name">
+                  {t("organizations.legalName")}
+                </Label>
+                <Input
+                  id="organization-legal-name"
+                  value={form.legal_name}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      legal_name: event.target.value,
+                    }))
+                  }
+                  required
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="organization-tax-id">NPWP / Tax ID (opsional)</Label>
-                <Input id="organization-tax-id" value={form.tax_id} onChange={(event) => setForm((current) => ({ ...current, tax_id: event.target.value }))} />
+
+              <div className="space-y-1.5">
+                <Label htmlFor="organization-tax-id">
+                  {t("organizations.taxId")}
+                </Label>
+                <Input
+                  id="organization-tax-id"
+                  value={form.tax_id}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      tax_id: event.target.value,
+                    }))
+                  }
+                />
               </div>
-              {formError ? <p role="alert" className="border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{formError}</p> : null}
+
+              {formError && (
+                <p
+                  role="alert"
+                  className="rounded-control border border-status-error/40 bg-status-error/10 p-3 text-sm text-status-error"
+                >
+                  {formError}
+                </p>
+              )}
             </div>
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Batal</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Menyimpan..." : "Buat organisasi"}</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateOpen(false)}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? t("common.saving") : t("organizations.create")}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* Organization Detail Dialog */}
       <Dialog
         open={Boolean(selected)}
         onOpenChange={(open) => {
@@ -283,98 +383,182 @@ export default function AdminOrganizations() {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto rounded-none border-border bg-surface-1 text-foreground">
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selected?.name}</DialogTitle>
-            <DialogDescription>{selected?.legal_name} · {selected?.tax_id || "Tax ID belum diisi"}</DialogDescription>
+            <DialogDescription>
+              {selected?.legal_name} ·{" "}
+              {selected?.tax_id || t("organizations.noTaxId")}
+            </DialogDescription>
           </DialogHeader>
 
-          {canManage ? (
-            <SurfacePanel padding="md" className="space-y-4">
-              <TechnicalLabel>ADD_EXISTING_ORGANIZATION_CUSTOMER</TechnicalLabel>
+          {/* Add Member */}
+          {canManage && (
+            <SurfacePanel className="space-y-4 p-4">
+              <TechnicalLabel>{t("organizations.addMember")}</TechnicalLabel>
               <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
                 <Select value={memberUserId} onValueChange={setMemberUserId}>
-                  <SelectTrigger><SelectValue placeholder="Pilih pengguna" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("organizations.selectUser")} />
+                  </SelectTrigger>
                   <SelectContent>
                     {availableMembers.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>{item.name} · {item.email}</SelectItem>
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.name} · {item.email}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+
                 <Select value={memberRole} onValueChange={setMemberRole}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {MEMBER_ROLES.map((role) => <SelectItem key={role} value={role}>{roleLabel(role)}</SelectItem>)}
+                    {MEMBER_ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {roleLabel(role)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <Button type="button" onClick={addMember} disabled={membershipBusy || !memberUserId}>Tambah</Button>
+
+                <Button
+                  onClick={addMember}
+                  disabled={membershipBusy || !memberUserId}
+                >
+                  {t("common.add")}
+                </Button>
               </div>
-              {availableMembers.length === 0 ? <p className="text-xs text-muted-foreground">Tidak ada organization customer lain yang tersedia.</p> : null}
+
+              {availableMembers.length === 0 && (
+                <p className="text-xs text-text-secondary">
+                  {t("organizations.noAvailableMembers")}
+                </p>
+              )}
             </SurfacePanel>
-          ) : null}
+          )}
 
-          {membershipError ? <p role="alert" className="border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{membershipError}</p> : null}
+          {membershipError && (
+            <p
+              role="alert"
+              className="rounded-control border border-status-error/40 bg-status-error/10 p-3 text-sm text-status-error"
+            >
+              {membershipError}
+            </p>
+          )}
 
-          <div className="overflow-x-auto border border-border">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border-default bg-surface-page">
-                  <th className="px-4 py-3 type-label text-text-secondary">Member</th>
-                  <th className="px-4 py-3 type-label text-text-secondary">Role</th>
-                  <th className="px-4 py-3 type-label text-text-secondary">Status</th>
-                  {canManage ? <th className="px-4 py-3 text-right type-label text-text-secondary">Action</th> : null}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border text-sm">
-                {(selected?.memberships || []).map((membership) => {
-                  const memberUser = userById.get(membership.user_id);
-                  return (
-                    <tr key={membership.id}>
-                      <td className="px-4 py-3">
-                        <p className="font-medium">{memberUser?.name || membership.user_id}</p>
-                        <p className="text-xs text-muted-foreground">{memberUser?.email || membership.user_id}</p>
-                      </td>
-                      <td className="min-w-44 px-4 py-3">
-                        {canManage && membership.status === "active" ? (
-                          <Select value={membership.member_role} onValueChange={(value) => updateMemberRole(membership, value)} disabled={membershipBusy}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>{MEMBER_ROLES.map((role) => <SelectItem key={role} value={role}>{roleLabel(role)}</SelectItem>)}</SelectContent>
-                          </Select>
-                        ) : roleLabel(membership.member_role)}
-                      </td>
-                      <td className="px-4 py-3 type-body-small text-text-secondary">{membership.status}</td>
-                      {canManage ? (
-                        <td className="px-4 py-3 text-right">
-                          {membership.status === "active" ? (
-                            <Button type="button" variant="ghost" size="sm" onClick={() => setArchiveTarget(membership)} disabled={membershipBusy}>
-                              <Archive /> Archive
-                            </Button>
-                          ) : null}
-                        </td>
-                      ) : null}
-                    </tr>
-                  );
-                })}
+          {/* Members Table */}
+          <SurfacePanel className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("organizations.member")}</TableHead>
+                  <TableHead>{t("organizations.role")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
+                  {canManage && (
+                    <TableHead className="text-right">
+                      {t("common.actions")}
+                    </TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {(selected?.memberships || []).length === 0 ? (
-                  <tr><td colSpan={canManage ? 4 : 3}><EmptyState>NO_MEMBERSHIPS_FOUND</EmptyState></td></tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+                  <TableRow>
+                    <TableCell
+                      colSpan={canManage ? 4 : 3}
+                      className="text-center text-text-secondary"
+                    >
+                      {t("organizations.noMembers")}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  (selected?.memberships || []).map((membership) => {
+                    const memberUser = userById.get(membership.user_id);
+                    return (
+                      <TableRow key={membership.id}>
+                        <TableCell>
+                          <p className="font-medium text-text-primary">
+                            {memberUser?.name || membership.user_id}
+                          </p>
+                          <p className="text-xs text-text-secondary">
+                            {memberUser?.email || membership.user_id}
+                          </p>
+                        </TableCell>
+                        <TableCell className="min-w-44">
+                          {canManage && membership.status === "active" ? (
+                            <Select
+                              value={membership.member_role}
+                              onValueChange={(value) =>
+                                updateMemberRole(membership, value)
+                              }
+                              disabled={membershipBusy}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {MEMBER_ROLES.map((role) => (
+                                  <SelectItem key={role} value={role}>
+                                    {roleLabel(role)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            roleLabel(membership.member_role)
+                          )}
+                        </TableCell>
+                        <TableCell className="type-body-small text-text-secondary">
+                          {membership.status}
+                        </TableCell>
+                        {canManage && (
+                          <TableCell className="text-right">
+                            {membership.status === "active" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setArchiveTarget(membership)}
+                                disabled={membershipBusy}
+                              >
+                                <Archive className="mr-2 h-3.5 w-3.5" />
+                                {t("common.archive")}
+                              </Button>
+                            )}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </SurfacePanel>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={Boolean(archiveTarget)} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
+      {/* Archive Confirmation */}
+      <AlertDialog
+        open={Boolean(archiveTarget)}
+        onOpenChange={(open) => {
+          if (!open) setArchiveTarget(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Arsipkan membership?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("organizations.archiveMemberTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Akses organisasi akan dinonaktifkan, tetapi histori membership dan audit tetap tersimpan.
+              {t("organizations.archiveMemberDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={archiveMember} disabled={membershipBusy}>Arsipkan</AlertDialogAction>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={archiveMember} disabled={membershipBusy}>
+              {t("common.archive")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
