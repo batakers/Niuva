@@ -31,19 +31,19 @@ const EmptyState = React.forwardRef(
         {loading ? (
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-6 w-6 text-text-secondary animate-spin" />
-            <span className="font-mono text-xs text-text-secondary uppercase tracking-widest">
+            <span className="type-body-small text-text-secondary">
               {children}
             </span>
           </div>
         ) : Icon ? (
           <div className="flex flex-col items-center gap-3">
             <Icon className="h-8 w-8 text-text-disabled" strokeWidth={1.5} />
-            <span className="font-mono text-xs text-text-secondary uppercase tracking-widest">
+            <span className="type-body-small text-text-secondary">
               {children}
             </span>
           </div>
         ) : (
-          <span className="font-mono text-xs text-text-secondary uppercase tracking-widest">
+          <span className="type-body-small text-text-secondary">
             {children}
           </span>
         )}
