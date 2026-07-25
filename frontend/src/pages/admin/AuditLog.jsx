@@ -98,13 +98,13 @@ export default function AdminAuditLog() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-border bg-background/50 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  <th className="px-5 py-4 font-normal">Timestamp</th>
-                  <th className="px-5 py-4 font-normal">Actor</th>
-                  <th className="px-5 py-4 font-normal">Action</th>
-                  <th className="px-5 py-4 font-normal">Target</th>
-                  <th className="px-5 py-4 font-normal">Reason</th>
-                  <th className="px-5 py-4 text-right font-normal">Detail</th>
+                <tr className="border-b border-border-default bg-surface-page">
+                  <th className="px-5 py-3 type-label text-text-secondary">Timestamp</th>
+                  <th className="px-5 py-3 type-label text-text-secondary">Actor</th>
+                  <th className="px-5 py-3 type-label text-text-secondary">Action</th>
+                  <th className="px-5 py-3 type-label text-text-secondary">Target</th>
+                  <th className="px-5 py-3 type-label text-text-secondary">Reason</th>
+                  <th className="px-5 py-3 text-right type-label text-text-secondary">Detail</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50 text-xs">

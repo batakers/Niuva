@@ -222,7 +222,7 @@ export default function AdminOrganizations() {
                     <div className="grid h-10 w-10 place-items-center border border-border bg-surface-2">
                       <Building2 className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    <span className="type-body-small text-text-secondary">
                       {organization.status}
                     </span>
                   </div>
@@ -318,11 +318,11 @@ export default function AdminOrganizations() {
           <div className="overflow-x-auto border border-border">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-border bg-surface-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  <th className="px-4 py-3 font-normal">Member</th>
-                  <th className="px-4 py-3 font-normal">Role</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  {canManage ? <th className="px-4 py-3 text-right font-normal">Action</th> : null}
+                <tr className="border-b border-border-default bg-surface-page">
+                  <th className="px-4 py-3 type-label text-text-secondary">Member</th>
+                  <th className="px-4 py-3 type-label text-text-secondary">Role</th>
+                  <th className="px-4 py-3 type-label text-text-secondary">Status</th>
+                  {canManage ? <th className="px-4 py-3 text-right type-label text-text-secondary">Action</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border text-sm">
@@ -342,7 +342,7 @@ export default function AdminOrganizations() {
                           </Select>
                         ) : roleLabel(membership.member_role)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs uppercase text-muted-foreground">{membership.status}</td>
+                      <td className="px-4 py-3 type-body-small text-text-secondary">{membership.status}</td>
                       {canManage ? (
                         <td className="px-4 py-3 text-right">
                           {membership.status === "active" ? (

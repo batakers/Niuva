@@ -37,7 +37,7 @@ function AccountStatusBadge({ status }) {
   const active = status === "active";
   return (
     <span
-      className={`inline-flex border px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${
+      className={`inline-flex rounded-control border px-2 py-1 type-body-small ${
         active
           ? "border-status-success/40 bg-status-success/10 text-status-success"
           : "border-destructive/40 bg-destructive/10 text-destructive"
@@ -52,9 +52,9 @@ function AccessStateBadge({ accessState }) {
   const approved = accessState === "approved";
   return (
     <span
-      className={`inline-flex border px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${
+      className={`inline-flex rounded-control border px-2 py-1 type-body-small ${
         approved
-          ? "border-primary/40 bg-primary/10 text-primary"
+          ? "border-action-primary/40 bg-action-primary/10 text-action-primary"
           : "border-status-warning/40 bg-status-warning/10 text-status-warning"
       }`}
     >
@@ -74,7 +74,7 @@ function RoleList({ user, policy }) {
       {labels.map((label, index) => (
         <span
           key={`${label}-${index}`}
-          className="border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-foreground"
+          className="rounded-control border border-border-default bg-surface-muted px-2 py-1 type-body-small text-text-primary"
         >
           {label}
         </span>
@@ -183,13 +183,13 @@ export default function AdminUsers() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left" data-testid="admin-users-table">
               <thead>
-                <tr className="border-b border-border/50 bg-background/50 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  <th className="px-6 py-4 font-normal">Identity</th>
-                  <th className="px-6 py-4 font-normal">Status</th>
-                  <th className="px-6 py-4 font-normal">Role</th>
-                  <th className="px-6 py-4 font-normal">Access review</th>
-                  <th className="px-6 py-4 font-normal">Created</th>
-                  {canManageRoles ? <th className="px-6 py-4 text-right font-normal">Action</th> : null}
+                <tr className="border-b border-border-default bg-surface-page">
+                  <th className="px-6 py-3 type-label text-text-secondary">Identity</th>
+                  <th className="px-6 py-3 type-label text-text-secondary">Status</th>
+                  <th className="px-6 py-3 type-label text-text-secondary">Role</th>
+                  <th className="px-6 py-3 type-label text-text-secondary">Access review</th>
+                  <th className="px-6 py-3 type-label text-text-secondary">Created</th>
+                  {canManageRoles ? <th className="px-6 py-3 text-right type-label text-text-secondary">Action</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50 text-xs text-foreground">

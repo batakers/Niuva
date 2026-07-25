@@ -1,11 +1,10 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BellRing, BookOpen, Boxes, Building2, FileText, GraduationCap, History, Image as ImageIcon, Layers, LayoutGrid, Mail, MessageSquare, Package, ScrollText, Settings as SettingsIcon, TerminalSquare, Users } from "lucide-react";
+import { BellRing, BookOpen, Boxes, Building2, FileText, GraduationCap, History, Image as ImageIcon, Layers, LayoutGrid, Mail, MessageSquare, Package, ScrollText, Settings as SettingsIcon, Users } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { OperationalLayout } from "@/components/layout/Layout";
 import { useAuth } from "../../context/AuthContext";
-import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
-import { TechnicalLabel } from "../../components/ui/technical-label";
+import { SurfacePanel } from "../../components/ui/surface-panel";
 import { ADMIN_ROUTE_PERMISSIONS, hasPermission } from "../../lib/permissions";
 
 const ADMIN_ROUTES = [
@@ -41,25 +40,22 @@ export function AdminLayout({ children, title, subtitle }) {
   return (
     <OperationalLayout>
       <div className="w-full flex flex-col lg:flex-row gap-6 items-start">
-        <SurfacePanel className="w-full lg:w-64 shrink-0 lg:sticky lg:top-24 z-10">
-          <SurfacePanelHeader padding="sm" className="flex items-center gap-2">
-            <TerminalSquare className="h-4 w-4 text-muted-foreground" />
-            <TechnicalLabel>SYS_ADMIN_CONSOLE</TechnicalLabel>
-          </SurfacePanelHeader>
-          <div className="p-4 border-b border-border bg-background">
-            <TechnicalLabel tone="primary" size="sm" as="p" className="truncate">{user?.name}</TechnicalLabel>
-            <TechnicalLabel as="p" className="mt-1">ACCESS_LEVEL: {accessLevel}</TechnicalLabel>
+        <SurfacePanel className="w-full lg:w-64 shrink-0 lg:sticky lg:top-24 z-10 rounded-panel shadow-surface overflow-hidden">
+          <div className="p-4 border-b border-border">
+            <p className="type-label text-text-secondary">{t("admin.console")}</p>
+            <p className="mt-2 font-heading text-sm font-semibold text-text-primary truncate">{user?.name}</p>
+            <p className="mt-0.5 type-body-small text-text-secondary">{t("admin.accessLevel")}: {accessLevel}</p>
           </div>
           <nav className="p-2 flex max-h-[55vh] flex-col gap-1 overflow-y-auto lg:max-h-[calc(100vh-15rem)]" aria-label={t("admin.navigation")}>
             {visibleRoutes.map(({ path, label, icon: Icon }) => {
               const active = location.pathname === path || (path !== "/admin" && location.pathname.startsWith(`${path}/`));
               return (
-                <Link key={path} to={path} aria-current={active ? "page" : undefined} className={`flex items-center gap-3 px-3 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors ${
+                <Link key={path} to={path} aria-current={active ? "page" : undefined} className={`flex items-center gap-3 rounded-control px-3 py-2 type-navigation transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+                    ? "bg-action-primary text-text-inverse"
+                    : "text-text-secondary hover:bg-surface-muted hover:text-text-primary"
                 }`}>
-                  <Icon className="h-4 w-4" strokeWidth={1.5} />
+                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                   {t(label)}
                 </Link>
               );
@@ -68,15 +64,9 @@ export function AdminLayout({ children, title, subtitle }) {
         </SurfacePanel>
 
         <div className="flex-1 w-full min-w-0 space-y-6">
-          <SurfacePanel>
-            <SurfacePanelHeader padding="sm" className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
-              <TechnicalLabel>MODULE_LOADED // {title || "OVERVIEW"}</TechnicalLabel>
-            </SurfacePanelHeader>
-            <div className="p-6">
-              <h1 className="font-heading text-2xl font-bold text-foreground uppercase tracking-tight">{title}</h1>
-              {subtitle && <TechnicalLabel as="p" size="sm" className="mt-1">{subtitle}</TechnicalLabel>}
-            </div>
+          <SurfacePanel className="rounded-panel shadow-surface p-6">
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-text-primary">{title}</h1>
+            {subtitle && <p className="mt-1 type-body-small text-text-secondary">{subtitle}</p>}
           </SurfacePanel>
           <div className="w-full">{children}</div>
         </div>

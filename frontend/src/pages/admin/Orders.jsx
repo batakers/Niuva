@@ -59,28 +59,28 @@ export default function AdminOrders() {
   };
 
   return (
-    <AdminLayout title={t("admin.orders")} subtitle="Order Management Log">
-      <div className="border border-border bg-surface-1">
-        <div className="flex items-center justify-between border-b border-border bg-surface-2 px-6 py-3">
-          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">ORDER_REGISTRY // TOTAL: {orders.length}</span>
-          <Button variant="outline" size="sm" onClick={exportCsv} className="h-8 rounded-none border-border font-mono text-[10px] uppercase tracking-widest">
+    <AdminLayout title={t("admin.orders")} subtitle={t("orders.subtitle")}>
+      <div className="rounded-panel border border-border-default bg-surface-default shadow-surface overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border-default bg-surface-muted px-6 py-4">
+          <p className="type-label text-text-secondary">{t("orders.total")}: <span className="font-heading font-semibold text-text-primary">{orders.length}</span></p>
+          <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="mr-2 h-3.5 w-3.5" />{t("common.exportCsv")}
           </Button>
         </div>
 
         {selectedIds.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2/60 px-6 py-3">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-foreground">{selectedIds.length} {t("orders.selectedCount")}</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-default bg-surface-page px-6 py-3">
+            <span className="type-body-small text-text-primary">{selectedIds.length} {t("orders.selectedCount")}</span>
             <div className="flex items-center gap-2">
-              <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)} aria-label={t("orders.bulkStatusLabel")} className="h-8 rounded-none border border-border bg-background px-2 font-mono text-[10px] uppercase tracking-widest">
-                <option value="in_process">in_process</option>
-                <option value="completed">completed</option>
-                <option value="cancelled">cancelled</option>
-                <option value="awaiting_payment">awaiting_payment</option>
-                <option value="pending_estimate">pending_estimate</option>
+              <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)} aria-label={t("orders.bulkStatusLabel")} className="h-9 rounded-control border border-border-default bg-surface-default px-3 type-body-small text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2">
+                <option value="in_process">{t("status.in_process")}</option>
+                <option value="completed">{t("status.completed")}</option>
+                <option value="cancelled">{t("status.cancelled")}</option>
+                <option value="awaiting_payment">{t("status.awaiting_payment")}</option>
+                <option value="pending_estimate">{t("status.pending_estimate")}</option>
               </select>
-              <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="h-8 font-mono text-[10px] uppercase tracking-widest">{t("common.cancel")}</Button>
-              <Button size="sm" disabled={bulkBusy} onClick={bulkUpdateStatus} className="h-8 rounded-none font-mono text-[10px] uppercase tracking-widest">
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>{t("common.cancel")}</Button>
+              <Button size="sm" disabled={bulkBusy} onClick={bulkUpdateStatus}>
                 <Layers className="mr-2 h-3.5 w-3.5" />{t("orders.applyBulkStatus")}
               </Button>
             </div>
@@ -88,46 +88,46 @@ export default function AdminOrders() {
         )}
 
         {loading ? (
-          <div className="p-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest" role="status">
-            [ FETCHING_DATA... ]
+          <div className="p-12 text-center" role="status">
+            <p className="type-body-small text-text-secondary">{t("common.loading")}</p>
           </div>
         ) : loadError ? (
-          <div className="p-12 text-center font-mono text-xs text-destructive uppercase tracking-widest" role="alert">
-            {loadError}
+          <div className="p-12 text-center" role="alert">
+            <p className="type-body text-status-error">{loadError}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse" data-testid="admin-orders-table">
               <thead>
-                <tr className="border-b border-border/50 bg-background/50 text-muted-foreground font-mono text-[10px] uppercase tracking-widest">
-                  <th className="w-10 px-6 py-4"><input type="checkbox" aria-label={t("orders.selectAll")} checked={orderIds.length > 0 && selectedIds.length === orderIds.length} onChange={toggleAll} /></th>
-                  <th className="font-normal px-6 py-4">Order_ID</th>
-                  <th className="font-normal px-6 py-4">Client_Entity</th>
-                  <th className="font-normal px-6 py-4">Config</th>
-                  <th className="font-normal px-6 py-4">Status</th>
-                  <th className="font-normal px-6 py-4">Date_Logged</th>
-                  <th className="font-normal px-6 py-4 text-right">Action</th>
+                <tr className="border-b border-border-default bg-surface-page">
+                  <th className="w-10 px-6 py-3"><input type="checkbox" aria-label={t("orders.selectAll")} checked={orderIds.length > 0 && selectedIds.length === orderIds.length} onChange={toggleAll} /></th>
+                  <th className="type-label text-text-secondary px-6 py-3">{t("orders.col.number")}</th>
+                  <th className="type-label text-text-secondary px-6 py-3">{t("orders.col.client")}</th>
+                  <th className="type-label text-text-secondary px-6 py-3">{t("orders.col.config")}</th>
+                  <th className="type-label text-text-secondary px-6 py-3">{t("common.status")}</th>
+                  <th className="type-label text-text-secondary px-6 py-3">{t("orders.col.date")}</th>
+                  <th className="type-label text-text-secondary px-6 py-3 text-right">{t("common.actions")}</th>
                 </tr>
               </thead>
-              <tbody className="font-mono text-xs text-foreground divide-y divide-border/50">
+              <tbody className="divide-y divide-border-default">
                 {orders.map((o) => (
-                  <tr key={o.id} className="hover:bg-surface-2/50 transition-colors group">
+                  <tr key={o.id} className="hover:bg-surface-muted transition-colors group">
                     <td className="px-6 py-4"><input type="checkbox" aria-label={`${t("orders.select")} ${o.order_number}`} checked={selectedIds.includes(o.id)} onChange={() => toggleOne(o.id)} /></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-primary">{o.order_number}</td>
-                    <td className="px-6 py-4 text-muted-foreground">{o.user_name}</td>
-                    <td className="px-6 py-4 text-muted-foreground">{o.material_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-action-primary">{o.order_number}</td>
+                    <td className="px-6 py-4 type-body-small text-text-primary">{o.user_name}</td>
+                    <td className="px-6 py-4 type-body-small text-text-secondary">{o.material_name}</td>
                     <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={o.status} /></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-muted-foreground">{fmtDay(o.created_at)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap font-mono text-xs text-text-secondary">{fmtDay(o.created_at)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <Button size="sm" variant="outline" data-testid={`manage-order-${o.order_number}`} onClick={() => setSel(o)} className="rounded-none border-border group-hover:border-primary text-foreground bg-transparent h-8 font-mono text-[10px] uppercase tracking-widest">
-                        <Eye className="h-3.5 w-3.5 mr-2" /> INSPECT
+                      <Button size="sm" variant="outline" data-testid={`manage-order-${o.order_number}`} onClick={() => setSel(o)}>
+                        <Eye className="h-3.5 w-3.5 mr-2" />{t("orders.inspect")}
                       </Button>
                     </td>
                   </tr>
                 ))}
                 {orders.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest">NO_ORDERS_FOUND</td>
+                    <td colSpan={7} className="px-6 py-12 text-center type-body-small text-text-secondary">{t("orders.empty")}</td>
                   </tr>
                 )}
               </tbody>
@@ -170,36 +170,34 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-surface-1 border-border text-foreground max-w-2xl max-h-[90vh] overflow-y-auto p-0 rounded-none">
-        
-        {/* Header */}
-        <div className="border-b border-border bg-surface-2 p-6 flex justify-between items-start">
+      <DialogContent className="rounded-panel border border-border-default bg-surface-default text-text-primary max-w-2xl max-h-[90vh] overflow-y-auto p-0 shadow-overlay">
+
+        <div className="border-b border-border-default bg-surface-muted p-6 flex justify-between items-start rounded-t-panel">
           <div>
             <DialogHeader className="p-0 space-y-0 text-left">
-              <DialogTitle className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
-                ORDER_MANIFEST
+              <DialogTitle className="type-label text-text-secondary mb-1">
+                {t("detail.headerLabel")}
               </DialogTitle>
-              <h2 className="font-heading text-2xl font-bold text-primary uppercase tracking-tight">{order.order_number}</h2>
+              <h2 className="font-heading text-2xl font-bold text-text-primary tracking-tight">{order.order_number}</h2>
             </DialogHeader>
           </div>
           <StatusBadge status={order.status} />
         </div>
 
-        <div className="p-6 space-y-8">
-          
-          {/* Client & File Spec */}
-          <div className="grid sm:grid-cols-2 gap-6">
-            <div className="border border-border p-4 bg-background">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2">CLIENT_DATA</p>
-              <p className="font-heading text-sm font-bold">{order.user_name}</p>
-              <p className="font-mono text-xs text-muted-foreground mt-1 truncate">{order.user_email}</p>
+        <div className="p-6 space-y-6">
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="rounded-card border border-border-default bg-surface-page p-4">
+              <p className="type-label text-text-secondary mb-2">{t("orders.clientData")}</p>
+              <p className="font-heading text-sm font-semibold text-text-primary">{order.user_name}</p>
+              <p className="type-body-small text-text-secondary mt-1 truncate">{order.user_email}</p>
             </div>
-            
-            <div className="border border-border p-4 bg-background flex flex-col justify-between">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2">PAYLOAD_FILE</p>
+
+            <div className="rounded-card border border-border-default bg-surface-page p-4 flex flex-col justify-between">
+              <p className="type-label text-text-secondary mb-2">{t("detail.designFile")}</p>
               <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-sm text-foreground truncate">{order.file?.original_filename}</span>
-                <Button type="button" onClick={() => downloadStoredFile(order.file?.storage_path, order.file?.original_filename)} data-testid="admin-download-design" aria-label={`${t("detail.download")}: ${order.file?.original_filename || ""}`} size="sm" variant="outline" className="rounded-none border-border hover:border-primary uppercase tracking-widest font-mono text-[10px] h-8 px-3">
+                <span className="font-mono text-sm text-text-primary truncate">{order.file?.original_filename}</span>
+                <Button type="button" onClick={() => downloadStoredFile(order.file?.storage_path, order.file?.original_filename)} data-testid="admin-download-design" aria-label={`${t("detail.download")}: ${order.file?.original_filename || ""}`} size="sm" variant="outline">
                   <Download className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -207,70 +205,65 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
           </div>
 
           {order.notes && (
-            <div className="border border-border p-4 bg-background">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2">{t("detail.notes")}</p>
-              <p className="font-mono text-sm text-foreground whitespace-pre-wrap">{order.notes}</p>
+            <div className="rounded-card border border-border-default bg-surface-page p-4">
+              <p className="type-label text-text-secondary mb-2">{t("detail.notes")}</p>
+              <p className="type-body text-text-primary whitespace-pre-wrap">{order.notes}</p>
             </div>
           )}
 
-          {/* Estimate Configuration */}
-          <div className="border border-border p-6 bg-surface-2">
-            <p className="font-mono text-[10px] text-primary uppercase tracking-widest mb-4 border-b border-border/50 pb-2">COMMERCIAL_EVALUATION</p>
+          <div className="rounded-card border border-border-default bg-surface-muted p-6">
+            <p className="type-label text-action-primary mb-4 pb-2 border-b border-border-default">{t("orders.estimateSection")}</p>
             <div className="grid sm:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">SET_AMOUNT (IDR)</Label>
-                <Input 
-                  data-testid="estimate-amount" 
-                  type="number" 
-                  value={amount} 
-                  onChange={(e) => setAmount(e.target.value)} 
-                  className="rounded-none bg-background border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 font-mono text-sm h-10" 
+              <div className="space-y-1.5">
+                <Label className="type-label text-text-secondary">{t("orders.estimateAmount")}</Label>
+                <Input
+                  data-testid="estimate-amount"
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">EVALUATION_NOTES</Label>
-                <Input 
-                  data-testid="estimate-note" 
-                  placeholder="Optional details..." 
-                  value={note} 
-                  onChange={(e) => setNote(e.target.value)} 
-                  className="rounded-none bg-background border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 font-mono text-sm h-10" 
+              <div className="space-y-1.5">
+                <Label className="type-label text-text-secondary">{t("orders.estimateNote")}</Label>
+                <Input
+                  data-testid="estimate-note"
+                  placeholder={t("orders.estimateNotePlaceholder")}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
                 />
               </div>
             </div>
-            <Button disabled={busy || !amount} data-testid="submit-estimate" onClick={() => act(() => api.post(`/admin/orders/${order.id}/estimate`, { amount: parseFloat(amount), note }))} className="w-full rounded-none h-10 font-mono text-xs uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90">
-              SUBMIT_EVALUATION
+            <Button disabled={busy || !amount} data-testid="submit-estimate" onClick={() => act(() => api.post(`/admin/orders/${order.id}/estimate`, { amount: parseFloat(amount), note }))} className="w-full">
+              {t("orders.submitEstimate")}
             </Button>
           </div>
 
-          {/* Payment proof */}
           {order.payment && (
-            <div className="border border-border p-6 bg-surface-2">
-              <p className="font-mono text-[10px] text-primary uppercase tracking-widest mb-4 border-b border-border/50 pb-2">TRANSACTION_VERIFICATION</p>
+            <div className="rounded-card border border-border-default bg-surface-muted p-6">
+              <p className="type-label text-action-primary mb-4 pb-2 border-b border-border-default">{t("orders.paymentSection")}</p>
               <AuthenticatedFilePreview
                 path={order.payment.proof?.storage_path}
                 filename={order.payment.proof?.original_filename || "payment-proof"}
               />
-              
+
               {order.payment.verified ? (
-                <div className="flex justify-center items-center gap-2 p-3 border border-status-success/30 bg-status-success/10 text-status-success font-mono text-xs uppercase tracking-widest">
-                  <CheckCircle2 className="h-4 w-4" /> TRANSACTION_VERIFIED
+                <div className="flex items-center justify-center gap-2 rounded-control border border-status-success/40 bg-status-success/10 p-3 type-body-small text-status-success">
+                  <CheckCircle2 className="h-4 w-4" /> {t("detail.verified")}
                 </div>
               ) : (
-                <Button disabled={busy} data-testid="verify-payment" onClick={() => act(() => api.post(`/admin/orders/${order.id}/verify-payment`))} className="w-full rounded-none h-10 font-mono text-xs uppercase tracking-widest bg-status-success hover:bg-status-success/90 text-white">
-                  VERIFY_FUNDS
+                <Button disabled={busy} data-testid="verify-payment" onClick={() => act(() => api.post(`/admin/orders/${order.id}/verify-payment`))} variant="success" className="w-full">
+                  {t("orders.verifyPayment")}
                 </Button>
               )}
             </div>
           )}
 
-          {/* Status actions */}
-          <div className="grid grid-cols-2 gap-4">
-            <Button disabled={busy} variant="outline" data-testid="mark-process" onClick={() => act(() => api.post(`/admin/orders/${order.id}/status`, { status: "in_process", note: "Set to in process" }))} className="rounded-none border-border bg-background hover:bg-surface-2 text-foreground font-mono text-xs uppercase tracking-widest h-12">
-              MARK_IN_PROGRESS
+          <div className="grid grid-cols-2 gap-3">
+            <Button disabled={busy} variant="outline" size="lg" data-testid="mark-process" onClick={() => act(() => api.post(`/admin/orders/${order.id}/status`, { status: "in_process", note: "Set to in process" }))}>
+              {t("orders.markInProcess")}
             </Button>
-            <Button disabled={busy} data-testid="mark-complete" onClick={() => act(() => api.post(`/admin/orders/${order.id}/status`, { status: "completed", note: "Order completed" }))} className="rounded-none bg-status-success hover:bg-status-success/90 text-white font-mono text-xs uppercase tracking-widest h-12">
-              MARK_COMPLETED
+            <Button disabled={busy} variant="success" size="lg" data-testid="mark-complete" onClick={() => act(() => api.post(`/admin/orders/${order.id}/status`, { status: "completed", note: "Order completed" }))}>
+              {t("orders.markCompleted")}
             </Button>
           </div>
         </div>

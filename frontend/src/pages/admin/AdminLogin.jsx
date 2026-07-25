@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { TerminalSquare } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { useAuth } from "../../context/AuthContext";
 import { api, formatApiError } from "../../lib/api";
@@ -8,8 +7,10 @@ import { hasPermission } from "../../lib/permissions";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { useI18n } from "../../i18n";
 
 export default function AdminLogin() {
+  const { t } = useI18n();
   const { user, loading: authLoading, login } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -62,26 +63,23 @@ export default function AdminLogin() {
 
   return (
     <AuthShell>
-      <div className="relative overflow-hidden border border-border bg-surface-1">
-        <div className="absolute left-0 right-0 top-0 flex h-8 items-center gap-2 border-b border-border bg-surface-2 px-4">
-          <TerminalSquare className="h-4 w-4 text-muted-foreground" />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            ADMIN_AUTHENTICATION
-          </span>
+      <div className="rounded-panel border border-border-default bg-surface-default shadow-surface overflow-hidden">
+        <div className="bg-surface-muted border-b border-border-default px-6 py-4">
+          <p className="type-label text-text-secondary">{t("admin.console")}</p>
         </div>
 
-        <div className="p-8 pt-16">
-          <h1 className="mb-2 font-heading text-2xl font-bold uppercase tracking-tight text-foreground">
-            Admin Login
+        <div className="p-8">
+          <h1 className="mb-2 font-heading text-2xl font-bold tracking-tight text-text-primary">
+            {t("auth.adminLogin")}
           </h1>
-          <p className="mb-8 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Internal Niuva Administration
+          <p className="mb-8 type-body-small text-text-secondary">
+            {t("auth.adminLoginSubtitle")}
           </p>
 
-          <form onSubmit={submit} className="space-y-6" data-testid="admin-login-form">
-            <div className="space-y-2">
-              <Label htmlFor="admin-login-email" className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                CREDENTIAL_ID (EMAIL)
+          <form onSubmit={submit} className="space-y-5" data-testid="admin-login-form">
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-login-email" className="type-label text-text-secondary">
+                {t("common.email")}
               </Label>
               <Input
                 id="admin-login-email"
@@ -91,13 +89,12 @@ export default function AdminLogin() {
                 onChange={(event) => setEmail(event.target.value)}
                 required
                 autoComplete="username"
-                className="h-12 rounded-none border-border bg-background font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="admin-login-password" className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                AUTHORIZATION_KEY
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-login-password" className="type-label text-text-secondary">
+                {t("common.password")}
               </Label>
               <Input
                 id="admin-login-password"
@@ -107,16 +104,12 @@ export default function AdminLogin() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 autoComplete="current-password"
-                className="h-12 rounded-none border-border bg-background font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
               />
             </div>
 
             {error && (
-              <div className="flex items-start gap-2 border border-destructive/50 bg-destructive/10 p-3">
-                <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-widest text-destructive">
-                  ERR:
-                </span>
-                <p className="text-sm text-destructive" data-testid="admin-login-error">
+              <div className="rounded-control border border-status-error/40 bg-status-error/10 p-3">
+                <p className="type-body-small text-status-error" data-testid="admin-login-error">
                   {error}
                 </p>
               </div>
@@ -126,16 +119,17 @@ export default function AdminLogin() {
               type="submit"
               disabled={submitting || authLoading}
               data-testid="admin-login-submit"
-              className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+              className="w-full"
+              size="lg"
             >
-              {submitting ? "VERIFYING..." : "ACCESS_ADMIN_SYSTEM"}
+              {submitting ? t("auth.verifying") : t("auth.loginAction")}
             </Button>
 
             <Link
               to="/forgot-password"
-              className="block text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+              className="block text-center type-body-small text-text-secondary transition-colors hover:text-text-primary"
             >
-              Lupa password?
+              {t("auth.forgotPassword")}
             </Link>
           </form>
         </div>

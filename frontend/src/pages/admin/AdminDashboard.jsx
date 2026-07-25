@@ -29,17 +29,17 @@ function TrendChart({ title, rows, valueLabel, formatValue }) {
   const { t } = useI18n();
   const data = rows.map((row) => ({ date: row.date, value: valueLabel === "revenue" ? row.amount : totalForRow(row) }));
   return (
-    <div className="border border-border bg-surface-1 p-6">
-      <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-4 border-b border-border/50 pb-2">{title}</p>
+    <div className="rounded-card border border-border-default bg-surface-default shadow-surface p-6">
+      <p className="type-label text-text-secondary mb-4">{title}</p>
       {data.length === 0 ? (
-        <p className="text-sm text-muted-foreground" role="status">{t("dashboard.noDataInRange")}</p>
+        <p className="type-body-small text-text-secondary" role="status">{t("dashboard.noDataInRange")}</p>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} />
-            <Tooltip formatter={formatValue} />
-            <Line type="monotone" dataKey="value" stroke="var(--color-action-primary, #2563eb)" strokeWidth={2} dot={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 11, fill: "var(--color-text-secondary)", fontFamily: "var(--font-family-mono)" }} stroke="var(--color-border-default)" />
+            <YAxis tick={{ fontSize: 11, fill: "var(--color-text-secondary)", fontFamily: "var(--font-family-mono)" }} stroke="var(--color-border-default)" />
+            <Tooltip formatter={formatValue} contentStyle={{ borderRadius: "0.75rem", border: "1px solid var(--color-border-default)", boxShadow: "var(--shadow-navigation)", fontFamily: "var(--font-family-body)" }} />
+            <Line type="monotone" dataKey="value" stroke="var(--color-action-primary)" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       )}
@@ -80,8 +80,8 @@ export default function AdminDashboard() {
   if (loadError) {
     return (
       <AdminLayout title={t("admin.overview")} subtitle={t("admin.overviewSubtitle")}>
-        <div className="border border-border bg-surface-1 p-12 text-center">
-          <p className="font-mono text-xs text-destructive uppercase tracking-widest" role="alert">{loadError}</p>
+        <div className="rounded-card border border-border-default bg-surface-default shadow-surface p-12 text-center">
+          <p className="type-body text-status-error" role="alert">{loadError}</p>
         </div>
       </AdminLayout>
     );
@@ -90,52 +90,46 @@ export default function AdminDashboard() {
   if (!stats) {
     return (
       <AdminLayout title={t("admin.overview")} subtitle={t("admin.overviewSubtitle")}>
-        <div className="border border-border bg-surface-1 p-12 text-center">
-          <p className="text-sm text-muted-foreground" role="status">{t("common.loading")}</p>
+        <div className="rounded-card border border-border-default bg-surface-default shadow-surface p-12 text-center">
+          <p className="type-body-small text-text-secondary" role="status">{t("common.loading")}</p>
         </div>
       </AdminLayout>
     );
   }
 
   const items = [
-    ["total_orders", t("admin.totalOrders"), "text-primary"],
-    ["pending_estimate", t("status.pending_estimate"), "text-warm"],
-    ["awaiting_payment", t("status.awaiting_payment"), "text-primary"],
-    ["in_process", t("status.in_process"), "text-primary"],
+    ["total_orders", t("admin.totalOrders"), "text-action-primary"],
+    ["pending_estimate", t("status.pending_estimate"), "text-status-warning"],
+    ["awaiting_payment", t("status.awaiting_payment"), "text-action-primary"],
+    ["in_process", t("status.in_process"), "text-action-primary"],
     ["completed", t("status.completed"), "text-status-success"],
-    ["clients", t("admin.users"), "text-foreground"],
-    ["internships", t("admin.internships"), "text-foreground"],
+    ["clients", t("admin.users"), "text-text-primary"],
+    ["internships", t("admin.internships"), "text-text-primary"],
   ];
 
   return (
     <AdminLayout title={t("admin.overview")} subtitle={t("admin.overviewSubtitle")}>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="admin-overview">
         {items.map(([k, label, color]) => (
-          <div key={k} className="border border-border bg-surface-1 p-6 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-primary/5 to-transparent pointer-events-none" />
-            
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2 border-b border-border/50 pb-2">{label}</p>
+          <div key={k} className="rounded-card border border-border-default bg-surface-default shadow-surface p-6">
+            <p className="type-label text-text-secondary mb-3">{label}</p>
             <p className={`font-heading text-4xl font-bold tracking-tight ${color}`}>{stats[k]}</p>
-            
-            <div className="mt-4 flex items-center justify-end opacity-50 group-hover:opacity-100 transition-opacity">
-              <div className={`w-1.5 h-1.5 rounded-full ${color === "text-foreground" ? "bg-muted-foreground" : "bg-current"} ${color}`} />
-            </div>
           </div>
         ))}
       </div>
 
       <div className="mt-8 flex flex-wrap items-end gap-3">
-        <label className="space-y-1">
-          <span className="block font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{t("dashboard.dateFrom")}</span>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-border bg-background px-3" />
+        <label className="space-y-1.5">
+          <span className="block type-label text-text-secondary">{t("dashboard.dateFrom")}</span>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-11 rounded-control border border-border-default bg-surface-default px-3 type-body-small text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2" />
         </label>
-        <label className="space-y-1">
-          <span className="block font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{t("dashboard.dateTo")}</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-border bg-background px-3" />
+        <label className="space-y-1.5">
+          <span className="block type-label text-text-secondary">{t("dashboard.dateTo")}</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-11 rounded-control border border-border-default bg-surface-default px-3 type-body-small text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2" />
         </label>
       </div>
 
-      {seriesError && <p className="mt-4 text-sm text-destructive" role="alert">{seriesError}</p>}
+      {seriesError && <p className="mt-4 type-body-small text-status-error" role="alert">{seriesError}</p>}
 
       {series && (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
