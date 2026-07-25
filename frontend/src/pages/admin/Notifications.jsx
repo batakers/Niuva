@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel } from "@/components/ui/surface-panel";
 import {
   Table,
@@ -262,10 +263,24 @@ export default function AdminNotifications() {
 
           <div className="flex-1 min-h-0">
             {loading ? (
-              <div className="p-8 text-center">
-                <p className="type-body-small text-text-secondary">
-                  {t("common.loading")}
-                </p>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("common.date")}</TableHead>
+                      <TableHead>{t("notifications.target")}</TableHead>
+                      <TableHead>{t("notifications.subject")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("notifications.recipients")}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[1, 2, 3, 4].map((i) => (
+                      <SkeletonTableRow key={i} columns={4} />
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             ) : sent.length === 0 ? (
               <div className="p-8 text-center">

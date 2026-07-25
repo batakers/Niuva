@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { FolderOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { SurfacePanel } from "@/components/ui/surface-panel";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,13 +82,13 @@ export default function AdminPortfolio() {
 
       {/* Content */}
       {loading ? (
-        <SurfacePanel className="p-12 text-center">
-          <p className="type-body-small text-text-secondary">
-            {t("common.loading")}
-          </p>
-        </SurfacePanel>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       ) : items.length === 0 ? (
-        <EmptyState frame="dashed">{t("portfolio.empty")}</EmptyState>
+        <EmptyState icon={FolderOpen} frame="dashed">{t("portfolio.empty")}</EmptyState>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {items.map((p) => (

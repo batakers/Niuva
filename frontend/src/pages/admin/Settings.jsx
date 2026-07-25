@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, Save } from "lucide-react";
+import { AlertCircle, AlertTriangle, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
@@ -45,7 +46,7 @@ export default function AdminSettings() {
         title={t("admin.settings")}
         subtitle={t("settings.subtitle")}
       >
-        <EmptyState>
+        <EmptyState icon={AlertCircle} className="py-16">
           <span role="alert" className="text-status-error">{loadError}</span>
         </EmptyState>
       </AdminLayout>
@@ -58,7 +59,14 @@ export default function AdminSettings() {
         title={t("admin.settings")}
         subtitle={t("settings.subtitle")}
       >
-        <EmptyState>{t("common.loading")}</EmptyState>
+        <div className="space-y-6 p-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton variant="text" className="w-32" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
       </AdminLayout>
     );
   }

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Archive, Edit3, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { AlertCircle, Archive, Edit3, FileText, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "../../components/ui/button";
@@ -8,6 +8,7 @@ import { EmptyState } from "../../components/ui/empty-state";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { SkeletonTableRow } from "../../components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { TechnicalLabel } from "../../components/ui/technical-label";
@@ -98,9 +99,20 @@ export default function ContentEditor() {
       </SurfacePanel>
 
       <SurfacePanel className="mt-4">
-        {loading ? <EmptyState>{t("common.loading")}</EmptyState>
-          : error ? <EmptyState><span role="alert">{error}</span></EmptyState>
-            : items.length === 0 ? <EmptyState>{t("content.empty")}</EmptyState>
+        {loading ? (
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead>Slug</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead>{t("content.version")}</TableHead>
+              <TableHead>{t("common.updated")}</TableHead>
+              <TableHead className="text-right">{t("common.actions")}</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>{[1, 2, 3, 4].map((i) => (<SkeletonTableRow key={i} columns={5} />))}</TableBody>
+          </Table>
+        )
+          : error ? <EmptyState icon={AlertCircle} className="py-16"><span role="alert" className="text-status-error">{error}</span></EmptyState>
+            : items.length === 0 ? <EmptyState icon={FileText} className="py-16">{t("content.empty")}</EmptyState>
               : (
                 <Table>
                   <TableHeader><TableRow>

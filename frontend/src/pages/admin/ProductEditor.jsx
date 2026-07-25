@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/empty-state";
 import { Input } from "../../components/ui/input";
+import { Skeleton } from "../../components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
 import { Switch } from "../../components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -202,8 +203,8 @@ export default function ProductEditor() {
     }
   };
 
-  if (loading) return <AdminLayout title={t("catalog.editor")}><EmptyState>{t("common.loading")}</EmptyState></AdminLayout>;
-  if (error) return <AdminLayout title={t("catalog.editor")}><EmptyState><span role="alert">{error}</span></EmptyState></AdminLayout>;
+  if (loading) return <AdminLayout title={t("catalog.editor")}><div className="space-y-6 p-6"><Skeleton variant="heading" className="w-64" /><Skeleton className="h-10 w-full" /><Skeleton className="h-32 w-full" /></div></AdminLayout>;
+  if (error) return <AdminLayout title={t("catalog.editor")}><EmptyState icon={AlertCircle} className="py-16"><span role="alert" className="text-status-error">{error}</span></EmptyState></AdminLayout>;
 
   return (
     <AdminLayout title={isNew ? t("catalog.create") : draft.name || t("catalog.editor")} subtitle={canWrite ? t("catalog.editHint") : t("catalog.readOnly")}>
