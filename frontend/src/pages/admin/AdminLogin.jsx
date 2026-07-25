@@ -4,6 +4,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { useAuth } from "../../context/AuthContext";
 import { api, formatApiError } from "../../lib/api";
 import { hasPermission } from "../../lib/permissions";
+import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -108,11 +109,9 @@ export default function AdminLogin() {
             </div>
 
             {error && (
-              <div className="rounded-control border border-status-error/40 bg-status-error/10 p-3">
-                <p className="type-body-small text-status-error" data-testid="admin-login-error">
-                  {error}
-                </p>
-              </div>
+              <Alert className="type-body-small" data-testid="admin-login-error">
+                {error}
+              </Alert>
             )}
 
             <Button

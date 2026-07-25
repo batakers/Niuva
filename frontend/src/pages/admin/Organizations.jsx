@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Archive, Building2, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
+import { Alert } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -355,14 +356,7 @@ export default function AdminOrganizations() {
                 />
               </div>
 
-              {formError && (
-                <p
-                  role="alert"
-                  className="rounded-control border border-status-error/40 bg-status-error/10 p-3 text-sm text-status-error"
-                >
-                  {formError}
-                </p>
-              )}
+              {formError && <Alert>{formError}</Alert>}
             </div>
 
             <DialogFooter>
@@ -447,14 +441,7 @@ export default function AdminOrganizations() {
             </SurfacePanel>
           )}
 
-          {membershipError && (
-            <p
-              role="alert"
-              className="rounded-control border border-status-error/40 bg-status-error/10 p-3 text-sm text-status-error"
-            >
-              {membershipError}
-            </p>
-          )}
+          {membershipError && <Alert>{membershipError}</Alert>}
 
           {/* Members Table */}
           <SurfacePanel className="overflow-hidden">

@@ -3,6 +3,7 @@ import { AlertCircle, ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
+import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/empty-state";
 import { Input } from "../../components/ui/input";
@@ -273,7 +274,7 @@ export default function ProductEditor() {
         </Section></TabsContent>
 
         <TabsContent value="publish"><Section title={t("catalog.publication")}>
-          {Object.keys(validation).length > 0 && <div className="border border-destructive/50 bg-destructive/5 p-4" role="alert"><TechnicalLabel tone="danger">{t("catalog.validationFailed")}</TechnicalLabel>{Object.entries(validation).map(([field, messages]) => <div key={field} className="mt-2 text-sm"><strong>{field}</strong><ul className="list-disc pl-5">{messages.map((message) => <li key={message}>{message}</li>)}</ul></div>)}</div>}
+          {Object.keys(validation).length > 0 && <Alert><TechnicalLabel tone="destructive">{t("catalog.validationFailed")}</TechnicalLabel>{Object.entries(validation).map(([field, messages]) => <div key={field} className="mt-2 text-sm"><strong>{field}</strong><ul className="list-disc pl-5">{messages.map((message) => <li key={message}>{message}</li>)}</ul></div>)}</Alert>}
           {!isNew && <Button variant="outline" onClick={validate}>{t("catalog.validate")}</Button>}
           <Field label={t("common.reason")}><Textarea value={reason} onChange={(event) => setReason(event.target.value)} minLength={3} maxLength={500} rows={3} /></Field>
           <div className="flex flex-wrap gap-2">

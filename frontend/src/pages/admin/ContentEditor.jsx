@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Archive, Edit3, FileText, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { EmptyState } from "../../components/ui/empty-state";
@@ -364,9 +365,9 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
           <ContentFieldsForm contentType={block.content_type} fields={fields} onChange={setFields} disabled={isArchived} />
 
           {validationErrors.length > 0 && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <Alert>
               {validationErrors.map((err) => <p key={err.field}>{err.field}: {err.message}</p>)}
-            </div>
+            </Alert>
           )}
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={saveDraft} disabled={busy || isArchived}>{t("common.save")}</Button>

@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -256,13 +257,7 @@ export default function AdminDashboard() {
         </div>
       </SurfacePanel>
 
-      {seriesError && (
-        <SurfacePanel className="mt-4 p-4 border-status-error/30 bg-status-error/5">
-          <p className="type-body-small text-status-error" role="alert">
-            {seriesError}
-          </p>
-        </SurfacePanel>
-      )}
+      {seriesError && <Alert className="mt-4">{seriesError}</Alert>}
 
       {/* Trend Charts */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">

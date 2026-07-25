@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Pencil, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -56,7 +57,7 @@ function AccountStatusBadge({ status }) {
       className={`inline-flex rounded-control border px-2 py-1 type-body-small ${
         active
           ? "border-status-success/40 bg-status-success/10 text-status-success"
-          : "border-destructive/40 bg-destructive/10 text-destructive"
+          : "border-status-error/40 bg-status-error/10 text-status-error"
       }`}
     >
       {accountStatusLabel(status)}
@@ -411,14 +412,7 @@ export default function AdminUsers() {
               </Select>
             </div>
 
-            {mutationError && (
-              <p
-                className="rounded-control border border-status-error/40 bg-status-error/10 p-3 text-sm text-status-error"
-                role="alert"
-              >
-                {mutationError}
-              </p>
-            )}
+            {mutationError && <Alert>{mutationError}</Alert>}
           </div>
 
           <DialogFooter>
@@ -531,14 +525,7 @@ function CreateUserDialog({ open, onOpenChange, onCreated }) {
             </div>
           </div>
 
-          {error && (
-            <p
-              className="rounded-control border border-status-error/40 bg-status-error/10 p-3 text-sm text-status-error"
-              role="alert"
-            >
-              {error}
-            </p>
-          )}
+          {error && <Alert>{error}</Alert>}
         </div>
 
         <DialogFooter>
