@@ -243,8 +243,10 @@ dependencies are closed.
 
 ### Phase A — Login issuance boundary
 
-Decision dependency: approved `DEC-AUTH-001`; applicable parts of
-`AUTH-DEC-06` remain required only for the bounded-input sub-slice.
+Decision dependency: approved `DEC-AUTH-001`.
+
+Bounded-input enforcement is not part of Phase A. It remains assigned to
+Phase D and blocked until the applicable `AUTH-DEC-06` values are approved.
 
 Detailed bounded plan:
 
@@ -254,21 +256,19 @@ Planned behavior:
 
 1. Preserve the supported legacy `role: client` compatibility shape while
    keeping legacy internal/admin markers fail closed.
-2. Validate bounded login input before password verification after the
-   applicable `AUTH-DEC-06` values are approved.
-3. Use a reviewed fixed valid dummy hash or an equivalent constant-work
+2. Use a reviewed fixed valid dummy hash or an equivalent constant-work
    password-verification path so unknown email does not skip the expensive
    verification class performed for a known account.
-4. Verify credentials without differentiating unknown email from bad password
+3. Verify credentials without differentiating unknown email from bad password
    through status, body, token issuance, verifier invocation, or limiter
    behavior.
-5. Check explicit disabled/review-blocked state and current fail-closed
+4. Check explicit disabled/review-blocked state and current fail-closed
    eligibility before calling `auth_response`, without treating missing newer
    fields on a supported legacy customer as disabled.
-6. Ensure blocked accounts receive no token and no token-bearing cookie.
-7. Preserve admin permission enforcement after successful account
+5. Ensure blocked accounts receive no token and no token-bearing cookie.
+6. Preserve admin permission enforcement after successful account
    authentication.
-8. Keep response and logs free of credential/token material.
+7. Keep response and logs free of credential/token material.
 
 Target files:
 
@@ -331,14 +331,14 @@ Conditional target files:
 - add migration/runbook files only if persistent session/version state is
   approved.
 
-### Phase D — Password verification and migration
+### Phase D — Password input, verification, and migration
 
 Decision dependency: `AUTH-DEC-06` and `AUTH-DEC-07` if rehash creates a
 persistent security event.
 
 Planned behavior:
 
-1. Enforce the approved input boundary before hashing/verifying.
+1. Enforce the approved bounded-input contract before hashing/verifying.
 2. Preserve existing hashes during the compatibility window.
 3. Rehash only after successful verification and only under the approved
    algorithm/cost policy.
@@ -483,13 +483,13 @@ After approval, keep changes reviewable:
 
 1. legacy-compatibility, blocked-login, and equivalent-work tests;
 2. login issuance fix governed by `DEC-AUTH-001`;
-3. bounded-input tests and enforcement after `AUTH-DEC-06`;
-4. limiter contract and tests;
-5. selected limiter implementation/configuration;
-6. token/session/signing-key contract and compatibility tests;
-7. password creation/verification/migration behavior, if approved;
-8. authentication-event governance implementation, if approved;
-9. runbook/evidence update.
+3. limiter contract and tests;
+4. selected limiter implementation/configuration;
+5. token/session/signing-key contract and compatibility tests;
+6. bounded-input and password creation/verification/migration behavior after
+   `AUTH-DEC-06`, if approved;
+7. authentication-event governance implementation, if approved;
+8. runbook/evidence update.
 
 Do not combine canonical role migration, frontend Auth redesign, Retail guest
 sessions, dependency modernization, or production activation with these
@@ -502,8 +502,9 @@ This plan is ready for implementation review only when:
 - `DEC-AUTH-001` is applied exactly for Phase A, and every other decision
   applicable to the intended phase or slice has a recorded answer;
 - Phase A may proceed under `DEC-AUTH-002` without selecting limiter topology;
-- `AUTH-DEC-06` values are required only when the bounded-input or
-  password-policy sub-slice is included;
+- Phase A excludes bounded-input and password-policy changes;
+- Phase D requires the applicable `AUTH-DEC-06` values before bounded-input or
+  password-policy implementation review;
 - exact files and tests applicable to the intended slice are approved;
 - topology-specific tests are required only when a limiter implementation is
   included;
