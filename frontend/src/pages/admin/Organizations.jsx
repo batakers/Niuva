@@ -263,9 +263,9 @@ export default function AdminOrganizations() {
                   </div>
 
                   <div>
-                    <h2 className="font-heading text-lg font-bold text-text-primary">
+                    <h3 className="font-heading text-lg font-bold text-text-primary">
                       {organization.name}
-                    </h2>
+                    </h3>
                     <p className="mt-1 text-sm text-text-secondary">
                       {organization.legal_name}
                     </p>

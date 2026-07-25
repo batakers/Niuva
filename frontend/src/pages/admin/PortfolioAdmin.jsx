@@ -136,9 +136,9 @@ export default function AdminPortfolio() {
               {/* Content */}
               <div className="p-4 flex flex-col flex-1">
                 <div className="mb-4">
-                  <p className="font-heading font-bold text-text-primary text-base tracking-tight">
+                  <h3 className="font-heading text-lg font-bold text-text-primary tracking-tight">
                     {lang === "id" ? p.title_id : p.title_en}
-                  </p>
+                  </h3>
                   <p className="type-body-small text-text-secondary mt-1">
                     {p.category} / {p.client}
                   </p>
@@ -267,12 +267,12 @@ function PortfolioDialog({ item, onClose, onSaved }) {
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
         {/* Header */}
-        <div className="border-b border-border-default bg-surface-muted p-5">
+        <div className="border-b border-border-default bg-surface-muted p-6">
           <DialogHeader className="p-0 space-y-0 text-left">
             <DialogTitle className="type-label text-text-secondary mb-1">
               {t("admin.portfolio")}
             </DialogTitle>
-            <h2 className="font-heading text-xl font-bold text-text-primary tracking-tight">
+            <h2 className="font-heading text-2xl font-bold text-text-primary tracking-tight">
               {item.id ? t("portfolio.editProject") : t("portfolio.addProject")}
             </h2>
           </DialogHeader>
