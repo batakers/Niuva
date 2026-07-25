@@ -232,7 +232,7 @@ function ItemListField({ field, value, onChange, disabled }) {
       <Label>{field.label}<span className="text-destructive"> *</span></Label>
       <div className="space-y-3">
         {items.map((item, index) => (
-          <div key={index} className="rounded-md border border-border-default p-3">
+          <div key={index} className="rounded-control border border-border-default p-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="type-label text-text-secondary">Item {index + 1}</span>
               {!disabled && <Button variant="ghost" size="icon" onClick={() => remove(index)} aria-label="Hapus item"><Trash2 className="h-4 w-4" /></Button>}
