@@ -1,16 +1,17 @@
 import * as React from "react";
 import { cva } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const emptyStateVariants = cva(
-  "p-12 text-center font-mono text-xs text-text-secondary uppercase tracking-widest",
+  "p-12 text-center",
   {
     variants: {
       frame: {
         none: "",
-        solid: "border border-border-default bg-surface-default",
-        dashed: "border border-dashed border-border-default bg-surface-default/50",
+        solid: "border border-border-default bg-surface-default rounded-panel",
+        dashed: "border border-dashed border-border-default bg-surface-default/50 rounded-panel",
       },
     },
     defaultVariants: {
@@ -20,13 +21,33 @@ const emptyStateVariants = cva(
 );
 
 const EmptyState = React.forwardRef(
-  ({ className, frame, as: Comp = "div", ...props }, ref) => {
+  ({ className, frame, icon: Icon, loading, children, as: Comp = "div", ...props }, ref) => {
     return (
       <Comp
         ref={ref}
         className={cn(emptyStateVariants({ frame }), className)}
         {...props}
-      />
+      >
+        {loading ? (
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-6 w-6 text-text-secondary animate-spin" />
+            <span className="font-mono text-xs text-text-secondary uppercase tracking-widest">
+              {children}
+            </span>
+          </div>
+        ) : Icon ? (
+          <div className="flex flex-col items-center gap-3">
+            <Icon className="h-8 w-8 text-text-disabled" strokeWidth={1.5} />
+            <span className="font-mono text-xs text-text-secondary uppercase tracking-widest">
+              {children}
+            </span>
+          </div>
+        ) : (
+          <span className="font-mono text-xs text-text-secondary uppercase tracking-widest">
+            {children}
+          </span>
+        )}
+      </Comp>
     );
   }
 );
