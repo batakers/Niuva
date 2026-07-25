@@ -89,14 +89,14 @@ export function UserSelector({
   }, [open]);
 
   const handleSelect = (user) => {
-    onChange(user.id);
+    onChange(user.id, user);
     setSearch("");
     setOpen(false);
   };
 
   const handleClear = (e) => {
     e.stopPropagation();
-    onChange("");
+    onChange("", null);
     setSearch("");
   };
 

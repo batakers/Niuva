@@ -91,8 +91,9 @@ export default function AdminNotifications() {
   }, [form.target, t]);
 
   // Handle user selection
-  const handleUserSelect = (userId) => {
+  const handleUserSelect = (userId, user) => {
     updateField("user_id")(userId);
+    setSelectedUserName(user?.name || "");
   };
 
   // Open confirmation dialog

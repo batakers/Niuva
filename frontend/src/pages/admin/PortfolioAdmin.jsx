@@ -2,6 +2,16 @@ import React, { useEffect, useState } from "react";
 import { FolderOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +34,8 @@ export default function AdminPortfolio() {
   const { t, lang } = useI18n();
   const [items, setItems] = useState([]);
   const [editing, setEditing] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
@@ -39,13 +51,18 @@ export default function AdminPortfolio() {
     load();
   }, []);
 
-  const remove = async (id) => {
+  const confirmRemove = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await api.delete(`/admin/portfolio/${id}`);
+      await api.delete(`/admin/portfolio/${deleteTarget.id}`);
       toast.success(t("portfolio.deleted"));
+      setDeleteTarget(null);
       load();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -131,7 +148,7 @@ export default function AdminPortfolio() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => remove(p.id)}
+                    onClick={() => setDeleteTarget(p)}
                     aria-label={`${t("common.delete")}: ${lang === "id" ? p.title_id : p.title_en}`}
                     className="shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground w-9 p-0"
                   >
@@ -155,6 +172,38 @@ export default function AdminPortfolio() {
           }}
         />
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("portfolio.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("portfolio.deleteConfirmDesc")}
+              {deleteTarget && (
+                <span className="mt-2 block font-semibold text-text-primary">
+                  {lang === "id" ? deleteTarget.title_id : deleteTarget.title_en}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemove}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? t("common.deleting") : t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
@@ -167,7 +216,8 @@ function PortfolioDialog({ item, onClose, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState({
     ...item,
-    image: item.images?.[0] || "",
+    // One URL per line; preserves every image instead of dropping images[1..].
+    imagesText: (item.images || []).join("\n"),
   });
   const [busy, setBusy] = useState(false);
 
@@ -176,6 +226,10 @@ function PortfolioDialog({ item, onClose, onSaved }) {
 
   const save = async () => {
     setBusy(true);
+    const images = form.imagesText
+      .split("\n")
+      .map((url) => url.trim())
+      .filter(Boolean);
     const payload = {
       title_id: form.title_id,
       title_en: form.title_en,
@@ -183,7 +237,7 @@ function PortfolioDialog({ item, onClose, onSaved }) {
       category: form.category,
       description_id: form.description_id,
       description_en: form.description_en,
-      images: form.image ? [form.image] : [],
+      images,
       featured: form.featured,
     };
     try {
@@ -260,12 +314,18 @@ function PortfolioDialog({ item, onClose, onSaved }) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t("portfolio.imageUrl")}</Label>
-            <Input
+            <Label>{t("portfolio.imageUrls")}</Label>
+            <Textarea
               data-testid="portfolio-image"
-              value={form.image}
-              onChange={updateField("image")}
+              value={form.imagesText}
+              onChange={updateField("imagesText")}
+              rows={4}
+              placeholder={t("portfolio.imageUrlsHint")}
+              className="font-mono text-xs"
             />
+            <p className="type-body-small text-text-secondary">
+              {t("portfolio.imageUrlsHint")}
+            </p>
           </div>
 
           <div className="flex items-center gap-3 pt-2">
