@@ -4,13 +4,13 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const emptyStateVariants = cva(
-  "p-12 text-center font-mono text-xs text-muted-foreground uppercase tracking-widest",
+  "p-12 text-center font-mono text-xs text-text-secondary uppercase tracking-widest",
   {
     variants: {
       frame: {
         none: "",
-        solid: "border border-border bg-surface-1",
-        dashed: "border border-dashed border-border bg-surface-1/50",
+        solid: "border border-border-default bg-surface-default",
+        dashed: "border border-dashed border-border-default bg-surface-default/50",
       },
     },
     defaultVariants: {
