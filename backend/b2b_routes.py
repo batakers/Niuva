@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from b2b_domain import B2BDomainError
+from b2b_domain import B2BDomainError, project_customer_inquiry
 from b2b_service import B2BService
 
 logger = logging.getLogger(__name__)
@@ -128,7 +128,9 @@ def build_b2b_router(
                     "Inquiry stored, but lead notification failed (inquiry_id=%s)",
                     inquiry["id"],
                 )
-        return inquiry
+        # This caller is anonymous. It receives its own submission back, never
+        # the triage state, version, or audit history the admin projection adds.
+        return project_customer_inquiry(inquiry)
 
     @router.get("/admin/inquiries")
     async def list_inquiries(

@@ -51,6 +51,115 @@ PROJECT_TRANSITIONS = {
 }
 
 
+# --------------------------- Customer projections ---------------------------
+#
+# Everything a customer may see is named here. These are allowlists, never
+# blacklists: a field added to an aggregate later is withheld until someone
+# adds it deliberately. That is the safe direction to fail, and it is what
+# keeps cost, margin, supplier, profit, internal notes, raw payment payloads,
+# and internal audit data out of a customer response by construction rather
+# than by remembering to exclude each one.
+
+CUSTOMER_INQUIRY_FIELDS = (
+    "id",
+    "company",
+    "pic_name",
+    "pic_email",
+    "pic_phone",
+    "need",
+    "timeline",
+    "brief",
+    "status",
+    "created_at",
+    "updated_at",
+)
+
+CUSTOMER_QUOTE_FIELDS = (
+    "id",
+    "status",
+    "current_revision",
+    "created_at",
+    "updated_at",
+)
+
+CUSTOMER_QUOTE_VERSION_FIELDS = (
+    "revision",
+    "currency",
+    "total_minor",
+    "created_at",
+)
+
+CUSTOMER_SCOPE_FIELDS = (
+    "company",
+    "pic_name",
+    "pic_email",
+    "pic_phone",
+    "need",
+    "timeline",
+    "brief",
+)
+
+CUSTOMER_QUOTE_ITEM_FIELDS = (
+    "description",
+    "quantity",
+    "unit_price_minor",
+    "line_total_minor",
+)
+
+CUSTOMER_PROJECT_FIELDS = (
+    "id",
+    "status",
+    "created_at",
+    "updated_at",
+)
+
+CUSTOMER_MILESTONE_FIELDS = (
+    "title",
+    "status",
+    "due_date",
+    "completed_at",
+)
+
+
+def _pick(document: dict, fields: tuple[str, ...]) -> dict:
+    """Copy only the named fields, and only when the source carries them."""
+    if not isinstance(document, dict):
+        return {}
+    return {field: document[field] for field in fields if field in document}
+
+
+def project_customer_inquiry(document: dict) -> dict:
+    """The submitter's own request, without triage state or audit history."""
+    return _pick(document, CUSTOMER_INQUIRY_FIELDS)
+
+
+def project_customer_quote(document: dict, current_version: dict | None = None) -> dict:
+    """A quotation as the customer may see it, priced but never costed."""
+    value = _pick(document, CUSTOMER_QUOTE_FIELDS)
+    if current_version is not None:
+        version = _pick(current_version, CUSTOMER_QUOTE_VERSION_FIELDS)
+        version["scope_snapshot"] = _pick(
+            current_version.get("scope_snapshot") or {},
+            CUSTOMER_SCOPE_FIELDS,
+        )
+        version["items"] = [
+            _pick(item, CUSTOMER_QUOTE_ITEM_FIELDS)
+            for item in current_version.get("items") or []
+        ]
+        value["current_version"] = version
+    return value
+
+
+def project_customer_project(document: dict) -> dict:
+    """Delivery progress only: no work orders, sourcing, or internal linkage."""
+    value = _pick(document, CUSTOMER_PROJECT_FIELDS)
+    value["milestones"] = [
+        _pick(milestone, CUSTOMER_MILESTONE_FIELDS)
+        for milestone in document.get("milestones") or []
+    ]
+    return value
+
+
 class B2BDomainError(Exception):
     def __init__(
         self,
