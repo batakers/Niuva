@@ -102,9 +102,16 @@ Organization members may access only assigned organizations and projects. Approv
 
 Authorization must be enforced in backend handlers, services, and data queries. Hiding a control is a usability measure, not authorization. Use least privilege, conflict-safe approval behavior, and audit records for sensitive actions.
 
-The granular internal role model remains canonical. Operational staff do not receive a general user directory, complete role definitions, or the full audit log. Domain-scoped audit visibility may be granted only through an approved granular permission and query-scope matrix; until that matrix is approved and implemented, non-governance audit access fails closed. Safe self-role metadata and minimal order/project-scoped customer projections are not a general user directory.
+The granular internal role model remains canonical. Internal accounts may hold
+multiple explicitly assigned granular roles; effective permissions are additive,
+while `super_admin` is exclusive. Only Super Admin receives the internal user
+directory and identity-governance mutations. Operational staff do not receive a
+general user directory, complete role definitions, or the full audit log.
+Domain-scoped audit timelines expose only allowlisted fields for records the actor
+may read. Safe self-role metadata and minimal order/project-scoped customer
+projections are not a general user directory.
 
-Sources: `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md`; `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` for procedure only.
+Sources: `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md`; `docs/decisions/access/DEC-ACCESS-002-granular-role-permission-matrix.md`; `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` for procedure only.
 
 ## 5. Product Structure
 
@@ -391,6 +398,7 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Commercial history uses versions and snapshots | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
 | Real milestones and ETA replace fake percentage progress | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Granular internal roles remain canonical; operational staff have no general user directory, complete role definitions, or full audit log | Approved Decision | `docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md` |
+| Stable granular role identifiers, additive multi-role policy, separation of duties, and Super Admin-only identity governance | Approved Decision | `docs/decisions/access/DEC-ACCESS-002-granular-role-permission-matrix.md` |
 | Replica-set transaction capability | Approved Baseline | `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` |
 | Provider-neutral private production storage boundary | Approved with Open Decisions | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` |
 | Provider-neutral Retail online-payment orchestration | Approved with Open Decisions | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` |

@@ -43,6 +43,15 @@ class ProductPayload(BaseModel):
     stock_visibility: Literal["status_only", "made_to_order"] = "status_only"
 
 
+class BomEntryPayload(BaseModel):
+    """One material requirement per produced unit of a variant."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    material_id: str = Field(min_length=1, max_length=100)
+    quantity_per_unit: Decimal = Field(gt=0)
+
+
 class VariantPayload(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -55,6 +64,7 @@ class VariantPayload(BaseModel):
     production_type: Literal["ready_stock", "made_to_order"]
     inventory_tracking_enabled: bool = False
     reorder_point: Decimal = Field(default=Decimal("0"), ge=0)
+    bill_of_materials: list[BomEntryPayload] = Field(default_factory=list)
     status: Literal["active", "archived"] = "active"
 
 
@@ -203,6 +213,13 @@ def build_catalog_router(
         return await invoke(
             service().create_product(payload.model_dump(mode="json"), actor)
         )
+
+    @router.get("/admin/catalog/quotable-variants")
+    async def list_quotable_variants(
+        _actor: dict = Depends(require_permission("catalog.read")),
+    ):
+        """Active variants a quotation line may reference."""
+        return await invoke(service().list_quotable_variants())
 
     @router.get("/admin/products/{product_id}")
     async def get_product(

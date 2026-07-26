@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/permissions";
+import ForbiddenPage from "@/pages/admin/ForbiddenPage";
 
 export function ProtectedRoute({ children, permission }) {
   const { user, loading } = useAuth();
@@ -23,7 +24,7 @@ export function ProtectedRoute({ children, permission }) {
     );
   }
   if (permission && !hasPermission(user, permission)) {
-    return <Navigate to="/dashboard" replace />;
+    return <ForbiddenPage />;
   }
   return children;
 }

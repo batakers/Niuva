@@ -322,7 +322,11 @@ def test_apply_classifies_fail_closed_audits_each_change_and_is_idempotent():
     assert canonical_roles(by_id["old-manager"]) == ()
     assert by_id["legacy-client"]["roles"] == ["retail_customer"]
     assert by_id["legacy-client"]["access_state"] == "approved"
-    assert by_id["canonical-operations"] == migration_matrix()[-1]
+    assert by_id["canonical-operations"]["roles"] == []
+    assert (
+        by_id["canonical-operations"]["access_state"]
+        == "access_review_required"
+    )
     assert all("role" not in item for item in by_id.values())
     assert by_id["legacy-admin"][migration.EVIDENCE_FIELD] == {
         "policy_version": ROLE_POLICY_VERSION,
@@ -333,10 +337,10 @@ def test_apply_classifies_fail_closed_audits_each_change_and_is_idempotent():
         "manager_approver"
     ]
     assert first["categories"]["bootstrap_owner_assigned"] == 1
-    assert first["categories"]["legacy_internal_review_required"] == 2
+    assert first["categories"]["legacy_internal_review_required"] == 3
     assert first["categories"]["legacy_client"] == 1
-    assert guard.calls == [("identity.policy.migrate_account", False)] * 4
-    assert len(database.audit_events.items) == 4
+    assert guard.calls == [("identity.policy.migrate_account", False)] * 5
+    assert len(database.audit_events.items) == 5
     assert {event["action"] for event in database.audit_events.items} == {
         "identity.policy_migrated",
         "identity.bootstrap_owner_assigned",
@@ -529,12 +533,12 @@ def test_apply_assigns_reviewed_bootstrap_and_preserves_verified_current_owners(
         roles=["super_admin"],
         role_policy_version=ROLE_POLICY_VERSION,
     )
-    unchanged_operations = user(
+    aggregate_operations = user(
         "canonical-operations",
         roles=["operations"],
         role_policy_version=ROLE_POLICY_VERSION,
     )
-    database = FakeDatabase([selected, previous_owner, unchanged_operations])
+    database = FakeDatabase([selected, previous_owner, aggregate_operations])
     guard = RecordingGuard(database)
 
     asyncio.run(
@@ -549,7 +553,11 @@ def test_apply_assigns_reviewed_bootstrap_and_preserves_verified_current_owners(
     by_id = {item["id"]: item for item in database.users.items}
     assert canonical_roles(by_id[selected["id"]]) == ("super_admin",)
     assert by_id[previous_owner["id"]] == previous_owner
-    assert by_id[unchanged_operations["id"]] == unchanged_operations
+    assert by_id[aggregate_operations["id"]]["roles"] == []
+    assert (
+        by_id[aggregate_operations["id"]]["access_state"]
+        == "access_review_required"
+    )
     assert (
         sum(canonical_roles(item) == ("super_admin",) for item in database.users.items)
         == 2
@@ -637,7 +645,13 @@ def test_rollback_is_scoped_audited_and_never_restores_runtime_authority():
         )
     )
 
-    migrated_ids = {"bootstrap-owner", "legacy-admin", "old-manager", "legacy-client"}
+    migrated_ids = {
+        "bootstrap-owner",
+        "legacy-admin",
+        "old-manager",
+        "legacy-client",
+        "canonical-operations",
+    }
     by_id = {item["id"]: item for item in database.users.items}
     for user_id in migrated_ids:
         account = by_id[user_id]
@@ -648,7 +662,6 @@ def test_rollback_is_scoped_audited_and_never_restores_runtime_authority():
         assert migration.EVIDENCE_FIELD not in account
         assert migration.MARKER_FIELD not in account
         assert "role_policy_version" not in account
-    assert by_id["canonical-operations"] == migration_matrix()[-1]
     assert len(guard.calls) - calls_before == len(migrated_ids)
     rollback_events = database.audit_events.items[events_before:]
     assert len(rollback_events) == len(migrated_ids)
@@ -670,8 +683,9 @@ def test_rollback_is_scoped_audited_and_never_restores_runtime_authority():
 
 
 @pytest.mark.skipif(
-    not os.environ.get("MONGO_TRANSACTION_TEST_URL"),
-    reason="MONGO_TRANSACTION_TEST_URL is required for replica-set migration test",
+    os.environ.get("NIUVA_RUN_REAL_TRANSACTION_TESTS") != "1"
+    or not os.environ.get("MONGO_TRANSACTION_TEST_URL"),
+    reason="Explicit real transaction opt-in and URL are required",
 )
 def test_real_replica_set_migrates_user_and_audit_in_the_same_transaction():
     loaded_motor = sys.modules.get("motor.motor_asyncio")

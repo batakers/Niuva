@@ -12,6 +12,13 @@ export const contentApi = {
   publish: (id, reason, scheduledAt) => unwrap(api.post(`/admin/content/${id}/publish`, { reason, scheduled_at: scheduledAt || null })),
   rollback: (id, versionId, reason) => unwrap(api.post(`/admin/content/${id}/rollback`, { version_id: versionId, reason })),
   archive: (id, reason) => unwrap(api.post(`/admin/content/${id}/archive`, { reason })),
+  transition: (id, targetStatus, reason) =>
+    unwrap(
+      api.post(`/admin/content/${id}/transitions`, {
+        target_status: targetStatus,
+        reason,
+      })
+    ),
   versions: (id) => unwrap(api.get(`/admin/content/${id}/versions`)),
   public: (contentType) => unwrap(api.get("/content", { params: contentType ? { content_type: contentType } : {} })),
 };
@@ -69,6 +76,9 @@ export function emptyFieldsFor(contentType) {
 
 export function statusTone(status) {
   if (status === "published") return "success";
+  if (status === "review") return "warning";
+  if (status === "preview") return "primary";
+  if (status === "scheduled") return "primary";
   if (status === "archived") return "muted";
   if (status === "scheduled") return "warning";
   return "foreground";
@@ -97,3 +107,36 @@ export function usePublicContent(contentType) {
 export function findBySlug(blocks, slug) {
   return blocks.find((block) => block.slug === slug)?.fields;
 }
+
+// Mirrors the content router: authoring a block through the review stages is
+// content.write, while anything that reaches the public needs content.publish.
+export const CONTENT_ACTION_TARGETS = Object.freeze({
+  submit_review: "review",
+  return_to_draft: "draft",
+  approve_preview: "preview",
+  return_to_review: "review",
+  return_to_preview: "preview",
+  publish: "published",
+  revise: "draft",
+  restore: "draft",
+});
+
+export const CONTENT_ACTION_PERMISSIONS = Object.freeze({
+  submit_review: "content.write",
+  return_to_draft: "content.write",
+  approve_preview: "content.write",
+  return_to_review: "content.write",
+  return_to_preview: "content.write",
+  revise: "content.write",
+  restore: "content.write",
+  publish: "content.publish",
+});
+
+export const CONTENT_STAGE_ACTIONS = Object.freeze({
+  draft: ["submit_review"],
+  review: ["return_to_draft", "approve_preview"],
+  preview: ["return_to_review", "publish"],
+  scheduled: ["publish", "return_to_preview"],
+  published: ["revise"],
+  archived: ["restore"],
+});

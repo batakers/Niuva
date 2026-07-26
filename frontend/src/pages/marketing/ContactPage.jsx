@@ -29,6 +29,9 @@ const initialForm = {
   message: "",
 };
 
+// Mirrors the `brief` minimum on the canonical Inquiry payload.
+const MIN_BRIEF_LENGTH = 10;
+
 const needOptions = [
   "Research & Development",
   "Design & Prototyping",
@@ -70,25 +73,32 @@ export default function ContactPage() {
 
   const submit = async (event) => {
     event.preventDefault();
+
+    // The canonical Inquiry requires a brief long enough to triage. Checking it
+    // here keeps the visitor on a written sentence instead of a 422.
+    if (form.message.trim().length < MIN_BRIEF_LENGTH) {
+      toast.error(
+        `Mohon jelaskan kebutuhan proyek minimal ${MIN_BRIEF_LENGTH} karakter.`
+      );
+      return;
+    }
+
     setLoading(true);
+    // Each field lands on its own Inquiry attribute. The previous flattening
+    // into subject/message made the brief unqueryable and untriageable.
     const payload = {
-      name: form.name,
-      email: form.email,
-      subject: `${form.needType} - ${form.company || "Tanpa perusahaan"}`,
-      message: [
-        `Perusahaan / Instansi: ${form.company || "-"}`,
-        `Nomor WhatsApp: ${form.phone || "-"}`,
-        `Jenis kebutuhan: ${form.needType}`,
-        `Estimasi timeline: ${form.timeline}`,
-        "",
-        "Pesan tambahan:",
-        form.message,
-      ].join("\n"),
+      company: form.company.trim(),
+      pic_name: form.name.trim(),
+      pic_email: form.email.trim(),
+      pic_phone: form.phone.trim(),
+      need: form.needType,
+      timeline: form.timeline,
+      brief: form.message.trim(),
     };
 
     try {
-      await api.post("/contact", payload);
-      toast.success("Pesan berhasil dikirim. Tim Niuva akan menghubungi Anda.");
+      await api.post("/inquiries", payload);
+      toast.success("Brief berhasil dikirim. Tim Niuva akan menghubungi Anda.");
       setForm(initialForm);
     } catch (error) {
       toast.error(formatApiError(error.response?.data?.detail));

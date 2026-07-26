@@ -18,7 +18,18 @@ import { TechnicalLabel } from "../../components/ui/technical-label";
 import { Textarea } from "../../components/ui/textarea";
 import { useI18n } from "../../i18n";
 import { formatApiError } from "../../lib/api";
-import { CONTENT_TYPES, CONTENT_TYPE_SCHEMAS, contentApi, emptyFieldsFor, statusTone } from "../../lib/content";
+import {
+  CONTENT_ACTION_PERMISSIONS,
+  CONTENT_ACTION_TARGETS,
+  CONTENT_STAGE_ACTIONS,
+  CONTENT_TYPES,
+  CONTENT_TYPE_SCHEMAS,
+  contentApi,
+  emptyFieldsFor,
+  statusTone,
+} from "../../lib/content";
+import { hasPermission } from "@/lib/permissions";
+import { useAuth } from "@/context/AuthContext";
 import { AdminLayout } from "./AdminLayout";
 
 export default function ContentEditor() {
@@ -326,6 +337,32 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
   useEffect(() => { load().catch((error) => toast.error(formatApiError(error.response?.data?.detail))); }, [load]);
 
   const isArchived = block?.status === "archived";
+  const { user } = useAuth();
+  const offered = CONTENT_STAGE_ACTIONS[block?.status] || [];
+  const actionable = offered.filter((action) =>
+    hasPermission(user, CONTENT_ACTION_PERMISSIONS[action])
+  );
+  const withheld = offered.filter(
+    (action) => !hasPermission(user, CONTENT_ACTION_PERMISSIONS[action])
+  );
+
+  const runTransition = async (action) => {
+    setBusy(true);
+    try {
+      await contentApi.transition(
+        blockId,
+        CONTENT_ACTION_TARGETS[action],
+        reason.trim()
+      );
+      toast.success(t("content.stageChanged"));
+      setReason("");
+      await load();
+    } catch (error) {
+      toast.error(formatApiError(error.response?.data?.detail));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const saveDraft = async () => {
     setBusy(true);
@@ -372,7 +409,14 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
   const rollback = async (versionId) => {
     setBusy(true);
     try {
-      await contentApi.rollback(blockId, versionId, t("content.rollbackReason"));
+      // A canned reason would stamp every rollback with the same sentence and
+      // tell a later reader nothing about why the content went back.
+      if (reason.trim().length < 3) {
+        toast.error(t("content.rollbackReasonRequired"));
+        setBusy(false);
+        return;
+      }
+      await contentApi.rollback(blockId, versionId, reason.trim());
       toast.success(t("content.rollbackSuccess"));
       await load();
     } catch (error) {
@@ -407,22 +451,73 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
         </div>
       </SurfacePanel>
 
-      {!isArchived && (
-        <SurfacePanel className="mt-4">
-          <SurfacePanelHeader padding="sm"><p className="type-label text-text-secondary">{t("content.publish")}</p></SurfacePanelHeader>
-          <div className="grid gap-4 p-4 md:grid-cols-2">
-            <FormField label={t("common.reason")}>
-              <Input value={reason} onChange={(event) => setReason(event.target.value)} minLength={3} maxLength={500} />
-            </FormField>
+      <SurfacePanel className="mt-4" data-testid="content-lifecycle">
+        <SurfacePanelHeader padding="sm">
+          <p className="type-label text-text-secondary">{t("content.lifecycle")}</p>
+        </SurfacePanelHeader>
+        <div className="grid gap-4 p-4 md:grid-cols-2">
+          <FormField label={t("common.reason")}>
+            <Input
+              data-testid="content-reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              minLength={3}
+              maxLength={500}
+            />
+          </FormField>
+          {offered.includes("publish") && (
             <FormField label={t("content.scheduleOptional")}>
-              <Input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
+              <Input
+                data-testid="content-scheduled-at"
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(event) => setScheduledAt(event.target.value)}
+              />
             </FormField>
-          </div>
-          <div className="p-4 pt-0">
-            <Button disabled={busy || reason.trim().length < 3} onClick={publish}>{scheduledAt ? t("content.schedule") : t("content.publishNow")}</Button>
-          </div>
-        </SurfacePanel>
-      )}
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2 p-4 pt-0">
+          {actionable.length === 0 && (
+            <p className="text-sm leading-6 text-text-secondary">
+              {t("b2b.noAvailableAction")}
+            </p>
+          )}
+          {actionable.map((action) =>
+            action === "publish" ? (
+              <Button
+                key={action}
+                className="min-h-11"
+                disabled={busy || reason.trim().length < 3}
+                onClick={publish}
+                data-testid="content-action-publish"
+              >
+                {scheduledAt ? t("content.schedule") : t("content.publishNow")}
+              </Button>
+            ) : (
+              <Button
+                key={action}
+                variant="outline"
+                className="min-h-11"
+                disabled={busy || reason.trim().length < 3}
+                onClick={() => runTransition(action)}
+                data-testid={`content-action-${action}`}
+              >
+                {t(`content.action.${action}`)}
+              </Button>
+            )
+          )}
+        </div>
+        {withheld.length > 0 && (
+          /* Named rather than hidden: an author learns the step exists and
+             that approval is someone else's to give. */
+          <p
+            className="border-t border-border-default p-4 text-sm leading-6 text-text-secondary"
+            data-testid="content-needs-approval"
+          >
+            {t("content.needsApproval")}
+          </p>
+        )}
+      </SurfacePanel>
 
       <SurfacePanel className="mt-4">
         <SurfacePanelHeader padding="sm"><p className="type-label text-text-secondary">{t("content.versionHistory")}</p></SurfacePanelHeader>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, RefreshCw } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -30,21 +31,32 @@ import { downloadCsv } from "@/lib/api";
 import { inventoryApi, parseInventoryConflict } from "@/lib/inventory";
 import { AdminLayout } from "./AdminLayout";
 
-const INITIAL_FILTERS = {
-  subject_type: "",
-  subject_id: "",
-  reference_id: "",
-  movement_type: "",
-  actor: "",
-  date: "",
-};
+// The URL is the filter state, so any filtered view of the immutable history
+// is a shareable deep link: another surface can point at the movements of one
+// source record, and the operator can hand that address to a colleague.
+const FILTER_KEYS = [
+  "subject_type",
+  "subject_id",
+  "reference_id",
+  "movement_type",
+  "actor",
+  "date",
+];
 
 export default function StockMovements() {
   const { t } = useI18n();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const filters = useMemo(
+    () =>
+      Object.fromEntries(
+        FILTER_KEYS.map((key) => [key, searchParams.get(key) || ""])
+      ),
+    [searchParams]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,10 +93,18 @@ export default function StockMovements() {
   );
 
   const updateFilter = (field) => (value) =>
-    setFilters((current) => ({ ...current, [field]: value }));
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value) next.set(field, value);
+        else next.delete(field);
+        return next;
+      },
+      { replace: true }
+    );
 
   const updateFilterEvent = (field) => (event) =>
-    setFilters((current) => ({ ...current, [field]: event.target.value }));
+    updateFilter(field)(event.target.value);
 
   const exportCsv = async () => {
     const params = new URLSearchParams();
@@ -256,8 +276,23 @@ export default function StockMovements() {
                       <TableCell className="text-sm tabular-nums">
                         {row.quantity > 0 ? `+${row.quantity}` : row.quantity}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-text-secondary">
-                        {row.reference_id || "—"}
+                      <TableCell>
+                        {row.reference_id ? (
+                          <>
+                            <Link
+                              to={`/admin/stock-movements?reference_id=${encodeURIComponent(row.reference_id)}`}
+                              className="font-mono text-xs font-semibold text-action-primary"
+                              data-testid="movement-reference-link"
+                            >
+                              {row.reference_id}
+                            </Link>
+                            <TechnicalLabel size="micro" className="block">
+                              {row.reference_type || "manual"}
+                            </TechnicalLabel>
+                          </>
+                        ) : (
+                          <span className="font-mono text-xs text-text-secondary">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-text-secondary">
                         {row.created_by || "—"}
@@ -299,6 +334,14 @@ export default function StockMovements() {
                       {row.created_at}
                     </span>
                   </div>
+                  {row.reference_id && (
+                    <Link
+                      to={`/admin/stock-movements?reference_id=${encodeURIComponent(row.reference_id)}`}
+                      className="mt-1 inline-flex min-h-11 items-center font-mono text-xs font-semibold text-action-primary"
+                    >
+                      {row.reference_type || "manual"} · {row.reference_id}
+                    </Link>
+                  )}
                   {row.reason && (
                     <p className="mt-1 text-xs text-text-secondary truncate">{row.reason}</p>
                   )}

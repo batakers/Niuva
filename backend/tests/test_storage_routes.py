@@ -183,7 +183,9 @@ def test_file_download_forces_active_metadata_to_binary(local_storage_root, monk
     assert response.headers["x-content-type-options"] == "nosniff"
 
 
-def test_payment_proof_upload_uses_local_storage(local_storage_root, monkeypatch):
+def test_payment_proof_upload_is_disabled_without_storage_write(
+    local_storage_root, monkeypatch
+):
 
     class FakeOrders:
         def __init__(self):
@@ -218,8 +220,9 @@ def test_payment_proof_upload_uses_local_storage(local_storage_root, monkeypatch
             {"id": "customer-1", "email": "owner@example.com", "role": "client"},
         )
 
-    order = asyncio.run(run())
-    proof = order["payment"]["proof"]
-    assert proof["storage_path"].startswith("niuva/payments/customer-1/")
-    assert not Path(proof["storage_path"]).is_absolute()
-    assert (local_storage_root / proof["storage_path"]).read_bytes() == b"png proof"
+    with pytest.raises(HTTPException) as blocked:
+        asyncio.run(run())
+    assert blocked.value.status_code == 410
+    assert blocked.value.detail["code"] == "legacy_manual_transfer_disabled"
+    assert "payment" not in orders.order
+    assert list(local_storage_root.rglob("*")) == []

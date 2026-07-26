@@ -55,7 +55,18 @@ class FakeCollection:
     @staticmethod
     def matches(item, query):
         for key, expected in query.items():
-            if item.get(key) != expected:
+            # The public read activates scheduled blocks whose time has passed,
+            # so the fake has to understand $or and the range operators.
+            if key == "$or":
+                if not any(FakeCollection.matches(item, clause) for clause in expected):
+                    return False
+                continue
+            actual = item.get(key)
+            if isinstance(expected, dict) and "$lte" in expected:
+                if actual is None or actual > expected["$lte"]:
+                    return False
+                continue
+            if actual != expected:
                 return False
         return True
 
@@ -124,6 +135,7 @@ def build_test_context():
             get_client=lambda: client,
             get_capabilities=lambda: capabilities,
             require_permission=permission_dependency,
+            has_permission=has_permission,
         )
     )
     app.include_router(api)

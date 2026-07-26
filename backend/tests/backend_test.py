@@ -240,10 +240,8 @@ class TestOrderFlow:
     def test_admin_set_estimate(self, admin_token):
         r = requests.post(f"{API}/admin/orders/{TestOrderFlow.order_id}/estimate",
                           json={"amount": 250000, "note": "TEST estimate"}, headers=hh(admin_token), timeout=30)
-        assert r.status_code == 200, r.text
-        ord_ = r.json()
-        assert ord_["status"] == "awaiting_payment"
-        assert ord_["estimate"]["amount"] == 250000
+        assert r.status_code == 410, r.text
+        assert r.json()["detail"]["code"] == "legacy_manual_transfer_disabled"
 
     def test_client_upload_payment_proof(self, client_user):
         # tiny png header
@@ -251,14 +249,14 @@ class TestOrderFlow:
         files = {"file": ("proof.png", png, "image/png")}
         r = requests.post(f"{API}/orders/{TestOrderFlow.order_id}/payment-proof",
                           files=files, headers=hh(client_user["token"]), timeout=30)
-        assert r.status_code == 200, r.text
-        assert r.json()["payment"]["proof"]["original_filename"] == "proof.png"
+        assert r.status_code == 410, r.text
+        assert r.json()["detail"]["code"] == "legacy_manual_transfer_disabled"
 
     def test_admin_verify_payment(self, admin_token):
         r = requests.post(f"{API}/admin/orders/{TestOrderFlow.order_id}/verify-payment",
                           headers=hh(admin_token), timeout=30)
-        assert r.status_code == 200
-        assert r.json()["status"] == "in_process"
+        assert r.status_code == 410
+        assert r.json()["detail"]["code"] == "legacy_manual_transfer_disabled"
 
     def test_admin_mark_completed(self, admin_token):
         r = requests.post(f"{API}/admin/orders/{TestOrderFlow.order_id}/status",

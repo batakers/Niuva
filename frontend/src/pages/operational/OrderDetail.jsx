@@ -1,23 +1,21 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   AlertTriangle,
   ArrowLeft,
-  Banknote,
   CheckCircle2,
   Clock,
   Download,
   FileBox,
   TerminalSquare,
-  Upload,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { OperationalLayout } from "@/components/layout/Layout";
 import { StatusBadge, StatusStepper } from "@/components/operational/StatusStepper";
 import { useI18n } from "@/i18n";
-import { api, downloadFile, formatApiError } from "@/lib/api";
+import { api, downloadFile } from "@/lib/api";
 import { fmtDate, rupiah } from "@/lib/format";
 
 export default function OrderDetail() {
@@ -25,9 +23,6 @@ export default function OrderDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const [order, setOrder] = useState(null);
-  const [settings, setSettings] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef();
 
   const load = useCallback(
     () =>
@@ -40,35 +35,13 @@ export default function OrderDetail() {
 
   useEffect(() => {
     load();
-    api
-      .get("/settings")
-      .then((r) => setSettings(r.data))
-      .catch(() => {});
-  }, [id, load]);
+  }, [load]);
 
   const downloadDesign = async () => {
     try {
       await downloadFile(order.file?.storage_path, order.file?.original_filename);
     } catch {
       toast.error("File tidak dapat diunduh");
-    }
-  };
-
-  const uploadProof = async (f) => {
-    if (!f) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", f);
-      await api.post(`/orders/${id}/payment-proof`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      toast.success("Bukti transfer terkirim");
-      load();
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -242,27 +215,6 @@ export default function OrderDetail() {
                     )}
                   </div>
 
-                  {order.status === "awaiting_payment" && settings && (
-                    <div className="space-y-3">
-                      <p className="font-mono text-[10px] text-action-primary flex items-center gap-1.5 uppercase tracking-widest">
-                        <Banknote className="h-3.5 w-3.5" /> {t("detail.payTitle")}
-                      </p>
-                      <div className="border border-border-default bg-surface-page p-4 space-y-2">
-                        <PayRow label={t("detail.bank")} value={settings.bank_name} />
-                        <PayRow
-                          label={t("detail.accountNo")}
-                          value={settings.account_number}
-                          mono
-                          highlight
-                        />
-                        <PayRow
-                          label={t("detail.accountName")}
-                          value={settings.account_holder}
-                        />
-                      </div>
-                    </div>
-                  )}
-
                   <div className="mt-auto pt-6">
                     {order.payment ? (
                       order.payment.verified ? (
@@ -282,25 +234,17 @@ export default function OrderDetail() {
                         </div>
                       )
                     ) : order.status === "awaiting_payment" ? (
-                      <>
-                        <input
-                          ref={fileRef}
-                          type="file"
-                          accept="image/*,.pdf"
-                          className="hidden"
-                          data-testid="proof-input"
-                          onChange={(e) => uploadProof(e.target.files[0])}
-                        />
-                        <Button
-                          onClick={() => fileRef.current.click()}
-                          disabled={uploading}
-                          data-testid="upload-proof-btn"
-                          className="w-full h-12 font-mono text-xs uppercase tracking-widest"
-                        >
-                          <Upload className="mr-2 h-4 w-4" />{" "}
-                          {uploading ? t("detail.sending") : t("detail.uploadProof")}
-                        </Button>
-                      </>
+                      <div
+                        className="border border-border-default bg-surface-page p-4"
+                        role="status"
+                      >
+                        <p className="font-heading text-sm font-semibold text-text-primary">
+                          {t("payment.providerInactive")}
+                        </p>
+                        <p className="mt-1 text-sm text-text-secondary">
+                          {t("payment.mutationsDisabled")}
+                        </p>
+                      </div>
                     ) : null}
                   </div>
                 </>
@@ -356,20 +300,5 @@ export default function OrderDetail() {
         </div>
       </div>
     </OperationalLayout>
-  );
-}
-
-function PayRow({ label, value, mono, highlight }) {
-  return (
-    <div className="flex justify-between items-center py-2 border-b border-border-default/50 last:border-0">
-      <span className="font-mono text-[10px] text-text-secondary uppercase tracking-widest">
-        {label}
-      </span>
-      <span
-        className={`${mono ? "font-mono" : "font-heading font-medium"} text-sm ${highlight ? "text-action-primary text-base" : "text-text-primary"}`}
-      >
-        {value}
-      </span>
-    </div>
   );
 }

@@ -4,6 +4,9 @@ from datetime import datetime, timezone
 
 from audit import append_audit_event
 from content_domain import (
+    ContentTransitionError,
+    content_requires_publish_authority,
+    validate_content_transition,
     CONTENT_TYPES,
     build_version_snapshot,
     normalize_slug,
@@ -219,7 +222,86 @@ class ContentService:
         ).sort("created_at", -1).to_list(200)
 
     async def list_public_blocks(self, *, content_type: str | None = None) -> list[dict]:
-        query = {"status": "published"}
+        """Published blocks, plus scheduled ones whose time has arrived.
+
+        Activation happens on read. Without it a scheduled block would sit at
+        status "scheduled" forever and never reach the public, because nothing
+        else ever moves it: scheduling would silently mean never publishing.
+        """
+        now = now_iso()
+        query = {
+            "$or": [
+                {"status": "published"},
+                {"status": "scheduled", "scheduled_at": {"$lte": now}},
+            ]
+        }
         if content_type:
             query["content_type"] = content_type
         return await self.db.content_blocks.find(query, {"_id": 0}).sort("updated_at", -1).to_list(200)
+
+    async def transition_block(
+        self,
+        block_id: str,
+        *,
+        target_status: str,
+        actor: dict,
+        reason: str,
+        can_publish: bool,
+    ) -> dict:
+        """Move a block along the review lifecycle."""
+        block = await self._get_block(block_id)
+        try:
+            validate_content_transition(block["status"], target_status)
+        except ContentTransitionError as exc:
+            raise ContentError(409, exc.code, exc.message, errors=None) from exc
+
+        if content_requires_publish_authority(target_status) and not can_publish:
+            raise ContentError(
+                403,
+                "content_publish_forbidden",
+                "Publikasi konten memerlukan wewenang approval.",
+            )
+        if target_status in {"published", "preview"}:
+            errors = validate_content_fields(block["content_type"], block["fields"])
+            if errors:
+                raise ContentError(
+                    400,
+                    "content_invalid",
+                    "Konten belum memenuhi syarat tahap ini.",
+                    errors=errors,
+                )
+
+        timestamp = now_iso()
+        changes = {
+            "status": target_status,
+            "version": block["version"] + 1,
+            "updated_at": timestamp,
+        }
+        if target_status == "published":
+            changes["scheduled_at"] = None
+        after = {**block, **changes}
+        snapshot = build_version_snapshot(
+            after, actor_id=actor.get("id"), reason=reason, event=target_status
+        )
+
+        session = await self.client.start_session()
+        async with session:
+            async with session.start_transaction():
+                await self.db.content_block_versions.insert_one(
+                    dict(snapshot), **_write_options(session)
+                )
+                await self.db.content_blocks.update_one(
+                    {"id": block_id}, {"$set": changes}, **_write_options(session)
+                )
+                await append_audit_event(
+                    self.db,
+                    actor=actor,
+                    action="content.block_transitioned",
+                    target_type="content_block",
+                    target_id=block_id,
+                    before={"status": block["status"], "version": block["version"]},
+                    after={"status": target_status, "version": after["version"]},
+                    reason=reason,
+                    session=session,
+                )
+        return after

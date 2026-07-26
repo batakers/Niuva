@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import os
 import sys
 import types
@@ -19,21 +20,6 @@ os.environ.setdefault("JWT_SECRET", "security-test-secret-at-least-32-characters
 os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
 
-
-class _BootstrapMongoClient:
-    def __init__(self, *_args, **_kwargs):
-        pass
-
-    def __getitem__(self, _name):
-        return object()
-
-
-motor_package = types.ModuleType("motor")
-motor_asyncio = types.ModuleType("motor.motor_asyncio")
-motor_asyncio.AsyncIOMotorClient = _BootstrapMongoClient
-motor_package.motor_asyncio = motor_asyncio
-sys.modules.setdefault("motor", motor_package)
-sys.modules.setdefault("motor.motor_asyncio", motor_asyncio)
 
 resend_module = types.ModuleType("resend")
 resend_module.api_key = ""
@@ -69,6 +55,14 @@ class FakeCollection:
             if isinstance(expected, dict) and "$in" in expected:
                 actual_values = actual if isinstance(actual, list) else [actual]
                 if not any(value in expected["$in"] for value in actual_values):
+                    return False
+            elif isinstance(expected, dict) and {"$gte", "$lte"} & expected.keys():
+                # The dashboard scopes every aggregate by a date range.
+                if actual is None:
+                    return False
+                if "$gte" in expected and actual < expected["$gte"]:
+                    return False
+                if "$lte" in expected and actual > expected["$lte"]:
                     return False
             elif isinstance(actual, list):
                 if expected not in actual:
@@ -113,6 +107,10 @@ class FakeDatabase:
     def __init__(self, users):
         self.users = FakeCollection(users)
         self.orders = FakeCollection()
+        # The dashboard scopes every aggregate by one range, so it reads the
+        # canonical surfaces alongside the legacy one.
+        self.retail_orders = FakeCollection()
+        self.inquiries = FakeCollection()
 
 
 def bearer(token):
@@ -159,7 +157,7 @@ async def run_security_matrix():
         "password_hash": server.hash_password("EditorPassword123"),
         "phone": "",
         "company": "Niuva",
-        "roles": ["operations"],
+        "roles": ["content_editor"],
         "status": "active",
         "access_state": "approved",
         "created_at": server.now_iso(),
@@ -171,7 +169,7 @@ async def run_security_matrix():
         "password_hash": server.hash_password("CommercialPassword123"),
         "phone": "",
         "company": "Niuva",
-        "roles": ["commercial_finance"],
+        "roles": ["order_admin", "sales_estimator", "finance"],
         "status": "active",
         "access_state": "approved",
         "created_at": server.now_iso(),
@@ -187,7 +185,27 @@ async def run_security_matrix():
         "status": "disabled",
         "created_at": server.now_iso(),
     }
-    server.db = FakeDatabase([admin, client, other_client, editor, commercial, disabled_client])
+    review_blocked_staff = {
+        "id": "staff-review-blocked",
+        "name": "Review Blocked Staff",
+        "email": "review-blocked@example.com",
+        "password_hash": server.hash_password("ReviewBlockedPassword123"),
+        "roles": ["content_editor"],
+        "status": "active",
+        "access_state": "access_review_required",
+        "created_at": server.now_iso(),
+    }
+    server.db = FakeDatabase(
+        [
+            admin,
+            client,
+            other_client,
+            editor,
+            commercial,
+            disabled_client,
+            review_blocked_staff,
+        ]
+    )
     server.db.orders.items.append(
         {
             "id": "order-1",
@@ -219,15 +237,15 @@ async def run_security_matrix():
         )
         assert admin_login.status_code == 200
         admin_token = admin_login.json()["token"]
-        assert admin_login.json()["user"]["role_labels"] == ["Owner"]
-        assert admin_login.json()["user"]["role_policy_version"] == "2026-07-22-v1"
+        assert admin_login.json()["user"]["role_labels"] == ["Super Admin"]
+        assert admin_login.json()["user"]["role_policy_version"] == "2026-07-26-v2"
 
         editor_login = await api.post(
             "/api/auth/admin/login",
             json={"email": editor["email"], "password": "EditorPassword123"},
         )
         assert editor_login.status_code == 200
-        assert editor_login.json()["user"]["roles"] == ["operations"]
+        assert editor_login.json()["user"]["roles"] == ["content_editor"]
         assert "admin.access" in editor_login.json()["user"]["permissions"]
         assert "password_hash" not in editor_login.json()["user"]
 
@@ -235,7 +253,7 @@ async def run_security_matrix():
             "/api/auth/me", headers=bearer(editor_login.json()["token"])
         )
         assert editor_me.status_code == 200
-        assert editor_me.json()["roles"] == ["operations"]
+        assert editor_me.json()["roles"] == ["content_editor"]
         assert "roles.manage" not in editor_me.json()["permissions"]
 
         commercial_login = await api.post(
@@ -257,6 +275,23 @@ async def run_security_matrix():
         )
         assert invalid_admin_login.status_code == 401
 
+        for path, email, password in (
+            ("/api/auth/login", disabled_client["email"], "DisabledPassword123"),
+            (
+                "/api/auth/admin/login",
+                review_blocked_staff["email"],
+                "ReviewBlockedPassword123",
+            ),
+        ):
+            blocked_login = await api.post(
+                path,
+                json={"email": email, "password": password},
+            )
+            assert blocked_login.status_code == 401
+            assert blocked_login.json() == {"detail": "Invalid email or password"}
+            assert "token" not in blocked_login.json()
+            assert "access_token" not in blocked_login.cookies
+
         client_login = await api.post(
             "/api/auth/login",
             json={"email": client["email"], "password": "ClientPassword123"},
@@ -270,6 +305,44 @@ async def run_security_matrix():
         )
         assert other_client_login.status_code == 200
         other_client_token = other_client_login.json()["token"]
+
+        order_before_payment_lockdown = copy.deepcopy(server.db.orders.items[0])
+        disabled_mutations = (
+            await api.post(
+                "/api/admin/orders/order-1/estimate",
+                json={"amount": 250000, "note": "Legacy estimate"},
+                headers=bearer(commercial_token),
+            ),
+            await api.post(
+                "/api/orders/order-1/payment-proof",
+                files={"file": ("proof.png", b"proof", "image/png")},
+                headers=bearer(client_token),
+            ),
+            await api.post(
+                "/api/admin/orders/order-1/verify-payment",
+                headers=bearer(commercial_token),
+            ),
+        )
+        for response in disabled_mutations:
+            assert response.status_code == 410
+            assert response.json()["detail"] == {
+                "code": "legacy_manual_transfer_disabled",
+                "message": "Mutasi pembayaran transfer manual baru dinonaktifkan.",
+            }
+        assert server.db.orders.items[0] == order_before_payment_lockdown
+
+        payment_capabilities = await api.get(
+            "/api/admin/payment-capabilities",
+            headers=bearer(commercial_token),
+        )
+        assert payment_capabilities.status_code == 200
+        assert payment_capabilities.json() == {
+            "contract": "provider_neutral",
+            "provider_status": "inactive",
+            "manual_transfer_mutations": "disabled",
+            "checkout": "inactive",
+            "finance_activation": "not_approved",
+        }
 
         assert (await api.get("/api/admin/users")).status_code == 401
         assert (await api.get("/api/admin/users", headers=bearer(client_token))).status_code == 403
@@ -378,8 +451,8 @@ async def run_security_matrix():
 async def run_admin_boundary_projections_and_capability_gates():
     users = [
         {"id": "owner-1", "name": "Owner", "email": "owner@niuva.example.com", "password_hash": server.hash_password("OwnerPassword123"), "roles": ["super_admin"], "status": "active", "access_state": "approved"},
-        {"id": "operations-1", "name": "Operations", "email": "operations@niuva.example.com", "password_hash": server.hash_password("OperationsPassword123"), "roles": ["operations"], "status": "active", "access_state": "approved"},
-        {"id": "commercial-1", "name": "Commercial", "email": "commercial@niuva.example.com", "password_hash": server.hash_password("CommercialPassword123"), "roles": ["commercial_finance"], "status": "active", "access_state": "approved"},
+        {"id": "operations-1", "name": "Order Admin", "email": "operations@niuva.example.com", "password_hash": server.hash_password("OperationsPassword123"), "roles": ["order_admin"], "status": "active", "access_state": "approved"},
+        {"id": "commercial-1", "name": "Finance", "email": "commercial@niuva.example.com", "password_hash": server.hash_password("CommercialPassword123"), "roles": ["finance"], "status": "active", "access_state": "approved"},
     ]
     database = FakeDatabase(users)
     database.orders.items.append({"id": "order-safe-1", "order_number": "NIV-TEST-0001", "user_id": "customer-1", "user_name": "Customer", "user_email": "customer@niuva.test", "material_id": "material-1", "material_name": "Acrylic", "file": {"storage_path": "orders/customer-1/design.pdf"}, "notes": "Fulfil before Friday", "status": "awaiting_payment", "status_history": [{"status": "pending_estimate", "at": "2026-07-22T00:00:00Z", "note": "Received"}], "estimate": {"amount": 950000, "currency": "IDR", "note": "Internal quote"}, "payment": {"proof": {"storage_path": "payments/proof.png"}, "verified": False}, "internal_price": 600000})
@@ -428,7 +501,7 @@ async def run_login_issuance_contract():
             "id": "disabled-staff",
             "email": "disabled-staff@niuva.com",
             "password_hash": server.hash_password(valid_password),
-            "roles": ["operations"],
+            "roles": ["order_admin"],
             "status": "disabled",
             "access_state": "approved",
         },
@@ -478,7 +551,10 @@ async def run_login_issuance_contract():
             "name": "Canonical Staff",
             "email": "canonical-staff@niuva.com",
             "password_hash": server.hash_password(valid_password),
-            "roles": ["operations"],
+            # A granular role. "operations" is superseded by migration 006 and
+            # no longer canonical, so an account still carrying it cannot be
+            # the fixture for a successful staff login.
+            "roles": ["order_admin"],
             "status": "active",
             "access_state": "approved",
         },
@@ -571,7 +647,7 @@ async def run_login_issuance_contract():
                 },
             )
             assert staff_login.status_code == 200
-            assert staff_login.json()["user"]["roles"] == ["operations"]
+            assert staff_login.json()["user"]["roles"] == ["order_admin"]
 
             customer_admin_login = await api.post(
                 "/api/auth/admin/login",
@@ -594,16 +670,78 @@ def test_login_issuance_is_generic_fail_closed_and_legacy_compatible():
 async def run_admin_stats_counts_canonical_customer_roles():
     original_db = server.db
     try:
+        registered = "2026-07-10T00:00:00+00:00"
         server.db = FakeDatabase([
-            {"id": "legacy-client", "role": "client"},
-            {"id": "retail-customer", "roles": ["retail_customer"], "status": "active", "access_state": "approved"},
-            {"id": "organization-customer", "roles": ["organization_customer"], "status": "active", "access_state": "approved"},
+            {"id": "legacy-client", "role": "client", "created_at": registered},
+            {"id": "retail-customer", "roles": ["retail_customer"], "status": "active", "access_state": "approved", "created_at": registered},
+            {"id": "organization-customer", "roles": ["organization_customer"], "status": "active", "access_state": "approved", "created_at": registered},
+            {"id": "outside-range", "roles": ["retail_customer"], "status": "active", "access_state": "approved", "created_at": "2026-06-01T00:00:00+00:00"},
         ])
-        stats = await server.admin_stats({"id": "operations-1"})
-        assert stats["clients"] == 3
+        stats = await server.admin_stats(
+            date_from="2026-07-01",
+            date_to="2026-07-31",
+            user={"id": "operations-1"},
+        )
+        # A legacy marker and a canonical role each count once, and the applied
+        # range governs this figure like every other on the dashboard.
+        assert stats["registered_customers"] == 3
     finally:
         server.db = original_db
 
 
 def test_admin_stats_counts_legacy_and_canonical_customers():
     asyncio.run(run_admin_stats_counts_canonical_customer_roles())
+
+
+async def run_superseded_role_cannot_obtain_a_session():
+    """An account still carrying a pre-migration role cannot sign in.
+
+    This is the guarantee the login hardening and the granular role matrix
+    produce together, and neither one states it alone. "operations" was a real
+    role before migration 006 and is superseded by it, so an account that has
+    not been migrated resolves to no canonical role. Issuing a session for it
+    would hand out an identity the permission matrix can no longer reason
+    about: every has_permission call would answer no, and the holder would see
+    an empty, inexplicable admin shell.
+
+    Refusing is the safe direction. The account is not broken, it is unmigrated.
+    """
+    valid_password = "SupersededPassword123"
+    original_db = server.db
+    try:
+        server.db = FakeDatabase(
+            [
+                {
+                    "id": "unmigrated-staff",
+                    "name": "Unmigrated Staff",
+                    "email": "unmigrated-staff@niuva.com",
+                    "password_hash": server.hash_password(valid_password),
+                    "roles": ["operations"],
+                    "status": "active",
+                    "access_state": "approved",
+                    "created_at": server.now_iso(),
+                }
+            ]
+        )
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as api:
+            for path in ("/api/auth/login", "/api/auth/admin/login"):
+                response = await api.post(
+                    path,
+                    json={
+                        "email": "unmigrated-staff@niuva.com",
+                        "password": valid_password,
+                    },
+                )
+                assert response.status_code == 401, path
+                # Generic, like every other refusal: the response must not
+                # reveal that this address exists but is unmigrated.
+                assert response.json() == {"detail": "Invalid email or password"}
+    finally:
+        server.db = original_db
+
+
+def test_a_superseded_role_cannot_obtain_a_session():
+    asyncio.run(run_superseded_role_cannot_obtain_a_session())

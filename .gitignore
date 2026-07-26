@@ -105,3 +105,8 @@ credentials.json
 # Local browser and release-audit artifacts
 /.playwright-cli/
 /output/
+
+# Database snapshots contain production data, including user records.
+snapshots/
+*.snapshot.json
+backend/snapshots/
