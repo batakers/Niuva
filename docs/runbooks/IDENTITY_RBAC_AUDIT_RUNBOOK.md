@@ -2,15 +2,17 @@
 
 ## 1. Scope and invariants
 
-This runbook governs the versioned identity policy, migration `003`, rollback,
-Owner recovery, and identity/organization audit handling. It does not authorize
+This runbook governs the versioned identity policy, historical migration `003`,
+granular-role migration `006`, rollback, Super Admin recovery, and
+identity/organization audit handling. It does not authorize
 production rollout, direct database elevation, or changes to CMS, Supplier,
 payment, or organization workflows.
 
 The non-negotiable invariants are:
 
-- **Owner** is the product label for canonical role `super_admin`.
-- An approved internal account has exactly one internal platform role.
+- `super_admin` is the exclusive identity-governance role.
+- An approved internal account may hold multiple additive granular roles;
+  `super_admin` cannot be combined with another role.
 - Customer roles are separate from internal roles and never grant Admin Studio
   authority.
 - Legacy or superseded internal markers are fail-closed and require review.
@@ -26,9 +28,17 @@ The non-negotiable invariants are:
 
 | Canonical role | Product label | Class | Main boundary |
 |---|---|---|---|
-| `super_admin` | Owner | Internal | Full policy administration and final-Owner responsibility |
-| `operations` | Operations | Internal | Operational drafts, material, inventory, production, QC, fulfilment |
-| `commercial_finance` | Commercial & Finance | Internal | Customers, organizations, commercial pricing, publication, payment |
+| `super_admin` | Super Admin | Internal | Identity governance and approved platform recovery |
+| `content_editor` | Editor Konten | Internal | Structured content and portfolio drafts |
+| `catalog_manager` | Manajer Katalog | Internal | Catalog, configuration, and pricing drafts |
+| `warehouse` | Gudang | Internal | Materials, routine inventory operations, and restock work |
+| `order_admin` | Admin Pesanan | Internal | Retail order and fulfilment administration |
+| `sales_estimator` | Estimator Penjualan | Internal | Inquiry triage and quotation versions |
+| `designer_engineer` | Desainer / Engineer | Internal | Design versions and technical project data |
+| `production` | Produksi | Internal | Work orders, BOM allocation, and production blockers |
+| `quality_control` | Quality Control | Internal | QC release, rejection, and rework |
+| `finance` | Keuangan | Internal | Approved payment, invoice, and reconciliation work |
+| `manager_approver` | Manager / Approver | Internal | Sensitive publication, adjustment, refund, and override approval |
 | `retail_customer` | Retail Customer | Customer | Own Retail resources only; no Admin Studio permission |
 | `organization_customer` | Organization Customer | Customer | Active organization memberships only; no Admin Studio permission |
 
@@ -40,7 +50,7 @@ Access state meanings:
 
 | `access_state` | Meaning |
 |---|---|
-| `approved` | The single canonical role has completed review and may resolve permissions while status is active |
+| `approved` | The canonical assignment has completed review and may resolve additive permissions while status is active |
 | `access_review_required` | No internal role or permission resolves, regardless of historical role data |
 
 Account `status` is separately `active` or `disabled`. Disabled accounts have
@@ -224,7 +234,7 @@ and never repair it with an unaudited database write.
 Every policy change follows: requirements approval, new immutable policy
 version, tests, safe audit allowlist review, read-only dry-run, reviewed
 remediation IDs, transaction-ready apply, idempotency verification, and a
-constrained rollback plan. Historical migrations `001` and `002` are immutable;
+constrained rollback plan. Historical migrations `001` through `005` are immutable;
 future changes use a new migration number.
 
 | Responsibility | Accountable party |
@@ -238,3 +248,75 @@ future changes use a new migration number.
 Handoff includes the current policy version, active approved Owner IDs, safe
 event IDs, readiness evidence, tested backup/restore location, and outstanding
 review-required opaque IDs. No secret value belongs in this runbook or Git.
+
+## 11. Granular role migration 006
+
+Migration `006_granular_role_policy.py` is the current procedure for replacing
+the aggregate internal roles. It never runs migration `005` and never edits a
+historical migration.
+
+The reviewed mapping is a local JSON object keyed only by opaque user ID:
+
+```json
+{
+  "opaque-user-id": {
+    "roles": ["warehouse", "manager_approver"],
+    "reason": "Reviewed assignment reference"
+  }
+}
+```
+
+Do not place names, emails, credentials, tokens, or password hashes in the
+mapping. `super_admin` is exclusive. Customer roles are rejected. Unmapped
+aggregate or historical internal markers become `access_review_required`.
+
+### Dry run
+
+```powershell
+python migrations\006_granular_role_policy.py `
+  --mapping "<reviewed-mapping.json>" `
+  --backup "<unused-backup-path.json>"
+```
+
+Dry run is read-only and does not create the backup file or indexes. Review the
+aggregate category counts and the mapping through the approved two-person
+access-review process.
+
+### Apply and second-run validation
+
+After the full database backup/restore exercise and transaction-readiness gate:
+
+```powershell
+$env:TRANSACTION_MUTATIONS_ENABLED = "true"
+python migrations\006_granular_role_policy.py `
+  --apply `
+  --mapping "<reviewed-mapping.json>" `
+  --backup "<new-identity-fields-backup.json>"
+```
+
+The backup path must not already exist. The file contains only opaque IDs and
+fields owned by migration 006; it excludes password hashes and tokens. Store it
+in the approved encrypted operational backup location, not Git. Apply creates
+the invitation uniqueness indexes, then changes all planned accounts and their
+audit events in one fail-closed transaction. A transaction or concurrency
+failure leaves account changes uncommitted.
+
+Run the same apply command a second time with the existing backup path. Expected
+result: `updated: 0` and `second_run_noop: true`. Validate role resolution,
+disabled/review-blocked login denial, unique pending invitations, audit count,
+and the absence of customer/internal role combinations.
+
+### Rollback
+
+```powershell
+$env:TRANSACTION_MUTATIONS_ENABLED = "true"
+python migrations\006_granular_role_policy.py `
+  --rollback `
+  --backup "<identity-fields-backup.json>"
+```
+
+Rollback restores only fields captured before apply and appends rollback audit
+events in the same transaction. Because aggregate roles are no longer runtime
+authority under policy v2, restoring an old aggregate value remains
+fail-closed. Re-run dry-run and role/data-boundary verification after rollback.
+Disable the temporary mutation flag when the approved window closes.

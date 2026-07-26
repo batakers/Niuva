@@ -94,6 +94,8 @@ _IDENTITY_GOVERNANCE_ACTIONS = frozenset(
         "identity.staff_roles_updated",
         "identity.staff_deactivated",
         "identity.staff_reactivated",
+        "identity.granular_role_migrated",
+        "identity.granular_role_migration_rolled_back",
     }
 )
 _IDENTITY_GOVERNANCE_FIELDS = frozenset(
