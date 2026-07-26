@@ -42,6 +42,7 @@ jobs:
           exit 1
       - name: Run mandatory transaction integration tests
         env:
+          NIUVA_RUN_REAL_TRANSACTION_TESTS: "1"
           MONGO_TRANSACTION_TEST_URL: mongodb://127.0.0.1:27018/?replicaSet=rs-test&directConnection=true
         run: >-
           python -m pytest -n 0 -q

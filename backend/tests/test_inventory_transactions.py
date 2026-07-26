@@ -4,9 +4,12 @@ import os
 import pytest
 
 MONGO_TRANSACTION_TEST_URL = os.environ.get("MONGO_TRANSACTION_TEST_URL")
-if not MONGO_TRANSACTION_TEST_URL:
+if (
+    os.environ.get("NIUVA_RUN_REAL_TRANSACTION_TESTS") != "1"
+    or not MONGO_TRANSACTION_TEST_URL
+):
     pytest.skip(
-        "MONGO_TRANSACTION_TEST_URL is required for real transaction tests",
+        "Explicit real transaction opt-in and MONGO_TRANSACTION_TEST_URL are required",
         allow_module_level=True,
     )
 

@@ -23,4 +23,11 @@ def test_transaction_workflow_covers_identity_and_inventory_atomicity():
     assert "backend/tests/test_transaction_integration.py" in workflow
     assert "backend/tests/test_inventory_transactions.py" in workflow
     assert "backend/tests/test_identity_access_migration.py" in workflow
+    assert "NIUVA_RUN_REAL_TRANSACTION_TESTS: \"1\"" in workflow
 
+    for test_file in (
+        "backend/tests/test_transaction_integration.py",
+        "backend/tests/test_inventory_transactions.py",
+        "backend/tests/test_identity_access_migration.py",
+    ):
+        assert "NIUVA_RUN_REAL_TRANSACTION_TESTS" in read(test_file)

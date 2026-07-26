@@ -670,8 +670,9 @@ def test_rollback_is_scoped_audited_and_never_restores_runtime_authority():
 
 
 @pytest.mark.skipif(
-    not os.environ.get("MONGO_TRANSACTION_TEST_URL"),
-    reason="MONGO_TRANSACTION_TEST_URL is required for replica-set migration test",
+    os.environ.get("NIUVA_RUN_REAL_TRANSACTION_TESTS") != "1"
+    or not os.environ.get("MONGO_TRANSACTION_TEST_URL"),
+    reason="Explicit real transaction opt-in and URL are required",
 )
 def test_real_replica_set_migrates_user_and_audit_in_the_same_transaction():
     loaded_motor = sys.modules.get("motor.motor_asyncio")
