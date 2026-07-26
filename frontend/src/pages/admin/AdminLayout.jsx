@@ -14,7 +14,6 @@ import {
   Menu,
   MessageSquare,
   Package,
-  ScrollText,
   Settings as SettingsIcon,
   Users,
   X,
@@ -60,7 +59,6 @@ const ADMIN_MENU_GROUPS = [
     label: "admin.group.system",
     items: [
       { path: "/admin/users", label: "admin.users", icon: Users },
-      { path: "/admin/audit", label: "admin.audit", icon: ScrollText },
       { path: "/admin/notifications", label: "admin.notifications", icon: MessageSquare },
       { path: "/admin/settings", label: "admin.settings", icon: SettingsIcon },
     ],
