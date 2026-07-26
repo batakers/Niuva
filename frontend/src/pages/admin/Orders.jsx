@@ -328,16 +328,18 @@ export default function AdminOrders() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10">
-                      <input
-                        type="checkbox"
-                        aria-label={t("orders.selectAll")}
-                        checked={
-                          orderIds.length > 0 &&
-                          selectedIds.length === orderIds.length
-                        }
-                        onChange={toggleAll}
-                        className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
-                      />
+                      <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
+                        <input
+                          type="checkbox"
+                          aria-label={t("orders.selectAll")}
+                          checked={
+                            orderIds.length > 0 &&
+                            selectedIds.length === orderIds.length
+                          }
+                          onChange={toggleAll}
+                          className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
+                        />
+                      </label>
                     </TableHead>
                     <TableHead>{t("orders.col.number")}</TableHead>
                     <TableHead>{t("orders.col.client")}</TableHead>
@@ -356,13 +358,15 @@ export default function AdminOrders() {
                       data-state={selectedIds.includes(o.id) ? "selected" : undefined}
                     >
                       <TableCell>
-                        <input
-                          type="checkbox"
-                          aria-label={`${t("orders.select")} ${o.order_number}`}
-                          checked={selectedIds.includes(o.id)}
-                          onChange={() => toggleOne(o.id)}
-                          className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
-                        />
+                        <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
+                          <input
+                            type="checkbox"
+                            aria-label={`${t("orders.select")} ${o.order_number}`}
+                            checked={selectedIds.includes(o.id)}
+                            onChange={() => toggleOne(o.id)}
+                            className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
+                          />
+                        </label>
                       </TableCell>
                       <TableCell className="whitespace-nowrap font-mono text-sm font-medium text-action-primary">
                         {o.order_number}

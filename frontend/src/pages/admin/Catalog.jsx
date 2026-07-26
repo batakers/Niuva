@@ -536,17 +536,19 @@ export default function Catalog() {
               <TableRow>
                 {actions.includes("archive") && (
                   <TableHead className="w-10">
-                    <input
-                      type="checkbox"
-                      aria-label={t("catalog.selectAll")}
-                      checked={
-                        archivableIds.length > 0 &&
-                        selectedInView.length === archivableIds.length
-                      }
-                      onChange={toggleAll}
-                      disabled={archivableIds.length === 0}
-                      className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
-                    />
+                    <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
+                      <input
+                        type="checkbox"
+                        aria-label={t("catalog.selectAll")}
+                        checked={
+                          archivableIds.length > 0 &&
+                          selectedInView.length === archivableIds.length
+                        }
+                        onChange={toggleAll}
+                        disabled={archivableIds.length === 0}
+                        className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
+                      />
+                    </label>
                   </TableHead>
                 )}
                 <TableHead>{t("catalog.product")}</TableHead>
@@ -568,13 +570,15 @@ export default function Catalog() {
                   {actions.includes("archive") && (
                     <TableCell>
                       {product.workflow_status !== "archived" && (
-                        <input
-                          type="checkbox"
-                          aria-label={`${t("catalog.select")} ${product.name}`}
-                          checked={selectedIds.includes(product.id)}
-                          onChange={() => toggleOne(product.id)}
-                          className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
-                        />
+                        <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
+                          <input
+                            type="checkbox"
+                            aria-label={`${t("catalog.select")} ${product.name}`}
+                            checked={selectedIds.includes(product.id)}
+                            onChange={() => toggleOne(product.id)}
+                            className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
+                          />
+                        </label>
                       )}
                     </TableCell>
                   )}

@@ -154,11 +154,11 @@ export default function AdminPortfolio() {
                     <Pencil className="h-3 w-3 mr-2" /> {t("common.edit")}
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
                     onClick={() => setDeleteTarget(p)}
                     aria-label={`${t("common.delete")}: ${lang === "id" ? p.title_id : p.title_en}`}
-                    className="shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground w-9 p-0"
+                    className="shrink-0 h-11 w-11 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
