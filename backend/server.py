@@ -1162,6 +1162,11 @@ async def seed():
             [("quote_id", 1), ("revision", 1)],
             unique=True,
         )
+    projects = getattr(db, "b2b_projects", None)
+    if projects is not None:
+        await projects.create_index("id", unique=True)
+        await projects.create_index("quote_id", unique=True)
+        await projects.create_index([("status", 1), ("updated_at", -1)])
     await db.users.create_index("id", unique=True)
     await db.users.create_index([("roles", 1), ("status", 1)])
     await db.audit_events.create_index("id", unique=True)

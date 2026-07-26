@@ -65,6 +65,18 @@ class QuoteRevisionPayload(BaseModel):
     total_minor: int | None = Field(default=None, ge=0)
 
 
+class ProjectCommandPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_version: int = Field(ge=1)
+    operation_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class ProjectTransitionPayload(ProjectCommandPayload):
+    target_status: Literal["planned", "active", "on_hold", "completed", "cancelled"]
+
+
 def build_b2b_router(
     *,
     get_db,
@@ -185,6 +197,53 @@ def build_b2b_router(
                 scope_snapshot=payload.scope_snapshot,
                 items=payload.items,
                 total_minor=payload.total_minor,
+                actor=actor,
+            )
+        )
+
+    @router.post("/admin/b2b/quotes/{quote_id}/project")
+    async def create_project(
+        quote_id: str,
+        payload: ProjectCommandPayload,
+        actor: dict = Depends(require_permission("projects.write")),
+    ):
+        return await invoke(
+            service().create_project_from_quote(
+                quote_id,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                actor=actor,
+            )
+        )
+
+    @router.get("/admin/b2b/projects")
+    async def list_projects(
+        status_filter: str | None = None,
+        _actor: dict = Depends(require_permission("projects.read")),
+    ):
+        return await invoke(service().list_projects(status=status_filter))
+
+    @router.get("/admin/b2b/projects/{project_id}")
+    async def get_project(
+        project_id: str,
+        _actor: dict = Depends(require_permission("projects.read")),
+    ):
+        return await invoke(service().get_project(project_id))
+
+    @router.post("/admin/b2b/projects/{project_id}/transitions")
+    async def transition_project(
+        project_id: str,
+        payload: ProjectTransitionPayload,
+        actor: dict = Depends(require_permission("projects.write")),
+    ):
+        return await invoke(
+            service().transition_project(
+                project_id,
+                target_status=payload.target_status,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
                 actor=actor,
             )
         )

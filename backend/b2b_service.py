@@ -5,9 +5,11 @@ from datetime import datetime, timezone
 from b2b_domain import (
     B2BDomainError,
     project_inquiry,
+    project_b2b_project,
     project_quote,
     validate_inquiry_transition,
     validate_quote_transition,
+    validate_project_transition,
 )
 
 
@@ -384,6 +386,217 @@ class B2BService:
             retry_safe=True,
             correlation_id=operation_id,
         )
+
+    async def _get_project(self, project_id: str) -> dict:
+        project = await self.db.b2b_projects.find_one({"id": project_id}, {"_id": 0})
+        if not project:
+            raise B2BDomainError(404, "project_not_found", "Project tidak ditemukan.")
+        return dict(project)
+
+    async def get_project(self, project_id: str) -> dict:
+        return project_b2b_project(await self._get_project(project_id))
+
+    async def list_projects(self, *, status: str | None = None) -> list[dict]:
+        query = {"status": status} if status else {}
+        projects = await self.db.b2b_projects.find(query, {"_id": 0}).sort(
+            "updated_at", -1
+        ).limit(500).to_list(500)
+        return [project_b2b_project(project) for project in projects]
+
+    async def create_project_from_quote(
+        self,
+        quote_id: str,
+        *,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        actor: dict,
+    ) -> dict:
+        quote = await self._get_quote(quote_id)
+        if quote.get("project_id"):
+            replay = next(
+                (
+                    event
+                    for event in quote.get("history", [])
+                    if event.get("operation_id") == operation_id
+                    and event.get("event") == "project_created"
+                ),
+                None,
+            )
+            if replay:
+                project = await self._get_project(quote["project_id"])
+                version = await self._get_quote_version(quote["current_version_id"])
+                return {
+                    "quote": project_quote(quote, version),
+                    "project": project_b2b_project(project),
+                }
+            raise B2BDomainError(
+                409,
+                "project_already_created",
+                "Accepted Quote sudah memiliki Project.",
+                details={"project_id": quote["project_id"]},
+            )
+        if quote["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Quote telah berubah. Muat versi terbaru sebelum membuat Project.",
+                details={"current_version": quote["version"], "current_status": quote["status"]},
+            )
+        if quote["status"] != "accepted" or not quote.get("accepted_version_id"):
+            raise B2BDomainError(
+                409,
+                "project_creation_forbidden",
+                "Project hanya dapat dibuat dari Quote yang sudah accepted.",
+            )
+        if not reason.strip():
+            raise B2BDomainError(422, "reason_required", "Alasan pembuatan Project wajib diisi.")
+
+        accepted_version = await self._get_quote_version(quote["accepted_version_id"])
+        timestamp = now_iso()
+        project_id = str(uuid.uuid4())
+        project = {
+            "id": project_id,
+            "quote_id": quote_id,
+            "inquiry_id": quote["inquiry_id"],
+            "source_quote_version_id": quote["accepted_version_id"],
+            "quote_snapshot": deepcopy(accepted_version),
+            "status": "planned",
+            "version": 1,
+            "milestones": [],
+            "design_versions": [],
+            "work_order_ids": [],
+            "qc_record_ids": [],
+            "fulfilment_ids": [],
+            "history": [
+                {
+                    "from_status": None,
+                    "to_status": "planned",
+                    "actor_user_id": actor.get("id"),
+                    "reason": reason.strip(),
+                    "operation_id": operation_id,
+                    "timestamp": timestamp,
+                }
+            ],
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        quote_event = {
+            "event": "project_created",
+            "from_status": "accepted",
+            "to_status": "accepted",
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "operation_id": operation_id,
+            "timestamp": timestamp,
+        }
+        quote_changes = {
+            "project_id": project_id,
+            "version": expected_version + 1,
+            "history": [*quote.get("history", []), quote_event],
+            "updated_at": timestamp,
+        }
+
+        async def mutation(session):
+            options = {"session": session}
+            await self.db.b2b_projects.insert_one(deepcopy(project), **options)
+            result = await self.db.b2b_quotes.update_one(
+                {
+                    "id": quote_id,
+                    "version": expected_version,
+                    "status": "accepted",
+                    "accepted_version_id": quote["accepted_version_id"],
+                    "project_id": None,
+                },
+                {"$set": quote_changes},
+                **options,
+            )
+            if not result.matched_count:
+                raise B2BDomainError(
+                    409,
+                    "version_conflict",
+                    "Quote berubah selama pembuatan Project.",
+                )
+            return {
+                "quote": project_quote({**quote, **quote_changes}, accepted_version),
+                "project": project_b2b_project(project),
+            }
+
+        if self.transaction_guard is None:
+            raise B2BDomainError(
+                503,
+                "transaction_unavailable",
+                "Pembuatan Project tidak tersedia tanpa transaction guard.",
+            )
+        return await self.transaction_guard.run(
+            mutation,
+            operation_name="b2b.create_project",
+            retry_safe=True,
+            correlation_id=operation_id,
+        )
+
+    async def transition_project(
+        self,
+        project_id: str,
+        *,
+        target_status: str,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        actor: dict,
+    ) -> dict:
+        project = await self._get_project(project_id)
+        for event in project.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if event.get("to_status") != target_status:
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi Project berbeda.",
+                    )
+                return project_b2b_project(project)
+        if project["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Project telah berubah. Muat versi terbaru sebelum mencoba lagi.",
+                details={
+                    "current_version": project["version"],
+                    "current_status": project["status"],
+                    "permitted_next_actions": project_b2b_project(project)[
+                        "permitted_next_actions"
+                    ],
+                },
+            )
+        validate_project_transition(project["status"], target_status, reason=reason)
+        timestamp = now_iso()
+        event = {
+            "from_status": project["status"],
+            "to_status": target_status,
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "operation_id": operation_id,
+            "timestamp": timestamp,
+        }
+        changes = {
+            "status": target_status,
+            "version": expected_version + 1,
+            "history": [*project.get("history", []), event],
+            "updated_at": timestamp,
+        }
+        result = await self.db.b2b_projects.update_one(
+            {"id": project_id, "version": expected_version, "status": project["status"]},
+            {"$set": changes},
+        )
+        if not result.matched_count:
+            current = await self._get_project(project_id)
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Project telah berubah. Muat versi terbaru sebelum mencoba lagi.",
+                details={"current_version": current["version"], "current_status": current["status"]},
+            )
+        return project_b2b_project({**project, **changes})
 
     async def convert_inquiry(
         self,

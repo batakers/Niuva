@@ -34,6 +34,22 @@ QUOTE_TRANSITIONS = {
     "rejected": set(),
 }
 
+PROJECT_ACTIONS = {
+    "planned": ["activate", "cancel"],
+    "active": ["hold", "complete", "cancel"],
+    "on_hold": ["resume", "cancel"],
+    "completed": [],
+    "cancelled": [],
+}
+
+PROJECT_TRANSITIONS = {
+    "planned": {"active", "cancelled"},
+    "active": {"on_hold", "completed", "cancelled"},
+    "on_hold": {"active", "cancelled"},
+    "completed": set(),
+    "cancelled": set(),
+}
+
 
 class B2BDomainError(Exception):
     def __init__(
@@ -139,8 +155,52 @@ def validate_quote_transition(
 def project_quote(document: dict, current_version: dict | None = None) -> dict:
     value = {key: item for key, item in document.items() if key != "_id"}
     value["permitted_next_actions"] = quote_next_actions(value["status"])
+    if value["status"] == "accepted" and value.get("project_id"):
+        value["permitted_next_actions"] = []
     if current_version is not None:
         value["current_version"] = {
             key: item for key, item in current_version.items() if key != "_id"
         }
+    return value
+
+
+def project_next_actions(status: str) -> list[str]:
+    return list(PROJECT_ACTIONS.get(status, []))
+
+
+def validate_project_transition(
+    current_status: str,
+    target_status: str,
+    *,
+    reason: str,
+) -> None:
+    if current_status not in PROJECT_TRANSITIONS:
+        raise B2BDomainError(
+            409,
+            "project_status_unknown",
+            "Status Project tidak dikenali.",
+        )
+    if not PROJECT_TRANSITIONS[current_status]:
+        raise B2BDomainError(
+            409,
+            "project_terminal",
+            "Project pada status terminal tidak dapat diubah.",
+        )
+    if target_status not in PROJECT_TRANSITIONS[current_status]:
+        raise B2BDomainError(
+            409,
+            "project_transition_invalid",
+            "Perpindahan status Project tidak diizinkan.",
+            details={
+                "current_status": current_status,
+                "permitted_next_actions": project_next_actions(current_status),
+            },
+        )
+    if not reason.strip():
+        raise B2BDomainError(422, "reason_required", "Alasan perubahan Project wajib diisi.")
+
+
+def project_b2b_project(document: dict) -> dict:
+    value = {key: item for key, item in document.items() if key != "_id"}
+    value["permitted_next_actions"] = project_next_actions(value["status"])
     return value
