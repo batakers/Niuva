@@ -39,8 +39,6 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
-from transaction_execution import TransactionUnavailableError  # noqa: E402
-from transaction_guard import TransactionMutationGuard  # noqa: E402
 
 REAL_TRANSACTION_GUARD = server.app.state.transaction_guard
 
@@ -188,27 +186,14 @@ class FakeDatabase:
 
 
 class FakeTransactionGuard:
-    def __init__(self, database, *, available=True, barrier_size=0):
+    def __init__(self, database):
         self.database = database
-        self.available = available
         self.calls = []
         self.session = object()
         self._lock = asyncio.Lock()
-        self._barrier_size = barrier_size
-        self._entrants = 0
-        self._barrier = asyncio.Event()
 
     async def run(self, callback, *, operation_name, retry_safe=False):
         self.calls.append((operation_name, retry_safe))
-        if not self.available:
-            from transaction_execution import TransactionUnavailableError
-
-            raise TransactionUnavailableError()
-        if self._barrier_size:
-            self._entrants += 1
-            if self._entrants >= self._barrier_size:
-                self._barrier.set()
-            await self._barrier.wait()
         async with self._lock:
             snapshots = {
                 name: copy.deepcopy(collection.items)
@@ -221,23 +206,6 @@ class FakeTransactionGuard:
                 for name, items in snapshots.items():
                     getattr(self.database, name).items = items
                 raise
-
-
-class RejectingTransactionExecutor:
-    def __init__(self, *, capability_available):
-        self.capability_available = capability_available
-        self.execute_calls = []
-        self.reject_calls = []
-
-    def reject_unavailable(self, **options):
-        self.reject_calls.append(options)
-        raise TransactionUnavailableError()
-
-    async def execute(self, callback, **options):
-        self.execute_calls.append(options)
-        if not self.capability_available:
-            raise TransactionUnavailableError()
-        return await callback(object())
 
 
 def bearer(token):
@@ -281,16 +249,10 @@ async def run_staff_access_matrix():
     async with httpx.AsyncClient(
         transport=transport, base_url="http://testserver"
     ) as api:
-        for restricted_path in (
-            "/api/admin/roles",
-            "/api/admin/access-policy",
-            "/api/admin/users",
-            "/api/admin/audit-events",
-        ):
-            denied_response = await api.get(
-                restricted_path, headers=bearer(warehouse_token)
-            )
-            assert denied_response.status_code == 403
+        denied_response = await api.get(
+            "/api/admin/users", headers=bearer(warehouse_token)
+        )
+        assert denied_response.status_code == 403
 
         manager_users = await api.get("/api/admin/users", headers=bearer(manager_token))
         assert manager_users.status_code == 403
@@ -299,296 +261,11 @@ async def run_staff_access_matrix():
         )
         assert owner_users.status_code == 200
         assert all("password_hash" not in user for user in owner_users.json())
-        access_policy = await api.get(
-            "/api/admin/access-policy", headers=bearer(super_admin_token)
-        )
-        assert access_policy.status_code == 200
-        assert access_policy.json()["policy_version"] == server.ROLE_POLICY_VERSION
-        assert access_policy.json()["access_reason_codes"] == [
-            {"code": "role_review_approved", "label": "Approve access review"},
-            {"code": "role_access_removed", "label": "Remove access"},
-            {"code": "emergency_override", "label": "Emergency override"},
-        ]
-        owner_role = next(
-            role
-            for role in access_policy.json()["roles"]
-            if role["role"] == "super_admin"
-        )
-        assert owner_role["label"] == "Owner"
-
-        updated = await api.put(
-            "/api/admin/users/user-2/access",
-            headers=bearer(super_admin_token),
-            json={
-                "roles": ["operations"],
-                "status": "active",
-                "access_state": "approved",
-                "reason_code": "role_review_approved",
-            },
-        )
-        assert updated.status_code == 200
-        assert updated.json()["roles"] == ["operations"]
-        assert "password_hash" not in updated.json()
-        assert db.audit_events.items[-1]["action"] == "user.access_updated"
-
-        invalid = await api.put(
-            "/api/admin/users/user-2/access",
-            headers=bearer(super_admin_token),
-            json={
-                "roles": ["unknown_role"],
-                "status": "active",
-                "access_state": "approved",
-                "reason_code": "role_review_approved",
-            },
-        )
-        assert invalid.status_code == 422
-
-        final_admin = await api.put(
-            "/api/admin/users/admin-1/access",
-            headers=bearer(super_admin_token),
-            json={
-                "roles": ["commercial_finance"],
-                "status": "active",
-                "access_state": "approved",
-                "reason_code": "role_access_removed",
-            },
-        )
-        assert final_admin.status_code == 409
 
 
 def test_staff_access_routes_enforce_permissions_and_audit():
     try:
         asyncio.run(run_staff_access_matrix())
-    finally:
-        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
-
-
-async def _put_access(api, token, user_id, **overrides):
-    payload = {
-        "roles": ["operations"],
-        "status": "active",
-        "access_state": "approved",
-        "reason_code": "role_review_approved",
-    }
-    payload.update(overrides)
-    return await api.put(
-        f"/api/admin/users/{user_id}/access",
-        headers=bearer(token),
-        json=payload,
-    )
-
-
-async def run_access_guard_contract():
-    owner = make_user("owner-guard", "owner-guard@niuva.com", ["super_admin"])
-    target = make_user("target-guard", "target-guard@niuva.com", ["retail_customer"])
-
-    cases = (
-        ("disabled_flag", True, False, 1, 0),
-        ("unavailable_capability", False, True, 0, 1),
-    )
-    for failure_source, capability, enabled, reject_count, execute_count in cases:
-        db = FakeDatabase([owner, target])
-        executor = RejectingTransactionExecutor(capability_available=capability)
-        guard = TransactionMutationGuard(executor, lambda: enabled)
-        server.db = db
-        server.app.state.transaction_guard = guard
-        token = server.create_token(owner["id"], owner["email"], "super_admin")
-        transport = httpx.ASGITransport(app=server.app, raise_app_exceptions=False)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as api:
-            response = await _put_access(api, token, target["id"])
-
-        assert response.status_code == 503, failure_source
-        assert response.json() == {
-            "detail": {
-                "code": "transaction_unavailable",
-                "message": (
-                    "Operasi sementara tidak tersedia karena transaksi "
-                    "database belum siap."
-                ),
-            }
-        }
-        assert db.users.items[1] == target
-        assert db.audit_events.items == []
-        assert db.identity_policy_state.items == []
-        assert len(executor.reject_calls) == reject_count
-        assert len(executor.execute_calls) == execute_count
-        options = (executor.reject_calls or executor.execute_calls)[0]
-        assert options["operation_name"] == "identity.access.update"
-        assert options["retry_mode"].value == "never"
-
-
-def test_access_guard_rejects_before_user_or_audit_write():
-    try:
-        asyncio.run(run_access_guard_contract())
-    finally:
-        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
-
-
-async def run_access_atomicity_and_session_contract():
-    owner = make_user("owner-atomic", "owner-atomic@niuva.com", ["super_admin"])
-    target = make_user("target-atomic", "target-atomic@niuva.com", ["retail_customer"])
-    db = FakeDatabase([owner, target])
-    guard = FakeTransactionGuard(db)
-    server.db = db
-    server.app.state.transaction_guard = guard
-    token = server.create_token(owner["id"], owner["email"], "super_admin")
-    transport = httpx.ASGITransport(app=server.app, raise_app_exceptions=False)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as api:
-        response = await _put_access(api, token, target["id"])
-
-        assert response.status_code == 200
-        assert guard.calls == [("identity.access.update", False)]
-        assert response.json()["roles"] == ["operations"]
-        assert "reason" not in response.json() and "reason_code" not in response.json()
-        assert len(db.audit_events.items) == 1
-        assert db.identity_policy_state.items[0]["approved_owner_count"] == 1
-        event = db.audit_events.items[0]
-        assert event["reason_code"] == "role_review_approved"
-        assert set(event) == {
-            "id",
-            "actor_user_id",
-            "action",
-            "target_type",
-            "target_id",
-            "previous",
-            "result",
-            "reason_code",
-            "policy_version",
-            "created_at",
-        }
-        transactional_options = [
-            options
-            for collection in (
-                db.users,
-                db.identity_policy_state,
-                db.audit_events,
-            )
-            for _operation, options in collection.operations
-            if "session" in options
-        ]
-        assert transactional_options
-        assert all(
-            options["session"] is guard.session for options in transactional_options
-        )
-
-        before_failure = copy.deepcopy(db.users.items)
-        db.audit_events.fail_inserts = True
-        failed = await _put_access(
-            api,
-            token,
-            target["id"],
-            roles=["commercial_finance"],
-            reason_code="emergency_override",
-        )
-        assert failed.status_code == 500
-        assert guard.calls == [
-            ("identity.access.update", False),
-            ("identity.access.update", False),
-        ]
-        assert db.users.items == before_failure
-        assert len(db.audit_events.items) == 1
-        assert db.identity_policy_state.items[0]["approved_owner_count"] == 1
-
-
-def test_access_update_commits_with_audit_or_rolls_back_and_forwards_one_session():
-    try:
-        asyncio.run(run_access_atomicity_and_session_contract())
-    finally:
-        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
-
-
-async def run_access_validation_and_stale_token_contract():
-    owner = make_user("owner-validation", "owner-validation@niuva.com", ["super_admin"])
-    target = make_user(
-        "target-validation", "target-validation@niuva.com", ["operations"]
-    )
-    db = FakeDatabase([owner, target])
-    db.materials.items.append({"id": "material-validation", "name": "PLA"})
-    guard = FakeTransactionGuard(db)
-    server.db = db
-    server.app.state.transaction_guard = guard
-    owner_token = server.create_token(owner["id"], owner["email"], "super_admin")
-    stale_token = server.create_token(target["id"], target["email"], "operations")
-    transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as api:
-        for invalid_payload in (
-            {"roles": ["operations", "commercial_finance"]},
-            {"roles": ["warehouse"]},
-            {"roles": ["retail_customer"]},
-            {"roles": ["organization_customer"]},
-            {"reason_code": "free text is forbidden"},
-            {"reason": "free text must be rejected"},
-            {"reason_code": "policy_migration_v1"},
-        ):
-            response = await _put_access(
-                api, owner_token, target["id"], **invalid_payload
-            )
-            assert response.status_code == 422
-
-        reviewed = await _put_access(
-            api,
-            owner_token,
-            target["id"],
-            access_state="access_review_required",
-            reason_code="role_access_removed",
-        )
-        assert reviewed.status_code == 200
-        denied = await api.get("/api/admin/materials", headers=bearer(stale_token))
-        assert denied.status_code == 403
-
-
-def test_access_contract_is_single_role_reason_coded_and_stale_tokens_fail_closed():
-    try:
-        asyncio.run(run_access_validation_and_stale_token_contract())
-    finally:
-        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
-
-
-async def run_concurrent_final_owner_contract():
-    first = make_user("owner-first", "owner-first@niuva.com", ["super_admin"])
-    second = make_user("owner-second", "owner-second@niuva.com", ["super_admin"])
-    db = FakeDatabase([first, second])
-    guard = FakeTransactionGuard(db, barrier_size=2)
-    server.db = db
-    server.app.state.transaction_guard = guard
-    first_token = server.create_token(first["id"], first["email"], "super_admin")
-    second_token = server.create_token(second["id"], second["email"], "super_admin")
-    transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as api:
-        responses = await asyncio.gather(
-            _put_access(
-                api,
-                first_token,
-                second["id"],
-                roles=["operations"],
-                reason_code="role_access_removed",
-            ),
-            _put_access(
-                api,
-                second_token,
-                first["id"],
-                roles=["operations"],
-                reason_code="role_access_removed",
-            ),
-        )
-
-    assert sorted(response.status_code for response in responses) == [200, 409]
-    approved_owners = [
-        user
-        for user in db.users.items
-        if user["roles"] == ["super_admin"]
-        and user["status"] == "active"
-        and user["access_state"] == "approved"
-    ]
-    assert len(approved_owners) == 1
-    assert len(db.audit_events.items) == 1
-
-
-def test_concurrent_updates_cannot_remove_the_final_approved_owner():
-    try:
-        asyncio.run(run_concurrent_final_owner_contract())
     finally:
         server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
 

@@ -1,13 +1,6 @@
-const INTERNAL_ROLE_KIND = "internal";
-
 const ACCOUNT_STATUS_LABELS = Object.freeze({
   active: "Active",
   disabled: "Disabled",
-});
-
-const ACCESS_STATE_LABELS = Object.freeze({
-  approved: "Approved",
-  access_review_required: "Access review required",
 });
 
 const SAFE_AUDIT_EVENT_FIELDS = Object.freeze([
@@ -34,54 +27,8 @@ function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function policyRoles(policy) {
-  if (!isRecord(policy) || !Array.isArray(policy.roles)) return [];
-  return policy.roles.filter(
-    (role) =>
-      isRecord(role) &&
-      typeof role.role === "string" &&
-      typeof role.label === "string" &&
-      typeof role.kind === "string"
-  );
-}
-
-export function internalRoles(policy) {
-  return policyRoles(policy).filter((role) => role.kind === INTERNAL_ROLE_KIND);
-}
-
-export function reasonCodes(policy) {
-  if (!isRecord(policy) || !Array.isArray(policy.access_reason_codes)) return [];
-  return policy.access_reason_codes.filter(
-    (reason) =>
-      isRecord(reason) &&
-      typeof reason.code === "string" &&
-      typeof reason.label === "string"
-  );
-}
-
-export function roleLabels(user, policy) {
-  const roles = Array.isArray(user?.roles)
-    ? user.roles.filter((role) => typeof role === "string")
-    : [];
-  const suppliedLabels = Array.isArray(user?.role_labels)
-    ? user.role_labels.filter((label) => typeof label === "string")
-    : [];
-  if (roles.length > 0 && suppliedLabels.length === roles.length) {
-    return suppliedLabels;
-  }
-
-  const labelsByRole = new Map(
-    policyRoles(policy).map((role) => [role.role, role.label])
-  );
-  return roles.map((role) => labelsByRole.get(role) || "Unknown role");
-}
-
 export function accountStatusLabel(status) {
   return ACCOUNT_STATUS_LABELS[status] || "Unknown status";
-}
-
-export function accessStateLabel(accessState) {
-  return ACCESS_STATE_LABELS[accessState] || "Unknown access state";
 }
 
 function safeAuditProjection(value) {

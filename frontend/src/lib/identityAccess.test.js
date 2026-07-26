@@ -1,55 +1,11 @@
 import {
-  accessStateLabel,
   accountStatusLabel,
-  internalRoles,
-  reasonCodes,
-  roleLabels,
   safeAuditEvent,
 } from "./identityAccess";
 
-const policy = {
-  roles: [
-    {
-      role: "super_admin",
-      label: "Owner",
-      kind: "internal",
-      permissions: ["*"],
-    },
-    {
-      role: "operations",
-      label: "Operations",
-      kind: "internal",
-      permissions: ["inventory.write"],
-    },
-    {
-      role: "retail_customer",
-      label: "Retail Customer",
-      kind: "customer",
-      permissions: [],
-    },
-  ],
-  access_reason_codes: [
-    { code: "role_review_approved", label: "Approve access review" },
-    { code: "role_access_removed", label: "Remove access" },
-  ],
-};
-
-test("uses server role labels and exposes only one internal role catalog", () => {
-  expect(internalRoles(policy)).toEqual([
-    policy.roles[0],
-    policy.roles[1],
-  ]);
-  expect(roleLabels({ roles: ["super_admin"] }, policy)).toEqual(["Owner"]);
-  expect(roleLabels({ roles: ["unknown"] }, policy)).toEqual(["Unknown role"]);
-});
-
-test("exposes only server supplied reason codes and separate account states", () => {
-  expect(reasonCodes(policy)).toEqual(policy.access_reason_codes);
-  expect(reasonCodes({ access_reason_codes: [{ code: "unsafe" }] })).toEqual([]);
+test("exposes account status labels", () => {
   expect(accountStatusLabel("active")).toBe("Active");
   expect(accountStatusLabel("disabled")).toBe("Disabled");
-  expect(accessStateLabel("approved")).toBe("Approved");
-  expect(accessStateLabel("access_review_required")).toBe("Access review required");
 });
 
 test("projects audit events to the documented allowlist", () => {
