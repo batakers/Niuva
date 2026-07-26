@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthShell } from "@/components/auth/AuthShell";
-import { api, formatApiError } from "../../lib/api";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+import { api, formatApiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -43,16 +43,16 @@ export default function ResetPassword() {
   if (!token) {
     return (
       <AuthShell heading={"Account\nRecovery"} tagline="Reset password akun Anda.">
-        <div className="border border-border bg-surface-1 p-8">
-          <h1 className="mb-4 font-heading text-2xl font-bold uppercase tracking-tight text-foreground">
+        <div className="border border-border-default bg-surface-default p-8">
+          <h1 className="mb-4 font-heading text-2xl font-bold uppercase tracking-tight text-text-primary">
             Link Tidak Valid
           </h1>
-          <p className="mb-8 text-sm leading-relaxed text-muted-foreground" role="alert" data-testid="reset-password-missing-token">
+          <p className="mb-8 text-sm leading-relaxed text-text-secondary" role="alert" data-testid="reset-password-missing-token">
             Link reset password ini tidak lengkap atau tidak valid. Silakan minta link baru.
           </p>
           <Link
             to="/forgot-password"
-            className="block text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+            className="block text-center font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:text-text-primary"
           >
             Minta Link Baru
           </Link>
@@ -63,22 +63,22 @@ export default function ResetPassword() {
 
   return (
     <AuthShell heading={"Account\nRecovery"} tagline="Buat password baru untuk akun Anda.">
-      <div className="border border-border bg-surface-1 p-8">
-        <h1 className="mb-2 font-heading text-2xl font-bold uppercase tracking-tight text-foreground">
+      <div className="border border-border-default bg-surface-default p-8">
+        <h1 className="mb-2 font-heading text-2xl font-bold uppercase tracking-tight text-text-primary">
           Reset Password
         </h1>
-        <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
+        <p className="mb-8 text-sm leading-relaxed text-text-secondary">
           Masukkan password baru untuk akun Anda.
         </p>
 
         {done ? (
           <div className="space-y-6" data-testid="reset-password-success" role="status">
-            <div className="border border-border bg-surface-2 p-4 text-sm text-foreground">
+            <div className="border border-border-default bg-surface-muted p-4 text-sm text-text-primary">
               Password berhasil diubah. Sesi lama Anda telah diakhiri untuk keamanan — silakan login dengan password baru.
             </div>
             <Button
               onClick={() => navigate("/admin/login", { replace: true })}
-              className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+              className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90"
             >
               Ke Halaman Login
             </Button>
@@ -86,7 +86,7 @@ export default function ResetPassword() {
         ) : (
           <form onSubmit={submit} className="space-y-6" data-testid="reset-password-form">
             <div className="space-y-2">
-              <Label htmlFor="reset-password-new" className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <Label htmlFor="reset-password-new" className="block font-mono text-[10px] uppercase tracking-widest text-text-secondary">
                 Password Baru
               </Label>
               <Input
@@ -98,13 +98,13 @@ export default function ResetPassword() {
                 required
                 minLength={MIN_PASSWORD_LENGTH}
                 autoComplete="new-password"
-                className="h-12 rounded-none border-border bg-background font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
+                className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
               />
               {tooShort && <p className="text-xs text-destructive">Minimal {MIN_PASSWORD_LENGTH} karakter.</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reset-password-confirm" className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <Label htmlFor="reset-password-confirm" className="block font-mono text-[10px] uppercase tracking-widest text-text-secondary">
                 Konfirmasi Password
               </Label>
               <Input
@@ -115,7 +115,7 @@ export default function ResetPassword() {
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
                 autoComplete="new-password"
-                className="h-12 rounded-none border-border bg-background font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
+                className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
               />
               {mismatch && <p className="text-xs text-destructive">Password tidak cocok.</p>}
             </div>
@@ -130,7 +130,7 @@ export default function ResetPassword() {
               type="submit"
               disabled={submitting || !canSubmit}
               data-testid="reset-password-submit"
-              className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+              className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90"
             >
               {submitting ? "MEMPROSES..." : "Reset Password"}
             </Button>

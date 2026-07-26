@@ -1,7 +1,7 @@
 """
 NIUVA backend integration tests (pytest).
 Covers: auth, materials, orders, payment, admin order flow,
-portfolio, internship/contact, settings, users, stats, notifications.
+portfolio, contact, settings, users, stats, notifications.
 
 Required environment for authenticated integration tests:
 - REACT_APP_BACKEND_URL
@@ -287,23 +287,8 @@ class TestOrderFlow:
         # at least order received + estimate + verified + completed
         assert isinstance(notifs, list) and len(notifs) >= 2
 
-# ---------- Internship / Contact (public) ----------
+# ---------- Contact (public) ----------
 class TestPublicForms:
-    def test_internship_submit(self):
-        payload = {
-            "full_name": "TEST Pelamar", "email": "TEST_intern@t.com", "phone": "0800",
-            "university": "ITB", "major": "ME", "semester": "5", "duration": "3 bulan",
-            "motivation": "Belajar", "portfolio_url": "",
-        }
-        r = requests.post(f"{API}/internships", json=payload, timeout=20)
-        assert r.status_code == 200
-        assert r.json()["ok"] is True
-
-    def test_admin_internships_list(self, admin_token):
-        r = requests.get(f"{API}/admin/internships", headers=hh(admin_token), timeout=20)
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
     def test_contact_submit(self):
         r = requests.post(f"{API}/contact",
                           json={"name": "TEST", "email": "TEST_c@t.com",
@@ -369,7 +354,7 @@ class TestSettingsUsersStats:
         r = requests.get(f"{API}/admin/stats", headers=hh(admin_token), timeout=20)
         assert r.status_code == 200
         d = r.json()
-        for k in ("total_orders", "pending_estimate", "awaiting_payment", "in_process", "completed", "clients", "internships"):
+        for k in ("total_orders", "pending_estimate", "awaiting_payment", "in_process", "completed", "clients"):
             assert k in d
 
 # ---------- Catalog / material pricing / inventory foundation ----------

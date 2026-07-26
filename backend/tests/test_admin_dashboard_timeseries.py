@@ -110,7 +110,6 @@ class FakeDatabase:
         self.users = FakeCollection(users)
         self.orders = FakeCollection(orders or [])
         self.stock_movements = FakeCollection(stock_movements or [])
-        self.internships = FakeCollection()
         self.notifications = FakeCollection()
 
 

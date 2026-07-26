@@ -16,17 +16,55 @@ export const contentApi = {
   public: (contentType) => unwrap(api.get("/content", { params: contentType ? { content_type: contentType } : {} })),
 };
 
-const CONTENT_TYPE_FIELD_KEYS = {
-  about: ["intro", "dossierItems", "approachSteps", "values"],
-  capability: ["title", "body", "output", "targetUsers", "cta", "priority"],
-  faq: ["question", "answer", "category", "sort_order"],
-  cta: ["label", "title", "body", "primaryActionLabel", "primaryActionTarget"],
-  contact: ["location", "email", "whatsapp", "whatsappHref", "mapsHref"],
+// Structured field schema per content type, mirroring the required fields in
+// backend/content_domain.py validate_content_fields(). Drives a real form
+// instead of a raw JSON textarea.
+export const CONTENT_TYPE_SCHEMAS = {
+  about: [
+    { key: "intro", label: "Intro", type: "textarea" },
+    { key: "dossierItems", label: "Dossier Items", type: "itemList", itemFields: ["label", "title", "body"] },
+    { key: "approachSteps", label: "Approach Steps", type: "itemList", itemFields: ["label", "title", "body"] },
+    { key: "values", label: "Values", type: "stringList" },
+  ],
+  capability: [
+    { key: "title", label: "Title", type: "text" },
+    { key: "body", label: "Body", type: "textarea" },
+    { key: "output", label: "Output", type: "textarea" },
+    { key: "targetUsers", label: "Target Users", type: "text" },
+    { key: "cta", label: "CTA Label", type: "text" },
+    { key: "priority", label: "Priority", type: "select", options: ["primary", "supporting"] },
+  ],
+  faq: [
+    { key: "question", label: "Question", type: "text" },
+    { key: "answer", label: "Answer", type: "textarea" },
+    { key: "category", label: "Category", type: "text", optional: true },
+    { key: "sort_order", label: "Sort Order", type: "number", optional: true },
+  ],
+  cta: [
+    { key: "label", label: "Label", type: "text" },
+    { key: "title", label: "Title", type: "text" },
+    { key: "body", label: "Body", type: "textarea" },
+    { key: "primaryActionLabel", label: "Primary Action Label", type: "text" },
+    { key: "primaryActionTarget", label: "Primary Action Target (path)", type: "text" },
+  ],
+  contact: [
+    { key: "location", label: "Location", type: "text" },
+    { key: "email", label: "Email", type: "text" },
+    { key: "whatsapp", label: "WhatsApp (display)", type: "text" },
+    { key: "whatsappHref", label: "WhatsApp Link", type: "text" },
+    { key: "mapsHref", label: "Maps Link", type: "text", optional: true },
+  ],
 };
 
+function emptyValueFor(field) {
+  if (field.type === "itemList" || field.type === "stringList") return [];
+  if (field.type === "number") return "";
+  return "";
+}
+
 export function emptyFieldsFor(contentType) {
-  const keys = CONTENT_TYPE_FIELD_KEYS[contentType] || [];
-  return Object.fromEntries(keys.map((key) => [key, key.endsWith("Items") || key.endsWith("Steps") || key === "values" ? [] : ""]));
+  const schema = CONTENT_TYPE_SCHEMAS[contentType] || [];
+  return Object.fromEntries(schema.map((field) => [field.key, emptyValueFor(field)]));
 }
 
 export function statusTone(status) {

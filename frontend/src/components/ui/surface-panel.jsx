@@ -4,7 +4,7 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const surfacePanelVariants = cva(
-  "border border-border bg-surface-1",
+  "rounded-panel border border-border-default bg-surface-default shadow-surface",
   {
     variants: {
       padding: {
@@ -15,7 +15,7 @@ const surfacePanelVariants = cva(
       },
       intent: {
         default: "",
-        dashed: "border-dashed bg-surface-1/50",
+        dashed: "border-dashed bg-surface-page/60",
       },
     },
     defaultVariants: {
@@ -26,12 +26,12 @@ const surfacePanelVariants = cva(
 );
 
 const surfacePanelHeaderVariants = cva(
-  "border-b border-border bg-surface-2",
+  "border-b border-border-default bg-surface-muted rounded-t-panel",
   {
     variants: {
       padding: {
-        sm: "px-4 py-2",
-        md: "px-6 py-3",
+        sm: "px-4 py-3",
+        md: "px-6 py-4",
         lg: "p-5",
       },
     },

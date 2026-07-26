@@ -3,9 +3,13 @@ import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
+import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/empty-state";
+import { ErrorState } from "../../components/ui/error-state";
+import { FormField } from "../../components/ui/form-field";
 import { Input } from "../../components/ui/input";
+import { Skeleton } from "../../components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
 import { Switch } from "../../components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -31,18 +35,16 @@ const emptyOption = () => ({
 
 function Field({ label, error, children }) {
   return (
-    <label className="block space-y-1">
-      <TechnicalLabel as="span" size="micro">{label}</TechnicalLabel>
+    <FormField label={label} error={error?.join("; ")}>
       {children}
-      {error?.map((message) => <span key={message} className="block text-xs text-destructive" role="alert">{message}</span>)}
-    </label>
+    </FormField>
   );
 }
 
 function Section({ title, children, action }) {
   return (
     <SurfacePanel>
-      <SurfacePanelHeader padding="sm" className="flex items-center justify-between gap-3"><TechnicalLabel>{title}</TechnicalLabel>{action}</SurfacePanelHeader>
+      <SurfacePanelHeader padding="sm" className="flex items-center justify-between gap-3"><p className="type-label text-text-secondary">{title}</p>{action}</SurfacePanelHeader>
       <div className="space-y-4 p-5">{children}</div>
     </SurfacePanel>
   );
@@ -202,8 +204,8 @@ export default function ProductEditor() {
     }
   };
 
-  if (loading) return <AdminLayout title={t("catalog.editor")}><EmptyState>{t("common.loading")}</EmptyState></AdminLayout>;
-  if (error) return <AdminLayout title={t("catalog.editor")}><EmptyState><span role="alert">{error}</span></EmptyState></AdminLayout>;
+  if (loading) return <AdminLayout title={t("catalog.editor")}><div className="space-y-6 p-6"><Skeleton variant="heading" className="w-64" /><Skeleton className="h-10 w-full" /><Skeleton className="h-32 w-full" /></div></AdminLayout>;
+  if (error) return <AdminLayout title={t("catalog.editor")}><ErrorState error={error} onRetry={() => load()} /></AdminLayout>;
 
   return (
     <AdminLayout title={isNew ? t("catalog.create") : draft.name || t("catalog.editor")} subtitle={canWrite ? t("catalog.editHint") : t("catalog.readOnly")}>
@@ -212,15 +214,15 @@ export default function ProductEditor() {
         {canWrite && <Button onClick={save} disabled={busy} variant="technical"><Save className="mr-2 h-4 w-4" />{t("common.save")}</Button>}
       </div>
       <Tabs defaultValue="basic" className="space-y-4">
-        <TabsList className="h-auto w-full flex-wrap justify-start rounded-none border border-border bg-surface-1">
+        <TabsList className="h-auto w-full flex-wrap justify-start rounded-none border border-border-default bg-surface-default">
           {["basic", "media", "variants", "options", "pricing", "publish"].map((tab) => (
-            <TabsTrigger key={tab} value={tab} className="rounded-none font-mono text-xs">{t(`catalog.tab.${tab}`)}</TabsTrigger>
+            <TabsTrigger key={tab} value={tab} className="rounded-none">{t(`catalog.tab.${tab}`)}</TabsTrigger>
           ))}
         </TabsList>
 
         <TabsContent value="basic"><Section title={t("catalog.basicInformation")}>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label={t("catalog.category")} error={validation.category_id}><select value={draft.category_id} onChange={set("category_id")} disabled={!canWrite} className="h-10 w-full border border-border bg-background px-3"><option value="">—</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field>
+            <Field label={t("catalog.category")} error={validation.category_id}><select value={draft.category_id} onChange={set("category_id")} disabled={!canWrite} className="h-10 w-full border border-border-default bg-surface-page px-3"><option value="">—</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field>
             <Field label={t("common.name")} error={validation.name}><Input value={draft.name} onChange={set("name")} disabled={!canWrite} /></Field>
             <Field label="Slug" error={validation.slug}><Input value={draft.slug || ""} onChange={set("slug")} disabled={!canWrite} /></Field>
             <Field label={t("catalog.shortDescription")} error={validation.short_description}><Input value={draft.short_description || ""} onChange={set("short_description")} disabled={!canWrite} /></Field>
@@ -230,7 +232,7 @@ export default function ProductEditor() {
 
         <TabsContent value="media"><Section title={t("catalog.media")} action={canWrite && <Button size="sm" variant="outline" onClick={() => setDraft((current) => ({ ...current, media: [...current.media, { storage_path: "", alt: "" }] }))}><Plus className="mr-2 h-4 w-4" />{t("common.add")}</Button>}>
           {draft.media.length === 0 && <EmptyState frame="dashed">{t("catalog.noMedia")}</EmptyState>}
-          {draft.media.map((item, index) => <div key={`${index}-${item.storage_path}`} className="grid gap-3 border border-border p-3 md:grid-cols-[1fr_1fr_auto]">
+          {draft.media.map((item, index) => <div key={`${index}-${item.storage_path}`} className="grid gap-3 border border-border-default p-3 md:grid-cols-[1fr_1fr_auto]">
             <Field label={t("catalog.storagePath")}><Input value={item.storage_path} onChange={(event) => updateMedia(index, "storage_path", event.target.value)} disabled={!canWrite} /></Field>
             <Field label={t("catalog.altText")} error={validation.media}><Input value={item.alt} onChange={(event) => updateMedia(index, "alt", event.target.value)} disabled={!canWrite} /></Field>
             {canWrite && <Button variant="ghost" size="icon" aria-label={`${t("common.delete")}: ${t("catalog.media")} ${index + 1}`} onClick={() => setDraft((current) => ({ ...current, media: current.media.filter((_, itemIndex) => itemIndex !== index) }))}><Trash2 className="h-4 w-4" /></Button>}
@@ -239,10 +241,10 @@ export default function ProductEditor() {
 
         <TabsContent value="variants"><Section title={t("catalog.variants")} action={canWrite && <Button size="sm" variant="outline" onClick={() => setVariants((current) => [...current, emptyVariant()])}><Plus className="mr-2 h-4 w-4" />{t("common.add")}</Button>}>
           {variants.length === 0 && <EmptyState frame="dashed">{t("catalog.noVariants")}</EmptyState>}
-          {variants.map((variant, index) => <div key={variant.id || index} className="grid gap-3 border border-border p-3 md:grid-cols-3">
+          {variants.map((variant, index) => <div key={variant.id || index} className="grid gap-3 border border-border-default p-3 md:grid-cols-3">
             <Field label="SKU" error={validation.variants}><Input value={variant.sku} onChange={(event) => updateVariant(index, "sku", event.target.value)} disabled={!canWrite} /></Field>
             <Field label={t("common.name")}><Input value={variant.name} onChange={(event) => updateVariant(index, "name", event.target.value)} disabled={!canWrite} /></Field>
-            <Field label={t("catalog.productionType")}><select value={variant.production_type} onChange={(event) => updateVariant(index, "production_type", event.target.value)} disabled={!canWrite} className="h-10 w-full border border-border bg-background px-3"><option value="ready_stock">Ready stock</option><option value="made_to_order">Made to order</option></select></Field>
+            <Field label={t("catalog.productionType")}><select value={variant.production_type} onChange={(event) => updateVariant(index, "production_type", event.target.value)} disabled={!canWrite} className="h-10 w-full border border-border-default bg-surface-page px-3"><option value="ready_stock">{t("catalog.readyStock")}</option><option value="made_to_order">{t("catalog.madeToOrder")}</option></select></Field>
             <Field label={t("catalog.fixedPrice")}><Input type="number" min="0" value={variant.fixed_price ?? ""} onChange={(event) => updateVariant(index, "fixed_price", event.target.value)} disabled={!canWrite} /></Field>
             <Field label={t("materials.reorderPoint")}><Input value={variant.reorder_point ?? "0"} onChange={(event) => updateVariant(index, "reorder_point", event.target.value)} disabled={!canWrite} /></Field>
             <div className="flex items-end justify-between gap-3"><label className="flex items-center gap-2"><Switch checked={Boolean(variant.inventory_tracking_enabled)} onCheckedChange={(value) => updateVariant(index, "inventory_tracking_enabled", value)} disabled={!canWrite} /><span className="text-xs">{t("inventory.tracking")}</span></label>{canWrite && <Button variant="ghost" size="icon" aria-label={`${t("common.delete")}: ${variant.name || variant.sku || t("catalog.variants")}`} onClick={() => setVariants((current) => current.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="h-4 w-4" /></Button>}</div>
@@ -251,10 +253,10 @@ export default function ProductEditor() {
 
         <TabsContent value="options"><Section title={t("catalog.options")} action={canWrite && <Button size="sm" variant="outline" onClick={() => setOptions((current) => [...current, emptyOption()])}><Plus className="mr-2 h-4 w-4" />{t("common.add")}</Button>}>
           {options.length === 0 && <EmptyState frame="dashed">{t("catalog.noOptions")}</EmptyState>}
-          {options.map((option, index) => <div key={option.id || index} className="grid gap-3 border border-border p-3 md:grid-cols-3">
+          {options.map((option, index) => <div key={option.id || index} className="grid gap-3 border border-border-default p-3 md:grid-cols-3">
             <Field label={t("catalog.optionCode")}><Input value={option.code} onChange={(event) => updateOption(index, "code", event.target.value)} disabled={!canWrite} /></Field>
             <Field label={t("catalog.optionLabel")}><Input value={option.label} onChange={(event) => updateOption(index, "label", event.target.value)} disabled={!canWrite} /></Field>
-            <Field label={t("catalog.optionType")}><select value={option.type} onChange={(event) => updateOption(index, "type", event.target.value)} disabled={!canWrite} className="h-10 w-full border border-border bg-background px-3"><option value="select">Select</option><option value="number">Number</option><option value="text">Text</option><option value="file">File</option><option value="boolean">Boolean</option></select></Field>
+            <Field label={t("catalog.optionType")}><select value={option.type} onChange={(event) => updateOption(index, "type", event.target.value)} disabled={!canWrite} className="h-10 w-full border border-border-default bg-surface-page px-3"><option value="select">{t("catalog.optionTypeSelect")}</option><option value="number">{t("catalog.optionTypeNumber")}</option><option value="text">{t("catalog.optionTypeText")}</option><option value="file">{t("catalog.optionTypeFile")}</option><option value="boolean">{t("catalog.optionTypeBoolean")}</option></select></Field>
             <Field label={t("catalog.allowedValues")}><Input value={Array.isArray(option.allowed_values) ? option.allowed_values.join(", ") : option.allowed_values || ""} onChange={(event) => updateOption(index, "allowed_values", event.target.value)} disabled={!canWrite} /></Field>
             <Field label={t("catalog.displayOrder")}><Input type="number" min="0" value={option.display_order ?? 0} onChange={(event) => updateOption(index, "display_order", event.target.value)} disabled={!canWrite} /></Field>
             <div className="flex items-end justify-between"><label className="flex items-center gap-2"><Switch checked={Boolean(option.required)} onCheckedChange={(value) => updateOption(index, "required", value)} disabled={!canWrite} /><span className="text-xs">{t("catalog.required")}</span></label>{canWrite && <Button variant="ghost" size="icon" aria-label={`${t("common.delete")}: ${option.label || option.code || t("catalog.options")}`} onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="h-4 w-4" /></Button>}</div>
@@ -263,24 +265,24 @@ export default function ProductEditor() {
 
         <TabsContent value="pricing"><Section title={t("catalog.pricingStock")}>
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label={t("catalog.pricingMode")} error={validation.pricing_mode}><select value={draft.pricing_mode} onChange={set("pricing_mode")} disabled={!canWrite} className="h-10 w-full border border-border bg-background px-3"><option value="fixed">Fixed</option><option value="calculated">Calculated</option><option value="quote_required">Quote required</option></select></Field>
+            <Field label={t("catalog.pricingMode")} error={validation.pricing_mode}><select value={draft.pricing_mode} onChange={set("pricing_mode")} disabled={!canWrite} className="h-10 w-full border border-border-default bg-surface-page px-3"><option value="fixed">{t("catalog.pricingFixed")}</option><option value="calculated">{t("catalog.pricingCalculated")}</option><option value="quote_required">{t("catalog.pricingQuoteRequired")}</option></select></Field>
             <Field label={t("catalog.priceFrom")} error={validation.price_from}><Input type="number" min="0" value={draft.price_from} onChange={set("price_from")} disabled={!canWrite} /></Field>
-            <Field label={t("catalog.stockPolicy")}><select value={draft.stock_visibility} onChange={set("stock_visibility")} disabled={!canWrite} className="h-10 w-full border border-border bg-background px-3"><option value="status_only">Status only</option><option value="made_to_order">Made to order</option></select></Field>
+            <Field label={t("catalog.stockPolicy")}><select value={draft.stock_visibility} onChange={set("stock_visibility")} disabled={!canWrite} className="h-10 w-full border border-border-default bg-surface-page px-3"><option value="status_only">{t("catalog.stockStatusOnly")}</option><option value="made_to_order">{t("catalog.stockMadeToOrder")}</option></select></Field>
           </div>
           <Field label={t("catalog.pricingRuleReference")} error={validation.pricing_rule_reference}><Input value={draft.pricing_rule_reference || ""} onChange={set("pricing_rule_reference")} disabled={!canWrite} /></Field>
-          <div className="flex flex-wrap gap-5"><label className="flex items-center gap-2"><Switch checked={draft.retail_cta_enabled} onCheckedChange={set("retail_cta_enabled")} disabled={!canWrite} />Retail CTA</label><label className="flex items-center gap-2"><Switch checked={draft.b2b_cta_enabled} onCheckedChange={set("b2b_cta_enabled")} disabled={!canWrite} />B2B CTA</label></div>
+          <div className="flex flex-wrap gap-5"><label className="flex items-center gap-2"><Switch checked={draft.retail_cta_enabled} onCheckedChange={set("retail_cta_enabled")} disabled={!canWrite} />{t("catalog.retailCta")}</label><label className="flex items-center gap-2"><Switch checked={draft.b2b_cta_enabled} onCheckedChange={set("b2b_cta_enabled")} disabled={!canWrite} />{t("catalog.b2bCta")}</label></div>
         </Section></TabsContent>
 
         <TabsContent value="publish"><Section title={t("catalog.publication")}>
-          {Object.keys(validation).length > 0 && <div className="border border-destructive/50 bg-destructive/5 p-4" role="alert"><TechnicalLabel tone="danger">{t("catalog.validationFailed")}</TechnicalLabel>{Object.entries(validation).map(([field, messages]) => <div key={field} className="mt-2 text-sm"><strong>{field}</strong><ul className="list-disc pl-5">{messages.map((message) => <li key={message}>{message}</li>)}</ul></div>)}</div>}
+          {Object.keys(validation).length > 0 && <Alert><TechnicalLabel tone="destructive">{t("catalog.validationFailed")}</TechnicalLabel>{Object.entries(validation).map(([field, messages]) => <div key={field} className="mt-2 text-sm"><strong>{field}</strong><ul className="list-disc pl-5">{messages.map((message) => <li key={message}>{message}</li>)}</ul></div>)}</Alert>}
           {!isNew && <Button variant="outline" onClick={validate}>{t("catalog.validate")}</Button>}
           <Field label={t("common.reason")}><Textarea value={reason} onChange={(event) => setReason(event.target.value)} minLength={3} maxLength={500} rows={3} /></Field>
           <div className="flex flex-wrap gap-2">
             {canPublish && !isNew && <Button onClick={publish} disabled={busy || reason.trim().length < 3}>{t("catalog.publish")}</Button>}
             {canArchive && !isNew && <Button variant="destructive" onClick={archive} disabled={busy || reason.trim().length < 3}>{t("catalog.archive")}</Button>}
           </div>
-          <div className="border-t border-border pt-4"><TechnicalLabel>{t("catalog.revisionHistory")}</TechnicalLabel>
-            {publications.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">{t("catalog.noPublications")}</p> : <div className="mt-2 space-y-2">{publications.map((publication) => <label key={publication.id} className="flex items-center gap-3 border border-border p-3"><input type="radio" name="revision" checked={selectedRevision === publication.id} onChange={() => setSelectedRevision(publication.id)} /><span className="flex-1">Revision {publication.revision} · {new Date(publication.published_at).toLocaleString()}</span><TechnicalLabel size="micro">{publication.publish_reason}</TechnicalLabel></label>)}</div>}
+          <div className="border-t border-border-default pt-4"><p className="type-label text-text-secondary">{t("catalog.revisionHistory")}</p>
+            {publications.length === 0 ? <p className="mt-2 text-sm text-text-secondary">{t("catalog.noPublications")}</p> : <div className="mt-2 space-y-2">{publications.map((publication) => <label key={publication.id} className="flex items-center gap-3 border border-border-default p-3"><input type="radio" name="revision" checked={selectedRevision === publication.id} onChange={() => setSelectedRevision(publication.id)} /><span className="flex-1">{t("catalog.revisionLabel").replace("{n}", String(publication.revision))} · {new Date(publication.published_at).toLocaleString()}</span><TechnicalLabel size="micro">{publication.publish_reason}</TechnicalLabel></label>)}</div>}
             {canPublish && publications.length > 0 && <Button className="mt-3" variant="outline" onClick={rollback} disabled={busy || !selectedRevision || reason.trim().length < 3}>{t("catalog.rollback")}</Button>}
           </div>
         </Section></TabsContent>
