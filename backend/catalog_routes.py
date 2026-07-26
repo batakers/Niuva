@@ -214,6 +214,13 @@ def build_catalog_router(
             service().create_product(payload.model_dump(mode="json"), actor)
         )
 
+    @router.get("/admin/catalog/quotable-variants")
+    async def list_quotable_variants(
+        _actor: dict = Depends(require_permission("catalog.read")),
+    ):
+        """Active variants a quotation line may reference."""
+        return await invoke(service().list_quotable_variants())
+
     @router.get("/admin/products/{product_id}")
     async def get_product(
         product_id: str,

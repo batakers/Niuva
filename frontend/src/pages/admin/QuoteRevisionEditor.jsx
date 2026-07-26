@@ -25,7 +25,12 @@ const SCOPE_FIELDS = [
   { key: "timeline", labelKey: "b2b.timeline" },
 ];
 
-const EMPTY_ITEM = { description: "", quantity: "1", unit_price_minor: "0" };
+const EMPTY_ITEM = {
+  description: "",
+  quantity: "1",
+  unit_price_minor: "0",
+  variant_id: "",
+};
 
 function operationId() {
   return globalThis.crypto?.randomUUID?.() ||
@@ -53,6 +58,7 @@ export default function QuoteRevisionEditor() {
   const [scope, setScope] = useState({});
   const [brief, setBrief] = useState("");
   const [items, setItems] = useState([]);
+  const [variants, setVariants] = useState([]);
   const [reason, setReason] = useState("");
 
   const load = useCallback(() => {
@@ -71,7 +77,7 @@ export default function QuoteRevisionEditor() {
             description: item.description || "",
             quantity: String(item.quantity ?? 1),
             unit_price_minor: String(item.unit_price_minor ?? 0),
-            variant_id: item.variant_id || null,
+            variant_id: item.variant_id || "",
           }))
         );
       })
@@ -84,6 +90,16 @@ export default function QuoteRevisionEditor() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    // A line without a variant carries no snapshot, so the catalog is loaded
+    // even when the quotation currently has none: the choice has to exist
+    // before anyone can make it.
+    api
+      .get("/admin/catalog/quotable-variants")
+      .then((response) => setVariants(response.data || []))
+      .catch(() => setVariants([]));
+  }, []);
 
   const totalMinor = useMemo(
     () => items.reduce((sum, item) => sum + lineTotal(item), 0),
@@ -99,6 +115,31 @@ export default function QuoteRevisionEditor() {
         position === index ? { ...item, [key]: event.target.value } : item
       )
     );
+
+  const chooseVariant = (index) => (event) => {
+    const variantId = event.target.value;
+    const chosen = variants.find((item) => item.variant_id === variantId);
+    setItems((current) =>
+      current.map((item, position) => {
+        if (position !== index) return item;
+        if (!chosen) return { ...item, variant_id: "" };
+        return {
+          ...item,
+          variant_id: variantId,
+          // Seeded from the catalog, and still editable: a quotation may
+          // describe or price a line differently from the shelf. The server
+          // takes its own snapshot regardless of what is typed here.
+          description:
+            item.description.trim() ||
+            `${chosen.product_name} · ${chosen.variant_name}`.trim(),
+          unit_price_minor:
+            toInteger(item.unit_price_minor) > 0
+              ? item.unit_price_minor
+              : String(chosen.fixed_price ?? 0),
+        };
+      })
+    );
+  };
 
   const addItem = () => setItems((current) => [...current, { ...EMPTY_ITEM }]);
   const removeItem = (index) =>
@@ -152,7 +193,8 @@ export default function QuoteRevisionEditor() {
           description: item.description.trim(),
           quantity: toInteger(item.quantity),
           unit_price_minor: toInteger(item.unit_price_minor),
-          // Not yet selectable here; a line without it carries no snapshot.
+          // A line without a variant carries no snapshot, which is a valid
+          // choice for bespoke work the catalog does not describe.
           variant_id: item.variant_id || null,
         })),
         // Line totals and the sum are derived server-side from the lines. The
@@ -304,7 +346,35 @@ export default function QuoteRevisionEditor() {
           ) : (
             <ul className="divide-y divide-border-default">
               {items.map((item, index) => (
-                <li key={index} className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_6rem_10rem_auto] sm:items-end">
+                <li key={index} className="grid gap-4 p-5">
+                  <div className="space-y-2">
+                    <Label htmlFor={`item-variant-${index}`} className="text-sm font-semibold">
+                      {t("b2b.revisionItemVariant")}
+                    </Label>
+                    <select
+                      id={`item-variant-${index}`}
+                      data-testid={`item-variant-${index}`}
+                      value={item.variant_id || ""}
+                      onChange={chooseVariant(index)}
+                      className="brand-field h-11 w-full rounded-control border border-border-default bg-surface-default px-3 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    >
+                      <option value="">{t("b2b.revisionItemNoVariant")}</option>
+                      {variants.map((variant) => (
+                        <option key={variant.variant_id} value={variant.variant_id}>
+                          {variant.product_name} · {variant.sku}
+                          {variant.bill_of_materials_lines > 0
+                            ? ` · ${variant.bill_of_materials_lines} ${t("workOrder.materials").toLowerCase()}`
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs leading-5 text-text-secondary">
+                      {item.variant_id
+                        ? t("b2b.revisionItemSnapshotNote")
+                        : t("b2b.revisionItemNoSnapshotNote")}
+                    </p>
+                  </div>
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_6rem_10rem_auto] sm:items-end">
                   <div className="space-y-2">
                     <Label htmlFor={`item-description-${index}`} className="text-sm font-semibold">
                       {t("b2b.revisionItemDescription")}
@@ -358,6 +428,7 @@ export default function QuoteRevisionEditor() {
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>
+                </div>
                 </li>
               ))}
             </ul>

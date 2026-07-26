@@ -155,6 +155,59 @@ class CatalogService:
             "updated_at", -1
         ).to_list(500)
 
+    async def list_quotable_variants(self) -> list[dict]:
+        """Active variants a quotation line may reference, across all products.
+
+        Flattened deliberately: a picker built from list_products plus a fetch
+        per product would issue one request per product to fill one dropdown.
+
+        Carries only what a quoted line needs to be chosen and understood. The
+        snapshot itself is still taken server-side when the revision is
+        written, so nothing here is the source of truth for what was quoted.
+        """
+        variants = await self.db.product_variants.find(
+            {"status": "active"}, {"_id": 0}
+        ).to_list(1000)
+        product_ids = sorted(
+            {variant["product_id"] for variant in variants if variant.get("product_id")}
+        )
+        products = (
+            await self.db.products.find(
+                {"id": {"$in": product_ids}}, {"_id": 0}
+            ).to_list(len(product_ids))
+            if product_ids
+            else []
+        )
+        products_by_id = {item["id"]: item for item in products}
+
+        quotable = []
+        for variant in variants:
+            product = products_by_id.get(variant.get("product_id"))
+            if not product:
+                continue
+            quotable.append(
+                {
+                    "variant_id": variant["id"],
+                    "product_id": product["id"],
+                    "product_name": product.get("name", ""),
+                    "sku": variant.get("sku", ""),
+                    "variant_name": variant.get("name", ""),
+                    "option_values": variant.get("option_values") or {},
+                    "production_type": variant.get("production_type", ""),
+                    "fixed_price": variant.get("fixed_price"),
+                    "currency": variant.get("currency", "IDR"),
+                    # Whether choosing this line will also freeze a bill of
+                    # materials, which is what later lets a work order be
+                    # opened against it.
+                    "bill_of_materials_lines": len(
+                        variant.get("bill_of_materials") or []
+                    ),
+                }
+            )
+        return sorted(
+            quotable, key=lambda item: (item["product_name"], item["sku"])
+        )
+
     async def _product_document(self, product_id: str) -> dict:
         product = clean_document(
             await self.db.products.find_one({"id": product_id}, {"_id": 0})

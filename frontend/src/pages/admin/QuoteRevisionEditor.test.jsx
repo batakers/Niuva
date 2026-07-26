@@ -64,9 +64,31 @@ function renderEditor() {
   );
 }
 
+const VARIANTS = [
+  {
+    variant_id: "var-1",
+    product_id: "prod-1",
+    product_name: "Desk Sign",
+    variant_name: "Blue",
+    sku: "SIGN-BLUE",
+    fixed_price: 150000,
+    bill_of_materials_lines: 2,
+  },
+];
+
+// Routed by URL: the editor reads the quotation and the catalog, and a single
+// blanket response would hand the quote back as the variant list.
+function mockGet(quote = QUOTE) {
+  api.get.mockImplementation((url) =>
+    url.includes("quotable-variants")
+      ? Promise.resolve({ data: VARIANTS })
+      : Promise.resolve({ data: quote })
+  );
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
-  api.get.mockResolvedValue({ data: QUOTE });
+  mockGet();
   api.post.mockResolvedValue({ data: { ...QUOTE, version: 5 } });
 });
 
@@ -139,6 +161,67 @@ describe("Quote revision editor", () => {
     expect(api.post.mock.calls[0][1].total_minor).toBeNull();
   });
 
+  test("choosing a variant seeds the line and carries it to the server", async () => {
+    renderEditor();
+    await waitFor(() => expect(screen.getByTestId("add-item")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId("add-item"));
+    fireEvent.change(screen.getByTestId("item-variant-1"), {
+      target: { value: "var-1" },
+    });
+
+    // Seeded from the catalog rather than left for retyping.
+    expect(screen.getByTestId("item-description-1")).toHaveValue(
+      "Desk Sign · Blue"
+    );
+    expect(screen.getByTestId("item-price-1")).toHaveValue("150000");
+
+    fireEvent.change(screen.getByTestId("revision-reason"), {
+      target: { value: "Menambahkan item katalog" },
+    });
+    fireEvent.submit(screen.getByTestId("quote-revision-form"));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    const [, payload] = api.post.mock.calls[0];
+    expect(payload.items[1].variant_id).toBe("var-1");
+  });
+
+  test("a seeded line stays editable", async () => {
+    renderEditor();
+    await waitFor(() => expect(screen.getByTestId("add-item")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId("add-item"));
+    fireEvent.change(screen.getByTestId("item-variant-1"), {
+      target: { value: "var-1" },
+    });
+    // A quotation may price a line differently from the shelf.
+    fireEvent.change(screen.getByTestId("item-price-1"), {
+      target: { value: "175000" },
+    });
+    fireEvent.change(screen.getByTestId("revision-reason"), {
+      target: { value: "Harga khusus pelanggan" },
+    });
+    fireEvent.submit(screen.getByTestId("quote-revision-form"));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    expect(api.post.mock.calls[0][1].items[1].unit_price_minor).toBe(175000);
+  });
+
+  test("a line may carry no variant, for bespoke work", async () => {
+    renderEditor();
+    await waitFor(() => expect(screen.getByTestId("item-variant-0")).toBeInTheDocument());
+
+    // The existing line has no variant and must stay submittable.
+    expect(screen.getByTestId("item-variant-0")).toHaveValue("");
+    fireEvent.change(screen.getByTestId("revision-reason"), {
+      target: { value: "Pekerjaan khusus" },
+    });
+    fireEvent.submit(screen.getByTestId("quote-revision-form"));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    expect(api.post.mock.calls[0][1].items[0].variant_id).toBeNull();
+  });
+
   test("holds a missing reason at the form", async () => {
     renderEditor();
     await waitFor(() => expect(screen.getByTestId("revision-reason")).toBeInTheDocument());
@@ -150,7 +233,7 @@ describe("Quote revision editor", () => {
   });
 
   test("refuses to open on a quote the backend would reject", async () => {
-    api.get.mockResolvedValue({ data: { ...QUOTE, status: "sent" } });
+    mockGet({ ...QUOTE, status: "sent" });
     renderEditor();
 
     await waitFor(() =>
