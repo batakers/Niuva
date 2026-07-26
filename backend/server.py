@@ -291,6 +291,11 @@ async def authenticate_credentials(req: LoginReq) -> dict:
     user = await db.users.find_one({"email": req.email.lower()})
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    if (
+        user.get("status", "active") == "disabled"
+        or user.get("access_state", "approved") == "access_review_required"
+    ):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     return user
 
 

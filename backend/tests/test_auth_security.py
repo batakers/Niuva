@@ -171,7 +171,27 @@ async def run_security_matrix():
         "status": "disabled",
         "created_at": server.now_iso(),
     }
-    server.db = FakeDatabase([admin, client, other_client, editor, commercial, disabled_client])
+    review_blocked_staff = {
+        "id": "staff-review-blocked",
+        "name": "Review Blocked Staff",
+        "email": "review-blocked@example.com",
+        "password_hash": server.hash_password("ReviewBlockedPassword123"),
+        "roles": ["operations"],
+        "status": "active",
+        "access_state": "access_review_required",
+        "created_at": server.now_iso(),
+    }
+    server.db = FakeDatabase(
+        [
+            admin,
+            client,
+            other_client,
+            editor,
+            commercial,
+            disabled_client,
+            review_blocked_staff,
+        ]
+    )
     server.db.orders.items.append(
         {
             "id": "order-1",
@@ -240,6 +260,23 @@ async def run_security_matrix():
             json={"email": admin["email"], "password": "WrongPassword123"},
         )
         assert invalid_admin_login.status_code == 401
+
+        for path, email, password in (
+            ("/api/auth/login", disabled_client["email"], "DisabledPassword123"),
+            (
+                "/api/auth/admin/login",
+                review_blocked_staff["email"],
+                "ReviewBlockedPassword123",
+            ),
+        ):
+            blocked_login = await api.post(
+                path,
+                json={"email": email, "password": password},
+            )
+            assert blocked_login.status_code == 401
+            assert blocked_login.json() == {"detail": "Invalid email or password"}
+            assert "token" not in blocked_login.json()
+            assert "access_token" not in blocked_login.cookies
 
         client_login = await api.post(
             "/api/auth/login",
