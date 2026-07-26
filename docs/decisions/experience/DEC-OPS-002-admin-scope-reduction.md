@@ -7,6 +7,11 @@ Decision date: 26 July 2026
 Decision source: Explicit user decisions recorded during admin CMS redesign session, 26 July 2026.
 Branch: `feat/admin-cms-redesign`
 
+Amendment: `DEC-ACCESS-002`, approved 26 July 2026, rebuilds only the
+Super Admin staff-invitation, role-assignment, deactivation, and reactivation
+surface. Organization management UI, Internship, the full Audit viewer, and
+Restock navigation remain unchanged.
+
 ## Context
 
 During the Admin CMS/Backoffice redesign the following features were identified as out of current operational scope:
@@ -27,7 +32,7 @@ Removing these features reduces maintenance surface, focuses the admin on commer
 |---|---|---|---|
 | Internship | `Internships.jsx`, route, nav, i18n, dashboard stat | `POST /internships`, `GET /admin/internships`, `InternshipReq` model, `interns` stat field | Collections untouched (non-destructive) |
 | Organization management | `Organizations.jsx`, route, nav group, i18n | `organization_routes.py` (all endpoints: `GET /admin/organizations`, `POST /admin/organizations`, `GET /organizations/mine`), permission matrix keys `organizations.*` | Collections untouched |
-| Role management | Edit Access dialog, role/access-policy UI, related i18n | `GET /admin/roles`, `GET /admin/access-policy`, `PUT /admin/users/{id}/access`, all access-update helpers | — |
+| Role management (original scope) | The former operational Edit Access dialog and aggregate three-role selector remain removed. `DEC-ACCESS-002` authorizes a new Super Admin-only granular invitation and access-governance surface. | The former aggregate-role endpoints remain removed. New bounded identity-governance APIs must follow `DEC-ACCESS-002`. | — |
 | Audit viewer | `AuditLog.jsx`, route, nav, i18n, `safeAuditEvent`/`safeAuditProjection` utilities | `GET /admin/audit-events` | — |
 | Restock sidebar nav entry | Sidebar link removed | — | — |
 
@@ -52,14 +57,19 @@ Removing these features reduces maintenance surface, focuses the admin on commer
 
 ## Consequences
 
-1. **Role changes require direct DB access** until a future role-management feature is rebuilt. New users are always provisioned as `retail_customer`.
+1. **Role management is governance-only.** `DEC-ACCESS-002` authorizes a
+   Super Admin-only internal invite and granular access-management workflow.
+   Customer provisioning remains a separate operation.
 2. **Audit events accumulate without a viewer.** A viewer can be rebuilt when a defined consumption model is approved.
 3. **Orphan collections** (`internships`, `organizations`, `organization_memberships`) remain in MongoDB. A non-destructive cleanup migration is planned separately (Batch G) and requires explicit approval before execution.
 4. **`DEC-ACCESS-001` is unaffected.** The granular internal role model remains canonical; removing the three-role Edit Access UI does not change the role direction.
 
 ## Supersedes
 
-- Statements in prior plans or specs that assume Internship, Organization management, role-change UI, or Audit viewer are part of the active Admin surface.
+- Statements in prior plans or specs that assume Internship, Organization
+  management, operational-staff role-change UI, or Audit viewer are part of the
+  active Admin surface. The bounded Super Admin governance amendment in
+  `DEC-ACCESS-002` remains authoritative.
 - Does NOT supersede `DEC-OPS-001` (operational experience direction remains fully in effect) or `DEC-ACCESS-001` (granular role boundary).
 
 ## Verification
