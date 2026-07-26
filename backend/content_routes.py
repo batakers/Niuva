@@ -33,7 +33,15 @@ class RollbackPayload(ReasonPayload):
     version_id: str
 
 
-def build_content_router(*, get_db, get_client, get_capabilities, require_permission) -> APIRouter:
+class ContentTransitionPayload(ReasonPayload):
+    target_status: Literal[
+        "draft", "review", "preview", "scheduled", "published", "archived"
+    ]
+
+
+def build_content_router(
+    *, get_db, get_client, get_capabilities, require_permission, has_permission
+) -> APIRouter:
     router = APIRouter(tags=["content"])
 
     def service() -> ContentService:
@@ -86,11 +94,28 @@ def build_content_router(*, get_db, get_client, get_capabilities, require_permis
     ):
         return await invoke(service().validate_block(block_id))
 
+    @router.post("/admin/content/{block_id}/transitions")
+    async def transition_content(
+        block_id: str,
+        payload: ContentTransitionPayload,
+        actor: dict = Depends(require_permission("content.write")),
+    ):
+        return await invoke(
+            service().transition_block(
+                block_id,
+                target_status=payload.target_status,
+                actor=actor,
+                reason=payload.reason,
+                # Publishing is an approval, not an edit.
+                can_publish=has_permission(actor, "content.publish"),
+            )
+        )
+
     @router.post("/admin/content/{block_id}/publish")
     async def publish_content(
         block_id: str,
         payload: PublishPayload,
-        actor: dict = Depends(require_permission("content.write")),
+        actor: dict = Depends(require_permission("content.publish")),
     ):
         return await invoke(
             service().publish_block(

@@ -1244,6 +1244,7 @@ api.include_router(
         get_client=lambda: client,
         get_capabilities=lambda: app.state.database_capabilities,
         require_permission=require_permission,
+        has_permission=has_permission,
     )
 )
 
