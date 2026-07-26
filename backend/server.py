@@ -28,6 +28,7 @@ import emailer
 from audit import append_audit_event
 from b2b_routes import build_b2b_router
 from retail_domain import classify_legacy_order
+from retail_routes import build_retail_router
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
 from content_routes import build_content_router
@@ -1154,6 +1155,14 @@ api.include_router(
 )
 
 api.include_router(
+    build_retail_router(
+        get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
+        require_permission=require_permission,
+    )
+)
+
+api.include_router(
     build_catalog_router(
         get_db=lambda: db,
         get_client=lambda: client,
@@ -1236,6 +1245,12 @@ async def seed():
         await work_orders.create_index("id", unique=True)
         await work_orders.create_index([("project_id", 1), ("updated_at", -1)])
         await work_orders.create_index([("status", 1), ("updated_at", -1)])
+    retail_orders = getattr(db, "retail_orders", None)
+    if retail_orders is not None:
+        await retail_orders.create_index("id", unique=True)
+        await retail_orders.create_index("order_number", unique=True)
+        await retail_orders.create_index("creation_operation_id", unique=True)
+        await retail_orders.create_index([("status", 1), ("updated_at", -1)])
     shortages = getattr(db, "work_order_shortages", None)
     if shortages is not None:
         await shortages.create_index("id", unique=True)
