@@ -86,6 +86,7 @@ class FakeDatabase:
         "configuration_options",
         "catalog_publications",
         "inventory_balances",
+        "materials",
         "audit_events",
     )
 

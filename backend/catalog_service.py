@@ -8,6 +8,7 @@ from catalog_domain import (
     build_publication_snapshot,
     normalize_slug,
     project_publication_for_public,
+    validate_bill_of_materials,
     validate_catalog_aggregate,
 )
 
@@ -227,6 +228,41 @@ class CatalogService:
         )
         return after
 
+    async def _reject_invalid_bill_of_materials(
+        self, prepared: list[tuple[dict | None, dict]]
+    ) -> None:
+        """Validate every variant BOM before any variant is written."""
+        referenced = {
+            str(entry.get("material_id", "")).strip()
+            for _current, value in prepared
+            for entry in value.get("bill_of_materials") or []
+            if str(entry.get("material_id", "")).strip()
+        }
+        materials_by_id = {}
+        if referenced:
+            documents = await self.db.materials.find(
+                {"id": {"$in": sorted(referenced)}}, {"_id": 0}
+            ).to_list(len(referenced))
+            materials_by_id = {item["id"]: item for item in documents}
+
+        errors: list[dict] = []
+        for _current, value in prepared:
+            entries = value.get("bill_of_materials") or []
+            if not entries:
+                continue
+            errors.extend(
+                {**error, "field": f"variants.{value['sku']}.{error['field']}"}
+                for error in validate_bill_of_materials(entries, materials_by_id)
+            )
+
+        if errors:
+            raise CatalogError(
+                422,
+                "bom_invalid",
+                "Bill of materials varian tidak valid.",
+                errors=errors,
+            )
+
     async def replace_variants(
         self, product_id: str, variants: list[dict], actor: dict
     ) -> list[dict]:
@@ -291,6 +327,8 @@ class CatalogService:
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
             prepared.append((current, value))
+
+        await self._reject_invalid_bill_of_materials(prepared)
 
         resolved_ids = [value["id"] for _current, value in prepared]
         if len(resolved_ids) != len(set(resolved_ids)):
