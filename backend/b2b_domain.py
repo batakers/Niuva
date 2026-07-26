@@ -14,6 +14,16 @@ INQUIRY_ACTIONS = {
     "rejected": [],
 }
 
+QUOTE_ACTIONS = {
+    "draft": ["submit_internal_review"],
+    "internal_review": ["send", "return_to_draft"],
+    "sent": ["accept", "request_revision", "expire", "reject"],
+    "accepted": ["create_project"],
+    "revision_requested": ["create_revision"],
+    "expired": [],
+    "rejected": [],
+}
+
 
 class B2BDomainError(Exception):
     def __init__(
@@ -81,4 +91,18 @@ def validate_inquiry_transition(
 def project_inquiry(document: dict) -> dict:
     value = {key: item for key, item in document.items() if key != "_id"}
     value["permitted_next_actions"] = inquiry_next_actions(value["status"])
+    return value
+
+
+def quote_next_actions(status: str) -> list[str]:
+    return list(QUOTE_ACTIONS.get(status, []))
+
+
+def project_quote(document: dict, current_version: dict | None = None) -> dict:
+    value = {key: item for key, item in document.items() if key != "_id"}
+    value["permitted_next_actions"] = quote_next_actions(value["status"])
+    if current_version is not None:
+        value["current_version"] = {
+            key: item for key, item in current_version.items() if key != "_id"
+        }
     return value

@@ -29,6 +29,14 @@ class InquiryTransitionPayload(BaseModel):
     reason: str = Field(default="", max_length=500)
 
 
+class InquiryConversionPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_version: int = Field(ge=1)
+    operation_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+
+
 def build_b2b_router(
     *,
     get_db,
@@ -80,6 +88,22 @@ def build_b2b_router(
             service().transition_inquiry(
                 inquiry_id,
                 target_status=payload.target_status,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                actor=actor,
+            )
+        )
+
+    @router.post("/admin/inquiries/{inquiry_id}/convert")
+    async def convert_inquiry(
+        inquiry_id: str,
+        payload: InquiryConversionPayload,
+        actor: dict = Depends(require_permission("quotes.write")),
+    ):
+        return await invoke(
+            service().convert_inquiry(
+                inquiry_id,
                 expected_version=payload.expected_version,
                 operation_id=str(payload.operation_id),
                 reason=payload.reason,
