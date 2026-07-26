@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   BookOpen,
   Boxes,
-  Building2,
   ChevronRight,
   FileText,
   History,
@@ -61,7 +60,6 @@ const ADMIN_MENU_GROUPS = [
     label: "admin.group.organization",
     items: [
       { path: "/admin/users", label: "admin.users", icon: Users },
-      { path: "/admin/organizations", label: "admin.organizations", icon: Building2 },
     ],
   },
   {

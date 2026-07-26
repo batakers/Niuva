@@ -10,7 +10,6 @@ export const ADMIN_ROUTE_PERMISSIONS = Object.freeze({
   "/admin/content": "content.read",
   "/admin/contacts": "inquiries.read",
   "/admin/users": "users.read",
-  "/admin/organizations": "organizations.read",
   "/admin/audit": "audit.read",
   "/admin/notifications": "notifications.write",
   "/admin/settings": "settings.write",

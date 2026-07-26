@@ -34,7 +34,6 @@ const AdminContent = lazy(() => import("@/pages/admin/ContentEditor"));
 const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
-const AdminOrganizations = lazy(() => import("@/pages/admin/Organizations"));
 const AdminAuditLog = lazy(() => import("@/pages/admin/AuditLog"));
 const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
@@ -124,7 +123,6 @@ function App() {
                   <Route path="/admin/content" element={protectedPage("/admin/content", <AdminContent />)} />
                   <Route path="/admin/contacts" element={protectedPage("/admin/contacts", <AdminContacts />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
-                  <Route path="/admin/organizations" element={protectedPage("/admin/organizations", <AdminOrganizations />)} />
                   <Route path="/admin/audit" element={protectedPage("/admin/audit", <AdminAuditLog />)} />
                   <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotifications />)} />
                   <Route path="/admin/settings" element={protectedPage("/admin/settings", <AdminSettings />)} />

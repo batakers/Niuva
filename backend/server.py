@@ -34,7 +34,6 @@ from identity_routes import build_identity_router
 from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
-from organization_routes import build_organization_router
 from permissions import (
     ROLE_LABELS,
     ROLE_POLICY_VERSION,
@@ -1098,15 +1097,7 @@ api.include_router(
         safe_user=safe_user,
     )
 )
-api.include_router(
-    build_organization_router(
-        get_db=lambda: db,
-        get_transaction_guard=lambda: app.state.transaction_guard,
-        require_permission=require_permission,
-        get_current_user=get_current_user,
-        has_permission=has_permission,
-    )
-)
+
 api.include_router(
     build_catalog_router(
         get_db=lambda: db,
