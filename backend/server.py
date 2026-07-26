@@ -26,6 +26,7 @@ from pydantic import BaseModel, EmailStr, Field
 import storage
 import emailer
 from audit import append_audit_event
+from b2b_routes import build_b2b_router
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
 from content_routes import build_content_router
@@ -1081,6 +1082,14 @@ api.include_router(
 )
 
 api.include_router(
+    build_b2b_router(
+        get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
+        require_permission=require_permission,
+    )
+)
+
+api.include_router(
     build_catalog_router(
         get_db=lambda: db,
         get_client=lambda: client,
@@ -1138,6 +1147,10 @@ app.add_middleware(
 # ----------------------------- Startup -----------------------------
 async def seed():
     await db.users.create_index("email", unique=True)
+    inquiries = getattr(db, "inquiries", None)
+    if inquiries is not None:
+        await inquiries.create_index("id", unique=True)
+        await inquiries.create_index([("status", 1), ("updated_at", -1)])
     await db.users.create_index("id", unique=True)
     await db.users.create_index([("roles", 1), ("status", 1)])
     await db.audit_events.create_index("id", unique=True)
