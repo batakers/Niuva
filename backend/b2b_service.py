@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from b2b_domain import (
     B2BDomainError,
+    build_quote_item_snapshot,
     project_inquiry,
     project_b2b_project,
     project_quote,
@@ -320,6 +321,10 @@ class B2BService:
                 "Total Quote harus berupa integer minor-unit non-negatif.",
             )
 
+        snapshot_items = await self._build_item_snapshots(items)
+        if snapshot_items:
+            total_minor = sum(item["line_total_minor"] for item in snapshot_items)
+
         timestamp = now_iso()
         revision = quote["current_revision"] + 1
         version_id = str(uuid.uuid4())
@@ -328,7 +333,7 @@ class B2BService:
             "quote_id": quote_id,
             "revision": revision,
             "scope_snapshot": deepcopy(scope_snapshot),
-            "items": deepcopy(items),
+            "items": snapshot_items,
             "currency": "IDR",
             "total_minor": total_minor,
             "created_by": actor.get("id"),
@@ -386,6 +391,82 @@ class B2BService:
             retry_safe=True,
             correlation_id=operation_id,
         )
+
+    async def _build_item_snapshots(self, items: list[dict]) -> list[dict]:
+        """Read the catalog once and freeze it onto each quoted line."""
+        variant_ids = sorted(
+            {
+                str(item["variant_id"]).strip()
+                for item in items
+                if str(item.get("variant_id") or "").strip()
+            }
+        )
+        variants_by_id: dict[str, dict] = {}
+        products_by_id: dict[str, dict] = {}
+        materials_by_id: dict[str, dict] = {}
+
+        if variant_ids:
+            variants = await self.db.product_variants.find(
+                {"id": {"$in": variant_ids}}, {"_id": 0}
+            ).to_list(len(variant_ids))
+            variants_by_id = {item["id"]: item for item in variants}
+
+            missing = [
+                variant_id
+                for variant_id in variant_ids
+                if variant_id not in variants_by_id
+            ]
+            if missing:
+                raise B2BDomainError(
+                    422,
+                    "quote_item_variant_not_found",
+                    "Varian produk pada item penawaran tidak ditemukan.",
+                    details={"variant_ids": missing},
+                )
+
+            product_ids = sorted(
+                {
+                    variant["product_id"]
+                    for variant in variants_by_id.values()
+                    if variant.get("product_id")
+                }
+            )
+            if product_ids:
+                products = await self.db.products.find(
+                    {"id": {"$in": product_ids}}, {"_id": 0}
+                ).to_list(len(product_ids))
+                products_by_id = {item["id"]: item for item in products}
+
+            material_ids = sorted(
+                {
+                    entry["material_id"]
+                    for variant in variants_by_id.values()
+                    for entry in variant.get("bill_of_materials") or []
+                    if entry.get("material_id")
+                }
+            )
+            if material_ids:
+                materials = await self.db.materials.find(
+                    {"id": {"$in": material_ids}}, {"_id": 0}
+                ).to_list(len(material_ids))
+                materials_by_id = {item["id"]: item for item in materials}
+
+        snapshots = []
+        for item in items:
+            variant_id = str(item.get("variant_id") or "").strip()
+            variant = variants_by_id.get(variant_id) if variant_id else None
+            product = (
+                products_by_id.get(variant.get("product_id")) if variant else None
+            )
+            snapshots.append(
+                build_quote_item_snapshot(
+                    item,
+                    variant=variant,
+                    product=product,
+                    materials_by_id=materials_by_id,
+                )
+            )
+        return snapshots
 
     async def _get_project(self, project_id: str) -> dict:
         project = await self.db.b2b_projects.find_one({"id": project_id}, {"_id": 0})

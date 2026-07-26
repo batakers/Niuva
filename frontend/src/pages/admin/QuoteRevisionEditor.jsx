@@ -71,6 +71,7 @@ export default function QuoteRevisionEditor() {
             description: item.description || "",
             quantity: String(item.quantity ?? 1),
             unit_price_minor: String(item.unit_price_minor ?? 0),
+            variant_id: item.variant_id || null,
           }))
         );
       })
@@ -151,8 +152,11 @@ export default function QuoteRevisionEditor() {
           description: item.description.trim(),
           quantity: toInteger(item.quantity),
           unit_price_minor: toInteger(item.unit_price_minor),
-          line_total_minor: lineTotal(item),
+          // Not yet selectable here; a line without it carries no snapshot.
+          variant_id: item.variant_id || null,
         })),
+        // Line totals and the sum are derived server-side from the lines. The
+        // figures shown above are a preview, never the stored truth.
         // An unpriced revision stays explicitly unpriced rather than free.
         total_minor: items.length === 0 ? null : totalMinor,
       });

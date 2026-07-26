@@ -106,19 +106,23 @@ def test_scope_change_creates_new_immutable_revision():
                     "description": "Prototype enclosure",
                     "quantity": 2,
                     "unit_price_minor": 12500000,
-                    "product_snapshot": {"name": "Custom engineering"},
-                    "configuration_snapshot": {"finish": "functional"},
-                    "material_snapshot": {"name": "Engineering polymer"},
+                    "variant_id": None,
                 }
             ],
-            total_minor=25000000,
+            total_minor=None,
             actor=actor,
         )
 
         assert revised["status"] == "draft"
         assert revised["current_revision"] == 2
         assert revised["current_version"]["revision"] == 2
+        # Derived from the line, not taken from the caller.
         assert revised["current_version"]["total_minor"] == 25000000
+        line = revised["current_version"]["items"][0]
+        assert line["line_total_minor"] == 25000000
+        # No catalog reference, so there is nothing authoritative to snapshot.
+        assert line["variant_id"] is None
+        assert line["product_snapshot"] is None
         assert len(db.b2b_quote_versions.items) == 2
         assert db.b2b_quote_versions.items[0] == original
         assert guard.calls[-1]["operation_name"] == "b2b.create_quote_revision"

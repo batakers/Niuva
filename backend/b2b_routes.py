@@ -57,6 +57,17 @@ class QuoteTransitionPayload(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+class QuoteItemPayload(BaseModel):
+    """A quoted line. Snapshots are derived server-side, never submitted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    description: str = Field(min_length=1, max_length=500)
+    quantity: int = Field(gt=0)
+    unit_price_minor: int = Field(ge=0)
+    variant_id: str | None = Field(default=None, max_length=100)
+
+
 class QuoteRevisionPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -64,7 +75,9 @@ class QuoteRevisionPayload(BaseModel):
     operation_id: UUID
     reason: str = Field(min_length=3, max_length=500)
     scope_snapshot: dict
-    items: list[dict] = Field(default_factory=list)
+    items: list[QuoteItemPayload] = Field(default_factory=list)
+    # Only meaningful for a revision with no lines. With lines, the total is
+    # derived from them so the version cannot contradict itself.
     total_minor: int | None = Field(default=None, ge=0)
 
 
@@ -223,7 +236,7 @@ def build_b2b_router(
                 operation_id=str(payload.operation_id),
                 reason=payload.reason,
                 scope_snapshot=payload.scope_snapshot,
-                items=payload.items,
+                items=[item.model_dump() for item in payload.items],
                 total_minor=payload.total_minor,
                 actor=actor,
             )

@@ -8,6 +8,25 @@ from b2b_service import B2BService
 from transaction_execution import TransactionUnavailableError
 
 
+def _matches(item: dict, query: dict) -> bool:
+    for key, condition in query.items():
+        value = item.get(key)
+        if isinstance(condition, dict) and "$in" in condition:
+            if value not in condition["$in"]:
+                return False
+        elif value != condition:
+            return False
+    return True
+
+
+class FakeCursor:
+    def __init__(self, items):
+        self.items = [dict(item) for item in items]
+
+    async def to_list(self, length):
+        return [dict(item) for item in self.items[:length]]
+
+
 class FakeCollection:
     def __init__(self):
         self.items = []
@@ -18,13 +37,16 @@ class FakeCollection:
 
     async def find_one(self, query, projection=None, **_options):
         for item in self.items:
-            if all(item.get(key) == value for key, value in query.items()):
+            if _matches(item, query):
                 return dict(item)
         return None
 
+    def find(self, query, projection=None, **_options):
+        return FakeCursor([item for item in self.items if _matches(item, query)])
+
     async def update_one(self, query, update, **_options):
         for item in self.items:
-            if all(item.get(key) == value for key, value in query.items()):
+            if _matches(item, query):
                 item.update(update.get("$set", {}))
                 return types.SimpleNamespace(matched_count=1)
         return types.SimpleNamespace(matched_count=0)
@@ -35,6 +57,10 @@ class FakeDatabase:
         self.inquiries = FakeCollection()
         self.b2b_quotes = FakeCollection()
         self.b2b_quote_versions = FakeCollection()
+        # Read when a quoted line references the catalog.
+        self.products = FakeCollection()
+        self.product_variants = FakeCollection()
+        self.materials = FakeCollection()
 
 
 class EnabledGuard:

@@ -113,12 +113,14 @@ describe("Quote revision editor", () => {
     expect(payload.reason).toBe("Menyesuaikan lingkup setelah diskusi");
     expect(payload.total_minor).toBe(3000000);
     expect(payload.scope_snapshot.company).toBe("PT Contoh Industri");
+    // Line totals are derived server-side; sending them would let an immutable
+    // version disagree with its own arithmetic.
     expect(payload.items).toEqual([
       {
         description: "Desain enclosure",
         quantity: 2,
         unit_price_minor: 1500000,
-        line_total_minor: 3000000,
+        variant_id: null,
       },
     ]);
   });

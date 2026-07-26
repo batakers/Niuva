@@ -1,3 +1,6 @@
+from copy import deepcopy
+from decimal import Decimal
+
 INQUIRY_TRANSITIONS = {
     "new": {"reviewed", "rejected"},
     "reviewed": {"contacted", "rejected"},
@@ -49,6 +52,73 @@ PROJECT_TRANSITIONS = {
     "completed": set(),
     "cancelled": set(),
 }
+
+
+def build_quote_item_snapshot(
+    item: dict,
+    *,
+    variant: dict | None = None,
+    product: dict | None = None,
+    materials_by_id: dict | None = None,
+) -> dict:
+    """Capture what a quoted line commits to, at the moment it is quoted.
+
+    A quotation version is immutable, so the catalog is read here and copied
+    in. Later renames, repricing, or BOM edits cannot rewrite what was quoted.
+    The snapshots are derived from the catalog rather than accepted from the
+    caller: a client-asserted snapshot could claim anything.
+    """
+    quantity = int(item["quantity"])
+    unit_price_minor = int(item["unit_price_minor"])
+    snapshot = {
+        "description": str(item.get("description", "")).strip(),
+        "quantity": quantity,
+        # Derived, never taken from the caller: an immutable document must not
+        # be able to disagree with its own arithmetic.
+        "unit_price_minor": unit_price_minor,
+        "line_total_minor": quantity * unit_price_minor,
+        "variant_id": None,
+        "product_snapshot": None,
+        "configuration_snapshot": None,
+        "material_snapshot": None,
+    }
+
+    if variant is None:
+        return snapshot
+
+    snapshot["variant_id"] = variant["id"]
+    snapshot["product_snapshot"] = {
+        "product_id": (product or {}).get("id"),
+        "name": (product or {}).get("name", ""),
+        "slug": (product or {}).get("slug", ""),
+    }
+    snapshot["configuration_snapshot"] = {
+        "variant_id": variant["id"],
+        "sku": variant.get("sku", ""),
+        "name": variant.get("name", ""),
+        "option_values": deepcopy(variant.get("option_values") or {}),
+        "production_type": variant.get("production_type", ""),
+    }
+
+    lookup = materials_by_id or {}
+    materials = []
+    for entry in variant.get("bill_of_materials") or []:
+        material = lookup.get(entry.get("material_id")) or {}
+        per_unit = Decimal(str(entry.get("quantity_per_unit", "0")))
+        materials.append(
+            {
+                "material_id": entry.get("material_id"),
+                # Sourcing stays out: supplier_reference is permission gated
+                # for staff and must never travel on a quotation line.
+                "sku": material.get("sku", ""),
+                "name": material.get("name", ""),
+                "base_unit": material.get("base_unit"),
+                "quantity_per_unit": str(per_unit),
+                "quantity_required": str(per_unit * quantity),
+            }
+        )
+    snapshot["material_snapshot"] = materials
+    return snapshot
 
 
 # --------------------------- Customer projections ---------------------------
