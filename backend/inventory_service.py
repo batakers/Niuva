@@ -412,6 +412,99 @@ class InventoryService:
             result["reservation"] = serialize_inventory(reservation)
         return result, email_recipients
 
+    async def apply_bulk_operations(
+        self,
+        *,
+        actor: dict,
+        operations: list[dict],
+        extra_mutation=None,
+    ) -> list[dict]:
+        """Apply several movements, and one aggregate change, in one transaction.
+
+        A production run touches every material on its bill at once. Reserving
+        them one call at a time would leave a run half allocated the moment any
+        material came up short, so the whole set commits or none of it does.
+        ``extra_mutation`` runs inside the same transaction, which is how the
+        owning aggregate is updated without a second, unprotected write.
+        """
+        self._require_transactions()
+        if not operations:
+            raise InventoryError(
+                422, "inventory_operations_empty", "Tidak ada operasi inventory."
+            )
+
+        prepared = [
+            {**operation, "fingerprint": operation_fingerprint(operation["payload"])}
+            for operation in operations
+        ]
+
+        replayed = [
+            await self._find_existing_operation(
+                operation["payload"]["operation_id"], operation["fingerprint"]
+            )
+            for operation in prepared
+        ]
+        if all(replayed):
+            return replayed
+
+        for attempt in range(3):
+            email_recipients: list = []
+            try:
+                session = await self.client.start_session()
+                async with session:
+                    async with session.start_transaction():
+                        results = []
+                        for operation in prepared:
+                            result, recipients = (
+                                await self._apply_operation_in_transaction(
+                                    actor=actor,
+                                    payload=operation["payload"],
+                                    fingerprint=operation["fingerprint"],
+                                    session=session,
+                                    reservation_create=operation.get(
+                                        "reservation_create"
+                                    ),
+                                    reservation_transition=operation.get(
+                                        "reservation_transition"
+                                    ),
+                                )
+                            )
+                            results.append(result)
+                            email_recipients.extend(recipients)
+                        if extra_mutation is not None:
+                            await extra_mutation(session, results)
+                await self._send_restock_emails(email_recipients)
+                return results
+            except _StaleBalance:
+                if attempt == 2:
+                    raise InventoryError(
+                        409,
+                        "balance_version_conflict",
+                        "Saldo inventory berubah bersamaan; silakan ulangi operasi.",
+                    )
+            except InventoryConflict as exc:
+                # A shortage lands here. The transaction is already aborted, so
+                # no material was reserved and no movement was recorded.
+                raise InventoryError(409, "inventory_conflict", str(exc)) from exc
+            except DuplicateKeyError:
+                if attempt == 2:
+                    raise InventoryError(
+                        409,
+                        "balance_version_conflict",
+                        "Saldo inventory berubah bersamaan; silakan ulangi operasi.",
+                    )
+            except PyMongoError as exc:
+                if not exc.has_error_label("TransientTransactionError"):
+                    raise
+                if attempt == 2:
+                    raise InventoryError(
+                        409,
+                        "balance_version_conflict",
+                        "Transaksi inventory terus berbenturan; silakan ulangi operasi.",
+                    ) from exc
+                continue
+        raise AssertionError("inventory bulk retry loop exited unexpectedly")
+
     async def create_reservation(self, *, actor: dict, payload: dict) -> dict:
         operation_payload = {
             **payload,

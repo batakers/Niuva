@@ -1,6 +1,9 @@
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
+from decimal import Decimal
+
+from bson.decimal128 import Decimal128
 
 from b2b_domain import (
     B2BDomainError,
@@ -16,6 +19,14 @@ from b2b_domain import (
     validate_quote_transition,
     validate_project_transition,
 )
+
+
+def decimal_string(value) -> str:
+    """Render a stored quantity as an exact decimal string, never a float."""
+    if isinstance(value, Decimal128):
+        value = value.to_decimal()
+    amount = value if isinstance(value, Decimal) else Decimal(str(value))
+    return "0" if amount == 0 else format(amount.normalize(), "f")
 
 
 def now_iso() -> str:
@@ -569,6 +580,252 @@ class B2BService:
             correlation_id=operation_id,
         )
 
+    async def allocate_work_order(
+        self,
+        work_order_id: str,
+        *,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        actor: dict,
+        inventory_service,
+    ) -> dict:
+        """Reserve every material on the run's bill, or reserve none of them."""
+        work_order = await self._get_work_order(work_order_id)
+
+        for event in work_order.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if event.get("event") != "materials_allocated":
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi berbeda.",
+                    )
+                return project_work_order(work_order)
+
+        if work_order["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Work Order telah berubah. Muat versi terbaru sebelum alokasi.",
+                details={
+                    "current_version": work_order["version"],
+                    "current_status": work_order["status"],
+                },
+            )
+        if work_order["status"] != "planned":
+            raise B2BDomainError(
+                409,
+                "work_order_not_allocatable",
+                "Alokasi material hanya dapat dilakukan pada Work Order terencana.",
+                details={"current_status": work_order["status"]},
+            )
+        if work_order.get("reservation_ids"):
+            raise B2BDomainError(
+                409,
+                "work_order_already_allocated",
+                "Work Order sudah memiliki alokasi material.",
+            )
+        if not reason.strip():
+            raise B2BDomainError(
+                422, "reason_required", "Alasan alokasi wajib diisi."
+            )
+
+        requirements = work_order.get("material_requirements") or []
+        if not requirements:
+            raise B2BDomainError(
+                422,
+                "work_order_has_no_requirements",
+                "Work Order tidak memiliki kebutuhan material untuk dialokasikan.",
+            )
+
+        operations = [
+            {
+                "payload": {
+                    # Derived per material so each movement stays individually
+                    # idempotent while the set replays as one allocation.
+                    "operation_id": f"{operation_id}:reserve:{entry['material_id']}",
+                    "subject_type": "material",
+                    "subject_id": entry["material_id"],
+                    "movement_type": "reserve",
+                    "quantity": entry["quantity_required"],
+                    "reference_type": "work_order",
+                    "reference_id": work_order_id,
+                    "reason": reason.strip(),
+                },
+                "reservation_create": {"expires_at": None},
+            }
+            for entry in requirements
+        ]
+
+        timestamp = now_iso()
+
+        async def update_work_order(session, results):
+            event = {
+                "event": "materials_allocated",
+                "from_status": "planned",
+                "to_status": "planned",
+                "actor_user_id": actor.get("id"),
+                "reason": reason.strip(),
+                "operation_id": operation_id,
+                "timestamp": timestamp,
+            }
+            changes = {
+                "version": expected_version + 1,
+                "reservation_ids": [
+                    result["reservation"]["id"] for result in results
+                ],
+                "history": [*work_order.get("history", []), event],
+                "updated_at": timestamp,
+            }
+            updated = await self.db.work_orders.update_one(
+                {
+                    "id": work_order_id,
+                    "version": expected_version,
+                    "status": "planned",
+                },
+                {"$set": changes},
+                session=session,
+            )
+            if not updated.matched_count:
+                raise B2BDomainError(
+                    409,
+                    "version_conflict",
+                    "Work Order berubah selama alokasi material.",
+                )
+
+        await inventory_service.apply_bulk_operations(
+            actor=actor,
+            operations=operations,
+            extra_mutation=update_work_order,
+        )
+        return await self.get_work_order(work_order_id)
+
+    async def consume_work_order(
+        self,
+        work_order_id: str,
+        *,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        actor: dict,
+        inventory_service,
+    ) -> dict:
+        """Turn the run's reservations into actual consumption, all at once."""
+        work_order = await self._get_work_order(work_order_id)
+
+        for event in work_order.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if event.get("event") != "materials_consumed":
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi berbeda.",
+                    )
+                return project_work_order(work_order)
+
+        if work_order["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Work Order telah berubah. Muat versi terbaru sebelum konsumsi.",
+                details={
+                    "current_version": work_order["version"],
+                    "current_status": work_order["status"],
+                },
+            )
+        if work_order["status"] != "in_progress":
+            raise B2BDomainError(
+                409,
+                "work_order_not_consumable",
+                "Konsumsi material hanya dapat dilakukan saat produksi berjalan.",
+                details={"current_status": work_order["status"]},
+            )
+        reservation_ids = work_order.get("reservation_ids") or []
+        if not reservation_ids:
+            raise B2BDomainError(
+                409,
+                "work_order_not_allocated",
+                "Work Order belum memiliki alokasi material.",
+            )
+        if not reason.strip():
+            raise B2BDomainError(
+                422, "reason_required", "Alasan konsumsi wajib diisi."
+            )
+
+        operations = []
+        for reservation_id in reservation_ids:
+            reservation = await self.db.inventory_reservations.find_one(
+                {"id": reservation_id}, {"_id": 0}
+            )
+            if not reservation:
+                raise B2BDomainError(
+                    409,
+                    "reservation_missing",
+                    "Reservation Work Order tidak ditemukan dan memerlukan rekonsiliasi.",
+                    details={"reservation_id": reservation_id},
+                )
+            operations.append(
+                {
+                    "payload": {
+                        "operation_id": f"{operation_id}:consume:{reservation_id}",
+                        "subject_type": reservation["subject_type"],
+                        "subject_id": reservation["subject_id"],
+                        "movement_type": "consume",
+                        "quantity": decimal_string(reservation["quantity"]),
+                        "reference_type": "work_order",
+                        "reference_id": work_order_id,
+                        "reason": reason.strip(),
+                    },
+                    "reservation_transition": {
+                        "reservation_id": reservation_id,
+                        "action": "consume",
+                        "status": "consumed",
+                    },
+                }
+            )
+
+        timestamp = now_iso()
+
+        async def update_work_order(session, _results):
+            event = {
+                "event": "materials_consumed",
+                "from_status": "in_progress",
+                "to_status": "in_progress",
+                "actor_user_id": actor.get("id"),
+                "reason": reason.strip(),
+                "operation_id": operation_id,
+                "timestamp": timestamp,
+            }
+            changes = {
+                "version": expected_version + 1,
+                "materials_consumed": True,
+                "history": [*work_order.get("history", []), event],
+                "updated_at": timestamp,
+            }
+            updated = await self.db.work_orders.update_one(
+                {
+                    "id": work_order_id,
+                    "version": expected_version,
+                    "status": "in_progress",
+                },
+                {"$set": changes},
+                session=session,
+            )
+            if not updated.matched_count:
+                raise B2BDomainError(
+                    409,
+                    "version_conflict",
+                    "Work Order berubah selama konsumsi material.",
+                )
+
+        await inventory_service.apply_bulk_operations(
+            actor=actor,
+            operations=operations,
+            extra_mutation=update_work_order,
+        )
+        return await self.get_work_order(work_order_id)
+
     async def transition_work_order(
         self,
         work_order_id: str,
@@ -607,6 +864,21 @@ class B2BService:
         validate_work_order_transition(
             work_order["status"], target_status, reason=reason
         )
+
+        # A run that reserved material cannot be called done while that material
+        # is still only reserved: the reservation would outlive the run and hold
+        # stock nobody can use.
+        if (
+            target_status == "completed"
+            and work_order.get("reservation_ids")
+            and not work_order.get("materials_consumed")
+        ):
+            raise B2BDomainError(
+                409,
+                "work_order_materials_outstanding",
+                "Work Order tidak dapat diselesaikan sebelum material dikonsumsi.",
+                details={"reservation_ids": work_order["reservation_ids"]},
+            )
 
         timestamp = now_iso()
         event = {

@@ -98,13 +98,16 @@ class WorkOrderCreatePayload(ProjectCommandPayload):
     quantity: int = Field(gt=0)
 
 
-class WorkOrderTransitionPayload(BaseModel):
+class WorkOrderCommandPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    target_status: Literal["in_progress", "completed", "cancelled"]
     expected_version: int = Field(ge=1)
     operation_id: UUID
     reason: str = Field(min_length=3, max_length=500)
+
+
+class WorkOrderTransitionPayload(WorkOrderCommandPayload):
+    target_status: Literal["in_progress", "completed", "cancelled"]
 
 
 def build_b2b_router(
@@ -114,6 +117,7 @@ def build_b2b_router(
     require_permission,
     throttle_intake=None,
     notify_inquiry=None,
+    get_inventory_service=None,
 ) -> APIRouter:
     """Build the B2B router.
 
@@ -337,6 +341,51 @@ def build_b2b_router(
         _actor: dict = Depends(require_permission("production.read")),
     ):
         return await invoke(service().get_work_order(work_order_id))
+
+    def inventory():
+        if get_inventory_service is None:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "inventory_unavailable",
+                    "message": "Layanan inventory tidak tersedia.",
+                },
+            )
+        return get_inventory_service()
+
+    @router.post("/admin/b2b/work-orders/{work_order_id}/allocate")
+    async def allocate_work_order(
+        work_order_id: str,
+        payload: WorkOrderCommandPayload,
+        actor: dict = Depends(require_permission("inventory.write")),
+    ):
+        return await invoke(
+            service().allocate_work_order(
+                work_order_id,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                actor=actor,
+                inventory_service=inventory(),
+            )
+        )
+
+    @router.post("/admin/b2b/work-orders/{work_order_id}/consume")
+    async def consume_work_order(
+        work_order_id: str,
+        payload: WorkOrderCommandPayload,
+        actor: dict = Depends(require_permission("inventory.write")),
+    ):
+        return await invoke(
+            service().consume_work_order(
+                work_order_id,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                actor=actor,
+                inventory_service=inventory(),
+            )
+        )
 
     @router.post("/admin/b2b/work-orders/{work_order_id}/transitions")
     async def transition_work_order(

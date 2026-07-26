@@ -1135,6 +1135,12 @@ api.include_router(
         require_permission=require_permission,
         throttle_intake=throttle_inquiry_intake,
         notify_inquiry=notify_new_inquiry,
+        get_inventory_service=lambda: InventoryService(
+            db=db,
+            client=client,
+            capabilities=app.state.database_capabilities,
+            emailer=emailer,
+        ),
     )
 )
 
