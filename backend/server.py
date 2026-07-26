@@ -21,7 +21,7 @@ import bcrypt
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Header, Response
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 import storage
 import emailer
@@ -39,6 +39,13 @@ from dashboard_domain import (
 from notification_service import NotificationError, NotificationService
 from retail_domain import classify_legacy_order
 from portfolio_routes import build_portfolio_router
+from settings_domain import (
+    PUBLIC_PROFILE_FIELDS,
+    default_settings,
+    merge_profile,
+    project_admin_settings,
+    project_public_settings,
+)
 from retail_routes import build_retail_router
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
@@ -254,9 +261,23 @@ class AdminNotificationReq(BaseModel):
 
 
 class SettingsReq(BaseModel):
-    bank_name: str
-    account_number: str
-    account_holder: str
+    """Company profile only.
+
+    extra="forbid" keeps a caller from writing anything the public projection
+    does not name, including reintroducing bank details through this door.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    legal_name: str = Field(min_length=2, max_length=200)
+    tagline: str = Field(default="", max_length=300)
+    address: str = Field(default="", max_length=500)
+    email: str = Field(default="", max_length=200)
+    phone: str = Field(default="", max_length=50)
+    whatsapp: str = Field(default="", max_length=50)
+    maps_url: str = Field(default="", max_length=500)
+    instagram_url: str = Field(default="", max_length=500)
+    linkedin_url: str = Field(default="", max_length=500)
 
 
 # ----------------------------- Helpers -----------------------------
@@ -498,12 +519,9 @@ async def reset_password(req: ResetPasswordReq):
 async def get_settings():
     s = await db.settings.find_one({"key": "site"}, {"_id": 0})
     if not s:
-        s = {
-            "key": "site",
-            "bank_name": "Bank Mandiri (Placeholder)",
-            "account_number": "000-0000-0000",
-            "account_holder": "PT Niuva Inovasi Utama",
-        }
+        # No placeholder bank account: seeding one publishes a payment
+        # instruction for a flow that is disabled.
+        s = default_settings()
         await db.settings.insert_one(dict(s))
     return s
 
@@ -845,18 +863,39 @@ async def list_contacts(
 # ----------------------------- Settings & Users -----------------------------
 @api.get("/settings")
 async def settings_public():
-    s = await get_settings()
-    return {k: v for k, v in s.items() if k != "key"}
+    """The company profile the public site and its footer read from."""
+    return project_public_settings(await get_settings())
+
+
+@api.get("/admin/settings")
+async def settings_admin(
+    _actor: dict = Depends(require_permission("settings.write")),
+):
+    return project_admin_settings(await get_settings())
 
 
 @api.put("/admin/settings")
 async def update_settings(
     req: SettingsReq,
-    user: dict = Depends(require_permission("settings.write")),
+    actor: dict = Depends(require_permission("settings.write")),
 ):
-    await db.settings.update_one({"key": "site"}, {"$set": req.model_dump()}, upsert=True)
-    s = await get_settings()
-    return {k: v for k, v in s.items() if k != "key"}
+    current = await get_settings()
+    merged = merge_profile(current, req.model_dump())
+    await db.settings.update_one(
+        {"key": "site"},
+        {"$set": {field: merged[field] for field in PUBLIC_PROFILE_FIELDS}},
+        upsert=True,
+    )
+    await append_audit_event(
+        db,
+        actor=actor,
+        action="settings.profile_updated",
+        target_type="settings",
+        target_id="site",
+        before=project_public_settings(current),
+        after=project_public_settings(merged),
+    )
+    return project_admin_settings(await get_settings())
 
 
 @api.post("/admin/users", status_code=201)
