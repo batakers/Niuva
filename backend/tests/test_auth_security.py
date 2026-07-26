@@ -114,7 +114,6 @@ class FakeDatabase:
         self.orders = FakeCollection()
         self.organizations = FakeCollection()
         self.organization_memberships = FakeCollection()
-        self.internships = FakeCollection()
 
 
 def bearer(token):
@@ -387,7 +386,6 @@ async def run_admin_boundary_projections_and_capability_gates():
     database.orders.items.append({"id": "order-safe-1", "order_number": "NIV-TEST-0001", "user_id": "customer-1", "user_name": "Customer", "user_email": "customer@niuva.test", "material_id": "material-1", "material_name": "Acrylic", "file": {"storage_path": "orders/customer-1/design.pdf"}, "notes": "Fulfil before Friday", "status": "awaiting_payment", "status_history": [{"status": "pending_estimate", "at": "2026-07-22T00:00:00Z", "note": "Received"}], "estimate": {"amount": 950000, "currency": "IDR", "note": "Internal quote"}, "payment": {"proof": {"storage_path": "payments/proof.png"}, "verified": False}, "internal_price": 600000})
     database.organizations.items.append({"id": "organization-1", "name": "Fulfilment Customer", "legal_name": "PT Private Customer", "tax_id": "01.234.567.8-901.000", "status": "active"})
     database.organization_memberships.items.append({"id": "membership-1", "organization_id": "organization-1", "user_id": "customer-1", "member_role": "project_pic", "status": "active", "email": "should-not-leak@niuva.test"})
-    database.internships.items.append({"id": "internship-1", "full_name": "Applicant"})
     server.db = database
 
     transport = httpx.ASGITransport(app=server.app)
@@ -417,9 +415,6 @@ async def run_admin_boundary_projections_and_capability_gates():
         assert commercial_organizations.status_code == 200
         assert commercial_organizations.json()[0]["tax_id"] == "01.234.567.8-901.000"
         assert commercial_organizations.json()[0]["legal_name"] == "PT Private Customer"
-        assert (await api.get("/api/admin/internships", headers=operations_headers)).status_code == 403
-        assert (await api.get("/api/admin/internships", headers=commercial_headers)).status_code == 403
-        assert (await api.get("/api/admin/internships", headers=owner_headers)).status_code == 200
         assert (await api.get("/api/admin/stats", headers=operations_headers)).status_code == 200
         assert (await api.get("/api/admin/stats", headers=commercial_headers)).status_code == 200
 

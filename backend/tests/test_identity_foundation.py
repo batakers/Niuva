@@ -183,7 +183,6 @@ class FakeDatabase:
         self.materials = FakeCollection()
         self.orders = FakeCollection()
         self.portfolio = FakeCollection()
-        self.internships = FakeCollection()
         self.contacts = FakeCollection()
         self.settings = FakeCollection()
 

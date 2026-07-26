@@ -225,18 +225,6 @@ class BulkStatusReq(BaseModel):
     note: Optional[str] = ""
 
 
-class InternshipReq(BaseModel):
-    full_name: str
-    email: EmailStr
-    phone: str
-    university: str
-    major: str
-    semester: Optional[str] = ""
-    duration: Optional[str] = ""
-    motivation: str
-    portfolio_url: Optional[str] = ""
-
-
 class ContactReq(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
@@ -805,31 +793,6 @@ async def download_file(path: str, request: Request):
     )
 
 
-# ----------------------------- Internship -----------------------------
-@api.post("/internships")
-async def apply_internship(req: InternshipReq):
-    doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
-    await db.internships.insert_one(dict(doc))
-    await emailer.send_email(
-        HRD_EMAIL,
-        f"Pelamar Magang Baru: {req.full_name}",
-        "Pendaftaran Magang Baru",
-        f"<p><strong>{req.full_name}</strong> ({req.email}, {req.phone}) mendaftar magang.</p>"
-        f"<p>Universitas: {req.university} — {req.major} (Sem {req.semester})<br>Durasi: {req.duration}</p>"
-        f"<p>Motivasi: {req.motivation}</p>"
-        f"<p>Portofolio: {req.portfolio_url or '-'}</p>",
-        db=db,
-    )
-    return {"ok": True, "message": "Pendaftaran berhasil dikirim"}
-
-
-@api.get("/admin/internships")
-async def list_internships(
-    user: dict = Depends(require_permission("internships.read")),
-):
-    return await db.internships.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-
-
 # ----------------------------- Contact -----------------------------
 @api.post("/contact")
 async def contact(req: ContactReq, request: Request):
@@ -949,10 +912,9 @@ async def admin_stats(
     in_process = await db.orders.count_documents({"status": "in_process"})
     completed = await db.orders.count_documents({"status": "completed"})
     clients = await db.users.count_documents(CUSTOMER_QUERY)
-    interns = await db.internships.count_documents({})
     return {
         "total_orders": total_orders, "pending_estimate": pending, "awaiting_payment": awaiting,
-        "in_process": in_process, "completed": completed, "clients": clients, "internships": interns,
+        "in_process": in_process, "completed": completed, "clients": clients,
     }
 
 

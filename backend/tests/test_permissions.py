@@ -23,7 +23,6 @@ from permissions import (
 ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "dashboard.read", True),
         ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "organizations.fulfilment.read", True),
         ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "supplier_reference.read", False),
-        ({"roles": ["operations"], "status": "active", "access_state": "approved"}, "internships.read", False),
         ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "pricing.write", True),
         ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "inventory.write", False),
         ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "catalog.read", True),
@@ -40,8 +39,6 @@ from permissions import (
         ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "production.write", False),
         ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "inventory.adjust", False),
         ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "inventory.reconcile", False),
-        ({"roles": ["commercial_finance"], "status": "active", "access_state": "approved"}, "internships.read", False),
-        ({"roles": ["super_admin"], "status": "active", "access_state": "approved"}, "internships.read", True),
     ],
 )
 def test_policy_matrix(user, permission, expected):

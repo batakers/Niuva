@@ -198,7 +198,6 @@ export default function AdminDashboard() {
     ["in_process", t("status.in_process"), "text-action-primary", "border-l-action-primary"],
     ["completed", t("status.completed"), "text-status-success", "border-l-status-success"],
     ["clients", t("admin.users"), "text-text-primary", "border-l-border-strong"],
-    ["internships", t("admin.internships"), "text-text-primary", "border-l-border-strong"],
   ];
 
   return (

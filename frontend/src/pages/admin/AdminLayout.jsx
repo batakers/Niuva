@@ -6,7 +6,6 @@ import {
   Building2,
   ChevronRight,
   FileText,
-  GraduationCap,
   History,
   Image as ImageIcon,
   Layers,
@@ -55,7 +54,6 @@ const ADMIN_MENU_GROUPS = [
     items: [
       { path: "/admin/portfolio", label: "admin.portfolio", icon: ImageIcon },
       { path: "/admin/content", label: "admin.content", icon: FileText },
-      { path: "/admin/internships", label: "admin.internships", icon: GraduationCap },
       { path: "/admin/contacts", label: "admin.contacts", icon: Mail },
     ],
   },

@@ -32,7 +32,6 @@ const AdminRestockAlerts = lazy(() => import("@/pages/admin/RestockAlerts"));
 const AdminPortfolio = lazy(() => import("@/pages/admin/PortfolioAdmin"));
 const AdminContent = lazy(() => import("@/pages/admin/ContentEditor"));
 const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
-const AdminInternships = lazy(() => import("@/pages/admin/Internships"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
 const AdminOrganizations = lazy(() => import("@/pages/admin/Organizations"));
@@ -123,7 +122,6 @@ function App() {
                   <Route path="/admin/restock-alerts" element={protectedPage("/admin/restock-alerts", <AdminRestockAlerts />)} />
                   <Route path="/admin/portfolio" element={protectedPage("/admin/portfolio", <AdminPortfolio />)} />
                   <Route path="/admin/content" element={protectedPage("/admin/content", <AdminContent />)} />
-                  <Route path="/admin/internships" element={protectedPage("/admin/internships", <AdminInternships />)} />
                   <Route path="/admin/contacts" element={protectedPage("/admin/contacts", <AdminContacts />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
                   <Route path="/admin/organizations" element={protectedPage("/admin/organizations", <AdminOrganizations />)} />
