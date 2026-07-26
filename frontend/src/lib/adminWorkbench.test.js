@@ -23,6 +23,7 @@ describe("Admin workbench information architecture", () => {
 
     expect(paths).toEqual([
       "/admin/inquiries",
+      "/admin/contacts",
       "/admin/inventory",
       "/admin/stock-movements",
     ]);

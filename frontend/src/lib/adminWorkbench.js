@@ -1,4 +1,5 @@
 import {
+  Archive,
   BookOpen,
   Boxes,
   BriefcaseBusiness,
@@ -32,6 +33,12 @@ export const ADMIN_MENU_GROUPS = Object.freeze([
         path: "/admin/orders",
         label: "admin.legacyOrders",
         icon: Package,
+        badge: "admin.compatibility",
+      },
+      {
+        path: "/admin/contacts",
+        label: "admin.contacts",
+        icon: Archive,
         badge: "admin.compatibility",
       },
     ],

@@ -440,7 +440,7 @@ const translations = {
     "payment.providerInactive": "Metode pembayaran belum aktif",
     "admin.materials": "Material",
     "admin.portfolio": "Portofolio",
-    "admin.contacts": "Inquiry",
+    "admin.contacts": "Kontak Legacy",
     "admin.users": "Pengguna",
     "admin.settings": "Pengaturan",
     "admin.setEstimate": "Set Estimasi",
@@ -476,10 +476,14 @@ const translations = {
     "settings.save": "Simpan Konfigurasi",
     "settings.saved": "Konfigurasi berhasil disimpan.",
 
-    "contacts.subtitle": "Log Komunikasi Masuk",
+    "contacts.subtitle": "Arsip pesan sebelum intake terstruktur",
     "contacts.total": "Total pesan",
-    "contacts.empty": "Tidak ada pesan ditemukan.",
+    "contacts.empty": "Tidak ada pesan legacy tersimpan.",
     "contacts.message": "Pesan",
+    "contacts.legacyTitle": "Arsip read-only sebelum migrasi",
+    "contacts.legacyBody": "Pesan ini masuk sebelum intake terstruktur aktif, sehingga tidak memiliki perusahaan, status, atau versi dan tidak dapat di-triage. Permintaan proyek baru masuk sebagai Inquiry canonical.",
+    "contacts.openInquiries": "Buka antrean Inquiry",
+    "contacts.loadFailed": "Arsip kontak legacy tidak berhasil dimuat.",
 
   },
   en: {
@@ -920,7 +924,7 @@ const translations = {
     "payment.providerInactive": "Payment method is not active",
     "admin.materials": "Materials",
     "admin.portfolio": "Portfolio",
-    "admin.contacts": "Inquiries",
+    "admin.contacts": "Legacy Contacts",
     "admin.users": "Users",
     "admin.settings": "Settings",
     "admin.setEstimate": "Set Estimate",
@@ -956,10 +960,14 @@ const translations = {
     "settings.save": "Save Configuration",
     "settings.saved": "Configuration saved successfully.",
 
-    "contacts.subtitle": "Inbound Communications Log",
+    "contacts.subtitle": "Archived messages from before structured intake",
     "contacts.total": "Total messages",
-    "contacts.empty": "No messages found.",
+    "contacts.empty": "No legacy messages are stored.",
     "contacts.message": "Message",
+    "contacts.legacyTitle": "Read-only pre-migration archive",
+    "contacts.legacyBody": "These messages arrived before structured intake, so they carry no company, status, or version and cannot be triaged. New project requests arrive as canonical Inquiries.",
+    "contacts.openInquiries": "Open the Inquiry queue",
+    "contacts.loadFailed": "The legacy contact archive could not be loaded.",
 
   },
 };

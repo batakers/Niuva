@@ -809,7 +809,22 @@ async def contact(req: ContactReq, request: Request):
 async def list_contacts(
     user: dict = Depends(require_permission("inquiries.read")),
 ):
-    return await db.contacts.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    """Pre-migration contact submissions, classified on read.
+
+    Structured intake now lands on the canonical Inquiry aggregate. These rows
+    predate that and carry no company, status, or version, so they cannot be
+    triaged. Classification is applied on read and never written back: the
+    history stays exactly as it was captured.
+    """
+    documents = (
+        await db.contacts.find({}, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(500)
+    )
+    return [
+        {**document, "record_class": "legacy_contact", "read_only": True}
+        for document in documents
+    ]
 
 
 # ----------------------------- Portfolio -----------------------------

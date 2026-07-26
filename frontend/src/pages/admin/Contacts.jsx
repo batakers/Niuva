@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { Mail } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { ArrowRight, Archive, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { OperationalState } from "@/components/ui/operational-state";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { useI18n } from "@/i18n";
-import { api } from "@/lib/api";
+import { api, formatApiError } from "@/lib/api";
 import { fmtDate } from "@/lib/format";
 import { AdminLayout } from "./AdminLayout";
 
@@ -13,20 +15,53 @@ export default function AdminContacts() {
   const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
     api
       .get("/admin/contacts")
-      .then((r) => setItems(r.data))
-      .catch(() => {})
+      .then((response) => setItems(response.data))
+      .catch((requestError) =>
+        setError(formatApiError(requestError.response?.data?.detail))
+      )
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <AdminLayout
       title={t("admin.contacts")}
       subtitle={t("contacts.subtitle")}
     >
+      <SurfacePanel padding="md" intent="dashed" className="mb-5">
+        <div className="flex gap-3">
+          <Archive
+            className="mt-0.5 h-4 w-4 shrink-0 text-text-secondary"
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+            <h2 className="font-heading text-base font-semibold text-text-primary">
+              {t("contacts.legacyTitle")}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              {t("contacts.legacyBody")}
+            </p>
+            <Link
+              to="/admin/inquiries"
+              className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-action-primary"
+            >
+              {t("contacts.openInquiries")}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+      </SurfacePanel>
+
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between">
           <p className="type-label text-text-secondary">
@@ -42,6 +77,14 @@ export default function AdminContacts() {
               </div>
             ))}
           </div>
+        ) : error ? (
+          <OperationalState
+            state="error"
+            title={t("contacts.loadFailed")}
+            description={error}
+            retryLabel={t("common.retry")}
+            onRetry={load}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon={Mail} className="py-16">{t("contacts.empty")}</EmptyState>
         ) : (

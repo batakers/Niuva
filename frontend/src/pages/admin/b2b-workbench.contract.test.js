@@ -68,7 +68,7 @@ describe("B2B workbench navigation and route permissions", () => {
     expect(ADMIN_ROUTE_PERMISSIONS["/admin/b2b/projects"]).toBe("projects.read");
   });
 
-  test("registers quotes and projects under sales and delivery", () => {
+  test("registers quotes and projects ahead of the legacy surfaces", () => {
     const group = ADMIN_MENU_GROUPS.find(
       (item) => item.label === "admin.group.salesDelivery"
     );
@@ -78,7 +78,19 @@ describe("B2B workbench navigation and route permissions", () => {
       "/admin/b2b/quotes",
       "/admin/b2b/projects",
       "/admin/orders",
+      "/admin/contacts",
     ]);
+  });
+
+  test("marks every legacy surface as a compatibility surface", () => {
+    const group = ADMIN_MENU_GROUPS.find(
+      (item) => item.label === "admin.group.salesDelivery"
+    );
+    const badged = group.items
+      .filter((item) => item.badge === "admin.compatibility")
+      .map((item) => item.path);
+
+    expect(badged).toEqual(["/admin/orders", "/admin/contacts"]);
   });
 
   test("hides B2B surfaces a role cannot read", () => {
@@ -86,7 +98,12 @@ describe("B2B workbench navigation and route permissions", () => {
       permissions: ["inquiries.read", "quotes.read"],
     }).flatMap((group) => group.items.map((item) => item.path));
 
-    expect(paths).toEqual(["/admin/inquiries", "/admin/b2b/quotes"]);
+    // The legacy archive rides on inquiries.read, the same scope as triage.
+    expect(paths).toEqual([
+      "/admin/inquiries",
+      "/admin/b2b/quotes",
+      "/admin/contacts",
+    ]);
     expect(paths).not.toContain("/admin/b2b/projects");
   });
 });
