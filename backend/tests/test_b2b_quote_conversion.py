@@ -57,6 +57,8 @@ class FakeDatabase:
         self.inquiries = FakeCollection()
         self.b2b_quotes = FakeCollection()
         self.b2b_quote_versions = FakeCollection()
+        self.b2b_projects = FakeCollection()
+        self.work_orders = FakeCollection()
         # Read when a quoted line references the catalog.
         self.products = FakeCollection()
         self.product_variants = FakeCollection()

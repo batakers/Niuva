@@ -1216,6 +1216,11 @@ async def seed():
         await projects.create_index("id", unique=True)
         await projects.create_index("quote_id", unique=True)
         await projects.create_index([("status", 1), ("updated_at", -1)])
+    work_orders = getattr(db, "work_orders", None)
+    if work_orders is not None:
+        await work_orders.create_index("id", unique=True)
+        await work_orders.create_index([("project_id", 1), ("updated_at", -1)])
+        await work_orders.create_index([("status", 1), ("updated_at", -1)])
     await db.users.create_index("id", unique=True)
     await db.users.create_index([("roles", 1), ("status", 1)])
     await db.audit_events.create_index("id", unique=True)

@@ -4,7 +4,11 @@ from datetime import datetime, timezone
 
 from b2b_domain import (
     B2BDomainError,
+    PROJECT_STATUSES_ACCEPTING_WORK,
+    build_material_requirements,
     build_quote_item_snapshot,
+    project_work_order,
+    validate_work_order_transition,
     project_inquiry,
     project_b2b_project,
     project_quote,
@@ -391,6 +395,249 @@ class B2BService:
             retry_safe=True,
             correlation_id=operation_id,
         )
+
+    async def _get_work_order(self, work_order_id: str) -> dict:
+        work_order = await self.db.work_orders.find_one(
+            {"id": work_order_id}, {"_id": 0}
+        )
+        if not work_order:
+            raise B2BDomainError(
+                404, "work_order_not_found", "Work Order tidak ditemukan."
+            )
+        return dict(work_order)
+
+    async def get_work_order(self, work_order_id: str) -> dict:
+        return project_work_order(await self._get_work_order(work_order_id))
+
+    async def list_work_orders(
+        self, *, project_id: str | None = None, status: str | None = None
+    ) -> list[dict]:
+        query = {}
+        if project_id:
+            query["project_id"] = project_id
+        if status:
+            query["status"] = status
+        documents = await self.db.work_orders.find(query, {"_id": 0}).sort(
+            "updated_at", -1
+        ).limit(500).to_list(500)
+        return [project_work_order(document) for document in documents]
+
+    async def _accepted_line_for_variant(self, project: dict, variant_id: str) -> dict:
+        """Find the accepted quotation line a production run draws from."""
+        version = await self._get_quote_version(project["source_quote_version_id"])
+        for item in version.get("items") or []:
+            if item.get("variant_id") == variant_id:
+                return item
+        raise B2BDomainError(
+            422,
+            "work_order_line_not_quoted",
+            "Varian tidak ada pada penawaran yang diterima untuk Project ini.",
+            details={"variant_id": variant_id},
+        )
+
+    async def create_work_order(
+        self,
+        project_id: str,
+        *,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        variant_id: str,
+        quantity: int,
+        actor: dict,
+    ) -> dict:
+        project = await self._get_project(project_id)
+
+        for event in project.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if event.get("event") != "work_order_created":
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi Project berbeda.",
+                    )
+                return await self.get_work_order(event["work_order_id"])
+
+        if project["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Project telah berubah. Muat versi terbaru sebelum membuat Work Order.",
+                details={
+                    "current_version": project["version"],
+                    "current_status": project["status"],
+                },
+            )
+        if project["status"] not in PROJECT_STATUSES_ACCEPTING_WORK:
+            raise B2BDomainError(
+                409,
+                "project_not_accepting_work",
+                "Project pada status ini tidak dapat menerima Work Order baru.",
+                details={"current_status": project["status"]},
+            )
+        if not reason.strip():
+            raise B2BDomainError(
+                422, "reason_required", "Alasan pembuatan Work Order wajib diisi."
+            )
+        if quantity < 1:
+            raise B2BDomainError(
+                422,
+                "work_order_quantity_invalid",
+                "Jumlah produksi harus minimal satu.",
+            )
+
+        line = await self._accepted_line_for_variant(project, variant_id)
+
+        timestamp = now_iso()
+        work_order_id = str(uuid.uuid4())
+        work_order = {
+            "id": work_order_id,
+            "project_id": project_id,
+            "quote_id": project["quote_id"],
+            "source_quote_version_id": project["source_quote_version_id"],
+            "variant_id": variant_id,
+            "quantity": quantity,
+            "status": "planned",
+            "version": 1,
+            # Scaled from the accepted quotation, so production consumes what
+            # was sold rather than whatever the catalog says today.
+            "material_requirements": build_material_requirements(
+                line.get("material_snapshot"), quantity
+            ),
+            "reservation_ids": [],
+            "history": [
+                {
+                    "event": "work_order_created",
+                    "from_status": None,
+                    "to_status": "planned",
+                    "actor_user_id": actor.get("id"),
+                    "reason": reason.strip(),
+                    "operation_id": operation_id,
+                    "timestamp": timestamp,
+                }
+            ],
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        project_event = {
+            "event": "work_order_created",
+            "from_status": project["status"],
+            "to_status": project["status"],
+            "work_order_id": work_order_id,
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "operation_id": operation_id,
+            "timestamp": timestamp,
+        }
+        project_changes = {
+            "version": expected_version + 1,
+            "work_order_ids": [*project.get("work_order_ids", []), work_order_id],
+            "history": [*project.get("history", []), project_event],
+            "updated_at": timestamp,
+        }
+
+        async def mutation(session):
+            options = {"session": session}
+            await self.db.work_orders.insert_one(deepcopy(work_order), **options)
+            result = await self.db.b2b_projects.update_one(
+                {
+                    "id": project_id,
+                    "version": expected_version,
+                    "status": project["status"],
+                },
+                {"$set": project_changes},
+                **options,
+            )
+            if not result.matched_count:
+                raise B2BDomainError(
+                    409,
+                    "version_conflict",
+                    "Project berubah selama pembuatan Work Order.",
+                )
+            return project_work_order(work_order)
+
+        if self.transaction_guard is None:
+            raise B2BDomainError(
+                503,
+                "transaction_unavailable",
+                "Pembuatan Work Order tidak tersedia tanpa transaction guard.",
+            )
+        return await self.transaction_guard.run(
+            mutation,
+            operation_name="b2b.create_work_order",
+            retry_safe=True,
+            correlation_id=operation_id,
+        )
+
+    async def transition_work_order(
+        self,
+        work_order_id: str,
+        *,
+        target_status: str,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        actor: dict,
+    ) -> dict:
+        work_order = await self._get_work_order(work_order_id)
+        for event in work_order.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if event.get("to_status") != target_status:
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi berbeda.",
+                    )
+                return project_work_order(work_order)
+
+        if work_order["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Work Order telah berubah. Muat versi terbaru sebelum mencoba lagi.",
+                details={
+                    "current_version": work_order["version"],
+                    "current_status": work_order["status"],
+                    "permitted_next_actions": project_work_order(work_order)[
+                        "permitted_next_actions"
+                    ],
+                },
+            )
+
+        validate_work_order_transition(
+            work_order["status"], target_status, reason=reason
+        )
+
+        timestamp = now_iso()
+        event = {
+            "from_status": work_order["status"],
+            "to_status": target_status,
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "operation_id": operation_id,
+            "timestamp": timestamp,
+        }
+        changes = {
+            "status": target_status,
+            "version": expected_version + 1,
+            "history": [*work_order.get("history", []), event],
+            "updated_at": timestamp,
+        }
+        result = await self.db.work_orders.update_one(
+            {
+                "id": work_order_id,
+                "version": expected_version,
+                "status": work_order["status"],
+            },
+            {"$set": changes},
+        )
+        if not result.matched_count:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Work Order berubah selama transisi.",
+            )
+        return project_work_order({**work_order, **changes})
 
     async def _build_item_snapshots(self, items: list[dict]) -> list[dict]:
         """Read the catalog once and freeze it onto each quoted line."""

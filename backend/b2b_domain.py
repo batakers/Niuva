@@ -383,3 +383,93 @@ def project_b2b_project(document: dict) -> dict:
     value = {key: item for key, item in document.items() if key != "_id"}
     value["permitted_next_actions"] = project_next_actions(value["status"])
     return value
+
+
+WORK_ORDER_ACTIONS = {
+    "planned": ["start", "cancel"],
+    "in_progress": ["complete", "cancel"],
+    "completed": [],
+    "cancelled": [],
+}
+
+WORK_ORDER_TRANSITIONS = {
+    "planned": {"in_progress", "cancelled"},
+    "in_progress": {"completed", "cancelled"},
+    "completed": set(),
+    "cancelled": set(),
+}
+
+# A project that has stopped moving cannot take on new production.
+PROJECT_STATUSES_ACCEPTING_WORK = frozenset({"planned", "active"})
+
+
+def build_material_requirements(
+    material_snapshot: list[dict] | None,
+    quantity: int,
+) -> list[dict]:
+    """Scale a quoted line's per-unit materials to an actual production run.
+
+    Per-unit figures come from the accepted quotation version, so production
+    consumes what was sold rather than whatever the catalog says today. Only
+    the run size is applied here, and it is applied explicitly.
+    """
+    requirements = []
+    for entry in material_snapshot or []:
+        per_unit = Decimal(str(entry.get("quantity_per_unit", "0")))
+        requirements.append(
+            {
+                "material_id": entry.get("material_id"),
+                "sku": entry.get("sku", ""),
+                "name": entry.get("name", ""),
+                "base_unit": entry.get("base_unit"),
+                "quantity_per_unit": str(per_unit),
+                "quantity_required": str(per_unit * quantity),
+            }
+        )
+    return requirements
+
+
+def work_order_next_actions(status: str) -> list[str]:
+    return list(WORK_ORDER_ACTIONS.get(status, []))
+
+
+def validate_work_order_transition(
+    current_status: str,
+    target_status: str,
+    *,
+    reason: str,
+) -> None:
+    if current_status not in WORK_ORDER_TRANSITIONS:
+        raise B2BDomainError(
+            409,
+            "work_order_status_unknown",
+            "Status Work Order tidak dikenali.",
+        )
+    if not WORK_ORDER_TRANSITIONS[current_status]:
+        raise B2BDomainError(
+            409,
+            "work_order_terminal",
+            "Work Order pada status terminal tidak dapat diubah.",
+        )
+    if target_status not in WORK_ORDER_TRANSITIONS[current_status]:
+        raise B2BDomainError(
+            409,
+            "work_order_transition_invalid",
+            "Perpindahan status Work Order tidak diizinkan.",
+            details={
+                "current_status": current_status,
+                "permitted_next_actions": work_order_next_actions(current_status),
+            },
+        )
+    if not reason.strip():
+        raise B2BDomainError(
+            422,
+            "reason_required",
+            "Alasan perubahan Work Order wajib diisi.",
+        )
+
+
+def project_work_order(document: dict) -> dict:
+    value = {key: item for key, item in document.items() if key != "_id"}
+    value["permitted_next_actions"] = work_order_next_actions(value["status"])
+    return value

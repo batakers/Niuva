@@ -93,6 +93,20 @@ class ProjectTransitionPayload(ProjectCommandPayload):
     target_status: Literal["planned", "active", "on_hold", "completed", "cancelled"]
 
 
+class WorkOrderCreatePayload(ProjectCommandPayload):
+    variant_id: str = Field(min_length=1, max_length=100)
+    quantity: int = Field(gt=0)
+
+
+class WorkOrderTransitionPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_status: Literal["in_progress", "completed", "cancelled"]
+    expected_version: int = Field(ge=1)
+    operation_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+
+
 def build_b2b_router(
     *,
     get_db,
@@ -281,6 +295,58 @@ def build_b2b_router(
         return await invoke(
             service().transition_project(
                 project_id,
+                target_status=payload.target_status,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                actor=actor,
+            )
+        )
+
+    @router.post("/admin/b2b/projects/{project_id}/work-orders")
+    async def create_work_order(
+        project_id: str,
+        payload: WorkOrderCreatePayload,
+        actor: dict = Depends(require_permission("production.write")),
+    ):
+        return await invoke(
+            service().create_work_order(
+                project_id,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                variant_id=payload.variant_id,
+                quantity=payload.quantity,
+                actor=actor,
+            )
+        )
+
+    @router.get("/admin/b2b/work-orders")
+    async def list_work_orders(
+        project_id: str | None = None,
+        status_filter: str | None = None,
+        _actor: dict = Depends(require_permission("production.read")),
+    ):
+        return await invoke(
+            service().list_work_orders(project_id=project_id, status=status_filter)
+        )
+
+    @router.get("/admin/b2b/work-orders/{work_order_id}")
+    async def get_work_order(
+        work_order_id: str,
+        _actor: dict = Depends(require_permission("production.read")),
+    ):
+        return await invoke(service().get_work_order(work_order_id))
+
+    @router.post("/admin/b2b/work-orders/{work_order_id}/transitions")
+    async def transition_work_order(
+        work_order_id: str,
+        payload: WorkOrderTransitionPayload,
+        actor: dict = Depends(require_permission("production.write")),
+    ):
+        return await invoke(
+            service().transition_work_order(
+                work_order_id,
                 target_status=payload.target_status,
                 expected_version=payload.expected_version,
                 operation_id=str(payload.operation_id),
