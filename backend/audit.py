@@ -87,6 +87,72 @@ async def append_audit_event(
     return event
 
 
+_IDENTITY_GOVERNANCE_ACTIONS = frozenset(
+    {
+        "identity.staff_invited",
+        "identity.staff_invitation_accepted",
+        "identity.staff_roles_updated",
+        "identity.staff_deactivated",
+        "identity.staff_reactivated",
+    }
+)
+_IDENTITY_GOVERNANCE_FIELDS = frozenset(
+    {"id", "email", "name", "roles", "status", "access_state", "version", "expires_at"}
+)
+
+
+def _identity_governance_projection(snapshot: Mapping[str, Any] | None):
+    if snapshot is None:
+        return None
+    if not isinstance(snapshot, Mapping):
+        raise AuditValidationError("Identity governance projection must be a mapping")
+    return {
+        key: _redact(value)
+        for key, value in snapshot.items()
+        if key in _IDENTITY_GOVERNANCE_FIELDS
+    }
+
+
+async def append_identity_governance_event(
+    db,
+    *,
+    actor: Mapping[str, Any],
+    action: str,
+    target_type: str,
+    target_id: str,
+    before: Mapping[str, Any] | None,
+    after: Mapping[str, Any] | None,
+    reason: str,
+    session=None,
+) -> dict:
+    """Append a reason-bearing, allowlisted identity-governance event."""
+    if action not in _IDENTITY_GOVERNANCE_ACTIONS:
+        raise AuditValidationError("Unsupported identity governance action")
+    if target_type not in {"user", "staff_invitation"}:
+        raise AuditValidationError("Unsupported identity governance target")
+    reason = reason.strip() if isinstance(reason, str) else ""
+    if len(reason) < 3 or len(reason) > 500:
+        raise AuditValidationError("Identity governance reason must be 3-500 characters")
+    actor_id = _validate_audit_identifier(actor.get("id"), "actor user ID")
+    target_id = _validate_audit_identifier(target_id, "target ID")
+    event = {
+        "id": str(uuid.uuid4()),
+        "actor_user_id": actor_id,
+        "actor_email": actor.get("email"),
+        "action": action,
+        "target_type": target_type,
+        "target_id": target_id,
+        "before": _identity_governance_projection(before),
+        "after": _identity_governance_projection(after),
+        "reason": reason,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    options = {"session": session} if session is not None else {}
+    await db.audit_events.insert_one(event, **options)
+    event.pop("_id", None)
+    return event
+
+
 class AuditValidationError(ValueError):
     """Raised when a restricted audit event does not meet its safe contract."""
 

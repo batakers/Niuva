@@ -160,6 +160,7 @@ class FakeDatabase:
     def __init__(self, users):
         self.users = FakeCollection(users)
         self.audit_events = FakeCollection()
+        self.staff_invitations = FakeCollection()
         self.identity_policy_state = FakeCollection()
         self.organizations = FakeCollection()
         self.organization_memberships = FakeCollection()
@@ -310,6 +311,160 @@ async def run_migration_matrix():
 
 def test_identity_migration_is_dry_run_safe_and_idempotent():
     asyncio.run(run_migration_matrix())
+
+
+async def run_staff_invitation_and_access_lifecycle():
+    owner = make_user("owner-lifecycle", "owner-lifecycle@niuva.com", ["super_admin"])
+    owner["password_hash"] = server.hash_password("OwnerLifecycle123")
+    warehouse = make_user("warehouse-lifecycle", "warehouse-lifecycle@niuva.com", ["warehouse"])
+    warehouse["password_hash"] = server.hash_password("WarehouseLifecycle123")
+    customer = make_user("customer-lifecycle", "customer-lifecycle@example.com", ["retail_customer"])
+    database = FakeDatabase([owner, warehouse, customer])
+    server.db = database
+    guard = FakeTransactionGuard(database)
+    server.app.state.transaction_guard = guard
+
+    transport = httpx.ASGITransport(app=server.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        owner_login = await api.post(
+            "/api/auth/admin/login",
+            json={"email": owner["email"], "password": "OwnerLifecycle123"},
+        )
+        warehouse_login = await api.post(
+            "/api/auth/admin/login",
+            json={"email": warehouse["email"], "password": "WarehouseLifecycle123"},
+        )
+        owner_headers = bearer(owner_login.json()["token"])
+        warehouse_headers = bearer(warehouse_login.json()["token"])
+
+        directory = await api.get("/api/admin/users", headers=owner_headers)
+        assert directory.status_code == 200
+        assert customer["email"] not in {item["email"] for item in directory.json()}
+
+        customer_conversion = await api.put(
+            f"/api/admin/staff/{customer['id']}/roles",
+            json={
+                "roles": ["warehouse"],
+                "expected_version": 1,
+                "reason": "Percobaan konversi customer menjadi staf",
+            },
+            headers=owner_headers,
+        )
+        assert customer_conversion.status_code == 409
+        assert customer_conversion.json()["detail"]["code"] == "customer_account_boundary"
+
+        invite_payload = {
+            "name": "Staff Baru",
+            "email": "staff-baru@niuva.com",
+            "roles": ["manager_approver", "warehouse"],
+            "reason": "Menambah penanggung jawab gudang cabang utama",
+        }
+        forbidden = await api.post(
+            "/api/admin/staff-invitations",
+            json=invite_payload,
+            headers=warehouse_headers,
+        )
+        assert forbidden.status_code == 403
+
+        invited = await api.post(
+            "/api/admin/staff-invitations",
+            json=invite_payload,
+            headers=owner_headers,
+        )
+        assert invited.status_code == 201, invited.text
+        setup_token = invited.json()["setup_token"]
+        stored_invite = database.staff_invitations.items[0]
+        assert stored_invite["token_hash"] != setup_token
+        assert stored_invite["roles"] == ["warehouse", "manager_approver"]
+        assert stored_invite["status"] == "pending"
+        assert database.audit_events.items[-1]["reason"] == invite_payload["reason"]
+
+        accepted = await api.post(
+            "/api/auth/staff-invitations/accept",
+            json={"token": setup_token, "password": "StaffBaruPassword123"},
+        )
+        assert accepted.status_code == 201, accepted.text
+        staff = await database.users.find_one({"email": invite_payload["email"]})
+        assert staff["roles"] == ["warehouse", "manager_approver"]
+        assert staff["status"] == "active"
+        assert staff["access_state"] == "approved"
+        assert staff["version"] == 1
+        assert server.verify_password("StaffBaruPassword123", staff["password_hash"])
+        replay = await api.post(
+            "/api/auth/staff-invitations/accept",
+            json={"token": setup_token, "password": "StaffBaruPassword123"},
+        )
+        assert replay.status_code == 410
+
+        staff_login = await api.post(
+            "/api/auth/admin/login",
+            json={"email": staff["email"], "password": "StaffBaruPassword123"},
+        )
+        old_staff_token = staff_login.json()["token"]
+
+        changed = await api.put(
+            f"/api/admin/staff/{staff['id']}/roles",
+            json={
+                "roles": ["order_admin"],
+                "expected_version": 1,
+                "reason": "Memindahkan tanggung jawab ke administrasi pesanan",
+            },
+            headers=owner_headers,
+        )
+        assert changed.status_code == 200, changed.text
+        assert changed.json()["roles"] == ["order_admin"]
+        assert changed.json()["version"] == 2
+        assert (await api.get("/api/auth/me", headers=bearer(old_staff_token))).status_code == 401
+
+        stale = await api.post(
+            f"/api/admin/staff/{staff['id']}/deactivate",
+            json={"expected_version": 1, "reason": "Versi stale untuk test konflik"},
+            headers=owner_headers,
+        )
+        assert stale.status_code == 409
+        assert stale.json()["detail"]["code"] == "version_conflict"
+        assert stale.json()["detail"]["current_version"] == 2
+
+        deactivated = await api.post(
+            f"/api/admin/staff/{staff['id']}/deactivate",
+            json={"expected_version": 2, "reason": "Akses sementara tidak diperlukan"},
+            headers=owner_headers,
+        )
+        assert deactivated.status_code == 200
+        assert deactivated.json()["status"] == "disabled"
+        assert deactivated.json()["version"] == 3
+        blocked_login = await api.post(
+            "/api/auth/admin/login",
+            json={"email": staff["email"], "password": "StaffBaruPassword123"},
+        )
+        assert blocked_login.status_code == 401
+
+        reactivated = await api.post(
+            f"/api/admin/staff/{staff['id']}/reactivate",
+            json={"expected_version": 3, "reason": "Akses operasional dibutuhkan kembali"},
+            headers=owner_headers,
+        )
+        assert reactivated.status_code == 200
+        assert reactivated.json()["status"] == "active"
+        assert reactivated.json()["version"] == 4
+
+    assert [call[0] for call in guard.calls] == [
+        "identity.assign_staff_roles",
+        "identity.invite_staff",
+        "identity.accept_staff_invitation",
+        "identity.accept_staff_invitation",
+        "identity.assign_staff_roles",
+        "identity.deactivate_staff",
+        "identity.deactivate_staff",
+        "identity.reactivate_staff",
+    ]
+
+
+def test_staff_invitation_and_access_lifecycle_is_audited_and_versioned():
+    try:
+        asyncio.run(run_staff_invitation_and_access_lifecycle())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
 
 
 

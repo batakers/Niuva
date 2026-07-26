@@ -276,6 +276,7 @@ def safe_user(user: dict) -> dict:
         "roles": list(roles),
         "role_labels": [ROLE_LABELS[role] for role in roles],
         "permissions": sorted(permissions_for(user)),
+        "version": user.get("version", 1),
         "created_at": user.get("created_at"),
     }
 
@@ -1100,6 +1101,7 @@ api.include_router(
         get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         safe_user=safe_user,
+        hash_password=hash_password,
     )
 )
 
