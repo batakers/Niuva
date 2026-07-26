@@ -66,10 +66,17 @@ workbench without weakening any rule.
       `BROWSER_VERIFICATION_RUNBOOK.md`. Automate it if the accounts exist.
 - [ ] Create one Inquiry through the public form. Confirm it appears in triage
       and that the response carried no internal fields.
-- [ ] Walk one Quote to accepted and open a Project from it. Confirm exactly
+- [ ] Author one Quote revision with a line that references a catalog variant.
+      A work order can only be opened for a variant the accepted quotation
+      carries, so a bespoke-only quotation cannot complete the next two steps.
+- [ ] Walk that Quote to accepted and open a Project from it. Confirm exactly
       one Project exists.
-- [ ] Open one Work Order and allocate it. Confirm reservations appear and
-      balances moved.
+- [ ] Open one Work Order against the quoted variant and allocate it. Confirm
+      reservations appear and balances moved.
+- [ ] Change the variant's price or bill of materials in the catalog, then
+      reopen the quotation and the work order. Both must still show what was
+      quoted. This is the snapshot guarantee, and it is worth checking once
+      per deploy because it is silent when it breaks.
 - [ ] Confirm revenue is still withheld on the dashboard.
 - [ ] Confirm the bell shows unread state and a notification deep link lands
       on the record it names.
@@ -108,10 +115,26 @@ What the next person needs to know, beyond the code:
 
 ## Open items at handover
 
-- Browser role matrix has not been run with credentials; it needs one seeded
-  account per role.
-- Screen-reader announcement quality needs a human with a screen reader. The
-  suite checks the structures exist, not that they read well.
-- The retail public checkout is intentionally absent.
-- The quote revision editor cannot yet pick a catalog variant, so lines
-  authored there carry no product snapshot.
+Each of these needs something this work could not supply on its own.
+
+- **Browser role matrix has not been run with credentials.** It needs one
+  seeded account per role. The suite raises rather than skips when they are
+  missing, so a run without them fails loudly instead of reporting a pass for
+  a role nobody checked. See `BROWSER_VERIFICATION_RUNBOOK.md`.
+- **Screen-reader announcement quality needs a human with a screen reader.**
+  The suite checks the structures exist — live regions, labels, headings — not
+  that they read well in sequence. Those are different questions.
+- **The retail public checkout is intentionally absent.** Cancellation, refund,
+  return, and payment transitions answer 409 with a named code until policy and
+  a provider are approved. They are withheld, not missing.
+- **Customer ownership of B2B records is not modelled.** `organizations` and
+  `organization_memberships` are archived, so nothing today can say which
+  customer owns which quotation. The customer-safe projections exist and are
+  tested; a portal starts by deciding ownership, not by writing routes.
+
+Closed since this document was first written:
+
+- ~~The quote revision editor cannot pick a catalog variant.~~ Lines can now
+  reference an active variant, which is what lets a work order be opened
+  against them. A line may still carry no variant, and the editor says what
+  that costs.
