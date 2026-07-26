@@ -7,6 +7,7 @@ from b2b_domain import (
     project_inquiry,
     project_quote,
     validate_inquiry_transition,
+    validate_quote_transition,
 )
 
 
@@ -169,6 +170,220 @@ class B2BService:
             "inquiry": project_inquiry(inquiry),
             "quote": project_quote(quote, version),
         }
+
+    async def _get_quote(self, quote_id: str) -> dict:
+        quote = await self.db.b2b_quotes.find_one({"id": quote_id}, {"_id": 0})
+        if not quote:
+            raise B2BDomainError(404, "quote_not_found", "Quote tidak ditemukan.")
+        return dict(quote)
+
+    async def _get_quote_version(self, version_id: str) -> dict:
+        version = await self.db.b2b_quote_versions.find_one(
+            {"id": version_id},
+            {"_id": 0},
+        )
+        if not version:
+            raise B2BDomainError(
+                409,
+                "quote_version_missing",
+                "Versi Quote tidak ditemukan dan memerlukan rekonsiliasi.",
+            )
+        return dict(version)
+
+    async def get_quote(self, quote_id: str) -> dict:
+        quote = await self._get_quote(quote_id)
+        version = await self._get_quote_version(quote["current_version_id"])
+        return project_quote(quote, version)
+
+    async def list_quotes(self, *, status: str | None = None) -> list[dict]:
+        query = {"status": status} if status else {}
+        quotes = await self.db.b2b_quotes.find(query, {"_id": 0}).sort(
+            "updated_at", -1
+        ).limit(500).to_list(500)
+        return [project_quote(quote) for quote in quotes]
+
+    async def transition_quote(
+        self,
+        quote_id: str,
+        *,
+        target_status: str,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        actor: dict,
+    ) -> dict:
+        quote = await self._get_quote(quote_id)
+        for event in quote.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if event.get("to_status") != target_status:
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi Quote berbeda.",
+                    )
+                return await self.get_quote(quote_id)
+        if quote["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Quote telah berubah. Muat versi terbaru sebelum mencoba lagi.",
+                details={
+                    "current_version": quote["version"],
+                    "current_status": quote["status"],
+                    "permitted_next_actions": project_quote(quote)[
+                        "permitted_next_actions"
+                    ],
+                },
+            )
+        validate_quote_transition(quote["status"], target_status, reason=reason)
+        timestamp = now_iso()
+        event = {
+            "from_status": quote["status"],
+            "to_status": target_status,
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "operation_id": operation_id,
+            "timestamp": timestamp,
+        }
+        changes = {
+            "status": target_status,
+            "version": expected_version + 1,
+            "history": [*quote.get("history", []), event],
+            "updated_at": timestamp,
+        }
+        if target_status == "accepted":
+            changes["accepted_version_id"] = quote["current_version_id"]
+        result = await self.db.b2b_quotes.update_one(
+            {"id": quote_id, "version": expected_version, "status": quote["status"]},
+            {"$set": changes},
+        )
+        if not result.matched_count:
+            current = await self._get_quote(quote_id)
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Quote telah berubah. Muat versi terbaru sebelum mencoba lagi.",
+                details={
+                    "current_version": current["version"],
+                    "current_status": current["status"],
+                    "permitted_next_actions": project_quote(current)[
+                        "permitted_next_actions"
+                    ],
+                },
+            )
+        current_version = await self._get_quote_version(quote["current_version_id"])
+        return project_quote({**quote, **changes}, current_version)
+
+    async def create_quote_revision(
+        self,
+        quote_id: str,
+        *,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        scope_snapshot: dict,
+        items: list[dict],
+        total_minor: int | None,
+        actor: dict,
+    ) -> dict:
+        quote = await self._get_quote(quote_id)
+        for event in quote.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if event.get("event") != "revision_created":
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi Quote berbeda.",
+                    )
+                return await self.get_quote(quote_id)
+        if quote["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Quote telah berubah. Muat versi terbaru sebelum membuat revisi.",
+                details={"current_version": quote["version"], "current_status": quote["status"]},
+            )
+        if quote["status"] != "revision_requested":
+            raise B2BDomainError(
+                409,
+                "quote_revision_forbidden",
+                "Revisi baru hanya dapat dibuat setelah revision requested.",
+            )
+        if not reason.strip():
+            raise B2BDomainError(422, "reason_required", "Alasan revisi wajib diisi.")
+        if total_minor is not None and (not isinstance(total_minor, int) or total_minor < 0):
+            raise B2BDomainError(
+                422,
+                "money_invalid",
+                "Total Quote harus berupa integer minor-unit non-negatif.",
+            )
+
+        timestamp = now_iso()
+        revision = quote["current_revision"] + 1
+        version_id = str(uuid.uuid4())
+        version = {
+            "id": version_id,
+            "quote_id": quote_id,
+            "revision": revision,
+            "scope_snapshot": deepcopy(scope_snapshot),
+            "items": deepcopy(items),
+            "currency": "IDR",
+            "total_minor": total_minor,
+            "created_by": actor.get("id"),
+            "reason": reason.strip(),
+            "created_at": timestamp,
+        }
+        event = {
+            "event": "revision_created",
+            "from_status": "revision_requested",
+            "to_status": "draft",
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "operation_id": operation_id,
+            "timestamp": timestamp,
+        }
+        changes = {
+            "status": "draft",
+            "version": expected_version + 1,
+            "current_revision": revision,
+            "current_version_id": version_id,
+            "history": [*quote.get("history", []), event],
+            "updated_at": timestamp,
+        }
+
+        async def mutation(session):
+            options = {"session": session}
+            await self.db.b2b_quote_versions.insert_one(deepcopy(version), **options)
+            result = await self.db.b2b_quotes.update_one(
+                {
+                    "id": quote_id,
+                    "version": expected_version,
+                    "status": "revision_requested",
+                    "current_version_id": quote["current_version_id"],
+                },
+                {"$set": changes},
+                **options,
+            )
+            if not result.matched_count:
+                raise B2BDomainError(
+                    409,
+                    "version_conflict",
+                    "Quote berubah selama pembuatan revisi.",
+                )
+            return project_quote({**quote, **changes}, version)
+
+        if self.transaction_guard is None:
+            raise B2BDomainError(
+                503,
+                "transaction_unavailable",
+                "Pembuatan revisi Quote tidak tersedia tanpa transaction guard.",
+            )
+        return await self.transaction_guard.run(
+            mutation,
+            operation_name="b2b.create_quote_revision",
+            retry_safe=True,
+            correlation_id=operation_id,
+        )
 
     async def convert_inquiry(
         self,

@@ -24,6 +24,16 @@ QUOTE_ACTIONS = {
     "rejected": [],
 }
 
+QUOTE_TRANSITIONS = {
+    "draft": {"internal_review"},
+    "internal_review": {"draft", "sent"},
+    "sent": {"accepted", "revision_requested", "expired", "rejected"},
+    "accepted": set(),
+    "revision_requested": set(),
+    "expired": set(),
+    "rejected": set(),
+}
+
 
 class B2BDomainError(Exception):
     def __init__(
@@ -96,6 +106,34 @@ def project_inquiry(document: dict) -> dict:
 
 def quote_next_actions(status: str) -> list[str]:
     return list(QUOTE_ACTIONS.get(status, []))
+
+
+def validate_quote_transition(
+    current_status: str,
+    target_status: str,
+    *,
+    reason: str,
+) -> None:
+    if current_status not in QUOTE_TRANSITIONS:
+        raise B2BDomainError(409, "quote_status_unknown", "Status Quote tidak dikenali.")
+    if not QUOTE_TRANSITIONS[current_status]:
+        raise B2BDomainError(
+            409,
+            "quote_terminal",
+            "Quote pada status ini tidak dapat ditransisikan.",
+        )
+    if target_status not in QUOTE_TRANSITIONS[current_status]:
+        raise B2BDomainError(
+            409,
+            "quote_transition_invalid",
+            "Perpindahan status Quote tidak diizinkan.",
+            details={
+                "current_status": current_status,
+                "permitted_next_actions": quote_next_actions(current_status),
+            },
+        )
+    if not reason.strip():
+        raise B2BDomainError(422, "reason_required", "Alasan perubahan Quote wajib diisi.")
 
 
 def project_quote(document: dict, current_version: dict | None = None) -> dict:

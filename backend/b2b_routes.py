@@ -37,6 +37,34 @@ class InquiryConversionPayload(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+class QuoteTransitionPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_status: Literal[
+        "draft",
+        "internal_review",
+        "sent",
+        "accepted",
+        "revision_requested",
+        "expired",
+        "rejected",
+    ]
+    expected_version: int = Field(ge=1)
+    operation_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class QuoteRevisionPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_version: int = Field(ge=1)
+    operation_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+    scope_snapshot: dict
+    items: list[dict] = Field(default_factory=list)
+    total_minor: int | None = Field(default=None, ge=0)
+
+
 def build_b2b_router(
     *,
     get_db,
@@ -107,6 +135,56 @@ def build_b2b_router(
                 expected_version=payload.expected_version,
                 operation_id=str(payload.operation_id),
                 reason=payload.reason,
+                actor=actor,
+            )
+        )
+
+    @router.get("/admin/b2b/quotes")
+    async def list_quotes(
+        status_filter: str | None = None,
+        _actor: dict = Depends(require_permission("quotes.read")),
+    ):
+        return await invoke(service().list_quotes(status=status_filter))
+
+    @router.get("/admin/b2b/quotes/{quote_id}")
+    async def get_quote(
+        quote_id: str,
+        _actor: dict = Depends(require_permission("quotes.read")),
+    ):
+        return await invoke(service().get_quote(quote_id))
+
+    @router.post("/admin/b2b/quotes/{quote_id}/transitions")
+    async def transition_quote(
+        quote_id: str,
+        payload: QuoteTransitionPayload,
+        actor: dict = Depends(require_permission("quotes.write")),
+    ):
+        return await invoke(
+            service().transition_quote(
+                quote_id,
+                target_status=payload.target_status,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                actor=actor,
+            )
+        )
+
+    @router.post("/admin/b2b/quotes/{quote_id}/versions")
+    async def create_quote_revision(
+        quote_id: str,
+        payload: QuoteRevisionPayload,
+        actor: dict = Depends(require_permission("quotes.write")),
+    ):
+        return await invoke(
+            service().create_quote_revision(
+                quote_id,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                scope_snapshot=payload.scope_snapshot,
+                items=payload.items,
+                total_minor=payload.total_minor,
                 actor=actor,
             )
         )
