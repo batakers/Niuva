@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { AlertCircle, AlertTriangle, Save } from "lucide-react";
+import { AlertTriangle, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { useI18n } from "@/i18n";
@@ -46,9 +46,7 @@ export default function AdminSettings() {
         title={t("admin.settings")}
         subtitle={t("settings.subtitle")}
       >
-        <EmptyState icon={AlertCircle} className="py-16">
-          <span role="alert" className="text-status-error">{loadError}</span>
-        </EmptyState>
+        <ErrorState error={loadError} />
       </AdminLayout>
     );
   }
@@ -92,33 +90,30 @@ export default function AdminSettings() {
 
         {/* Form */}
         <div className="p-6 sm:p-8 space-y-6">
-          <div className="space-y-1.5">
-            <Label>{t("settings.bankName")}</Label>
+          <FormField label={t("settings.bankName")}>
             <Input
               data-testid="settings-bank"
               value={form.bank_name}
               onChange={updateField("bank_name")}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label>{t("settings.accountNumber")}</Label>
+          <FormField label={t("settings.accountNumber")}>
             <Input
               data-testid="settings-account"
               value={form.account_number}
               onChange={updateField("account_number")}
               className="font-mono text-lg tracking-wider"
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label>{t("settings.accountHolder")}</Label>
+          <FormField label={t("settings.accountHolder")}>
             <Input
               data-testid="settings-holder"
               value={form.account_holder}
               onChange={updateField("account_holder")}
             />
-          </div>
+          </FormField>
         </div>
 
         {/* Footer */}

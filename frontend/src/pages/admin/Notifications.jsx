@@ -3,8 +3,9 @@ import { AlertTriangle, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -54,16 +55,18 @@ export default function AdminNotifications() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState("");
 
   // Load notification history
   const loadHistory = () => {
     setLoading(true);
+    setHistoryError("");
     api
       .get("/admin/notifications/sent")
       .then((r) => setSent(r.data))
-      .catch(() => {})
+      .catch((err) => setHistoryError(formatApiError(err.response?.data?.detail)))
       .finally(() => setLoading(false));
   };
 
@@ -149,8 +152,7 @@ export default function AdminNotifications() {
 
           <div className="space-y-5">
             {/* Target */}
-            <div className="space-y-1.5">
-              <Label>{t("notifications.target")}</Label>
+            <FormField label={t("notifications.target")}>
               <Select
                 value={form.target}
                 onValueChange={updateField("target")}
@@ -166,24 +168,22 @@ export default function AdminNotifications() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
 
             {/* Conditional: User selector */}
             {form.target === "user" && (
-              <div className="space-y-1.5">
-                <Label>{t("notifications.selectUser")}</Label>
+              <FormField label={t("notifications.selectUser")}>
                 <UserSelector
                   value={form.user_id}
                   onChange={handleUserSelect}
                   placeholder={t("notifications.userSearchPlaceholder")}
                 />
-              </div>
+              </FormField>
             )}
 
             {/* Conditional: Segment selector */}
             {form.target === "segment" && (
-              <div className="space-y-1.5">
-                <Label>{t("notifications.segment")}</Label>
+              <FormField label={t("notifications.segment")}>
                 <Select
                   value={form.segment}
                   onValueChange={updateField("segment")}
@@ -199,7 +199,7 @@ export default function AdminNotifications() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </FormField>
             )}
 
             {/* Conditional: Broadcast warning */}
@@ -213,19 +213,20 @@ export default function AdminNotifications() {
             )}
 
             {/* Subject */}
-            <div className="space-y-1.5">
-              <Label>{t("notifications.subject")}</Label>
+            <FormField label={t("notifications.subject")}>
               <Input
                 value={form.subject}
                 onChange={(e) => updateField("subject")(e.target.value)}
                 maxLength={180}
                 placeholder={t("notifications.subjectPlaceholder")}
               />
-            </div>
+            </FormField>
 
             {/* Message */}
-            <div className="space-y-1.5">
-              <Label>{t("notifications.message")}</Label>
+            <FormField
+              label={t("notifications.message")}
+              hint={`${form.message.length}/2000`}
+            >
               <Textarea
                 value={form.message}
                 onChange={(e) => updateField("message")(e.target.value)}
@@ -233,10 +234,7 @@ export default function AdminNotifications() {
                 rows={5}
                 placeholder={t("notifications.messagePlaceholder")}
               />
-              <p className="text-xs text-text-secondary">
-                {form.message.length}/2000
-              </p>
-            </div>
+            </FormField>
 
             {/* Send button */}
             <Button
@@ -283,6 +281,8 @@ export default function AdminNotifications() {
                   </TableBody>
                 </Table>
               </div>
+            ) : historyError ? (
+              <ErrorState error={historyError} onRetry={loadHistory} compact className="m-4" />
             ) : sent.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="type-body-small text-text-secondary">

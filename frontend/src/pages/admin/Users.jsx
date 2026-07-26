@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Plus, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
@@ -13,8 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { SkeletonTableRow } from "@/components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import {
@@ -149,9 +150,7 @@ export default function AdminUsers() {
             </Table>
           </div>
         ) : error ? (
-          <EmptyState icon={AlertCircle} className="py-16">
-            <span role="alert" className="text-status-error">{error}</span>
-          </EmptyState>
+          <ErrorState error={error} onRetry={loadUsers} />
         ) : items.length === 0 ? (
           <EmptyState icon={Users} className="py-16">
             {t("users.empty")}
@@ -264,32 +263,27 @@ function CreateUserDialog({ open, onOpenChange, onCreated }) {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>{t("common.name")}</Label>
+          <FormField label={t("common.name")}>
             <Input value={form.name} onChange={update("name")} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("common.email")}</Label>
+          </FormField>
+          <FormField label={t("common.email")}>
             <Input type="email" value={form.email} onChange={update("email")} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("common.password")}</Label>
+          </FormField>
+          <FormField label={t("common.password")}>
             <Input
               type="password"
               value={form.password}
               onChange={update("password")}
               placeholder={t("users.passwordHint")}
             />
-          </div>
+          </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>{t("users.phone")}</Label>
+            <FormField label={t("users.phone")}>
               <Input value={form.phone} onChange={update("phone")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("users.company")}</Label>
+            </FormField>
+            <FormField label={t("users.company")}>
               <Input value={form.company} onChange={update("company")} />
-            </div>
+            </FormField>
           </div>
 
           {error && <Alert>{error}</Alert>}

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Download, Eye, Layers, Package } from "lucide-react";
+import { CheckCircle2, Download, Eye, Layers, Package } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";

@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AlertCircle, Archive, Edit3, FileText, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Archive, Edit3, FileText, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { EmptyState } from "../../components/ui/empty-state";
+import { ErrorState } from "../../components/ui/error-state";
+import { FormField } from "../../components/ui/form-field";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
@@ -112,7 +114,7 @@ export default function ContentEditor() {
             <TableBody>{[1, 2, 3, 4].map((i) => (<SkeletonTableRow key={i} columns={5} />))}</TableBody>
           </Table>
         )
-          : error ? <EmptyState icon={AlertCircle} className="py-16"><span role="alert" className="text-status-error">{error}</span></EmptyState>
+          : error ? <ErrorState error={error} onRetry={load} />
             : items.length === 0 ? <EmptyState icon={FileText} className="py-16">{t("content.empty")}</EmptyState>
               : (
                 <Table>
@@ -144,10 +146,9 @@ export default function ContentEditor() {
       <Dialog open={Boolean(creating)} onOpenChange={(open) => !open && setCreating(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{t("content.create")} · {t(`content.type.${contentType}`)}</DialogTitle></DialogHeader>
-          <div className="space-y-2">
-            <Label>Slug</Label>
-            <Input value={creating?.slug || ""} onChange={(event) => setCreating({ slug: event.target.value })} placeholder="mis. company-profile" />
-          </div>
+          <FormField label={t("content.slug")}>
+            <Input value={creating?.slug || ""} onChange={(event) => setCreating({ slug: event.target.value })} placeholder={t("content.slugPlaceholder")} />
+          </FormField>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreating(null)}>{t("common.cancel")}</Button>
             <Button disabled={busy || !creating?.slug.trim()} onClick={createDraft}>{t("common.save")}</Button>
@@ -158,10 +159,9 @@ export default function ContentEditor() {
       <Dialog open={Boolean(archiveTarget)} onOpenChange={(open) => !open && setArchiveTarget(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{t("content.archive")} · {archiveTarget?.slug}</DialogTitle></DialogHeader>
-          <div className="space-y-2">
-            <Label>{t("common.reason")}</Label>
+          <FormField label={t("common.reason")}>
             <Input value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} minLength={3} maxLength={500} />
-          </div>
+          </FormField>
           <DialogFooter>
             <Button variant="outline" onClick={() => setArchiveTarget(null)}>{t("common.cancel")}</Button>
             <Button variant="destructive" disabled={busy || archiveReason.trim().length < 3} onClick={archive}>{t("content.archive")}</Button>
@@ -174,6 +174,7 @@ export default function ContentEditor() {
 
 /** Single scalar field: text / textarea / select / number, per schema entry. */
 function ScalarField({ field, value, onChange, disabled }) {
+  const { t } = useI18n();
   const commonProps = {
     id: `content-field-${field.key}`,
     value: value ?? "",
@@ -188,7 +189,7 @@ function ScalarField({ field, value, onChange, disabled }) {
         <Textarea {...commonProps} rows={4} />
       ) : field.type === "select" ? (
         <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
-          <SelectTrigger id={commonProps.id}><SelectValue placeholder={`Pilih ${field.label.toLowerCase()}`} /></SelectTrigger>
+          <SelectTrigger id={commonProps.id}><SelectValue placeholder={t("content.selectFieldPlaceholder").replace("{field}", field.label.toLowerCase())} /></SelectTrigger>
           <SelectContent>
             {field.options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
           </SelectContent>
@@ -202,6 +203,7 @@ function ScalarField({ field, value, onChange, disabled }) {
 
 /** A list of plain strings (e.g. About.values) with add/remove rows. */
 function StringListField({ field, value, onChange, disabled }) {
+  const { t } = useI18n();
   const items = value || [];
   const update = (index, next) => onChange(items.map((item, i) => (i === index ? next : item)));
   const remove = (index) => onChange(items.filter((_, i) => i !== index));
@@ -212,17 +214,18 @@ function StringListField({ field, value, onChange, disabled }) {
         {items.map((item, index) => (
           <div key={index} className="flex gap-2">
             <Input value={item} onChange={(event) => update(index, event.target.value)} disabled={disabled} />
-            {!disabled && <Button variant="ghost" size="icon" onClick={() => remove(index)} aria-label="Hapus item"><Trash2 className="h-4 w-4" /></Button>}
+            {!disabled && <Button variant="ghost" size="icon" onClick={() => remove(index)} aria-label={t("content.removeItem")}><Trash2 className="h-4 w-4" /></Button>}
           </div>
         ))}
       </div>
-      {!disabled && <Button variant="outline" size="sm" onClick={() => onChange([...items, ""])}><Plus className="mr-2 h-4 w-4" />Tambah item</Button>}
+      {!disabled && <Button variant="outline" size="sm" onClick={() => onChange([...items, ""])}><Plus className="mr-2 h-4 w-4" />{t("content.addItem")}</Button>}
     </div>
   );
 }
 
 /** A list of objects with fixed sub-fields (e.g. About.dossierItems: {label, title, body}). */
 function ItemListField({ field, value, onChange, disabled }) {
+  const { t } = useI18n();
   const items = value || [];
   const emptyItem = () => Object.fromEntries(field.itemFields.map((key) => [key, ""]));
   const update = (index, key, next) => onChange(items.map((item, i) => (i === index ? { ...item, [key]: next } : item)));
@@ -234,8 +237,8 @@ function ItemListField({ field, value, onChange, disabled }) {
         {items.map((item, index) => (
           <div key={index} className="rounded-control border border-border-default p-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="type-label text-text-secondary">Item {index + 1}</span>
-              {!disabled && <Button variant="ghost" size="icon" onClick={() => remove(index)} aria-label="Hapus item"><Trash2 className="h-4 w-4" /></Button>}
+              <span className="type-label text-text-secondary">{t("content.itemNumber").replace("{n}", String(index + 1))}</span>
+              {!disabled && <Button variant="ghost" size="icon" onClick={() => remove(index)} aria-label={t("content.removeItem")}><Trash2 className="h-4 w-4" /></Button>}
             </div>
             <div className="grid gap-2">
               {field.itemFields.map((key) => (
@@ -251,7 +254,7 @@ function ItemListField({ field, value, onChange, disabled }) {
           </div>
         ))}
       </div>
-      {!disabled && <Button variant="outline" size="sm" onClick={() => onChange([...items, emptyItem()])}><Plus className="mr-2 h-4 w-4" />Tambah item</Button>}
+      {!disabled && <Button variant="outline" size="sm" onClick={() => onChange([...items, emptyItem()])}><Plus className="mr-2 h-4 w-4" />{t("content.addItem")}</Button>}
     </div>
   );
 }
@@ -341,7 +344,7 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
   const rollback = async (versionId) => {
     setBusy(true);
     try {
-      await contentApi.rollback(blockId, versionId, "Rollback via admin panel");
+      await contentApi.rollback(blockId, versionId, t("content.rollbackReason"));
       toast.success(t("content.rollbackSuccess"));
       await load();
     } catch (error) {
@@ -380,14 +383,12 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
         <SurfacePanel className="mt-4">
           <SurfacePanelHeader padding="sm"><p className="type-label text-text-secondary">{t("content.publish")}</p></SurfacePanelHeader>
           <div className="grid gap-4 p-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("common.reason")}</Label>
+            <FormField label={t("common.reason")}>
               <Input value={reason} onChange={(event) => setReason(event.target.value)} minLength={3} maxLength={500} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("content.scheduleOptional")}</Label>
+            </FormField>
+            <FormField label={t("content.scheduleOptional")}>
               <Input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
-            </div>
+            </FormField>
           </div>
           <div className="p-4 pt-0">
             <Button disabled={busy || reason.trim().length < 3} onClick={publish}>{scheduledAt ? t("content.schedule") : t("content.publishNow")}</Button>

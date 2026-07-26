@@ -20,8 +20,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { SurfacePanel } from "@/components/ui/surface-panel";
 import { TechnicalLabel } from "@/components/ui/technical-label";
@@ -281,48 +281,41 @@ function PortfolioDialog({ item, onClose, onSaved }) {
         {/* Form */}
         <div className="p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>{t("portfolio.titleId")}</Label>
+            <FormField label={t("portfolio.titleId")}>
               <Input
                 data-testid="portfolio-title-id"
                 value={form.title_id}
                 onChange={updateField("title_id")}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("portfolio.titleEn")}</Label>
+            </FormField>
+            <FormField label={t("portfolio.titleEn")}>
               <Input value={form.title_en} onChange={updateField("title_en")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("portfolio.client")}</Label>
+            </FormField>
+            <FormField label={t("portfolio.client")}>
               <Input value={form.client} onChange={updateField("client")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("portfolio.category")}</Label>
+            </FormField>
+            <FormField label={t("portfolio.category")}>
               <Input value={form.category} onChange={updateField("category")} />
-            </div>
+            </FormField>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>{t("portfolio.descriptionId")}</Label>
+          <FormField label={t("portfolio.descriptionId")}>
             <Textarea
               value={form.description_id}
               onChange={updateField("description_id")}
               rows={3}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label>{t("portfolio.descriptionEn")}</Label>
+          <FormField label={t("portfolio.descriptionEn")}>
             <Textarea
               value={form.description_en}
               onChange={updateField("description_en")}
               rows={3}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label>{t("portfolio.imageUrls")}</Label>
+          <FormField label={t("portfolio.imageUrls")} hint={t("portfolio.imageUrlsHint")}>
             <Textarea
               data-testid="portfolio-image"
               value={form.imagesText}
@@ -331,10 +324,7 @@ function PortfolioDialog({ item, onClose, onSaved }) {
               placeholder={t("portfolio.imageUrlsHint")}
               className="font-mono text-xs"
             />
-            <p className="type-body-small text-text-secondary">
-              {t("portfolio.imageUrlsHint")}
-            </p>
-          </div>
+          </FormField>
 
           <div className="flex items-center gap-3 pt-2">
             <Switch
