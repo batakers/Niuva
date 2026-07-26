@@ -88,7 +88,7 @@ Start the ephemeral test topology:
 ```powershell
 docker compose -f docker-compose.transaction-test.yml up -d
 $env:MONGO_TRANSACTION_TEST_URL = "mongodb://127.0.0.1:27018/?replicaSet=rs-test&directConnection=true"
-.\backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_integration.py backend\tests\test_inventory_transactions.py
+.\backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_integration.py backend\tests\test_b2b_transaction_integration.py backend\tests\test_inventory_transactions.py
 ```
 
 Always clean it after the test:
@@ -108,8 +108,8 @@ the xdist worker, test name, and UUID, and drops only that database in
 ## CI expectation
 
 `.github/workflows/transaction-tests.yml` starts `rs-test`, waits for a
-writable primary, sets `MONGO_TRANSACTION_TEST_URL`, and runs both real
-transaction modules without `continue-on-error`. A skipped real transaction
+writable primary, sets `MONGO_TRANSACTION_TEST_URL`, and runs every real
+transaction module without `continue-on-error`. A skipped real transaction
 module is not acceptable CI evidence because the workflow always supplies the
 URL.
 
@@ -225,6 +225,7 @@ try {
     $realOutput = @(
         .\backend\.venv\Scripts\python.exe -m pytest -n 0 -q `
             backend\tests\test_transaction_integration.py `
+            backend\tests\test_b2b_transaction_integration.py `
             backend\tests\test_inventory_transactions.py 2>&1
     )
     $realExitCode = $LASTEXITCODE
