@@ -33,6 +33,24 @@ const AdminPortfolio = lazy(() => import("@/pages/admin/PortfolioAdmin"));
 const AdminContent = lazy(() => import("@/pages/admin/ContentEditor"));
 const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
+const AdminInquiryList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.InquiryList }))
+);
+const AdminQuoteList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.QuoteList }))
+);
+const AdminProjectList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.ProjectList }))
+);
+const AdminInquiryDetail = lazy(() =>
+  import("@/pages/admin/B2BDetail").then((m) => ({ default: m.InquiryDetail }))
+);
+const AdminQuoteDetail = lazy(() =>
+  import("@/pages/admin/B2BDetail").then((m) => ({ default: m.QuoteDetail }))
+);
+const AdminProjectDetail = lazy(() =>
+  import("@/pages/admin/B2BDetail").then((m) => ({ default: m.ProjectDetail }))
+);
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
 const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
@@ -121,7 +139,12 @@ function App() {
                   <Route path="/admin/portfolio" element={protectedPage("/admin/portfolio", <AdminPortfolio />)} />
                   <Route path="/admin/content" element={protectedPage("/admin/content", <AdminContent />)} />
                   <Route path="/admin/contacts" element={protectedPage("/admin/contacts", <AdminContacts />)} />
-                  <Route path="/admin/inquiries" element={protectedPage("/admin/inquiries", <AdminContacts />)} />
+                  <Route path="/admin/inquiries" element={protectedPage("/admin/inquiries", <AdminInquiryList />)} />
+                  <Route path="/admin/inquiries/:id" element={protectedPage("/admin/inquiries", <AdminInquiryDetail />)} />
+                  <Route path="/admin/b2b/quotes" element={protectedPage("/admin/b2b/quotes", <AdminQuoteList />)} />
+                  <Route path="/admin/b2b/quotes/:id" element={protectedPage("/admin/b2b/quotes", <AdminQuoteDetail />)} />
+                  <Route path="/admin/b2b/projects" element={protectedPage("/admin/b2b/projects", <AdminProjectList />)} />
+                  <Route path="/admin/b2b/projects/:id" element={protectedPage("/admin/b2b/projects", <AdminProjectDetail />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
                   <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotifications />)} />
                   <Route path="/admin/communication" element={protectedPage("/admin/communication", <AdminNotifications />)} />

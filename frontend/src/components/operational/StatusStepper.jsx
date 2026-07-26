@@ -43,12 +43,36 @@ export function StatusStepper({ status }) {
 
 export function StatusBadge({ status }) {
   const { t } = useI18n();
+  const attention = "bg-status-warning/15 text-status-warning border-status-warning/30";
+  const inFlight = "bg-signal/15 text-primary border-signal/30";
+  const settled = "bg-status-success/15 text-status-success border-status-success/30";
+  const terminated = "bg-destructive/10 text-destructive border-destructive/25";
   const map = {
-    pending_estimate: "bg-status-warning/15 text-status-warning border-status-warning/30",
+    pending_estimate: attention,
     awaiting_payment: "bg-primary/10 text-primary border-primary/25",
-    in_process: "bg-signal/15 text-primary border-signal/30",
-    completed: "bg-status-success/15 text-status-success border-status-success/30",
-    cancelled: "bg-destructive/10 text-destructive border-destructive/25",
+    in_process: inFlight,
+    completed: settled,
+    cancelled: terminated,
+
+    // B2B Inquiry
+    new: attention,
+    reviewed: inFlight,
+    contacted: inFlight,
+    converted: settled,
+    rejected: terminated,
+
+    // B2B Quote
+    draft: "bg-secondary text-text-secondary border-border-default",
+    internal_review: attention,
+    sent: inFlight,
+    accepted: settled,
+    revision_requested: attention,
+    expired: terminated,
+
+    // B2B Project
+    planned: attention,
+    active: inFlight,
+    on_hold: attention,
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${map[status] || "bg-secondary text-text-secondary border-border-default"}`}>

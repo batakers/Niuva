@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Boxes,
+  BriefcaseBusiness,
   FileText,
   History,
   Home,
@@ -21,6 +22,12 @@ export const ADMIN_MENU_GROUPS = Object.freeze([
     label: "admin.group.salesDelivery",
     items: [
       { path: "/admin/inquiries", label: "admin.inquiries", icon: Mail },
+      { path: "/admin/b2b/quotes", label: "admin.quotes", icon: FileText },
+      {
+        path: "/admin/b2b/projects",
+        label: "admin.projects",
+        icon: BriefcaseBusiness,
+      },
       {
         path: "/admin/orders",
         label: "admin.legacyOrders",
@@ -70,7 +77,12 @@ const ROLE_HOME = Object.freeze({
   },
   manager_approver: {
     labelKey: "admin.roleHome.approver",
-    queuePaths: ["/admin/inquiries", "/admin/content", "/admin/portfolio"],
+    queuePaths: [
+      "/admin/inquiries",
+      "/admin/b2b/projects",
+      "/admin/content",
+      "/admin/portfolio",
+    ],
   },
   warehouse: {
     labelKey: "admin.roleHome.warehouse",
@@ -78,11 +90,16 @@ const ROLE_HOME = Object.freeze({
   },
   quality_control: {
     labelKey: "admin.roleHome.qualityControl",
-    queuePaths: ["/admin/orders"],
+    queuePaths: ["/admin/b2b/projects", "/admin/orders"],
   },
   sales_estimator: {
     labelKey: "admin.roleHome.sales",
-    queuePaths: ["/admin/inquiries", "/admin/orders"],
+    queuePaths: [
+      "/admin/inquiries",
+      "/admin/b2b/quotes",
+      "/admin/b2b/projects",
+      "/admin/orders",
+    ],
   },
   order_admin: {
     labelKey: "admin.roleHome.orderAdmin",
@@ -98,15 +115,15 @@ const ROLE_HOME = Object.freeze({
   },
   production: {
     labelKey: "admin.roleHome.production",
-    queuePaths: ["/admin/orders", "/admin/inventory"],
+    queuePaths: ["/admin/b2b/projects", "/admin/orders", "/admin/inventory"],
   },
   designer_engineer: {
     labelKey: "admin.roleHome.design",
-    queuePaths: ["/admin/inquiries", "/admin/orders"],
+    queuePaths: ["/admin/b2b/projects", "/admin/inquiries", "/admin/orders"],
   },
   finance: {
     labelKey: "admin.roleHome.finance",
-    queuePaths: ["/admin/orders"],
+    queuePaths: ["/admin/b2b/projects", "/admin/orders"],
   },
 });
 
