@@ -335,6 +335,14 @@ def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terla
     _rate_buckets[key] = bucket
 
 
+def client_ip(request: Request) -> str:
+    """Resolve the caller address used to key public rate limits."""
+    host = request.client.host if request.client else "unknown"
+    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
+        host = request.headers.get("x-forwarded-for", host).split(",", 1)[0].strip()
+    return host
+
+
 def safe_file_content_type(path: str) -> str:
     ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
     return SAFE_FILE_CONTENT_TYPES.get(ext, "application/octet-stream")
@@ -777,10 +785,7 @@ async def download_file(path: str, request: Request):
 # ----------------------------- Contact -----------------------------
 @api.post("/contact")
 async def contact(req: ContactReq, request: Request):
-    client_host = request.client.host if request.client else "unknown"
-    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
-        client_host = request.headers.get("x-forwarded-for", client_host).split(",", 1)[0].strip()
-    rate_limit(f"contact:{client_host}", limit=5, window=600)
+    rate_limit(f"contact:{client_ip(request)}", limit=5, window=600)
 
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.contacts.insert_one(dict(doc))
@@ -1081,11 +1086,40 @@ api.include_router(
     )
 )
 
+
+def throttle_inquiry_intake(request: Request) -> None:
+    """Throttle anonymous project intake at parity with the legacy form."""
+    rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)
+
+
+async def notify_new_inquiry(inquiry: dict) -> None:
+    """Announce a captured lead. The router swallows failures so intake holds."""
+    result = await emailer.send_email(
+        HRD_EMAIL,
+        f"Inquiry Baru: {inquiry['company']}",
+        "Inquiry Proyek Baru",
+        f"<p><strong>{html.escape(inquiry['company'])}</strong></p>"
+        f"<p>PIC: {html.escape(inquiry['pic_name'])} "
+        f"({html.escape(inquiry['pic_email'])})</p>"
+        f"<p>Kebutuhan: {html.escape(inquiry['need'])}</p>"
+        f"<p>Timeline: {html.escape(inquiry['timeline'] or '-')}</p>"
+        f"<p>{html.escape(inquiry['brief']).replace(chr(10), '<br>')}</p>",
+        db=db,
+    )
+    if result.get("status") == "error":
+        logger.error(
+            "Inquiry stored, but notification email failed (inquiry_id=%s)",
+            inquiry["id"],
+        )
+
+
 api.include_router(
     build_b2b_router(
         get_db=lambda: db,
         get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
+        throttle_intake=throttle_inquiry_intake,
+        notify_inquiry=notify_new_inquiry,
     )
 )
 

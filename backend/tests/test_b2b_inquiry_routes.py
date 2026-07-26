@@ -1,5 +1,6 @@
 import asyncio
 import types
+from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, FastAPI, Header, HTTPException
@@ -75,7 +76,7 @@ def permission_dependency(permission):
     return dependency
 
 
-def build_context():
+def build_context(throttle_intake=None, notify_inquiry=None):
     db = FakeDatabase()
     app = FastAPI()
     api = APIRouter(prefix="/api")
@@ -84,10 +85,23 @@ def build_context():
             get_db=lambda: db,
             get_transaction_guard=lambda: None,
             require_permission=permission_dependency,
+            throttle_intake=throttle_intake,
+            notify_inquiry=notify_inquiry,
         )
     )
     app.include_router(api)
     return app
+
+
+INTAKE_SUBMISSION = {
+    "company": "PT Contoh Industri",
+    "pic_name": "Ayu",
+    "pic_email": "ayu@example.com",
+    "pic_phone": "+628123456789",
+    "need": "Prototype enclosure",
+    "timeline": "Q4 2026",
+    "brief": "Membutuhkan validasi desain dan prototype fungsional.",
+}
 
 
 def test_public_intake_and_permission_scoped_triage():
@@ -145,3 +159,73 @@ def test_public_intake_and_permission_scoped_triage():
             assert listed.json()[0]["id"] == inquiry["id"]
 
     asyncio.run(scenario())
+
+
+def test_public_intake_is_throttled_and_announced():
+    """The anonymous intake edge must be rate limited and must raise a lead."""
+    throttled = []
+    announced = []
+
+    async def notify(inquiry):
+        announced.append(inquiry)
+
+    async def scenario():
+        app = build_context(
+            throttle_intake=lambda request: throttled.append(request.url.path),
+            notify_inquiry=notify,
+        )
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            created = await api.post("/api/inquiries", json=INTAKE_SUBMISSION)
+            assert created.status_code == 201
+
+    asyncio.run(scenario())
+
+    assert throttled == ["/api/inquiries"]
+    assert len(announced) == 1
+    # The notifier sees the persisted record, not the raw submission, so the
+    # lead alert can reference the inquiry an operator will actually open.
+    assert announced[0]["id"]
+    assert announced[0]["status"] == "new"
+    assert announced[0]["company"] == "PT Contoh Industri"
+
+
+def test_lead_notification_failure_never_costs_the_lead():
+    """A broken mailer must not turn a captured lead into a failed submission."""
+
+    async def failing_notify(_inquiry):
+        raise RuntimeError("smtp unavailable")
+
+    async def scenario():
+        app = build_context(notify_inquiry=failing_notify)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            created = await api.post("/api/inquiries", json=INTAKE_SUBMISSION)
+            assert created.status_code == 201
+            assert created.json()["status"] == "new"
+
+            listed = await api.get(
+                "/api/admin/inquiries",
+                headers={"X-Role": "sales_estimator"},
+            )
+            assert [item["id"] for item in listed.json()] == [created.json()["id"]]
+
+    asyncio.run(scenario())
+
+
+def test_server_wires_the_public_intake_guards():
+    """A mount that forgets the guards yields silent, unthrottled intake."""
+    source = (Path(__file__).resolve().parents[1] / "server.py").read_text(
+        encoding="utf-8"
+    )
+    build_call = source.split("build_b2b_router(", 1)[1].split(")", 1)[0]
+
+    assert "throttle_intake=throttle_inquiry_intake" in build_call
+    assert "notify_inquiry=notify_new_inquiry" in build_call
+    assert 'rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)' in source

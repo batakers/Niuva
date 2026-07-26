@@ -1,11 +1,14 @@
+import logging
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from b2b_domain import B2BDomainError
 from b2b_service import B2BService
+
+logger = logging.getLogger(__name__)
 
 
 class InquiryPayload(BaseModel):
@@ -82,7 +85,17 @@ def build_b2b_router(
     get_db,
     get_transaction_guard,
     require_permission,
+    throttle_intake=None,
+    notify_inquiry=None,
 ) -> APIRouter:
+    """Build the B2B router.
+
+    ``throttle_intake`` and ``notify_inquiry`` cover the public intake edge:
+    the first throttles anonymous submissions, the second announces a new lead.
+    Both are injected so the router stays free of transport and mail concerns;
+    a mount that omits them gets an unthrottled, silent intake, so
+    ``test_public_intake_is_throttled_and_announced`` pins the server wiring.
+    """
     router = APIRouter(tags=["b2b"])
 
     def service() -> B2BService:
@@ -101,8 +114,21 @@ def build_b2b_router(
             ) from exc
 
     @router.post("/inquiries", status_code=status.HTTP_201_CREATED)
-    async def create_inquiry(payload: InquiryPayload):
-        return await invoke(service().create_inquiry(payload.model_dump()))
+    async def create_inquiry(payload: InquiryPayload, request: Request):
+        if throttle_intake is not None:
+            throttle_intake(request)
+        inquiry = await invoke(service().create_inquiry(payload.model_dump()))
+        # A lead is captured the moment it is persisted. Announcing it is a
+        # best-effort side effect: a broken mailer must never cost us the lead.
+        if notify_inquiry is not None:
+            try:
+                await notify_inquiry(inquiry)
+            except Exception:
+                logger.exception(
+                    "Inquiry stored, but lead notification failed (inquiry_id=%s)",
+                    inquiry["id"],
+                )
+        return inquiry
 
     @router.get("/admin/inquiries")
     async def list_inquiries(
