@@ -98,6 +98,7 @@ def build_catalog_router(
     get_db,
     get_client,
     get_capabilities,
+    get_guard,
     require_permission,
 ) -> APIRouter:
     router = APIRouter(tags=["catalog"])
@@ -130,7 +131,9 @@ def build_catalog_router(
                 detail={"code": "catalog_lifecycle_forbidden", "message": "Operations cannot update archived products."},
             )
     def service() -> CatalogService:
-        return CatalogService(get_db(), get_client(), get_capabilities())
+        return CatalogService(
+            get_db(), get_client(), get_capabilities(), get_guard()
+        )
 
     async def invoke(awaitable):
         try:

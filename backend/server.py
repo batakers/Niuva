@@ -1139,6 +1139,7 @@ api.include_router(
         get_db=lambda: db,
         get_client=lambda: client,
         get_capabilities=lambda: app.state.database_capabilities,
+        get_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
     )
 )
@@ -1155,6 +1156,7 @@ api.include_router(
             db=db,
             client=client,
             capabilities=app.state.database_capabilities,
+            guard=app.state.transaction_guard,
             emailer=emailer,
         ),
         require_permission=require_permission,
@@ -1166,6 +1168,7 @@ api.include_router(
         get_db=lambda: db,
         get_client=lambda: client,
         get_capabilities=lambda: app.state.database_capabilities,
+        get_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
     )
 )
@@ -1296,6 +1299,7 @@ async def reservation_expiry_loop():
                 db=db,
                 client=client,
                 capabilities=app.state.database_capabilities,
+                guard=app.state.transaction_guard,
                 emailer=emailer,
             )
             await service.expire_due_reservations(actor=system_actor)

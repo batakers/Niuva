@@ -43,10 +43,11 @@ def _write_options(session=None) -> dict:
 
 
 class ContentService:
-    def __init__(self, db, client, capabilities):
+    def __init__(self, db, client, capabilities, guard):
         self.db = db
         self.client = client
         self.capabilities = capabilities
+        self.guard = guard
 
     def _require_transactions(self):
         if not self.capabilities.transactions:
@@ -139,23 +140,23 @@ class ContentService:
         changes["published_version_id"] = version_snapshot["id"]
         after["published_version_id"] = version_snapshot["id"]
 
-        session = await self.client.start_session()
-        async with session:
-            async with session.start_transaction():
-                await self.db.content_block_versions.insert_one(
-                    dict(version_snapshot), **_write_options(session)
-                )
-                await self.db.content_blocks.update_one(
-                    {"id": block_id}, {"$set": changes}, **_write_options(session)
-                )
-                await append_audit_event(
-                    self.db, actor=actor, action="content.block_published",
-                    target_type="content_block", target_id=block_id,
-                    before={"status": block["status"], "version": block["version"]},
-                    after={"status": new_status, "version": after["version"], "published_version_id": version_snapshot["id"]},
-                    reason=reason,
-                    session=session,
-                )
+        async def mutation(session):
+            await self.db.content_block_versions.insert_one(
+                dict(version_snapshot), **_write_options(session)
+            )
+            await self.db.content_blocks.update_one(
+                {"id": block_id}, {"$set": changes}, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db, actor=actor, action="content.block_published",
+                target_type="content_block", target_id=block_id,
+                before={"status": block["status"], "version": block["version"]},
+                after={"status": new_status, "version": after["version"], "published_version_id": version_snapshot["id"]},
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="content.publish_block")
         return after
 
     async def rollback_block(self, block_id: str, *, version_id: str, actor: dict, reason: str) -> dict:
@@ -182,23 +183,23 @@ class ContentService:
         changes["published_version_id"] = version_snapshot["id"]
         after["published_version_id"] = version_snapshot["id"]
 
-        session = await self.client.start_session()
-        async with session:
-            async with session.start_transaction():
-                await self.db.content_block_versions.insert_one(
-                    dict(version_snapshot), **_write_options(session)
-                )
-                await self.db.content_blocks.update_one(
-                    {"id": block_id}, {"$set": changes}, **_write_options(session)
-                )
-                await append_audit_event(
-                    self.db, actor=actor, action="content.block_rolled_back",
-                    target_type="content_block", target_id=block_id,
-                    before={"version": block["version"], "published_version_id": block.get("published_version_id")},
-                    after={"version": after["version"], "published_version_id": version_snapshot["id"]},
-                    reason=reason,
-                    session=session,
-                )
+        async def mutation(session):
+            await self.db.content_block_versions.insert_one(
+                dict(version_snapshot), **_write_options(session)
+            )
+            await self.db.content_blocks.update_one(
+                {"id": block_id}, {"$set": changes}, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db, actor=actor, action="content.block_rolled_back",
+                target_type="content_block", target_id=block_id,
+                before={"version": block["version"], "published_version_id": block.get("published_version_id")},
+                after={"version": after["version"], "published_version_id": version_snapshot["id"]},
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="content.rollback_block")
         return after
 
     async def archive_block(self, block_id: str, *, actor: dict, reason: str) -> dict:

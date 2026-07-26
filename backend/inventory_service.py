@@ -79,10 +79,11 @@ def serialize_inventory(value):
 
 
 class InventoryService:
-    def __init__(self, *, db, client, capabilities, emailer=None):
+    def __init__(self, *, db, client, capabilities, guard, emailer=None):
         self.db = db
         self.client = client
         self.capabilities = capabilities
+        self.guard = guard
         self.emailer = emailer
 
     def _require_transactions(self):
@@ -180,27 +181,34 @@ class InventoryService:
         if existing:
             return existing
 
+        async def mutation(session):
+            concurrent = await self.db.stock_movements.find_one(
+                {"operation_id": payload["operation_id"]},
+                {"_id": 0},
+                **_write_options(session),
+            )
+            if concurrent:
+                # A concurrent writer already applied this operation, so there
+                # is nothing to notify about.
+                existing_result = await self._result_for_existing(
+                    concurrent, fingerprint
+                )
+                return existing_result, []
+            return await self._apply_operation_in_transaction(
+                actor=actor,
+                payload=payload,
+                fingerprint=fingerprint,
+                session=session,
+                reservation_create=reservation_create,
+                reservation_transition=reservation_transition,
+            )
+
         for attempt in range(3):
             email_recipients = []
             try:
-                session = await self.client.start_session()
-                async with session:
-                    async with session.start_transaction():
-                        concurrent = await self.db.stock_movements.find_one(
-                            {"operation_id": payload["operation_id"]},
-                            {"_id": 0},
-                            **_write_options(session),
-                        )
-                        if concurrent:
-                            return await self._result_for_existing(concurrent, fingerprint)
-                        result, email_recipients = await self._apply_operation_in_transaction(
-                            actor=actor,
-                            payload=payload,
-                            fingerprint=fingerprint,
-                            session=session,
-                            reservation_create=reservation_create,
-                            reservation_transition=reservation_transition,
-                        )
+                result, email_recipients = await self.guard.run(
+                    mutation, operation_name="inventory.apply_operation"
+                )
                 await self._send_restock_emails(email_recipients)
                 return result
             except _StaleBalance:
@@ -686,38 +694,42 @@ class InventoryService:
 
     async def resolve_alert(self, *, alert_id: str, actor: dict, reason: str) -> dict:
         self._require_transactions()
-        session = await self.client.start_session()
-        async with session:
-            async with session.start_transaction():
-                before = await self.db.restock_alerts.find_one(
-                    {"id": alert_id}, {"_id": 0}, **_write_options(session)
-                )
-                if not before:
-                    raise InventoryError(404, "restock_alert_not_found", "Alert restock tidak ditemukan.")
-                if before.get("status") == "resolved":
-                    return serialize_inventory(before)
-                changes = {
-                    "status": "resolved",
-                    "resolved_at": now_iso(),
-                    "resolved_by": actor.get("id"),
-                    "resolution_reason": reason,
-                    "updated_at": now_iso(),
-                }
-                await self.db.restock_alerts.update_one(
-                    {"id": alert_id, "status": "active"},
-                    {"$set": changes},
-                    **_write_options(session),
-                )
-                after = {**before, **changes}
-                await append_audit_event(
-                    self.db,
-                    actor=actor,
-                    action="inventory.restock_alert_resolved",
-                    target_type="restock_alert",
-                    target_id=alert_id,
-                    before=before,
-                    after=after,
-                    reason=reason,
-                    session=session,
-                )
-        return serialize_inventory(after)
+
+        async def mutation(session):
+            before = await self.db.restock_alerts.find_one(
+                {"id": alert_id}, {"_id": 0}, **_write_options(session)
+            )
+            if not before:
+                raise InventoryError(404, "restock_alert_not_found", "Alert restock tidak ditemukan.")
+            if before.get("status") == "resolved":
+                return before
+            changes = {
+                "status": "resolved",
+                "resolved_at": now_iso(),
+                "resolved_by": actor.get("id"),
+                "resolution_reason": reason,
+                "updated_at": now_iso(),
+            }
+            await self.db.restock_alerts.update_one(
+                {"id": alert_id, "status": "active"},
+                {"$set": changes},
+                **_write_options(session),
+            )
+            after = {**before, **changes}
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="inventory.restock_alert_resolved",
+                target_type="restock_alert",
+                target_id=alert_id,
+                before=before,
+                after=after,
+                reason=reason,
+                session=session,
+            )
+            return after
+
+        resolved = await self.guard.run(
+            mutation, operation_name="inventory.resolve_alert"
+        )
+        return serialize_inventory(resolved)

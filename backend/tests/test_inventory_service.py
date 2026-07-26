@@ -8,6 +8,8 @@ import pytest
 from database_capabilities import DatabaseCapabilities
 from inventory_service import InventoryError, InventoryService
 from restock import shortage_triggers
+from transaction_execution import TransactionExecutor
+from transaction_guard import TransactionMutationGuard
 
 
 class FakeCursor:
@@ -158,8 +160,17 @@ class FakeTransaction:
 
 
 class FakeSession:
+    """Mirrors the driver surface TransactionExecutor drives.
+
+    Snapshot and restore live here rather than in FakeTransaction because the
+    executor calls start_transaction/commit_transaction/abort_transaction
+    directly instead of using the transaction as a context manager.
+    """
+
     def __init__(self, db):
         self.db = db
+        self.snapshots = None
+        self.in_transaction = False
 
     async def __aenter__(self):
         return self
@@ -168,7 +179,26 @@ class FakeSession:
         return False
 
     def start_transaction(self):
+        self.snapshots = {
+            id(collection): deepcopy(collection.items)
+            for collection in self.db.collections()
+        }
+        self.in_transaction = True
         return FakeTransaction(self.db)
+
+    async def commit_transaction(self):
+        self.in_transaction = False
+        self.snapshots = None
+
+    async def abort_transaction(self):
+        if self.snapshots is not None:
+            for collection in self.db.collections():
+                collection.items = self.snapshots[id(collection)]
+        self.in_transaction = False
+        self.snapshots = None
+
+    async def end_session(self):
+        return None
 
 
 class FakeClient:
@@ -206,12 +236,27 @@ def operation(operation_id, movement_type="receive", quantity="10", **extra):
     }
 
 
+class RecordingSink:
+    def __init__(self):
+        self.events = []
+
+    def __call__(self, event, fields):
+        self.events.append((event, fields["operation_name"]))
+
+
 def build_service(*, transactions=True, emailer=None):
     db = FakeDatabase()
+    client = FakeClient(db)
+    capabilities = DatabaseCapabilities(transactions=transactions)
     service = InventoryService(
         db=db,
-        client=FakeClient(db),
-        capabilities=DatabaseCapabilities(transactions=transactions),
+        client=client,
+        capabilities=capabilities,
+        guard=TransactionMutationGuard(
+            TransactionExecutor(
+                client, lambda: capabilities, event_sink=RecordingSink()
+            )
+        ),
         emailer=emailer,
     )
     return service, db
@@ -454,6 +499,20 @@ async def run_restock_dedup_resolution_and_email_isolation():
 
 def test_restock_dedup_resolution_and_email_failure_after_commit():
     asyncio.run(run_restock_dedup_resolution_and_email_isolation())
+
+
+def test_stock_movements_run_through_the_central_transaction_boundary():
+    async def run():
+        service, _db = build_service()
+        await service.apply_operation(
+            actor=WAREHOUSE,
+            payload=operation("62222222-2222-2222-2222-222222222222"),
+        )
+        events = service.guard.executor.event_sink.events
+        assert ("transaction_start", "inventory.apply_operation") in events
+        assert ("transaction_commit", "inventory.apply_operation") in events
+
+    asyncio.run(run())
 
 
 def test_transaction_capability_is_required():

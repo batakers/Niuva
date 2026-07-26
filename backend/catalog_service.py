@@ -54,10 +54,11 @@ def _write_options(session=None) -> dict:
 
 
 class CatalogService:
-    def __init__(self, db, client, capabilities):
+    def __init__(self, db, client, capabilities, guard):
         self.db = db
         self.client = client
         self.capabilities = capabilities
+        self.guard = guard
 
     async def list_categories(self) -> list[dict]:
         cursor = self.db.categories.find({}, {"_id": 0}).sort("sort_order", 1)
@@ -301,45 +302,46 @@ class CatalogService:
             )
         saved = [clean_document(value) for _current, value in prepared]
         saved_ids = {value["id"] for _current, value in prepared}
-        session = await self.client.start_session()
-        async with session:
-            async with session.start_transaction():
-                for current, value in prepared:
-                    if current:
-                        await self.db.product_variants.update_one(
-                            {"id": value["id"]},
-                            {"$set": value},
-                            **_write_options(session),
-                        )
-                    else:
-                        await self.db.product_variants.insert_one(
-                            value, **_write_options(session)
-                        )
-                for current in existing:
-                    if current["id"] not in saved_ids and current.get("status") != "archived":
-                        await self.db.product_variants.update_one(
-                            {"id": current["id"]},
-                            {"$set": {
-                                "status": "archived",
-                                "updated_at": timestamp,
-                                "updated_by": actor.get("id"),
-                            }},
-                            **_write_options(session),
-                        )
-                await self.db.products.update_one(
-                    {"id": product_id},
-                    {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
-                    **_write_options(session),
-                )
-                await append_audit_event(
-                    self.db,
-                    actor=actor,
-                    action="catalog.variants_replaced",
-                    target_type="product",
-                    target_id=product_id,
-                    after={"variants": saved},
-                    session=session,
-                )
+
+        async def mutation(session):
+            for current, value in prepared:
+                if current:
+                    await self.db.product_variants.update_one(
+                        {"id": value["id"]},
+                        {"$set": value},
+                        **_write_options(session),
+                    )
+                else:
+                    await self.db.product_variants.insert_one(
+                        value, **_write_options(session)
+                    )
+            for current in existing:
+                if current["id"] not in saved_ids and current.get("status") != "archived":
+                    await self.db.product_variants.update_one(
+                        {"id": current["id"]},
+                        {"$set": {
+                            "status": "archived",
+                            "updated_at": timestamp,
+                            "updated_by": actor.get("id"),
+                        }},
+                        **_write_options(session),
+                    )
+            await self.db.products.update_one(
+                {"id": product_id},
+                {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
+                **_write_options(session),
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.variants_replaced",
+                target_type="product",
+                target_id=product_id,
+                after={"variants": saved},
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="catalog.replace_variants")
         return saved
 
     async def replace_options(
@@ -416,45 +418,46 @@ class CatalogService:
             )
         saved = [clean_document(value) for _current, value in prepared]
         saved_ids = {value["id"] for _current, value in prepared}
-        session = await self.client.start_session()
-        async with session:
-            async with session.start_transaction():
-                for current, value in prepared:
-                    if current:
-                        await self.db.configuration_options.update_one(
-                            {"id": value["id"]},
-                            {"$set": value},
-                            **_write_options(session),
-                        )
-                    else:
-                        await self.db.configuration_options.insert_one(
-                            value, **_write_options(session)
-                        )
-                for current in existing:
-                    if current["id"] not in saved_ids and current.get("active", True):
-                        await self.db.configuration_options.update_one(
-                            {"id": current["id"]},
-                            {"$set": {
-                                "active": False,
-                                "updated_at": timestamp,
-                                "updated_by": actor.get("id"),
-                            }},
-                            **_write_options(session),
-                        )
-                await self.db.products.update_one(
-                    {"id": product_id},
-                    {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
-                    **_write_options(session),
-                )
-                await append_audit_event(
-                    self.db,
-                    actor=actor,
-                    action="catalog.options_replaced",
-                    target_type="product",
-                    target_id=product_id,
-                    after={"options": saved},
-                    session=session,
-                )
+
+        async def mutation(session):
+            for current, value in prepared:
+                if current:
+                    await self.db.configuration_options.update_one(
+                        {"id": value["id"]},
+                        {"$set": value},
+                        **_write_options(session),
+                    )
+                else:
+                    await self.db.configuration_options.insert_one(
+                        value, **_write_options(session)
+                    )
+            for current in existing:
+                if current["id"] not in saved_ids and current.get("active", True):
+                    await self.db.configuration_options.update_one(
+                        {"id": current["id"]},
+                        {"$set": {
+                            "active": False,
+                            "updated_at": timestamp,
+                            "updated_by": actor.get("id"),
+                        }},
+                        **_write_options(session),
+                    )
+            await self.db.products.update_one(
+                {"id": product_id},
+                {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
+                **_write_options(session),
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.options_replaced",
+                target_type="product",
+                target_id=product_id,
+                after={"options": saved},
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="catalog.replace_options")
         return saved
 
     async def _load_aggregate(self, product_id: str) -> dict:
@@ -510,33 +513,34 @@ class CatalogService:
             reason=reason,
             published_at=now_iso(),
         )
-        session = await self.client.start_session()
-        async with session:
-            async with session.start_transaction():
-                await self.db.catalog_publications.insert_one(
-                    publication, **_write_options(session)
-                )
-                await self.db.products.update_one(
-                    {"id": product_id},
-                    {
-                        "$set": {
-                            "active_publication_id": publication["id"],
-                            "workflow_status": "published",
-                            "updated_at": publication["published_at"],
-                        }
-                    },
-                    **_write_options(session),
-                )
-                await append_audit_event(
-                    self.db,
-                    actor=actor,
-                    action="catalog.product_published",
-                    target_type="product",
-                    target_id=product_id,
-                    after={"publication_id": publication["id"], "revision": publication["revision"]},
-                    reason=reason,
-                    session=session,
-                )
+
+        async def mutation(session):
+            await self.db.catalog_publications.insert_one(
+                publication, **_write_options(session)
+            )
+            await self.db.products.update_one(
+                {"id": product_id},
+                {
+                    "$set": {
+                        "active_publication_id": publication["id"],
+                        "workflow_status": "published",
+                        "updated_at": publication["published_at"],
+                    }
+                },
+                **_write_options(session),
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.product_published",
+                target_type="product",
+                target_id=product_id,
+                after={"publication_id": publication["id"], "revision": publication["revision"]},
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="catalog.publish_product")
         return clean_document(publication)
 
     async def rollback_product(
@@ -568,34 +572,35 @@ class CatalogService:
                 "rollback_source_publication_id": publication_id,
             }
         )
-        session = await self.client.start_session()
-        async with session:
-            async with session.start_transaction():
-                await self.db.catalog_publications.insert_one(
-                    publication, **_write_options(session)
-                )
-                await self.db.products.update_one(
-                    {"id": product_id},
-                    {
-                        "$set": {
-                            "active_publication_id": publication["id"],
-                            "workflow_status": "published",
-                            "updated_at": publication["published_at"],
-                        }
-                    },
-                    **_write_options(session),
-                )
-                await append_audit_event(
-                    self.db,
-                    actor=actor,
-                    action="catalog.product_rolled_back",
-                    target_type="product",
-                    target_id=product_id,
-                    before={"publication_id": publication_id},
-                    after={"publication_id": publication["id"], "revision": publication["revision"]},
-                    reason=reason,
-                    session=session,
-                )
+
+        async def mutation(session):
+            await self.db.catalog_publications.insert_one(
+                publication, **_write_options(session)
+            )
+            await self.db.products.update_one(
+                {"id": product_id},
+                {
+                    "$set": {
+                        "active_publication_id": publication["id"],
+                        "workflow_status": "published",
+                        "updated_at": publication["published_at"],
+                    }
+                },
+                **_write_options(session),
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.product_rolled_back",
+                target_type="product",
+                target_id=product_id,
+                before={"publication_id": publication_id},
+                after={"publication_id": publication["id"], "revision": publication["revision"]},
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="catalog.rollback_product")
         return clean_document(publication)
 
     async def archive_product(

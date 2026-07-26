@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 
 from catalog_routes import build_catalog_router
 from permissions import has_permission
+from transaction_execution import TransactionExecutor
+from transaction_guard import TransactionMutationGuard
 
 
 class FakeCursor:
@@ -103,6 +105,14 @@ class FakeTransaction:
 
 
 class FakeSession:
+    """Mirrors the driver surface TransactionExecutor drives."""
+
+    def __init__(self):
+        self.in_transaction = False
+        self.committed = 0
+        self.aborted = 0
+        self.ended = False
+
     async def __aenter__(self):
         return self
 
@@ -110,12 +120,37 @@ class FakeSession:
         return False
 
     def start_transaction(self):
+        self.in_transaction = True
         return FakeTransaction()
+
+    async def commit_transaction(self):
+        self.in_transaction = False
+        self.committed += 1
+
+    async def abort_transaction(self):
+        self.in_transaction = False
+        self.aborted += 1
+
+    async def end_session(self):
+        self.ended = True
 
 
 class FakeClient:
+    def __init__(self):
+        self.sessions = []
+
     async def start_session(self):
-        return FakeSession()
+        session = FakeSession()
+        self.sessions.append(session)
+        return session
+
+
+class RecordingSink:
+    def __init__(self):
+        self.events = []
+
+    def __call__(self, event, fields):
+        self.events.append((event, fields["operation_name"]))
 
 
 def permission_dependency(permission):
@@ -138,13 +173,19 @@ def build_test_context():
     db = FakeDatabase()
     client = FakeClient()
     capabilities = types.SimpleNamespace(transactions=True)
+    sink = RecordingSink()
+    guard = TransactionMutationGuard(
+        TransactionExecutor(client, lambda: capabilities, event_sink=sink)
+    )
     app = FastAPI()
+    app.state.transaction_guard = guard
     api = APIRouter(prefix="/api")
     api.include_router(
         build_catalog_router(
             get_db=lambda: db,
             get_client=lambda: client,
             get_capabilities=lambda: capabilities,
+            get_guard=lambda: guard,
             require_permission=permission_dependency,
         )
     )
@@ -228,6 +269,12 @@ async def run_publish_and_public_boundary():
         )
         assert published.status_code == 200
         assert published.json()["revision"] == 1
+
+        # The mutation must reach MongoDB through the shared central boundary,
+        # not through a session the service opened for itself.
+        events = app.state.transaction_guard.executor.event_sink.events
+        assert ("transaction_start", "catalog.publish_product") in events
+        assert ("transaction_commit", "catalog.publish_product") in events
 
         public = await api.get("/api/catalog/products/desk-sign")
         assert public.status_code == 200
