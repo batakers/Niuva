@@ -2,7 +2,10 @@ import re
 from pathlib import Path
 from types import SimpleNamespace
 
-from backend.tests import conftest
+try:  # rootdir is the repository when CI passes backend/tests/... paths
+    from backend.tests import conftest
+except ModuleNotFoundError:  # rootdir is backend/ when run from there
+    from tests import conftest
 
 ROOT = Path(__file__).resolve().parents[2]
 

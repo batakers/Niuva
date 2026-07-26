@@ -4,6 +4,16 @@ import uuid
 
 import pytest
 
+# Bootstrap-style suites (test_auth_security, test_identity_foundation, ...)
+# register a stub motor module through sys.modules.setdefault so importing
+# server never opens a real client. setdefault only wins when motor is absent,
+# and the stub is never torn down, so an xdist worker that imports one of those
+# suites first would resolve AsyncIOMotorClient to the stub for the real
+# replica-set tests. Importing the real driver here — before any test module is
+# collected — keeps those setdefault calls as no-ops and leaves the stubs
+# scoped to the suites that build them.
+import motor.motor_asyncio  # noqa: F401
+
 
 @pytest.fixture
 def transaction_database_name(request):
