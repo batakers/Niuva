@@ -13,6 +13,7 @@ import asyncio
 import hashlib
 import secrets
 import html
+import re
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
@@ -104,8 +105,24 @@ api = APIRouter(prefix="/api")
 
 
 # ----------------------------- Auth utils -----------------------------
+BCRYPT_HASH_PATTERN = re.compile(
+    r"^\$2[aby]\$(?:0[4-9]|[12][0-9]|3[01])\$[./A-Za-z0-9]{53}$"
+)
+# This fixed bcrypt hash is non-secret and exists only to keep unknown or
+# unusable account records on the same password-verification work path.
+DUMMY_PASSWORD_HASH = (
+    "$2b$12$XkHg95jvl7fV2g.2rkFkx.kcZpo2c1C790fDECpag42ZG5NPcLCH2"
+)
+
+
 def hash_password(p: str) -> str:
     return bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
+
+
+def is_valid_password_hash(password_hash: object) -> bool:
+    return isinstance(password_hash, str) and bool(
+        BCRYPT_HASH_PATTERN.fullmatch(password_hash)
+    )
 
 
 def verify_password(p: str, h: str) -> bool:
@@ -289,7 +306,26 @@ def auth_response(user: dict) -> dict:
 
 async def authenticate_credentials(req: LoginReq) -> dict:
     user = await db.users.find_one({"email": req.email.lower()})
-    if not user or not verify_password(req.password, user["password_hash"]):
+    stored_hash = user.get("password_hash") if user else None
+    valid_stored_hash = is_valid_password_hash(stored_hash)
+    verification_hash = stored_hash if valid_stored_hash else DUMMY_PASSWORD_HASH
+    password_valid = verify_password(req.password, verification_hash)
+
+    explicitly_blocked = bool(
+        user
+        and (
+            user.get("status") == "disabled"
+            or user.get("access_state") == "access_review_required"
+        )
+    )
+    eligible_roles = canonical_roles(user) if user else ()
+    if (
+        not user
+        or not valid_stored_hash
+        or not password_valid
+        or explicitly_blocked
+        or not eligible_roles
+    ):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return user
 
