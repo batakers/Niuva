@@ -38,6 +38,7 @@ from dashboard_domain import (
 )
 from notification_service import NotificationError, NotificationService
 from retail_domain import classify_legacy_order
+from portfolio_routes import build_portfolio_router
 from retail_routes import build_retail_router
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
@@ -250,17 +251,6 @@ class AdminNotificationReq(BaseModel):
     segment: Optional[str] = Field(default=None, pattern="^(active_orders)$")
     subject: str = Field(min_length=3, max_length=180)
     message: str = Field(min_length=3, max_length=2000)
-
-
-class PortfolioReq(BaseModel):
-    title_id: str
-    title_en: str
-    client: Optional[str] = ""
-    category: Optional[str] = ""
-    description_id: Optional[str] = ""
-    description_en: Optional[str] = ""
-    images: List[str] = []
-    featured: bool = False
 
 
 class SettingsReq(BaseModel):
@@ -848,40 +838,8 @@ async def list_contacts(
 
 
 # ----------------------------- Portfolio -----------------------------
-@api.get("/portfolio")
-async def list_portfolio():
-    return await db.portfolio.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
-
-
-@api.post("/admin/portfolio")
-async def create_portfolio(
-    req: PortfolioReq,
-    user: dict = Depends(require_permission("content.write")),
-):
-    doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
-    await db.portfolio.insert_one(dict(doc))
-    return {k: v for k, v in doc.items() if k != "_id"}
-
-
-@api.put("/admin/portfolio/{pid}")
-async def update_portfolio(
-    pid: str,
-    req: PortfolioReq,
-    user: dict = Depends(require_permission("content.write")),
-):
-    res = await db.portfolio.update_one({"id": pid}, {"$set": req.model_dump()})
-    if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Not found")
-    return await db.portfolio.find_one({"id": pid}, {"_id": 0})
-
-
-@api.delete("/admin/portfolio/{pid}")
-async def delete_portfolio(
-    pid: str,
-    user: dict = Depends(require_permission("content.write")),
-):
-    await db.portfolio.delete_one({"id": pid})
-    return {"ok": True}
+# Portfolio is served by build_portfolio_router: it carries a publication
+# lifecycle, versions, and archiving, and its public read is published-only.
 
 
 # ----------------------------- Settings & Users -----------------------------
@@ -1238,6 +1196,14 @@ api.include_router(
 )
 
 api.include_router(
+    build_portfolio_router(
+        get_db=lambda: db,
+        require_permission=require_permission,
+        has_permission=has_permission,
+    )
+)
+
+api.include_router(
     build_retail_router(
         get_db=lambda: db,
         get_transaction_guard=lambda: app.state.transaction_guard,
@@ -1328,6 +1294,11 @@ async def seed():
         await work_orders.create_index("id", unique=True)
         await work_orders.create_index([("project_id", 1), ("updated_at", -1)])
         await work_orders.create_index([("status", 1), ("updated_at", -1)])
+    portfolio = getattr(db, "portfolio", None)
+    if portfolio is not None:
+        await portfolio.create_index("id", unique=True)
+        await portfolio.create_index([("status", 1), ("display_order", 1)])
+        await portfolio.create_index("source_project_id")
     notifications = getattr(db, "notifications", None)
     if notifications is not None:
         await notifications.create_index("id", unique=True)
@@ -1422,8 +1393,35 @@ async def seed():
                 "featured": False,
             },
         ]
-        for p in seeds:
-            await db.portfolio.insert_one({"id": str(uuid.uuid4()), **p, "created_at": now_iso()})
+        for index, entry in enumerate(seeds):
+            # Seeded entries start published: they exist to give a fresh
+            # install a public page. "client" is dropped rather than seeded,
+            # because customer identity has no place on a portfolio.
+            timestamp = now_iso()
+            entry.pop("client", None)
+            await db.portfolio.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    **entry,
+                    "status": "published",
+                    "version": 1,
+                    "display_order": index,
+                    "scheduled_for": None,
+                    "published_at": timestamp,
+                    "versions": [],
+                    "history": [
+                        {
+                            "from_status": None,
+                            "to_status": "published",
+                            "actor_user_id": None,
+                            "reason": "Seeded on first run",
+                            "timestamp": timestamp,
+                        }
+                    ],
+                    "created_at": timestamp,
+                    "updated_at": timestamp,
+                }
+            )
 
     await get_settings()
     logger.info("Seed complete")

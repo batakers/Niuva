@@ -42,7 +42,7 @@ export default function AdminPortfolio() {
   const load = () => {
     setLoading(true);
     api
-      .get("/portfolio")
+      .get("/admin/portfolio")
       .then((r) => setItems(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -56,8 +56,12 @@ export default function AdminPortfolio() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await api.delete(`/admin/portfolio/${deleteTarget.id}`);
-      toast.success(t("portfolio.deleted"));
+      await api.post(`/admin/portfolio/${deleteTarget.id}/transitions`, {
+        target_status: "archived",
+        expected_version: deleteTarget.version,
+        reason: t("portfolio.archiveReason"),
+      });
+      toast.success(t("portfolio.archived"));
       setDeleteTarget(null);
       load();
     } catch (err) {
@@ -71,7 +75,6 @@ export default function AdminPortfolio() {
     setEditing({
       title_id: "",
       title_en: "",
-      client: "",
       category: "",
       description_id: "",
       description_en: "",
@@ -140,7 +143,7 @@ export default function AdminPortfolio() {
                     {lang === "id" ? p.title_id : p.title_en}
                   </h3>
                   <p className="type-body-small text-text-secondary mt-1">
-                    {p.category} / {p.client}
+                    {p.category}
                   </p>
                 </div>
 
@@ -241,7 +244,6 @@ function PortfolioDialog({ item, onClose, onSaved }) {
     const payload = {
       title_id: form.title_id,
       title_en: form.title_en,
-      client: form.client,
       category: form.category,
       description_id: form.description_id,
       description_en: form.description_en,
@@ -250,7 +252,13 @@ function PortfolioDialog({ item, onClose, onSaved }) {
     };
     try {
       if (item.id) {
-        await api.put(`/admin/portfolio/${item.id}`, payload);
+        // Editing an entry appends a revision, so it carries the version it
+        // was read at and the reason the change was made.
+        await api.put(`/admin/portfolio/${item.id}`, {
+          ...payload,
+          expected_version: item.version,
+          reason: form.reason?.trim() || "",
+        });
       } else {
         await api.post("/admin/portfolio", payload);
       }
@@ -291,13 +299,22 @@ function PortfolioDialog({ item, onClose, onSaved }) {
             <FormField label={t("portfolio.titleEn")}>
               <Input value={form.title_en} onChange={updateField("title_en")} />
             </FormField>
-            <FormField label={t("portfolio.client")}>
-              <Input value={form.client} onChange={updateField("client")} />
-            </FormField>
             <FormField label={t("portfolio.category")}>
               <Input value={form.category} onChange={updateField("category")} />
             </FormField>
           </div>
+
+          {/* Every edit appends a revision, so it needs a stated reason. */}
+          {item.id && (
+            <FormField label={t("b2b.reason")}>
+              <Input
+                data-testid="portfolio-reason"
+                value={form.reason || ""}
+                onChange={updateField("reason")}
+                placeholder={t("b2b.reasonPlaceholder")}
+              />
+            </FormField>
+          )}
 
           <FormField label={t("portfolio.descriptionId")}>
             <Textarea

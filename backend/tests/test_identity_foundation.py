@@ -557,7 +557,10 @@ async def run_legacy_admin_route_permission_matrix():
             headers=bearer(content_editor_token),
             json={"title_id": "Purwarupa", "title_en": "Prototype"},
         )
-        assert portfolio.status_code == 200
+        # Creation answers 201, and the entry starts as a draft: content.write
+        # authors, it does not publish.
+        assert portfolio.status_code == 201
+        assert portfolio.json()["status"] == "draft"
 
         cross_customer_order = await api.get(
             "/api/orders/order-permission-1",
