@@ -23,6 +23,14 @@ class FakeCursor:
     def __init__(self, items):
         self.items = [dict(item) for item in items]
 
+    def sort(self, key, direction):
+        self.items.sort(key=lambda item: item.get(key, ""), reverse=direction < 0)
+        return self
+
+    def limit(self, value):
+        self.items = self.items[:value]
+        return self
+
     async def to_list(self, length):
         return [dict(item) for item in self.items[:length]]
 
@@ -59,6 +67,10 @@ class FakeDatabase:
         self.b2b_quote_versions = FakeCollection()
         self.b2b_projects = FakeCollection()
         self.work_orders = FakeCollection()
+        self.work_order_shortages = FakeCollection()
+        # Read when a shortage is measured against current balances.
+        self.inventory_balances = FakeCollection()
+        self.inventory_reservations = FakeCollection()
         # Read when a quoted line references the catalog.
         self.products = FakeCollection()
         self.product_variants = FakeCollection()

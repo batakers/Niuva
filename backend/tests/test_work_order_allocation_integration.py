@@ -31,7 +31,7 @@ from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 from b2b_domain import B2BDomainError  # noqa: E402
 from b2b_service import B2BService  # noqa: E402
 from database_capabilities import probe_database_capabilities  # noqa: E402
-from inventory_service import InventoryError, InventoryService  # noqa: E402
+from inventory_service import InventoryService  # noqa: E402
 from transaction_execution import TransactionExecutor  # noqa: E402
 from transaction_guard import TransactionMutationGuard  # noqa: E402
 
@@ -261,7 +261,7 @@ async def run_shortage_reserves_nothing(database_name):
             context, {"mat-ply": "10", "mat-ink": "1"}
         )
 
-        with pytest.raises(InventoryError) as rejected:
+        with pytest.raises(B2BDomainError) as rejected:
             await context.b2b.allocate_work_order(
                 work_order["id"],
                 expected_version=work_order["version"],
@@ -271,6 +271,9 @@ async def run_shortage_reserves_nothing(database_name):
                 inventory_service=context.inventory,
             )
         assert rejected.value.status_code == 409
+        assert rejected.value.code == "work_order_material_shortage"
+        assert rejected.value.details["lines"][0]["material_id"] == "mat-ink"
+        assert rejected.value.details["lines"][0]["deficit"] == "3"
 
         database = context.database
         current = await balances(database)
@@ -287,6 +290,37 @@ async def run_shortage_reserves_nothing(database_name):
         reloaded = await context.b2b.get_work_order(work_order["id"])
         assert reloaded["reservation_ids"] == []
         assert reloaded["version"] == work_order["version"]
+
+        # The rollback left no trace in inventory, but the stall itself is
+        # recorded: an open shortage that survives the aborted transaction.
+        open_shortages = await context.b2b.list_material_shortages(status="open")
+        assert len(open_shortages) == 1
+        assert open_shortages[0]["work_order_id"] == work_order["id"]
+
+        # Material arrives; the retry allocates and clears the queue.
+        await context.inventory.apply_operation(
+            actor=ACTOR,
+            payload={
+                "operation_id": operation_id(),
+                "subject_type": "material",
+                "subject_id": "mat-ink",
+                "movement_type": "receive",
+                "quantity": "10",
+                "reference_type": "manual",
+                "reference_id": "restock",
+                "reason": "Restock tinta",
+            },
+        )
+        allocated = await context.b2b.allocate_work_order(
+            work_order["id"],
+            expected_version=work_order["version"],
+            operation_id=operation_id(),
+            reason="Alokasi setelah restock",
+            actor=ACTOR,
+            inventory_service=context.inventory,
+        )
+        assert len(allocated["reservation_ids"]) == 2
+        assert await context.b2b.list_material_shortages(status="open") == []
     finally:
         await client.drop_database(database_name)
         client.close()

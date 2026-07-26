@@ -335,6 +335,15 @@ def build_b2b_router(
             service().list_work_orders(project_id=project_id, status=status_filter)
         )
 
+    @router.get("/admin/b2b/material-shortages")
+    async def list_material_shortages(
+        status_filter: str | None = None,
+        _actor: dict = Depends(require_permission("inventory.read")),
+    ):
+        return await invoke(
+            service().list_material_shortages(status=status_filter)
+        )
+
     @router.get("/admin/b2b/work-orders/{work_order_id}")
     async def get_work_order(
         work_order_id: str,

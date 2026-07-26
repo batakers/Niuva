@@ -1,9 +1,12 @@
+import logging
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
 from decimal import Decimal
 
 from bson.decimal128 import Decimal128
+
+from inventory_service import InventoryError
 
 from b2b_domain import (
     B2BDomainError,
@@ -21,11 +24,19 @@ from b2b_domain import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
+def to_decimal(value) -> Decimal:
+    """Read a stored quantity as an exact Decimal, whatever encoding it uses."""
+    if isinstance(value, Decimal128):
+        return value.to_decimal()
+    return value if isinstance(value, Decimal) else Decimal(str(value))
+
+
 def decimal_string(value) -> str:
     """Render a stored quantity as an exact decimal string, never a float."""
-    if isinstance(value, Decimal128):
-        value = value.to_decimal()
-    amount = value if isinstance(value, Decimal) else Decimal(str(value))
+    amount = to_decimal(value)
     return "0" if amount == 0 else format(amount.normalize(), "f")
 
 
@@ -580,6 +591,101 @@ class B2BService:
             correlation_id=operation_id,
         )
 
+    async def _material_shortage_lines(self, requirements: list[dict]) -> list[dict]:
+        """Compare each requirement with the balance it would draw against."""
+        lines = []
+        for entry in requirements:
+            balance = await self.db.inventory_balances.find_one(
+                {"subject_type": "material", "subject_id": entry["material_id"]},
+                {"_id": 0},
+            )
+            available = (
+                to_decimal(balance.get("on_hand", 0))
+                - to_decimal(balance.get("reserved", 0))
+                if balance
+                else Decimal(0)
+            )
+            required = to_decimal(entry["quantity_required"])
+            if required > available:
+                lines.append(
+                    {
+                        "material_id": entry["material_id"],
+                        "sku": entry.get("sku", ""),
+                        "name": entry.get("name", ""),
+                        "base_unit": entry.get("base_unit"),
+                        "quantity_required": decimal_string(required),
+                        "available": decimal_string(available),
+                        "deficit": decimal_string(required - available),
+                    }
+                )
+        return lines
+
+    async def _record_material_shortage(
+        self,
+        work_order: dict,
+        lines: list[dict],
+        *,
+        operation_id: str,
+        actor: dict,
+    ) -> dict:
+        """Keep one open shortage per run, refreshed on every failed attempt.
+
+        The allocation transaction has already aborted, so this write happens
+        outside it by design: the shortage queue records that nothing happened,
+        which is exactly why it must survive the rollback.
+        """
+        timestamp = now_iso()
+        existing = await self.db.work_order_shortages.find_one(
+            {"work_order_id": work_order["id"], "status": "open"}, {"_id": 0}
+        )
+        if existing:
+            await self.db.work_order_shortages.update_one(
+                {"id": existing["id"], "status": "open"},
+                {
+                    "$set": {
+                        "lines": lines,
+                        "last_operation_id": operation_id,
+                        "updated_at": timestamp,
+                        "updated_by": actor.get("id"),
+                    }
+                },
+            )
+            return {**existing, "lines": lines}
+        shortage = {
+            "id": str(uuid.uuid4()),
+            "work_order_id": work_order["id"],
+            "project_id": work_order["project_id"],
+            "status": "open",
+            "lines": lines,
+            "last_operation_id": operation_id,
+            "created_at": timestamp,
+            "created_by": actor.get("id"),
+            "updated_at": timestamp,
+            "updated_by": actor.get("id"),
+        }
+        await self.db.work_order_shortages.insert_one(deepcopy(shortage))
+        return shortage
+
+    async def _resolve_material_shortage(self, work_order_id: str, actor: dict) -> None:
+        timestamp = now_iso()
+        await self.db.work_order_shortages.update_one(
+            {"work_order_id": work_order_id, "status": "open"},
+            {
+                "$set": {
+                    "status": "resolved",
+                    "resolved_at": timestamp,
+                    "resolved_by": actor.get("id"),
+                    "updated_at": timestamp,
+                }
+            },
+        )
+
+    async def list_material_shortages(self, *, status: str | None = None) -> list[dict]:
+        query = {"status": status} if status else {}
+        return await self.db.work_order_shortages.find(query, {"_id": 0}).sort(
+            "updated_at", -1
+        ).limit(500).to_list(500)
+
     async def allocate_work_order(
         self,
         work_order_id: str,
@@ -694,11 +800,54 @@ class B2BService:
                     "Work Order berubah selama alokasi material.",
                 )
 
-        await inventory_service.apply_bulk_operations(
-            actor=actor,
-            operations=operations,
-            extra_mutation=update_work_order,
-        )
+        try:
+            await inventory_service.apply_bulk_operations(
+                actor=actor,
+                operations=operations,
+                extra_mutation=update_work_order,
+            )
+        except InventoryError as exc:
+            if exc.code == "inventory_conflict":
+                lines = await self._material_shortage_lines(requirements)
+                if lines:
+                    shortage = None
+                    try:
+                        shortage = await self._record_material_shortage(
+                            work_order,
+                            lines,
+                            operation_id=operation_id,
+                            actor=actor,
+                        )
+                    except Exception:
+                        # The queue is best-effort; the conflict is the answer.
+                        logger.exception(
+                            "Shortage occurred but could not be recorded "
+                            "(work_order_id=%s)",
+                            work_order_id,
+                        )
+                    raise B2BDomainError(
+                        409,
+                        "work_order_material_shortage",
+                        "Stok material tidak mencukupi untuk alokasi Work Order.",
+                        details={
+                            **(
+                                {"shortage_id": shortage["id"]} if shortage else {}
+                            ),
+                            "lines": lines,
+                        },
+                    ) from exc
+            raise B2BDomainError(exc.status_code, exc.code, exc.message) from exc
+
+        try:
+            await self._resolve_material_shortage(work_order_id, actor)
+        except Exception:
+            # The allocation itself committed; a stale queue entry must not
+            # turn that success into an error.
+            logger.exception(
+                "Allocation succeeded but shortage resolution failed "
+                "(work_order_id=%s)",
+                work_order_id,
+            )
         return await self.get_work_order(work_order_id)
 
     async def consume_work_order(
@@ -819,11 +968,16 @@ class B2BService:
                     "Work Order berubah selama konsumsi material.",
                 )
 
-        await inventory_service.apply_bulk_operations(
-            actor=actor,
-            operations=operations,
-            extra_mutation=update_work_order,
-        )
+        try:
+            await inventory_service.apply_bulk_operations(
+                actor=actor,
+                operations=operations,
+                extra_mutation=update_work_order,
+            )
+        except InventoryError as exc:
+            # Translated so the B2B surface answers with its own error
+            # contract instead of leaking a 500.
+            raise B2BDomainError(exc.status_code, exc.code, exc.message) from exc
         return await self.get_work_order(work_order_id)
 
     async def transition_work_order(
