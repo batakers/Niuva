@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  BellRing,
   BookOpen,
   Boxes,
   Building2,
@@ -27,6 +26,7 @@ import { useAuth } from "../../context/AuthContext";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { ADMIN_ROUTE_PERMISSIONS, hasPermission } from "../../lib/permissions";
 import { Button } from "../../components/ui/button";
+import { NotificationBell } from "@/components/admin/NotificationBell";
 
 const ADMIN_MENU_GROUPS = [
   {
@@ -48,7 +48,6 @@ const ADMIN_MENU_GROUPS = [
     items: [
       { path: "/admin/inventory", label: "admin.inventory", icon: Boxes },
       { path: "/admin/stock-movements", label: "admin.stockMovements", icon: History },
-      { path: "/admin/restock-alerts", label: "admin.restockAlerts", icon: BellRing },
     ],
   },
   {
@@ -257,6 +256,8 @@ export function AdminLayout({ children, title, subtitle }) {
 
           {/* Spacer */}
           <div className="flex-1" />
+
+          <NotificationBell />
 
           {/* User info (desktop) */}
           <div className="hidden sm:flex items-center gap-3">
