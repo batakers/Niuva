@@ -1,5 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AlertCircle, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  AlertCircle,
+  ArrowRight,
+  BarChart3,
+  Clock,
+  CreditCard,
+  Package,
+  CheckCircle2,
+  Users,
+} from "lucide-react";
 import {
   Line,
   LineChart,
@@ -9,10 +19,10 @@ import {
   YAxis,
 } from "recharts";
 
-import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
 import { SurfacePanel } from "@/components/ui/surface-panel";
@@ -49,86 +59,149 @@ function totalForRow(row) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Trend Chart Component
+ * Action Card — links to page with "needs attention" count
  * ────────────────────────────────────────────────────────────────────────── */
 
-function TrendChart({ title, rows, valueLabel, formatValue, loading }) {
+function ActionCard({ icon: Icon, label, count, colorClass, to, loading }) {
+  const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <SurfacePanel className="p-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-control" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-6 w-10" />
+          </div>
+        </div>
+      </SurfacePanel>
+    );
+  }
+
+  const hasItems = count > 0;
+
+  return (
+    <SurfacePanel
+      className={`p-4 transition-all duration-fast cursor-pointer hover:shadow-navigation hover:-translate-y-0.5 ${
+        hasItems ? "ring-1 ring-inset ring-" + colorClass.replace("text-", "") + "/20" : ""
+      }`}
+      onClick={() => navigate(to)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && navigate(to)}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-control ${
+            hasItems ? "bg-" + colorClass.replace("text-", "") + "/10" : "bg-surface-muted"
+          }`}
+        >
+          <Icon className={`h-5 w-5 ${hasItems ? colorClass : "text-text-secondary"}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary truncate">
+            {label}
+          </p>
+          <p className={`text-2xl font-bold tabular-nums ${hasItems ? colorClass : "text-text-primary"}`}>
+            {count}
+          </p>
+        </div>
+        <ArrowRight className="h-4 w-4 text-text-secondary shrink-0" />
+      </div>
+    </SurfacePanel>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Trend Chart Component — with accessible description
+ * ────────────────────────────────────────────────────────────────────────── */
+
+function TrendChart({ title, rows, valueLabel, formatValue, loading, dateFrom, dateTo }) {
   const { t } = useI18n();
   const data = rows.map((row) => ({
     date: row.date,
     value: valueLabel === "revenue" ? row.amount : totalForRow(row),
   }));
 
+  const chartDescription = t("dashboard.chartDescription")
+    .replace("{title}", title)
+    .replace("{from}", dateFrom || "")
+    .replace("{to}", dateTo || "");
+
   return (
-    <SurfacePanel className="p-6">
+    <SurfacePanel className="p-4 sm:p-6">
       <p className="type-label text-text-secondary mb-4">{title}</p>
       {loading ? (
-        <div className="h-[220px] flex items-center justify-center">
+        <div className="h-[200px] sm:h-[220px] flex items-center justify-center">
           <Skeleton className="h-full w-full rounded-control" />
         </div>
       ) : data.length === 0 ? (
-        <div className="h-[220px] flex items-center justify-center">
+        <div className="h-[200px] sm:h-[220px] flex items-center justify-center">
           <EmptyState icon={BarChart3}>
             {t("dashboard.noDataInRange")}
           </EmptyState>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart
-            data={data}
-            margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
-          >
-            <XAxis
-              dataKey="date"
-              tick={{
-                fontSize: 11,
-                fill: "var(--color-text-secondary)",
-                fontFamily: "var(--font-family-mono)",
-              }}
-              stroke="var(--color-border-default)"
-              tickLine={false}
-              axisLine={{ stroke: "var(--color-border-default)" }}
-            />
-            <YAxis
-              tick={{
-                fontSize: 11,
-                fill: "var(--color-text-secondary)",
-                fontFamily: "var(--font-family-mono)",
-              }}
-              stroke="var(--color-border-default)"
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip
-              formatter={formatValue}
-              contentStyle={{
-                borderRadius: "var(--radius-control)",
-                border: "1px solid var(--color-border-default)",
-                boxShadow: "var(--shadow-navigation)",
-                fontFamily: "var(--font-family-body)",
-                backgroundColor: "var(--color-surface-default)",
-              }}
-              labelStyle={{
-                color: "var(--color-text-secondary)",
-                fontSize: "12px",
-                marginBottom: "4px",
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="var(--color-action-primary)"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{
-                r: 4,
-                fill: "var(--color-action-primary)",
-                stroke: "var(--color-surface-default)",
-                strokeWidth: 2,
-              }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <div role="img" aria-label={chartDescription}>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart
+              data={data}
+              margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
+            >
+              <XAxis
+                dataKey="date"
+                tick={{
+                  fontSize: 11,
+                  fill: "var(--color-text-secondary)",
+                  fontFamily: "var(--font-family-mono)",
+                }}
+                stroke="var(--color-border-default)"
+                tickLine={false}
+                axisLine={{ stroke: "var(--color-border-default)" }}
+              />
+              <YAxis
+                tick={{
+                  fontSize: 11,
+                  fill: "var(--color-text-secondary)",
+                  fontFamily: "var(--font-family-mono)",
+                }}
+                stroke="var(--color-border-default)"
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                formatter={formatValue}
+                contentStyle={{
+                  borderRadius: "var(--radius-control)",
+                  border: "1px solid var(--color-border-default)",
+                  boxShadow: "var(--shadow-navigation)",
+                  fontFamily: "var(--font-family-body)",
+                  backgroundColor: "var(--color-surface-default)",
+                }}
+                labelStyle={{
+                  color: "var(--color-text-secondary)",
+                  fontSize: "12px",
+                  marginBottom: "4px",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                name={title}
+                stroke="var(--color-action-primary)"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: "var(--color-action-primary)",
+                  stroke: "var(--color-surface-default)",
+                  strokeWidth: 2,
+                }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </SurfacePanel>
   );
@@ -150,12 +223,17 @@ export default function AdminDashboard() {
   const [seriesLoading, setSeriesLoading] = useState(true);
   const [seriesError, setSeriesError] = useState("");
 
-  useEffect(() => {
+  const fetchStats = useCallback(() => {
+    setLoadError("");
     api
       .get("/admin/stats")
       .then((r) => setStats(r.data))
       .catch((err) => setLoadError(formatApiError(err.response?.data?.detail)));
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const loadSeries = useCallback(() => {
     setSeriesError("");
@@ -175,6 +253,7 @@ export default function AdminDashboard() {
 
   const canSeeInventory = hasPermission(user, "inventory.read");
   const canSeeRevenue = hasPermission(user, "payments.read");
+  const statsLoading = !stats && !loadError;
 
   if (loadError) {
     return (
@@ -182,94 +261,133 @@ export default function AdminDashboard() {
         title={t("admin.overview")}
         subtitle={t("admin.overviewSubtitle")}
       >
-        <SurfacePanel className="p-12">
-          <EmptyState icon={AlertCircle}>
-            <span className="text-status-error">{loadError}</span>
-          </EmptyState>
-        </SurfacePanel>
+        <ErrorState error={loadError} onRetry={fetchStats} />
       </AdminLayout>
     );
   }
-
-  const statItems = [
-    ["total_orders", t("admin.totalOrders"), "text-action-primary", "border-l-action-primary", true],
-    ["pending_estimate", t("status.pending_estimate"), "text-status-warning", "border-l-status-warning"],
-    ["awaiting_payment", t("status.awaiting_payment"), "text-action-primary", "border-l-action-primary"],
-    ["in_process", t("status.in_process"), "text-action-primary", "border-l-action-primary"],
-    ["completed", t("status.completed"), "text-status-success", "border-l-status-success"],
-    ["clients", t("admin.users"), "text-text-primary", "border-l-border-strong"],
-  ];
 
   return (
     <AdminLayout
       title={t("admin.overview")}
       subtitle={t("admin.overviewSubtitle")}
     >
-      {/* Stats Grid — hero card (Total Orders) spans 2 cols, breaking the
-          uniform grid; status-coded left accents replace flat sameness. */}
+      {/* ─── Action Cards — status-driven "needs attention" row ─── */}
+      <section aria-label={t("dashboard.actionNeeded")}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <ActionCard
+            icon={Clock}
+            label={t("dashboard.pendingEstimates")}
+            count={stats?.pending_estimate ?? 0}
+            colorClass="text-status-warning"
+            to="/admin/orders?status=pending_estimate"
+            loading={statsLoading}
+          />
+          <ActionCard
+            icon={CreditCard}
+            label={t("dashboard.awaitingPayments")}
+            count={stats?.awaiting_payment ?? 0}
+            colorClass="text-action-primary"
+            to="/admin/orders?status=awaiting_payment"
+            loading={statsLoading}
+          />
+          <ActionCard
+            icon={Package}
+            label={t("dashboard.inProcess")}
+            count={stats?.in_process ?? 0}
+            colorClass="text-action-primary"
+            to="/admin/orders?status=in_process"
+            loading={statsLoading}
+          />
+          <ActionCard
+            icon={CheckCircle2}
+            label={t("dashboard.completedOrders")}
+            count={stats?.completed ?? 0}
+            colorClass="text-status-success"
+            to="/admin/orders?status=completed"
+            loading={statsLoading}
+          />
+        </div>
+      </section>
+
+      {/* ─── Summary Stats ─── */}
       <div
-        className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="mt-6 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
         data-testid="admin-overview"
       >
-        {!stats
-          ? statItems.map(([, , , , hero], i) => (
-              <StatCardSkeleton key={i} hero={hero} />
-            ))
-          : statItems.map(([key, label, colorClass, accentClass, hero], i) => (
-              <StatCard
-                key={key}
-                label={label}
-                value={stats[key]}
-                colorClass={colorClass}
-                accentClass={accentClass}
-                hero={hero}
-                delay={i * 60}
-              />
-            ))}
+        {statsLoading ? (
+          <>
+            <StatCardSkeleton hero />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label={t("admin.totalOrders")}
+              value={stats.total_orders}
+              colorClass="text-action-primary"
+              accentClass="border-l-action-primary"
+              hero
+              delay={0}
+            />
+            <StatCard
+              label={t("dashboard.totalClients")}
+              value={stats.clients}
+              colorClass="text-text-primary"
+              accentClass="border-l-border-strong"
+              delay={60}
+              className="flex items-center"
+            />
+          </>
+        )}
       </div>
 
-      {/* Date Range Filters */}
+      {/* ─── Date Range Filter ─── */}
       <SurfacePanel className="mt-8 p-4">
         <div className="flex flex-wrap items-end gap-4">
-          <div className="space-y-1.5">
-            <Label className="type-label text-text-secondary">
-              {t("dashboard.dateFrom")}
-            </Label>
+          <FormField label={t("dashboard.dateFrom")}>
             <Input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="w-auto"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="type-label text-text-secondary">
-              {t("dashboard.dateTo")}
-            </Label>
+          </FormField>
+          <FormField label={t("dashboard.dateTo")}>
             <Input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className="w-auto"
             />
-          </div>
+          </FormField>
         </div>
       </SurfacePanel>
 
-      {seriesError && <Alert className="mt-4">{seriesError}</Alert>}
+      {seriesError && (
+        <ErrorState
+          error={seriesError}
+          onRetry={loadSeries}
+          compact
+          className="mt-4"
+        />
+      )}
 
-      {/* Trend Charts */}
+      {/* ─── Trend Charts ─── */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <TrendChart
           title={t("dashboard.ordersTrend")}
           rows={series?.orders_by_status || []}
           loading={seriesLoading}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
         />
         {canSeeInventory && (
           <TrendChart
             title={t("dashboard.stockMovementsTrend")}
             rows={series?.stock_movements || []}
             loading={seriesLoading}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
           />
         )}
         {canSeeRevenue && (
@@ -281,6 +399,8 @@ export default function AdminDashboard() {
               `Rp ${Number(value).toLocaleString("id-ID")}`
             }
             loading={seriesLoading}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
           />
         )}
       </div>
