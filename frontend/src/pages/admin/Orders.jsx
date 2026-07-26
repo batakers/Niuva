@@ -40,7 +40,7 @@ import {
   fetchFile,
   formatApiError,
 } from "@/lib/api";
-import { fmtDay } from "@/lib/format";
+import { fmtDay, rupiah } from "@/lib/format";
 import { AdminLayout } from "./AdminLayout";
 
 const BULK_STATUS_OPTIONS = [
@@ -455,8 +455,6 @@ export default function AdminOrders() {
 
 function OrderManageDialog({ order, onClose, onUpdated }) {
   const { t } = useI18n();
-  const [amount, setAmount] = useState(order.estimate?.amount || "");
-  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
   const downloadStoredFile = async (path, filename) => {
@@ -558,46 +556,37 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
             <p className="type-label text-action-primary mb-4 pb-3 border-b border-border-default">
               {t("orders.estimateSection")}
             </p>
-            <div className="grid sm:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-1.5">
-                <Label className="type-label text-text-secondary">
-                  {t("orders.estimateAmount")}
-                </Label>
-                <Input
-                  data-testid="estimate-amount"
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
+            {order.estimate ? (
+              <div className="rounded-control border border-border-default bg-surface-page p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="type-label text-text-secondary">
+                      {t("orders.estimateAmount")}
+                    </p>
+                    <p className="mt-1 font-heading text-2xl font-bold text-text-primary">
+                      {rupiah(order.estimate.amount)}
+                    </p>
+                  </div>
+                  <span className="rounded-control border border-border-default px-2.5 py-1 type-label text-text-secondary">
+                    {t("payment.legacyReadOnly")}
+                  </span>
+                </div>
+                {order.estimate.note && (
+                  <p className="mt-4 border-l-2 border-action-primary/40 pl-3 type-body-small text-text-secondary">
+                    {order.estimate.note}
+                  </p>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <Label className="type-label text-text-secondary">
-                  {t("orders.estimateNote")}
-                </Label>
-                <Input
-                  data-testid="estimate-note"
-                  placeholder={t("orders.estimateNotePlaceholder")}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
+            ) : (
+              <div className="rounded-control border border-border-default bg-surface-page p-4">
+                <p className="font-heading text-sm font-semibold text-text-primary">
+                  {t("payment.providerInactive")}
+                </p>
+                <p className="mt-1 type-body-small text-text-secondary">
+                  {t("payment.mutationsDisabled")}
+                </p>
               </div>
-            </div>
-            <Button
-              loading={busy}
-              disabled={!amount}
-              data-testid="submit-estimate"
-              onClick={() =>
-                act(() =>
-                  api.post(`/admin/orders/${order.id}/estimate`, {
-                    amount: parseFloat(amount),
-                    note,
-                  })
-                )
-              }
-              className="w-full"
-            >
-              {t("orders.submitEstimate")}
-            </Button>
+            )}
           </div>
 
           {/* Payment Section */}
@@ -616,17 +605,17 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
                   <CheckCircle2 className="h-4 w-4" /> {t("detail.verified")}
                 </div>
               ) : (
-                <Button
-                  loading={busy}
-                  data-testid="verify-payment"
-                  onClick={() =>
-                    act(() => api.post(`/admin/orders/${order.id}/verify-payment`))
-                  }
-                  variant="success"
-                  className="w-full"
+                <div
+                  className="rounded-control border border-status-warning/40 bg-status-warning/10 p-4"
+                  role="status"
                 >
-                  {t("orders.verifyPayment")}
-                </Button>
+                  <p className="type-label text-status-warning">
+                    {t("payment.legacyReadOnly")}
+                  </p>
+                  <p className="mt-1 type-body-small text-text-secondary">
+                    {t("payment.mutationsDisabled")}
+                  </p>
+                </div>
               )}
             </div>
           )}
