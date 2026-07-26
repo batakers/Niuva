@@ -65,13 +65,13 @@ test("the workbench is reachable by keyboard alone", async ({ page }) => {
     text: document.activeElement?.textContent?.trim() || "",
     href: document.activeElement?.getAttribute("href") || "",
   }));
-  expect(first.href).toBe("#main-content");
+  expect(first.href).toBe("#admin-main");
 
   await page.keyboard.press("Enter");
   const focusedMain = await page.evaluate(
     () => document.activeElement?.id || document.activeElement?.tagName
   );
-  expect(focusedMain).toMatch(/main-content|MAIN/i);
+  expect(focusedMain).toMatch(/admin-main|MAIN/i);
 });
 
 test("the mobile drawer traps focus and closes on Escape", async ({

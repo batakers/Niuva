@@ -11,8 +11,15 @@ for (const [role, expectations] of Object.entries(ROLES)) {
   test.describe(`${role}`, () => {
     test("sees exactly the navigation its permissions allow", async ({
       asRole,
-    }) => {
+    }, testInfo) => {
       const page = await asRole(role);
+
+      // Below the desktop breakpoint the navigation lives in a drawer, so it
+      // has to be opened before there is anything to assert about.
+      if (["mobile", "tablet"].includes(testInfo.project.name)) {
+        await page.getByRole("button", { name: /buka menu|open menu/i }).click();
+      }
+
       const nav = page.getByRole("navigation", { name: /admin/i });
 
       for (const path of expectations.visible) {

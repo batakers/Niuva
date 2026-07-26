@@ -144,7 +144,7 @@ export function AdminLayout({ children, title, subtitle }) {
         <div className="flex h-16 items-center justify-between border-b border-border-default px-4">
           <Link 
             to="/admin" 
-            className="flex items-center gap-2 transition-opacity duration-fast hover:opacity-80"
+            className="flex min-h-11 items-center gap-2 transition-opacity duration-fast hover:opacity-80"
           >
             <BrandIdentity variant="mark" size={28} />
             <span className="font-heading text-sm font-bold text-text-primary">
@@ -218,7 +218,7 @@ export function AdminLayout({ children, title, subtitle }) {
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="w-full justify-start text-text-secondary hover:text-status-error hover:bg-status-error/5"
+            className="min-h-11 w-full justify-start text-text-secondary hover:text-status-error hover:bg-status-error/5"
           >
             <LogOut className="mr-2 h-4 w-4" />
             {t("nav.logout")}
@@ -247,7 +247,7 @@ export function AdminLayout({ children, title, subtitle }) {
           <nav className="flex items-center gap-1.5 text-text-secondary" aria-label="Breadcrumb">
             <Link
               to="/admin"
-              className="type-body-small transition-colors duration-fast hover:text-action-primary"
+              className="inline-flex min-h-11 items-center type-body-small transition-colors duration-fast hover:text-action-primary"
             >
               {t("admin.console")}
             </Link>
