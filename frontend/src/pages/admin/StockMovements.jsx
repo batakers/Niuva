@@ -214,31 +214,76 @@ export default function StockMovements() {
         ) : visible.length === 0 ? (
           <EmptyState className="py-16">{t("inventory.noMovements")}</EmptyState>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("common.date")}</TableHead>
-                <TableHead>{t("inventory.subject")}</TableHead>
-                <TableHead>{t("inventory.movementType")}</TableHead>
-                <TableHead>{t("inventory.quantity")}</TableHead>
-                <TableHead>{t("inventory.referenceId")}</TableHead>
-                <TableHead>{t("inventory.actor")}</TableHead>
-                <TableHead>{t("common.reason")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("common.date")}</TableHead>
+                    <TableHead>{t("inventory.subject")}</TableHead>
+                    <TableHead>{t("inventory.movementType")}</TableHead>
+                    <TableHead>{t("inventory.quantity")}</TableHead>
+                    <TableHead>{t("inventory.referenceId")}</TableHead>
+                    <TableHead>{t("inventory.actor")}</TableHead>
+                    <TableHead>{t("common.reason")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
+                        {row.created_at}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-semibold text-text-primary">
+                          {row.subject_name || row.subject_id}
+                        </div>
+                        <TechnicalLabel size="micro">{row.subject_type}</TechnicalLabel>
+                      </TableCell>
+                      <TableCell>
+                        <TechnicalLabel
+                          tone={
+                            row.movement_type.includes("out") ||
+                            row.movement_type.includes("reserve")
+                              ? "warning"
+                              : "success"
+                          }
+                        >
+                          {row.movement_type}
+                        </TechnicalLabel>
+                      </TableCell>
+                      <TableCell className="text-sm tabular-nums">
+                        {row.quantity > 0 ? `+${row.quantity}` : row.quantity}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-text-secondary">
+                        {row.reference_id || "—"}
+                      </TableCell>
+                      <TableCell className="text-text-secondary">
+                        {row.created_by || "—"}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-text-secondary">
+                        {row.reason || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border-default">
               {visible.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
-                    {row.created_at}
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-semibold text-text-primary">
+                <div key={row.id} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-text-primary truncate">
                       {row.subject_name || row.subject_id}
-                    </div>
-                    <TechnicalLabel size="micro">{row.subject_type}</TechnicalLabel>
-                  </TableCell>
-                  <TableCell>
+                    </span>
+                    <span className="text-sm tabular-nums text-text-primary shrink-0">
+                      {row.quantity > 0 ? `+${row.quantity}` : row.quantity}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2">
                     <TechnicalLabel
                       tone={
                         row.movement_type.includes("out") ||
@@ -246,26 +291,21 @@ export default function StockMovements() {
                           ? "warning"
                           : "success"
                       }
+                      size="micro"
                     >
                       {row.movement_type}
                     </TechnicalLabel>
-                  </TableCell>
-                  <TableCell className="text-sm tabular-nums">
-                    {row.quantity > 0 ? `+${row.quantity}` : row.quantity}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-text-secondary">
-                    {row.reference_id || "—"}
-                  </TableCell>
-                  <TableCell className="text-text-secondary">
-                    {row.created_by || "—"}
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate text-text-secondary">
-                    {row.reason || "—"}
-                  </TableCell>
-                </TableRow>
+                    <span className="font-mono text-xs text-text-secondary">
+                      {row.created_at}
+                    </span>
+                  </div>
+                  {row.reason && (
+                    <p className="mt-1 text-xs text-text-secondary truncate">{row.reason}</p>
+                  )}
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </SurfacePanel>
     </AdminLayout>

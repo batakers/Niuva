@@ -128,90 +128,130 @@ export default function RestockAlerts() {
         ) : rows.length === 0 ? (
           <EmptyState className="py-16">{t("inventory.noAlerts")}</EmptyState>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("inventory.subject")}</TableHead>
-                <TableHead>{t("inventory.trigger")}</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-                <TableHead>{t("inventory.metrics")}</TableHead>
-                <TableHead>{t("inventory.recipients")}</TableHead>
-                <TableHead>{t("common.updated")}</TableHead>
-                {actions.includes("resolve") && (
-                  <TableHead className="text-right">{t("common.actions")}</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("inventory.subject")}</TableHead>
+                    <TableHead>{t("inventory.trigger")}</TableHead>
+                    <TableHead>{t("common.status")}</TableHead>
+                    <TableHead>{t("inventory.metrics")}</TableHead>
+                    <TableHead>{t("inventory.recipients")}</TableHead>
+                    <TableHead>{t("common.updated")}</TableHead>
+                    {actions.includes("resolve") && (
+                      <TableHead className="text-right">{t("common.actions")}</TableHead>
+                    )}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((alert) => (
+                    <TableRow key={alert.id}>
+                      {/* Subject */}
+                      <TableCell>
+                        <div className="font-semibold text-text-primary">
+                          {alert.subject_name || alert.subject_id}
+                        </div>
+                        <TechnicalLabel size="micro">{alert.subject_type}</TechnicalLabel>
+                      </TableCell>
+
+                      {/* Trigger */}
+                      <TableCell>
+                        <TechnicalLabel
+                          tone={
+                            alert.trigger_type === "projected_shortage"
+                              ? "danger"
+                              : "warning"
+                          }
+                        >
+                          {alert.trigger_type}
+                        </TechnicalLabel>
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell>
+                        <TechnicalLabel tone={statusTone(alert.status)}>
+                          {alert.status}
+                        </TechnicalLabel>
+                      </TableCell>
+
+                      {/* Metrics */}
+                      <TableCell>
+                        <div className="text-xs tabular-nums text-text-secondary">
+                          {t("inventory.available")}: {alert.last_balance?.available ?? "—"}
+                        </div>
+                        <div className="text-xs tabular-nums text-text-secondary">
+                          {t("inventory.reserved")}: {alert.last_balance?.reserved ?? "—"}
+                        </div>
+                      </TableCell>
+
+                      {/* Recipients */}
+                      <TableCell className="text-text-secondary">
+                        {alert.recipients?.length ?? 0}
+                      </TableCell>
+
+                      {/* Updated */}
+                      <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
+                        {alert.updated_at}
+                      </TableCell>
+
+                      {/* Actions */}
+                      {actions.includes("resolve") && (
+                        <TableCell className="text-right">
+                          {alert.status === "active" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setResolving(alert)}
+                            >
+                              <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                              {t("inventory.resolve")}
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border-default">
               {rows.map((alert) => (
-                <TableRow key={alert.id}>
-                  {/* Subject */}
-                  <TableCell>
-                    <div className="font-semibold text-text-primary">
+                <div key={alert.id} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-text-primary truncate">
                       {alert.subject_name || alert.subject_id}
-                    </div>
-                    <TechnicalLabel size="micro">{alert.subject_type}</TechnicalLabel>
-                  </TableCell>
-
-                  {/* Trigger */}
-                  <TableCell>
-                    <TechnicalLabel
-                      tone={
-                        alert.trigger_type === "projected_shortage"
-                          ? "danger"
-                          : "warning"
-                      }
-                    >
-                      {alert.trigger_type}
-                    </TechnicalLabel>
-                  </TableCell>
-
-                  {/* Status */}
-                  <TableCell>
-                    <TechnicalLabel tone={statusTone(alert.status)}>
+                    </span>
+                    <TechnicalLabel tone={statusTone(alert.status)} size="micro">
                       {alert.status}
                     </TechnicalLabel>
-                  </TableCell>
-
-                  {/* Metrics */}
-                  <TableCell>
-                    <div className="text-xs tabular-nums text-text-secondary">
+                  </div>
+                  <div className="mt-1 flex items-center gap-3 text-xs text-text-secondary">
+                    <span>
                       {t("inventory.available")}: {alert.last_balance?.available ?? "—"}
-                    </div>
-                    <div className="text-xs tabular-nums text-text-secondary">
+                    </span>
+                    <span>
                       {t("inventory.reserved")}: {alert.last_balance?.reserved ?? "—"}
-                    </div>
-                  </TableCell>
-
-                  {/* Recipients */}
-                  <TableCell className="text-text-secondary">
-                    {alert.recipients?.length ?? 0}
-                  </TableCell>
-
-                  {/* Updated */}
-                  <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
-                    {alert.updated_at}
-                  </TableCell>
-
-                  {/* Actions */}
-                  {actions.includes("resolve") && (
-                    <TableCell className="text-right">
-                      {alert.status === "active" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setResolving(alert)}
-                        >
-                          <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
-                          {t("inventory.resolve")}
-                        </Button>
-                      )}
-                    </TableCell>
+                    </span>
+                  </div>
+                  {actions.includes("resolve") && alert.status === "active" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 w-full"
+                      onClick={() => setResolving(alert)}
+                    >
+                      <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                      {t("inventory.resolve")}
+                    </Button>
                   )}
-                </TableRow>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </SurfacePanel>
 

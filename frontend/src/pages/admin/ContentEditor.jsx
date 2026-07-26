@@ -117,29 +117,57 @@ export default function ContentEditor() {
           : error ? <ErrorState error={error} onRetry={load} />
             : items.length === 0 ? <EmptyState icon={FileText} className="py-16">{t("content.empty")}</EmptyState>
               : (
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Slug</TableHead>
-                    <TableHead>{t("common.status")}</TableHead>
-                    <TableHead>{t("content.version")}</TableHead>
-                    <TableHead>{t("common.updated")}</TableHead>
-                    <TableHead className="text-right">{t("common.actions")}</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>{items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell><div className="font-semibold">{item.slug}</div></TableCell>
-                      <TableCell><TechnicalLabel tone={statusTone(item.status)}>{item.status}</TechnicalLabel></TableCell>
-                      <TableCell className="font-mono tabular-nums text-text-secondary">{item.version}</TableCell>
-                      <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">{item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}</TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => setEditingId(item.id)} aria-label={`${t("common.open")} ${item.slug}`}><Edit3 className="h-4 w-4" /></Button>
-                          {item.status !== "archived" && <Button variant="ghost" size="icon" onClick={() => setArchiveTarget(item)} aria-label={`${t("content.archive")} ${item.slug}`}><Archive className="h-4 w-4" /></Button>}
+                <>
+                  {/* Desktop table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead>{t("content.slug")}</TableHead>
+                        <TableHead>{t("common.status")}</TableHead>
+                        <TableHead>{t("content.version")}</TableHead>
+                        <TableHead>{t("common.updated")}</TableHead>
+                        <TableHead className="text-right">{t("common.actions")}</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>{items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell><div className="font-semibold">{item.slug}</div></TableCell>
+                          <TableCell><TechnicalLabel tone={statusTone(item.status)}>{item.status}</TechnicalLabel></TableCell>
+                          <TableCell className="font-mono tabular-nums text-text-secondary">{item.version}</TableCell>
+                          <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">{item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}</TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => setEditingId(item.id)} aria-label={`${t("common.open")} ${item.slug}`}><Edit3 className="h-4 w-4" /></Button>
+                              {item.status !== "archived" && <Button variant="ghost" size="icon" onClick={() => setArchiveTarget(item)} aria-label={`${t("content.archive")} ${item.slug}`}><Archive className="h-4 w-4" /></Button>}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}</TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile cards */}
+                  <div className="md:hidden divide-y divide-border-default">
+                    {items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="w-full text-left px-4 py-3 hover:bg-surface-muted/50 active:bg-surface-muted transition-colors duration-fast"
+                        onClick={() => setEditingId(item.id)}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-text-primary truncate">{item.slug}</span>
+                          <TechnicalLabel tone={statusTone(item.status)} size="micro">{item.status}</TechnicalLabel>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}</TableBody>
-                </Table>
+                        <div className="mt-1 flex items-center justify-between text-xs text-text-secondary">
+                          <span>{t("content.version")} {item.version}</span>
+                          <span className="font-mono">
+                            {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : "—"}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
       </SurfacePanel>
 

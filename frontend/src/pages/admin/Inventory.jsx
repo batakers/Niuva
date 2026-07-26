@@ -207,64 +207,108 @@ export default function Inventory() {
         ) : visible.length === 0 ? (
           <EmptyState className="py-16">{t("inventory.empty")}</EmptyState>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("inventory.subject")}</TableHead>
-                <TableHead>{t("inventory.onHand")}</TableHead>
-                <TableHead>{t("inventory.reserved")}</TableHead>
-                <TableHead>{t("inventory.available")}</TableHead>
-                <TableHead>{t("inventory.incoming")}</TableHead>
-                <TableHead>{t("inventory.plannedDemand")}</TableHead>
-                <TableHead>{t("inventory.projected")}</TableHead>
-                <TableHead>{t("inventory.version")}</TableHead>
-                {canWrite && (
-                  <TableHead className="text-right">{t("common.actions")}</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((balance) => (
-                <TableRow key={`${balance.subject_type}:${balance.subject_id}`}>
-                  <TableCell>
-                    <div className="font-semibold text-text-primary">
-                      {balance.subject_name || balance.subject_id}
-                    </div>
-                    <TechnicalLabel size="micro">
-                      {balance.subject_type} · {balance.subject_id}
-                    </TechnicalLabel>
-                  </TableCell>
-                  <TableCell className="tabular-nums">{balance.on_hand}</TableCell>
-                  <TableCell className="tabular-nums">{balance.reserved}</TableCell>
-                  <TableCell className="tabular-nums">{balance.available}</TableCell>
-                  <TableCell className="tabular-nums">{balance.incoming}</TableCell>
-                  <TableCell className="tabular-nums">{balance.planned_demand}</TableCell>
-                  <TableCell
-                    className={`tabular-nums ${
-                      Number(balance.projected) < 0
-                        ? "font-semibold text-status-error"
-                        : ""
-                    }`}
-                  >
-                    {balance.projected}
-                  </TableCell>
-                  <TableCell className="font-mono tabular-nums text-text-secondary">{balance.version}</TableCell>
-                  {canWrite && (
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startOperation(balance)}
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("inventory.subject")}</TableHead>
+                    <TableHead>{t("inventory.onHand")}</TableHead>
+                    <TableHead>{t("inventory.reserved")}</TableHead>
+                    <TableHead>{t("inventory.available")}</TableHead>
+                    <TableHead>{t("inventory.incoming")}</TableHead>
+                    <TableHead>{t("inventory.plannedDemand")}</TableHead>
+                    <TableHead>{t("inventory.projected")}</TableHead>
+                    <TableHead>{t("inventory.version")}</TableHead>
+                    {canWrite && (
+                      <TableHead className="text-right">{t("common.actions")}</TableHead>
+                    )}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((balance) => (
+                    <TableRow key={`${balance.subject_type}:${balance.subject_id}`}>
+                      <TableCell>
+                        <div className="font-semibold text-text-primary">
+                          {balance.subject_name || balance.subject_id}
+                        </div>
+                        <TechnicalLabel size="micro">
+                          {balance.subject_type} · {balance.subject_id}
+                        </TechnicalLabel>
+                      </TableCell>
+                      <TableCell className="tabular-nums">{balance.on_hand}</TableCell>
+                      <TableCell className="tabular-nums">{balance.reserved}</TableCell>
+                      <TableCell className="tabular-nums">{balance.available}</TableCell>
+                      <TableCell className="tabular-nums">{balance.incoming}</TableCell>
+                      <TableCell className="tabular-nums">{balance.planned_demand}</TableCell>
+                      <TableCell
+                        className={`tabular-nums ${
+                          Number(balance.projected) < 0
+                            ? "font-semibold text-status-error"
+                            : ""
+                        }`}
                       >
-                        <SlidersHorizontal className="mr-2 h-4 w-4" />
-                        {t("inventory.operation")}
-                      </Button>
-                    </TableCell>
+                        {balance.projected}
+                      </TableCell>
+                      <TableCell className="font-mono tabular-nums text-text-secondary">{balance.version}</TableCell>
+                      {canWrite && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => startOperation(balance)}
+                          >
+                            <SlidersHorizontal className="mr-2 h-4 w-4" />
+                            {t("inventory.operation")}
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border-default">
+              {visible.map((balance) => (
+                <div
+                  key={`${balance.subject_type}:${balance.subject_id}`}
+                  className="px-4 py-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-text-primary truncate">
+                      {balance.subject_name || balance.subject_id}
+                    </span>
+                    <span
+                      className={`text-sm font-semibold tabular-nums ${
+                        Number(balance.projected) < 0 ? "text-status-error" : "text-text-primary"
+                      }`}
+                    >
+                      {balance.projected}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-xs text-text-secondary">
+                    <span>
+                      {t("inventory.available")}: {balance.available} · {t("inventory.reserved")}: {balance.reserved}
+                    </span>
+                  </div>
+                  {canWrite && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 w-full"
+                      onClick={() => startOperation(balance)}
+                    >
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      {t("inventory.operation")}
+                    </Button>
                   )}
-                </TableRow>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </SurfacePanel>
 
@@ -296,60 +340,99 @@ export default function Inventory() {
         ) : reservations.length === 0 ? (
           <EmptyState className="py-16">{t("inventory.noActiveReservations")}</EmptyState>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("inventory.subject")}</TableHead>
-                <TableHead>{t("inventory.quantity")}</TableHead>
-                <TableHead>{t("inventory.reference")}</TableHead>
-                <TableHead>{t("inventory.expiresAt")}</TableHead>
-                {canWrite && (
-                  <TableHead className="text-right">{t("common.actions")}</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("inventory.subject")}</TableHead>
+                    <TableHead>{t("inventory.quantity")}</TableHead>
+                    <TableHead>{t("inventory.reference")}</TableHead>
+                    <TableHead>{t("inventory.expiresAt")}</TableHead>
+                    {canWrite && (
+                      <TableHead className="text-right">{t("common.actions")}</TableHead>
+                    )}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reservations.map((reservation) => (
+                    <TableRow key={reservation.id}>
+                      <TableCell>
+                        <div className="font-semibold text-text-primary">
+                          {reservation.subject_name || reservation.subject_id}
+                        </div>
+                        <TechnicalLabel size="micro">
+                          {reservation.subject_type} · {reservation.id}
+                        </TechnicalLabel>
+                      </TableCell>
+                      <TableCell className="tabular-nums">{reservation.quantity}</TableCell>
+                      <TableCell className="font-mono text-xs text-text-secondary">
+                        {reservation.reference_type} · {reservation.reference_id}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
+                        {reservation.expires_at
+                          ? new Date(reservation.expires_at).toLocaleString()
+                          : "—"}
+                      </TableCell>
+                      {canWrite && (
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            {reservationActions(reservation, permissions).map(
+                              (action) => (
+                                <Button
+                                  key={action}
+                                  variant={action === "consume" ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => startTransition(reservation, action)}
+                                >
+                                  {t(`inventory.${action}`)}
+                                </Button>
+                              )
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border-default">
               {reservations.map((reservation) => (
-                <TableRow key={reservation.id}>
-                  <TableCell>
-                    <div className="font-semibold text-text-primary">
+                <div key={reservation.id} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-text-primary truncate">
                       {reservation.subject_name || reservation.subject_id}
-                    </div>
-                    <TechnicalLabel size="micro">
-                      {reservation.subject_type} · {reservation.id}
-                    </TechnicalLabel>
-                  </TableCell>
-                  <TableCell className="tabular-nums">{reservation.quantity}</TableCell>
-                  <TableCell className="font-mono text-xs text-text-secondary">
+                    </span>
+                    <span className="text-sm tabular-nums text-text-secondary">
+                      {reservation.quantity}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 font-mono text-xs text-text-secondary truncate">
                     {reservation.reference_type} · {reservation.reference_id}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
-                    {reservation.expires_at
-                      ? new Date(reservation.expires_at).toLocaleString()
-                      : "—"}
-                  </TableCell>
+                  </p>
                   {canWrite && (
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        {reservationActions(reservation, permissions).map(
-                          (action) => (
-                            <Button
-                              key={action}
-                              variant={action === "consume" ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => startTransition(reservation, action)}
-                            >
-                              {t(`inventory.${action}`)}
-                            </Button>
-                          )
-                        )}
-                      </div>
-                    </TableCell>
+                    <div className="mt-2 flex gap-2">
+                      {reservationActions(reservation, permissions).map((action) => (
+                        <Button
+                          key={action}
+                          variant={action === "consume" ? "default" : "outline"}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => startTransition(reservation, action)}
+                        >
+                          {t(`inventory.${action}`)}
+                        </Button>
+                      ))}
+                    </div>
                   )}
-                </TableRow>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </SurfacePanel>
 

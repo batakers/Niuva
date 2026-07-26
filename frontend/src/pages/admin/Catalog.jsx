@@ -531,116 +531,150 @@ export default function Catalog() {
             {t("catalog.empty")}
           </EmptyState>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {actions.includes("archive") && (
-                  <TableHead className="w-10">
-                    <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
-                      <input
-                        type="checkbox"
-                        aria-label={t("catalog.selectAll")}
-                        checked={
-                          archivableIds.length > 0 &&
-                          selectedInView.length === archivableIds.length
-                        }
-                        onChange={toggleAll}
-                        disabled={archivableIds.length === 0}
-                        className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
-                      />
-                    </label>
-                  </TableHead>
-                )}
-                <TableHead>{t("catalog.product")}</TableHead>
-                <TableHead>{t("catalog.category")}</TableHead>
-                <TableHead>{t("catalog.variants")}</TableHead>
-                <TableHead>{t("catalog.pricingMode")}</TableHead>
-                <TableHead>{t("catalog.publication")}</TableHead>
-                <TableHead>{t("catalog.stockPolicy")}</TableHead>
-                <TableHead>{t("common.updated")}</TableHead>
-                <TableHead className="text-right">{t("common.actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((product) => (
-                <TableRow 
-                  key={product.id}
-                  data-state={selectedIds.includes(product.id) ? "selected" : undefined}
-                >
-                  {actions.includes("archive") && (
-                    <TableCell>
-                      {product.workflow_status !== "archived" && (
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {actions.includes("archive") && (
+                      <TableHead className="w-10">
                         <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
                           <input
                             type="checkbox"
-                            aria-label={`${t("catalog.select")} ${product.name}`}
-                            checked={selectedIds.includes(product.id)}
-                            onChange={() => toggleOne(product.id)}
+                            aria-label={t("catalog.selectAll")}
+                            checked={
+                              archivableIds.length > 0 &&
+                              selectedInView.length === archivableIds.length
+                            }
+                            onChange={toggleAll}
+                            disabled={archivableIds.length === 0}
                             className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
                           />
                         </label>
+                      </TableHead>
+                    )}
+                    <TableHead>{t("catalog.product")}</TableHead>
+                    <TableHead>{t("catalog.category")}</TableHead>
+                    <TableHead>{t("catalog.variants")}</TableHead>
+                    <TableHead>{t("catalog.pricingMode")}</TableHead>
+                    <TableHead>{t("catalog.publication")}</TableHead>
+                    <TableHead>{t("catalog.stockPolicy")}</TableHead>
+                    <TableHead>{t("common.updated")}</TableHead>
+                    <TableHead className="text-right">{t("common.actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((product) => (
+                    <TableRow 
+                      key={product.id}
+                      data-state={selectedIds.includes(product.id) ? "selected" : undefined}
+                    >
+                      {actions.includes("archive") && (
+                        <TableCell>
+                          {product.workflow_status !== "archived" && (
+                            <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
+                              <input
+                                type="checkbox"
+                                aria-label={`${t("catalog.select")} ${product.name}`}
+                                checked={selectedIds.includes(product.id)}
+                                onChange={() => toggleOne(product.id)}
+                                className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
+                              />
+                            </label>
+                          )}
+                        </TableCell>
                       )}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <div className="font-semibold text-text-primary">
+                      <TableCell>
+                        <div className="font-semibold text-text-primary">
+                          {product.name}
+                        </div>
+                        <TechnicalLabel size="micro">/{product.slug}</TechnicalLabel>
+                      </TableCell>
+                      <TableCell className="text-text-secondary">
+                        {categoryById[product.category_id]?.name || "—"}
+                      </TableCell>
+                      <TableCell className="tabular-nums text-text-secondary">
+                        {product.active_variant_count ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-text-secondary">
+                        {product.pricing_mode}
+                      </TableCell>
+                      <TableCell>
+                        <TechnicalLabel
+                          tone={product.active_publication_id ? "success" : "muted"}
+                        >
+                          {product.workflow_status || "draft"}
+                        </TechnicalLabel>
+                      </TableCell>
+                      <TableCell className="text-text-secondary">
+                        {product.stock_visibility}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
+                        {product.updated_at
+                          ? new Date(product.updated_at).toLocaleDateString()
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`${t("common.open")} ${product.name}`}
+                          >
+                            <Link to={`/admin/catalog/${product.id}`}>
+                              <Edit3 className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          {actions.includes("archive") &&
+                            product.workflow_status !== "archived" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setArchiveTarget(product)}
+                                aria-label={`${t("catalog.archive")} ${product.name}`}
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border-default">
+              {filtered.map((product) => (
+                <Link
+                  key={product.id}
+                  to={`/admin/catalog/${product.id}`}
+                  className="block px-4 py-3 hover:bg-surface-muted/50 active:bg-surface-muted transition-colors duration-fast"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-text-primary truncate">
                       {product.name}
-                    </div>
-                    <TechnicalLabel size="micro">/{product.slug}</TechnicalLabel>
-                  </TableCell>
-                  <TableCell className="text-text-secondary">
-                    {categoryById[product.category_id]?.name || "—"}
-                  </TableCell>
-                  <TableCell className="tabular-nums text-text-secondary">
-                    {product.active_variant_count ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-text-secondary">
-                    {product.pricing_mode}
-                  </TableCell>
-                  <TableCell>
+                    </span>
                     <TechnicalLabel
                       tone={product.active_publication_id ? "success" : "muted"}
+                      size="micro"
                     >
                       {product.workflow_status || "draft"}
                     </TechnicalLabel>
-                  </TableCell>
-                  <TableCell className="text-text-secondary">
-                    {product.stock_visibility}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
-                    {product.updated_at
-                      ? new Date(product.updated_at).toLocaleDateString()
-                      : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`${t("common.open")} ${product.name}`}
-                      >
-                        <Link to={`/admin/catalog/${product.id}`}>
-                          <Edit3 className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      {actions.includes("archive") &&
-                        product.workflow_status !== "archived" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setArchiveTarget(product)}
-                            aria-label={`${t("catalog.archive")} ${product.name}`}
-                          >
-                            <Archive className="h-4 w-4" />
-                          </Button>
-                        )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs text-text-secondary">
+                    <span className="truncate">
+                      {categoryById[product.category_id]?.name || "—"}
+                    </span>
+                    <span className="font-mono shrink-0">/{product.slug}</span>
+                  </div>
+                </Link>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </SurfacePanel>
 
