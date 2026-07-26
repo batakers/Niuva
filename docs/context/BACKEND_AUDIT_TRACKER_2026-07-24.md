@@ -2,9 +2,9 @@
 
 Status: **Context Only — Active Audit Tracker — Not Implementation Authority**
 Audit date: 24 July 2026
-Last updated: 24 July 2026
-Repository baseline at last update: `main` / `origin/main` at `0b0b556`
-Backend test baseline: `7505b48`
+Last updated: 26 July 2026
+Repository baseline at last update: `origin/main` at `d4d1fba`
+Backend test baseline: `e73c99a` on `fix/auth-phase-a-login-issuance`
 
 ## 1. Purpose and Authority
 
@@ -92,19 +92,73 @@ transaction capability sudah memiliki implementasi berarti. Namun release
 backend masih diblokir oleh:
 
 1. konflik role model antara authority kanonis dan runtime;
-2. permission Operations yang bertentangan dengan desain dan test;
-3. dependency Starlette rentan sementara upgrade yang sudah disetujui belum
-   diterapkan;
-4. insiden credential NIV-001 yang belum `Verified`;
-5. legacy manual-transfer flow yang masih dapat membuat transaksi baru;
-6. order, file, audit, CMS, notification, dan readiness boundary yang belum
-   memenuhi requirement kanonis;
-7. real MongoDB replica-set verification yang belum dapat direproduksi di
-   lingkungan audit.
+2. insiden credential NIV-001 yang belum `Verified`;
+3. legacy manual-transfer flow yang masih dapat membuat transaksi baru;
+4. order, file, notification, dan readiness boundary yang belum memenuhi
+   requirement kanonis;
+5. login rate limit dan token/session/password policy yang masih menunggu
+   keputusan `AUTH-DEC-02` sampai `AUTH-DEC-07`.
+
+Pada 26 July 2026 empat blocker sebelumnya sudah tertutup: permission
+Operations (BA-003), approved framework security upgrade (BA-004), Phase A
+login issuance dari BA-010, dan real MongoDB replica-set verification. Rincian
+ada pada finding masing-masing dan pada update log.
 
 ## 4. Verification Evidence
 
-### 4.1 Full backend test
+### 4.1 Full backend test — 26 July 2026
+
+Dijalankan dari `backend/` pada `e73c99a` dengan local replica-set test
+topology aktif (`docker-compose.transaction-test.yml`, port 27018).
+
+Command:
+
+```bash
+./.venv/bin/python -m pytest -q -rs
+```
+
+Result:
+
+```text
+288 passed
+23 skipped
+0 failed
+14 subtests passed
+```
+
+Seluruh 23 skip berasal dari satu sumber yang sama, yaitu external integration
+suite [`backend/tests/backend_test.py`](../../backend/tests/backend_test.py)
+yang memerlukan `NIUVA_TEST_ADMIN_EMAIL` dan `NIUVA_TEST_ADMIN_PASSWORD` pada
+approved non-production test environment. Skip ini tetap merupakan environment
+gate terpisah dan tidak boleh direpresentasikan sebagai integration evidence.
+
+Empat replica-set skip yang tercatat pada 24 July 2026 sudah tidak ada. Tes
+tersebut sekarang berjalan dan lulus:
+
+- `test_transaction_integration.py::test_real_probe_commit_abort_and_cleanup`;
+- `test_inventory_transactions.py::test_real_replica_set_commit_rollback_replay_and_concurrency`;
+- `test_identity_access_migration.py::test_real_replica_set_migrates_user_and_audit_in_the_same_transaction`.
+
+Skip keempat pada catatan 24 July 2026 berasal dari
+`backend/tests/test_identity_transactions.py`, yang sudah dihapus pada `cbb6b97`
+bersama penghapusan role management. Coverage replica-set untuk identity kini
+berada pada `test_identity_access_migration.py`.
+
+Dua defect test-infrastructure ditemukan dan diperbaiki dalam proses ini:
+
+- suite bootstrap mendaftarkan stub `motor` melalui `sys.modules.setdefault`
+  tanpa teardown, sehingga xdist worker yang meng-import suite tersebut lebih
+  dulu memberikan stub kepada real replica-set test; diperbaiki dengan
+  meng-import driver asli pada [`backend/tests/conftest.py`](../../backend/tests/conftest.py)
+  sebelum modul test dikoleksi;
+- `test_transaction_topology_files.py` meng-import conftest melalui package
+  `backend`, yang hanya resolve bila rootdir adalah repository, sehingga
+  menjalankan suite dari `backend/` menghasilkan `ModuleNotFoundError` saat
+  collection; diperbaiki dengan fallback ke package `tests`.
+
+CI-style invocation dari repository root juga diverifikasi lulus.
+
+### 4.1.1 Full backend test — 24 July 2026 baseline (historis)
 
 Command:
 
@@ -150,20 +204,33 @@ Lima skip:
 5. replica-set identity migration test tidak mendapat
    `MONGO_TRANSACTION_TEST_URL`.
 
-Docker tidak tersedia pada lingkungan audit, sehingga local MongoDB replica-set
-verification belum dapat dijalankan.
+Docker tidak tersedia pada lingkungan audit 24 July 2026, sehingga local
+MongoDB replica-set verification belum dapat dijalankan saat itu.
 
 ### 4.2 Other checks
 
+Hasil 26 July 2026:
+
 | Check | Result | Interpretation |
 |---|---|---|
-| `python -m compileall -q backend` | Pass | Tidak ditemukan compile error Python |
 | `python -m pip check` | Pass | Dependency yang terpasang kompatibel; bukan vulnerability audit |
-| `mypy`, source non-test | 46 errors pada 8 file | Type-check belum menjadi quality gate yang lulus |
-| `flake8` | 912 findings | Mayoritas line length; terdapat unused import dan formatting debt |
-| Critical syntax lint selection | Pass | Tidak ditemukan critical syntax/static failure pada selection tersebut |
+| `mypy`, source non-test | 41 errors pada 7 file | Type-check belum menjadi quality gate yang lulus |
+| `flake8 --exclude=.venv,__pycache__` | 1084 findings | Mayoritas line length; angka 912 pada 24 July memakai cakupan exclude yang tidak tercatat, jadi kedua angka tidak dapat dibandingkan langsung |
+| `pip-audit` | Belum dijalankan | Tool belum ada pada `requirements.txt`; menambahkannya memerlukan approval dependency terpisah |
 
-Package yang ter-resolve pada environment audit:
+Hasil 24 July 2026 (historis): `compileall` pass, `pip check` pass, mypy 46
+errors pada 8 file, flake8 912 findings, critical syntax lint selection pass.
+
+Package yang ter-resolve pada environment 26 July 2026:
+
+```text
+fastapi 0.139.2
+starlette 1.3.1
+pydantic 2.13.4
+python-multipart 0.0.32
+```
+
+Package yang ter-resolve pada environment audit 24 July 2026:
 
 ```text
 fastapi 0.110.1
@@ -235,8 +302,19 @@ Status vocabulary:
 ### BA-003 — Operations user/audit access conflicts with design and test
 
 - Severity: P0
-- Status: `decision_resolved_implementation_open`
-- Runtime:
+- Status: `resolved`
+- Resolution evidence date: 26 July 2026
+- Resolution:
+  - [`backend/permissions.py`](../../backend/permissions.py) tidak lagi memberi
+    `users.read` maupun `audit.read` kepada role `operations`;
+  - `test_staff_access_routes_enforce_permissions_and_audit` lulus, sehingga
+    `/api/admin/roles` sudah mengembalikan `403` untuk Operations;
+  - perbaikan dilakukan pada runtime, bukan dengan melonggarkan test.
+- Catatan lingkup:
+  - matrix domain-scoped audit dan governance full-audit tetap terbuka dan
+    tetap fail closed sampai disetujui;
+  - penutupan BA-003 tidak menutup BA-002.
+- Runtime pada 24 July 2026 (historis):
   - role `operations` memiliki `users.read` dan `audit.read`.
 - Design:
   - Operations tidak boleh manage users/roles atau inspect full audit.
@@ -264,13 +342,22 @@ Status vocabulary:
 ### BA-004 — Approved framework security upgrade is not implemented
 
 - Severity: P0
-- Status: `approved_not_started`
-- Evidence:
-  - [`backend/requirements.txt`](../../backend/requirements.txt) masih memakai
-    FastAPI `0.110.1`;
-  - environment me-resolve Starlette `0.37.2`;
-  - approved security spec menargetkan FastAPI `0.139.2`, exact Starlette
-    `1.3.1`, dan Pydantic floor `2.9.0`.
+- Status: `resolved`
+- Resolution evidence date: 26 July 2026
+- Resolution:
+  - [`backend/requirements.txt`](../../backend/requirements.txt) sudah memakai
+    FastAPI `0.139.2`, exact Starlette `1.3.1`, dan Pydantic floor `2.9.0`
+    sesuai approved security spec;
+  - environment me-resolve FastAPI `0.139.2` dan Starlette `1.3.1`;
+  - `pip check` pass;
+  - full backend suite pass tanpa failure.
+- Verifikasi yang belum dijalankan:
+  - `pip-audit` belum dijalankan dan hasil redacted-nya belum disimpan;
+  - tool tersebut belum ada pada `requirements.txt`, sehingga penambahannya
+    memerlukan approval dependency terpisah.
+- Evidence pada 24 July 2026 (historis):
+  - `requirements.txt` masih memakai FastAPI `0.110.1`;
+  - environment me-resolve Starlette `0.37.2`.
 - Security relevance:
   - Starlette `0.37.2` termasuk versi yang terdampak multipart/form-data DoS;
   - backend memiliki public/authenticated form dan upload endpoints.
@@ -336,6 +423,11 @@ Status vocabulary:
   - legacy compatibility projections;
   - unresolved historical-case procedure;
   - proof retention.
+- Re-verifikasi 26 July 2026: belum ada perubahan runtime.
+  `POST /api/orders/{oid}/payment-proof` masih aktif pada
+  [`backend/server.py`](../../backend/server.py) `:592`, instruksi transfer bank
+  masih dikirim pada `:715`, dan public settings masih mengekspos konfigurasi
+  bank legacy.
 
 ### BA-007 — Legacy order lifecycle and monetary integrity are unsafe
 
@@ -358,6 +450,9 @@ Status vocabulary:
   - status regression;
   - inconsistent amount semantics;
   - retry setelah ambiguous failure dapat menghasilkan efek ganda.
+- Re-verifikasi 26 July 2026: belum ada perubahan runtime. `amount: float` pada
+  [`backend/server.py`](../../backend/server.py) `:229` dan order number masih
+  memakai `count_documents` pada `:543`.
 
 ### BA-008 — File access, validation, and retention do not meet ADR-002
 
@@ -394,8 +489,12 @@ Status vocabulary:
   - identity/organization mutation menggunakan shared guard;
   - local/CI replica-set topology files tersedia;
   - fail-closed `transaction_unavailable` contract tersedia.
-- Open gaps:
-  - catalog dan inventory masih mempunyai direct transaction blocks;
+- Open gaps (diverifikasi ulang 26 July 2026):
+  - catalog, inventory, dan content masih mempunyai direct transaction blocks
+    melalui `start_session()` langsung, bukan central executor:
+    `catalog_service.py` pada `:304`, `:419`, `:513`, `:571`;
+    `inventory_service.py` pada `:186` dan `:689`;
+    `content_service.py` pada `:142` dan `:185`;
   - material create/update/archive/price-version menulis data lalu audit secara
     terpisah;
   - catalog archive menulis product lalu audit secara terpisah;
@@ -407,39 +506,64 @@ Status vocabulary:
   - concurrent publication dapat menghasilkan raw conflict;
   - ambiguous transaction outcome tidak diproyeksikan secara seragam.
 - Environment limitation:
-  - real replica-set verification belum direproduksi lokal.
+  - tidak lagi berlaku sejak 26 July 2026; real replica-set verification sudah
+    direproduksi lokal dan seluruh real transaction test lulus. Gap adopsi
+    central boundary di atas tetap terbuka dan tidak tertutup oleh bukti ini.
 
 ### BA-010 — Authentication and public-input hardening is incomplete
 
 - Severity: P1
-- Status: `open`
-- Evidence:
-  - customer login tidak memeriksa `disabled` sebelum menerbitkan token;
-  - token tersebut ditolak pada request berikutnya, sehingga bukan bukti access
-    bypass, tetapi login contract tetap salah dan membingungkan;
-  - login tidak memiliki rate limit;
-  - contact limiter berada di memory per process dan tidak bertahan lintas
-    restart/worker;
-  - internship endpoint tidak memiliki throttle;
-  - beberapa internship fields tidak memiliki batas panjang;
-  - order filename, estimate note, dan internship values dimasukkan ke HTML
-    email/notification tanpa escaping.
-- Impact:
-  - brute-force dan spam exposure;
-  - resource abuse;
+- Status: `partial`
+- Evidence date: 26 July 2026
+- Sudah selesai:
+  - login issuance boundary (Phase A) terimplementasi pada
+    `authenticate_credentials` di [`backend/server.py`](../../backend/server.py):
+    satu generic `401 Invalid email or password` untuk unknown email, wrong
+    password, hash tidak valid, `disabled`, `access_review_required`, dan
+    resolver role kosong; tidak ada token yang terbit untuk jalur tersebut;
+  - verifikasi password dipanggil tepat sekali melalui dummy hash konstan untuk
+    jalur unknown, sesuai `DEC-AUTH-001`;
+  - endpoint internship sudah tidak ada pada backend setelah `DEC-OPS-002`,
+    sehingga throttle dan batas panjang field-nya tidak lagi berlaku;
+  - contact form dan admin notification sudah memakai `html.escape`.
+- Masih terbuka:
+  - login tetap tidak memiliki rate limit sama sekali;
+  - `_rate_buckets` masih dict in-memory per process dan tidak bertahan lintas
+    restart/worker, sehingga limiter yang ada bukan kontrol produksi;
+  - order filename dan estimate note masih dimasukkan ke HTML email tanpa
+    escaping;
+  - password, token/session, dan authentication-event policy belum diputuskan.
+- Decision dependency:
+  - `DEC-AUTH-002` menahan pemilihan topologi limiter;
+  - `AUTH-DEC-03` sampai `AUTH-DEC-07` masih terbuka.
+- Impact yang tersisa:
+  - brute-force exposure pada login;
   - stored notification/email HTML content spoofing.
 
 ### BA-011 — Structured CMS foundation is not implemented
 
 - Severity: P2
-- Status: `open`
-- Runtime evidence:
+- Status: `partial`
+- Evidence date: 26 July 2026
+- Sudah terimplementasi pada
+  [`backend/content_service.py`](../../backend/content_service.py) dan
+  [`backend/content_domain.py`](../../backend/content_domain.py):
+  - lifecycle `draft` ke `scheduled`/`published` lalu `archived`;
+  - validasi field sebelum publish;
+  - version snapshot per perubahan;
+  - `rollback_block` dengan `rollback_source_version_id`;
+  - archive menggantikan hard delete;
+  - public projection difilter ke `status: "published"`.
+- Belum diverifikasi terhadap requirement kanonis:
+  - review state terpisah dan permission-aware review/publish;
+  - preview boundary;
+  - kelengkapan structured fields terhadap Master Spec;
+  - cakupan audit untuk setiap transisi lifecycle.
+- Runtime evidence 24 July 2026 (historis):
   - portfolio masih berupa simple CRUD;
   - public list tidak memfilter published/active lifecycle;
   - update tidak menyimpan version history;
-  - delete memakai hard delete;
-  - tidak ada draft, review, preview, publish, schedule, version, rollback, atau
-    auditable archive lifecycle.
+  - delete memakai hard delete.
 - Canonical requirement:
   - structured fields;
   - validation;
@@ -476,13 +600,20 @@ Status vocabulary:
 
 - Severity: P2
 - Status: `open`
-- Evidence:
-  - full backend suite memiliki satu failure;
-  - 46 mypy errors pada source non-test;
-  - 912 flake8 findings;
+- Evidence (26 July 2026):
+  - full backend suite sudah pass, sehingga bukan lagi bagian dari finding ini;
+  - 41 mypy errors pada 7 file source non-test;
+  - 1084 flake8 findings dengan `--exclude=.venv,__pycache__`;
+  - belum ada konfigurasi yang menetapkan mana yang critical lint dan mana yang
+    style debt;
+  - `pip-audit` belum menjadi bagian gate;
   - old generated report mengklaim 100% pass tetapi XML menyimpan failure;
-  - external integration suite bergantung pada server URL dan skip bila tidak
-    dikonfigurasi.
+  - external integration suite bergantung pada credential environment dan skip
+    bila tidak dikonfigurasi.
+- Evidence 24 July 2026 (historis):
+  - satu failure pada full backend suite;
+  - 46 mypy errors pada 8 file;
+  - 912 flake8 findings.
 - Required direction:
   - tetapkan supported Python/type-check configuration;
   - pisahkan style debt dari critical lint;
@@ -495,12 +626,18 @@ Status vocabulary:
 Checklist lama tidak boleh dibaca secara mekanis sebagai backlog. Status pada
 bagian ini sudah dibandingkan dengan Document Register, source, dan test.
 
+Status pada tabel ini diperbarui 26 July 2026. Setiap plan yang sebelumnya
+tidak memiliki header `Status:` sudah diberi header sesuai kolom
+`Safe interpretation` di bawah, tanpa mengubah isi plan dan tanpa memberikan
+authority baru.
+
 | Plan or scope | Audit status | Safe interpretation |
 |---|---|---|
-| Backend Framework Security Upgrade | `approved_not_started` | Sudah approved dalam bounded security scope; requirements masih versi lama |
+| Backend Framework Security Upgrade | `resolved` | Terimplementasi; `pip-audit` evidence masih kurang |
+| Backend Auth Phase A Login Issuance | `resolved` | Terimplementasi dan merged melalui PR #47; Phase B sampai D tetap terblokir keputusan |
 | Amend Identity Access Model | `context only` + superseded role direction | Task 1–7 menjadi implementation evidence; Task 8 must not execute; DEC-ACCESS-001 keeps granular roles canonical |
-| Foundation Transaction Capability | recorded complete | 120/120 checklist selesai dan implementation exists; real local verification tidak direproduksi |
-| Catalog/Material/Inventory Foundation | `partial` | Real transaction verification dan browser permission/workflow QA masih unchecked |
+| Foundation Transaction Capability | recorded complete | 120/120 checklist selesai; real local verification sudah direproduksi 26 July 2026 |
+| Catalog/Material/Inventory Foundation | `partial` | Real transaction verification sudah terpenuhi 26 July 2026; browser permission/workflow QA masih unchecked |
 | Remove Emergent/Local Storage | backend substantially complete | Fresh optimized frontend build masih unchecked; production storage tidak termasuk |
 | Foundation Identity/RBAC plan lama | misleading if used as backlog | Puluhan checkbox kosong tetapi implementation berikutnya sudah ada; reconcile/archive, jangan execute ulang |
 | NIV-001 History Rewrite | `open` | Implemented, verification pending; destructive execution perlu explicit approval |
@@ -582,8 +719,10 @@ Sebelum mulai sebuah item, pastikan scope mempunyai approval yang sesuai.
 - [ ] Dapatkan approval khusus sebelum NIV-001 rewrite rehearsal.
 - [ ] Rekonsiliasi status identity amendment dengan Master Spec, Document
       Register, dan Decision Register.
-- [ ] Tandai plan lama sebagai completed/context/superseded sesuai evidence,
-      tanpa mengubah status berdasarkan checkbox saja.
+- [x] Tandai plan lama sebagai completed/context/superseded sesuai evidence,
+      tanpa mengubah status berdasarkan checkbox saja. Selesai 26 July 2026:
+      enam plan yang tidak memiliki header `Status:` sudah diberi header sesuai
+      Section 6.
 
 Exit criteria:
 
@@ -595,15 +734,22 @@ Exit criteria:
 
 ### Phase 1 — Security upgrade and green quality gate
 
-- [ ] Implement approved FastAPI/Starlette security upgrade.
-- [ ] Jalankan `pip-audit` dan simpan redacted result.
-- [ ] Fix RBAC test/runtime setelah Phase 0 decision.
-- [ ] Tolak disabled login sebelum token issuance.
-- [ ] Tambahkan login rate limit yang sesuai deployment topology.
-- [ ] Tetapkan password/session/token policy.
+- [x] Implement approved FastAPI/Starlette security upgrade. Selesai;
+      lihat BA-004.
+- [ ] Jalankan `pip-audit` dan simpan redacted result. Memerlukan approval
+      penambahan dependency tooling.
+- [x] Fix RBAC test/runtime setelah Phase 0 decision. Selesai untuk grant
+      `operations`; lihat BA-003. Model role granular BA-002 tetap terbuka.
+- [x] Tolak disabled login sebelum token issuance. Selesai melalui Phase A;
+      lihat BA-010.
+- [ ] Tambahkan login rate limit yang sesuai deployment topology. Terblokir
+      `DEC-AUTH-002`.
+- [ ] Tetapkan password/session/token policy. Terblokir `AUTH-DEC-05` dan
+      `AUTH-DEC-06`.
 - [ ] Tetapkan reproducible dependency boundary.
 - [ ] Konfigurasikan critical lint dan type-check gate.
-- [ ] Jalankan full backend suite tanpa unexpected skip/failure.
+- [x] Jalankan full backend suite tanpa unexpected skip/failure. Selesai
+      26 July 2026: 288 passed, 23 documented environment skip, 0 failed.
 
 Exit criteria:
 
@@ -624,7 +770,10 @@ Exit criteria:
 - [ ] Tambahkan version check dan idempotency key.
 - [ ] Tambahkan transactional audit untuk sensitive order/payment mutation.
 - [ ] Implement durable notification outbox/retry/reconciliation.
-- [ ] Jalankan real MongoDB replica-set tests.
+- [x] Jalankan real MongoDB replica-set tests. Selesai 26 July 2026 memakai
+      `docker-compose.transaction-test.yml`; seluruh real transaction test
+      lulus. Ini bukti kapabilitas transaksi, bukan bukti adopsi central
+      boundary pada BA-009.
 
 Exit criteria:
 
@@ -851,3 +1000,51 @@ Pada sesi berikutnya:
   superseded identity design/plan status, and this tracker.
 - No backend, frontend, migration, provider, production, or go-live
   implementation was authorized or performed.
+
+### 26 July 2026 — Resume verification and Phase 0 plan reconciliation
+
+Baseline: `origin/main` `d4d1fba`; verification dijalankan pada `e73c99a` di
+branch `fix/auth-phase-a-login-issuance`.
+
+Dijalankan sesuai Section 10:
+
+- `git status --short --branch`, `git fetch origin`, dan perbandingan
+  `0b0b556..origin/main` untuk `backend`, `docs`, `AGENTS.md`, `PRODUCT.md`;
+- `./.venv/bin/python -m pytest -q -rs` dari `backend/` dengan local
+  replica-set test topology aktif;
+- CI-style invocation dari repository root;
+- `pip check`, `mypy`, dan `flake8`.
+
+Hasil verifikasi:
+
+- 288 passed, 23 skipped, 0 failed, 14 subtests passed;
+- seluruh skip berasal dari external integration suite yang memerlukan
+  credential environment;
+- `pip check` pass; mypy 41 errors pada 7 file; flake8 1084 findings.
+
+Perubahan status finding:
+
+- BA-003 menjadi `resolved`;
+- BA-004 menjadi `resolved`, dengan `pip-audit` masih kurang;
+- BA-010 menjadi `partial`, Phase A selesai dan sisanya terblokir keputusan;
+- BA-011 menjadi `partial`, lifecycle CMS sudah ada dan sebagian requirement
+  belum diverifikasi;
+- BA-009 kehilangan environment limitation-nya, gap adopsi tetap terbuka;
+- BA-006, BA-007, dan BA-013 diverifikasi ulang dan tetap terbuka dengan
+  referensi baris terbaru.
+
+Perbaikan test infrastructure yang dilakukan dan di-commit:
+
+- `backend/tests/conftest.py` meng-import driver motor asli sebelum collection
+  agar stub bootstrap tidak bocor ke real replica-set test;
+- `backend/tests/test_transaction_topology_files.py` menerima kedua rootdir;
+- `backend/migrations/003_identity_access_policy.py` menerima bootstrap Owner
+  legacy yang tidak memiliki field `status`, dengan test barunya.
+
+Rekonsiliasi Phase 0:
+
+- enam implementation plan yang tidak memiliki header `Status:` sudah diberi
+  header sesuai Section 6, tanpa mengubah isi plan.
+
+Tidak ada keputusan produk, role, provider, payment, production-readiness, atau
+go-live yang diambil. Tidak ada push atau pull request yang dibuat.

@@ -1,5 +1,14 @@
 # Niuva Admin Studio Operational Remediation Plan — Pending Reconciliation
 
+Status: **Context Only — Pending Separate Implementation Approval**
+Status recorded: 26 July 2026
+Basis: gate non-otorisasi pada dokumen ini dan
+`docs/context/BACKEND_AUDIT_TRACKER_2026-07-24.md` Section 6
+
+Plan ini tidak mengubah backend authorization. Sebagian scope Admin sudah
+dipersempit oleh `DEC-OPS-002`; rekonsiliasi terhadap keputusan tersebut belum
+dilakukan.
+
 ## Authority and Non-Authorization Gate
 
 This plan is a bounded operational-experience planning document governed by

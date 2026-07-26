@@ -1,5 +1,14 @@
 # Catalog, Material Pricing, and Inventory Foundation Implementation Plan
 
+Status: **Partial — Implementation Exists — Do Not Re-Execute as Backlog**
+Status recorded: 26 July 2026
+Basis: `docs/context/BACKEND_AUDIT_TRACKER_2026-07-24.md` Section 6
+
+Implementation untuk plan ini sudah ada pada source dan test. Real transaction
+verification terpenuhi pada 26 July 2026. Yang masih unchecked adalah browser
+permission dan workflow QA. Checkbox di bawah adalah riwayat eksekusi, bukan
+backlog; jangan dijalankan ulang secara mekanis.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the shared Catalog, Material Pricing, Inventory, and internal Restock Alert foundation that Retail and B2B workflows can safely consume.
