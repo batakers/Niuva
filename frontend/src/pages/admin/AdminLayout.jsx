@@ -1,69 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  BookOpen,
-  Boxes,
   ChevronRight,
-  FileText,
-  History,
-  Image as ImageIcon,
-  Layers,
-  LayoutGrid,
   LogOut,
-  Mail,
   Menu,
-  MessageSquare,
-  Package,
-  Settings as SettingsIcon,
-  Users,
   X,
 } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { useAuth } from "../../context/AuthContext";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
-import { ADMIN_ROUTE_PERMISSIONS, hasPermission } from "../../lib/permissions";
+import { visibleAdminMenuGroups } from "../../lib/adminWorkbench";
 import { Button } from "../../components/ui/button";
 import { NotificationBell } from "@/components/admin/NotificationBell";
-
-const ADMIN_MENU_GROUPS = [
-  {
-    label: "admin.group.overview",
-    items: [
-      { path: "/admin", label: "admin.overview", icon: LayoutGrid },
-    ],
-  },
-  {
-    label: "admin.group.commerce",
-    items: [
-      { path: "/admin/orders", label: "admin.orders", icon: Package },
-      { path: "/admin/catalog", label: "admin.catalog", icon: BookOpen },
-      { path: "/admin/materials", label: "admin.materials", icon: Layers },
-    ],
-  },
-  {
-    label: "admin.group.inventory",
-    items: [
-      { path: "/admin/inventory", label: "admin.inventory", icon: Boxes },
-      { path: "/admin/stock-movements", label: "admin.stockMovements", icon: History },
-    ],
-  },
-  {
-    label: "admin.group.content",
-    items: [
-      { path: "/admin/portfolio", label: "admin.portfolio", icon: ImageIcon },
-      { path: "/admin/content", label: "admin.content", icon: FileText },
-      { path: "/admin/contacts", label: "admin.contacts", icon: Mail },
-    ],
-  },
-  {
-    label: "admin.group.system",
-    items: [
-      { path: "/admin/users", label: "admin.users", icon: Users },
-      { path: "/admin/notifications", label: "admin.notifications", icon: MessageSquare },
-      { path: "/admin/settings", label: "admin.settings", icon: SettingsIcon },
-    ],
-  },
-];
 
 export function AdminLayout({ children, title, subtitle }) {
   const { t } = useI18n();
@@ -71,6 +19,14 @@ export function AdminLayout({ children, title, subtitle }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopNav, setDesktopNav] = useState(() =>
+    typeof window === "undefined"
+      ? true
+      : window.matchMedia("(min-width: 1024px)").matches
+  );
+  const menuButtonRef = useRef(null);
+  const sidebarRef = useRef(null);
+  const closeButtonRef = useRef(null);
 
   const accessLevel =
     Array.isArray(user?.role_labels) && user.role_labels.length > 0
@@ -78,12 +34,7 @@ export function AdminLayout({ children, title, subtitle }) {
       : "No approved role";
 
   // Filter menu groups based on permissions
-  const visibleGroups = ADMIN_MENU_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter(({ path }) =>
-      hasPermission(user, ADMIN_ROUTE_PERMISSIONS[path])
-    ),
-  })).filter((group) => group.items.length > 0);
+  const visibleGroups = visibleAdminMenuGroups(user);
 
   const handleLogout = () => {
     logout();
@@ -94,6 +45,49 @@ export function AdminLayout({ children, title, subtitle }) {
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setDesktopNav(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!sidebarOpen || desktopNav) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = sidebarRef.current?.querySelectorAll(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [desktopNav, sidebarOpen]);
 
   // Set noindex for admin pages
   useEffect(() => {
@@ -115,19 +109,34 @@ export function AdminLayout({ children, title, subtitle }) {
     (path !== "/admin" && location.pathname.startsWith(`${path}/`));
 
   return (
-    <div className="flex min-h-screen w-full bg-surface-page">
+    <div className="admin-workbench flex min-h-screen w-full bg-surface-page">
+      <a
+        href="#admin-main"
+        className="fixed left-3 top-3 z-[70] -translate-y-20 bg-action-primary px-4 py-3 text-sm font-semibold text-text-inverse focus:translate-y-0 motion-reduce:transition-none"
+      >
+        {t("common.skipToContent")}
+      </a>
       {/* Mobile overlay with fade transition */}
-      <div
-        className={`fixed inset-0 z-40 bg-text-primary/50 transition-opacity duration-standard lg:hidden ${
+      <button
+        type="button"
+        tabIndex={sidebarOpen ? 0 : -1}
+        className={`fixed inset-0 z-40 bg-text-primary/50 transition-opacity duration-standard motion-reduce:transition-none lg:hidden ${
           sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={() => setSidebarOpen(false)}
-        aria-hidden="true"
+        aria-label={t("admin.closeMenu")}
       />
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border-default bg-surface-default shadow-navigation transition-transform duration-standard ease-snap lg:static lg:translate-x-0 lg:shadow-none ${
+        ref={sidebarRef}
+        id="admin-navigation-drawer"
+        role={!desktopNav ? "dialog" : undefined}
+        aria-modal={!desktopNav && sidebarOpen ? "true" : undefined}
+        aria-label={t("admin.navigation")}
+        aria-hidden={!desktopNav && !sidebarOpen ? "true" : undefined}
+        inert={!desktopNav && !sidebarOpen ? "" : undefined}
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border-default bg-surface-default shadow-navigation transition-transform duration-standard ease-snap motion-reduce:transition-none lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -143,10 +152,11 @@ export function AdminLayout({ children, title, subtitle }) {
             </span>
           </Link>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="rounded-control p-1.5 text-text-secondary transition-colors duration-fast hover:bg-surface-muted hover:text-text-primary lg:hidden"
-            aria-label={t("common.close")}
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-control text-text-secondary transition-colors duration-fast hover:bg-surface-muted hover:text-text-primary motion-reduce:transition-none lg:hidden"
+            aria-label={t("admin.closeMenu")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -166,21 +176,26 @@ export function AdminLayout({ children, title, subtitle }) {
                 {t(group.label)}
               </p>
               <div className="space-y-0.5">
-                {group.items.map(({ path, label, icon: Icon }) => {
+                {group.items.map(({ path, label, icon: Icon, badge }) => {
                   const active = isActive(path);
                   return (
                     <Link
                       key={path}
                       to={path}
                       aria-current={active ? "page" : undefined}
-                      className={`flex items-center gap-3 rounded-control px-3 py-2.5 type-navigation transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
+                      className={`flex min-h-11 items-center gap-3 rounded-control px-3 py-2.5 type-navigation transition-all duration-fast motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
                         active
                           ? "bg-action-primary text-text-inverse shadow-sm"
                           : "text-text-secondary hover:bg-surface-muted hover:text-text-primary"
                       }`}
                     >
                       <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                      {t(label)}
+                      <span className="min-w-0 flex-1 truncate">{t(label)}</span>
+                      {badge && (
+                        <span className="border border-current/30 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide opacity-80">
+                          {t(badge)}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -217,10 +232,13 @@ export function AdminLayout({ children, title, subtitle }) {
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border-default bg-surface-default/95 backdrop-blur-sm px-4 sm:px-6 shadow-surface">
           {/* Mobile menu button */}
           <button
+            ref={menuButtonRef}
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="rounded-control p-2 text-text-secondary transition-colors duration-fast hover:bg-surface-muted hover:text-text-primary lg:hidden"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-control text-text-secondary transition-colors duration-fast hover:bg-surface-muted hover:text-text-primary motion-reduce:transition-none lg:hidden"
             aria-label={t("admin.openMenu")}
+            aria-expanded={sidebarOpen}
+            aria-controls="admin-navigation-drawer"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -263,7 +281,7 @@ export function AdminLayout({ children, title, subtitle }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main id="admin-main" tabIndex="-1" className="flex-1 p-4 sm:p-6 lg:p-8">
           {/* Page header */}
           {(title || subtitle) && (
             <div className="mb-6">

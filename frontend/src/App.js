@@ -121,8 +121,10 @@ function App() {
                   <Route path="/admin/portfolio" element={protectedPage("/admin/portfolio", <AdminPortfolio />)} />
                   <Route path="/admin/content" element={protectedPage("/admin/content", <AdminContent />)} />
                   <Route path="/admin/contacts" element={protectedPage("/admin/contacts", <AdminContacts />)} />
+                  <Route path="/admin/inquiries" element={protectedPage("/admin/inquiries", <AdminContacts />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
                   <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotifications />)} />
+                  <Route path="/admin/communication" element={protectedPage("/admin/communication", <AdminNotifications />)} />
                   <Route path="/admin/settings" element={protectedPage("/admin/settings", <AdminSettings />)} />
                   {brandLabEnabled && <><Route path="/__brand-lab/editorial" element={<EditorialHomepagePrototype />} /><Route path="/__brand-lab/experimental" element={<ExperimentalHomepagePrototype />} /></>}
                   <Route path="*" element={<NotFound />} />

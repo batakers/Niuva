@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { useAuth } from "../../context/AuthContext";
+import { I18nProvider } from "../../i18n";
 
 jest.mock("../../context/AuthContext", () => ({
   useAuth: jest.fn(),
@@ -9,20 +10,21 @@ jest.mock("../../context/AuthContext", () => ({
 
 function renderProtected({ initialPath = "/admin", permission } = {}) {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Routes>
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute permission={permission}>
-              <div>protected content</div>
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/admin/login" element={<div>login page</div>} />
-        <Route path="/dashboard" element={<div>dashboard page</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <I18nProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute permission={permission}>
+                <div>protected content</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/admin/login" element={<div>login page</div>} />
+        </Routes>
+      </MemoryRouter>
+    </I18nProvider>,
   );
 }
 
@@ -68,12 +70,13 @@ test("renders children when the user holds the super-admin wildcard permission",
   expect(screen.getByText("protected content")).toBeInTheDocument();
 });
 
-test("redirects to the customer dashboard when the user lacks the required permission", () => {
+test("renders a dedicated 403 page when the user lacks the required permission", () => {
   useAuth.mockReturnValue({
     user: { id: "user-1", permissions: [] },
     loading: false,
   });
   renderProtected({ permission: "orders.read" });
-  expect(screen.getByText("dashboard page")).toBeInTheDocument();
+  expect(screen.getByText(/403/)).toBeInTheDocument();
+  expect(screen.getByText("/admin")).toBeInTheDocument();
   expect(screen.queryByText("protected content")).not.toBeInTheDocument();
 });

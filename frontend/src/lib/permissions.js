@@ -9,8 +9,10 @@ export const ADMIN_ROUTE_PERMISSIONS = Object.freeze({
   "/admin/portfolio": "content.read",
   "/admin/content": "content.read",
   "/admin/contacts": "inquiries.read",
+  "/admin/inquiries": "inquiries.read",
   "/admin/users": "users.read",
   "/admin/notifications": "notifications.write",
+  "/admin/communication": "notifications.write",
   "/admin/settings": "settings.write",
 });
 

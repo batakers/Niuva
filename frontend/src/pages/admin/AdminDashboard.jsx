@@ -1,14 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  AlertCircle,
   ArrowRight,
   BarChart3,
+  CircleAlert,
+  CircleCheck,
   Clock,
-  CreditCard,
-  Package,
-  CheckCircle2,
-  Users,
 } from "lucide-react";
 import {
   Line,
@@ -24,11 +21,11 @@ import { ErrorState } from "@/components/ui/error-state";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
 import { SurfacePanel } from "@/components/ui/surface-panel";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
+import { ADMIN_MENU_GROUPS, getRoleHome } from "@/lib/adminWorkbench";
 import { hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
 
@@ -59,58 +56,75 @@ function totalForRow(row) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Action Card — links to page with "needs attention" count
+ * Operational Spine — role-scoped next work
  * ────────────────────────────────────────────────────────────────────────── */
 
-function ActionCard({ icon: Icon, label, count, colorClass, to, loading }) {
-  const navigate = useNavigate();
-
+function WorkQueueRow({ path, index, count, loading }) {
+  const { t } = useI18n();
+  const item = ADMIN_MENU_GROUPS.flatMap((group) => group.items).find(
+    (candidate) => candidate.path === path
+  );
+  if (!item) return null;
+  const Icon = item.icon;
   if (loading) {
     return (
-      <SurfacePanel className="p-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-control" />
-          <div className="flex-1 space-y-1.5">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-6 w-10" />
-          </div>
+      <div className="relative flex gap-4 pb-5 last:pb-0">
+        <Skeleton className="relative z-10 h-9 w-9 shrink-0 rounded-full" />
+        <div className="flex-1 border border-border-default bg-surface-default p-4">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="mt-3 h-3 w-52" />
         </div>
-      </SurfacePanel>
+      </div>
     );
   }
 
   const hasItems = count > 0;
 
   return (
-    <SurfacePanel
-      className={`p-4 transition-all duration-fast cursor-pointer hover:shadow-navigation hover:-translate-y-0.5 ${
-        hasItems ? "ring-1 ring-inset ring-" + colorClass.replace("text-", "") + "/20" : ""
-      }`}
-      onClick={() => navigate(to)}
-      role="link"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && navigate(to)}
-    >
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-control ${
-            hasItems ? "bg-" + colorClass.replace("text-", "") + "/10" : "bg-surface-muted"
-          }`}
-        >
-          <Icon className={`h-5 w-5 ${hasItems ? colorClass : "text-text-secondary"}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary truncate">
-            {label}
-          </p>
-          <p className={`text-2xl font-bold tabular-nums ${hasItems ? colorClass : "text-text-primary"}`}>
-            {count}
-          </p>
-        </div>
-        <ArrowRight className="h-4 w-4 text-text-secondary shrink-0" />
+    <div className="relative flex gap-4 pb-5 last:pb-0">
+      <div
+        aria-hidden="true"
+        className="absolute bottom-0 left-[17px] top-9 w-px bg-border-default last:hidden"
+      />
+      <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${hasItems ? "border-status-warning/50 bg-status-warning/10 text-status-warning" : "border-border-default bg-surface-muted text-text-secondary"}`}>
+        <Icon className="h-4 w-4" strokeWidth={1.75} />
       </div>
-    </SurfacePanel>
+      <Link
+        to={path}
+        className="group flex min-h-20 flex-1 items-center gap-4 border border-border-default bg-surface-default p-4 transition-colors duration-fast hover:border-action-primary/50 hover:bg-surface-muted/40 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="font-heading text-sm font-semibold text-text-primary">
+            {t(item.label)}
+          </p>
+          <p className="mt-1 text-sm text-text-secondary">
+            {hasItems
+              ? t("admin.queueNeedsAction").replace("{count}", count)
+              : t("admin.queueReady")}
+          </p>
+        </div>
+        <span className="text-[10px] font-semibold tabular-nums text-text-disabled">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-text-secondary transition-transform duration-fast group-hover:translate-x-1 motion-reduce:transition-none" />
+      </Link>
+    </div>
   );
+}
+
+function queueCount(path, stats) {
+  if (!stats) return 0;
+  if (path === "/admin/orders") {
+    return ["pending_estimate", "awaiting_payment", "in_process"].reduce(
+      (sum, key) => sum + (Number(stats[key]) || 0),
+      0
+    );
+  }
+  if (path === "/admin/inquiries") {
+    return Number(stats.inquiries ?? stats.contacts) || 0;
+  }
+  if (path === "/admin/inventory") return Number(stats.low_stock) || 0;
+  return 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -252,14 +266,14 @@ export default function AdminDashboard() {
   }, [loadSeries]);
 
   const canSeeInventory = hasPermission(user, "inventory.read");
-  const canSeeRevenue = hasPermission(user, "payments.read");
   const statsLoading = !stats && !loadError;
+  const roleHome = getRoleHome(user);
 
   if (loadError) {
     return (
       <AdminLayout
-        title={t("admin.overview")}
-        subtitle={t("admin.overviewSubtitle")}
+        title={t("admin.workHome")}
+        subtitle={t(roleHome.labelKey)}
       >
         <ErrorState error={loadError} onRetry={fetchStats} />
       </AdminLayout>
@@ -268,81 +282,42 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout
-      title={t("admin.overview")}
-      subtitle={t("admin.overviewSubtitle")}
+      title={t("admin.workHome")}
+      subtitle={t(roleHome.labelKey)}
     >
-      {/* ─── Action Cards — status-driven "needs attention" row ─── */}
-      <section aria-label={t("dashboard.actionNeeded")}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <ActionCard
-            icon={Clock}
-            label={t("dashboard.pendingEstimates")}
-            count={stats?.pending_estimate ?? 0}
-            colorClass="text-status-warning"
-            to="/admin/orders?status=pending_estimate"
-            loading={statsLoading}
-          />
-          <ActionCard
-            icon={CreditCard}
-            label={t("dashboard.awaitingPayments")}
-            count={stats?.awaiting_payment ?? 0}
-            colorClass="text-action-primary"
-            to="/admin/orders?status=awaiting_payment"
-            loading={statsLoading}
-          />
-          <ActionCard
-            icon={Package}
-            label={t("dashboard.inProcess")}
-            count={stats?.in_process ?? 0}
-            colorClass="text-action-primary"
-            to="/admin/orders?status=in_process"
-            loading={statsLoading}
-          />
-          <ActionCard
-            icon={CheckCircle2}
-            label={t("dashboard.completedOrders")}
-            count={stats?.completed ?? 0}
-            colorClass="text-status-success"
-            to="/admin/orders?status=completed"
-            loading={statsLoading}
-          />
+      <section aria-labelledby="work-queue-title" className="max-w-3xl">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-border-default pb-4">
+          <div>
+            <p className="type-label uppercase tracking-widest text-action-primary">
+              {t("admin.operationalSpine")}
+            </p>
+            <h2 id="work-queue-title" className="mt-1 font-heading text-xl font-semibold text-text-primary">
+              {t("dashboard.actionNeeded")}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            {statsLoading ? <Clock className="h-4 w-4" /> : roleHome.queuePaths.some((path) => queueCount(path, stats) > 0) ? <CircleAlert className="h-4 w-4 text-status-warning" /> : <CircleCheck className="h-4 w-4 text-status-success" />}
+            {statsLoading ? t("common.loading") : t("admin.queueLive")}
+          </div>
+        </div>
+        <div data-testid="operational-spine">
+          {roleHome.queuePaths.map((path, index) => (
+            <WorkQueueRow
+              key={path}
+              path={path}
+              index={index}
+              count={queueCount(path, stats)}
+              loading={statsLoading}
+            />
+          ))}
+          {!statsLoading && roleHome.queuePaths.length === 0 && (
+            <EmptyState frame="solid">{t("admin.noAssignedQueue")}</EmptyState>
+          )}
         </div>
       </section>
 
-      {/* ─── Summary Stats ─── */}
-      <div
-        className="mt-6 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
-        data-testid="admin-overview"
-      >
-        {statsLoading ? (
-          <>
-            <StatCardSkeleton hero />
-            <StatCardSkeleton />
-          </>
-        ) : (
-          <>
-            <StatCard
-              label={t("admin.totalOrders")}
-              value={stats.total_orders}
-              colorClass="text-action-primary"
-              accentClass="border-l-action-primary"
-              hero
-              delay={0}
-            />
-            <StatCard
-              label={t("dashboard.totalClients")}
-              value={stats.clients}
-              colorClass="text-text-primary"
-              accentClass="border-l-border-strong"
-              delay={60}
-              className="flex items-center"
-            />
-          </>
-        )}
-      </div>
-
       {/* ─── Date Range Filter ─── */}
-      <SurfacePanel className="mt-8 p-4">
+      <SurfacePanel className="mt-10 p-4">
         <div className="flex flex-wrap items-end gap-4">
           <FormField label={t("dashboard.dateFrom")}>
             <Input
@@ -385,19 +360,6 @@ export default function AdminDashboard() {
           <TrendChart
             title={t("dashboard.stockMovementsTrend")}
             rows={series?.stock_movements || []}
-            loading={seriesLoading}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-          />
-        )}
-        {canSeeRevenue && (
-          <TrendChart
-            title={t("dashboard.revenueTrend")}
-            rows={series?.revenue || []}
-            valueLabel="revenue"
-            formatValue={(value) =>
-              `Rp ${Number(value).toLocaleString("id-ID")}`
-            }
             loading={seriesLoading}
             dateFrom={dateFrom}
             dateTo={dateTo}

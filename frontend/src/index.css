@@ -179,6 +179,13 @@
   --font-family-technical: var(--font-family-body);
 }
 
+.admin-workbench {
+  --font-family-display: 'Poppins', system-ui, sans-serif;
+  --font-family-body: 'Inter', system-ui, sans-serif;
+  --font-family-technical: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--font-family-body);
+}
+
 * { border-color: hsl(var(--border)); }
 
 html {
