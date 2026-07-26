@@ -10,14 +10,13 @@ import {
 import {
   BrandPage,
   CTASection,
-  DecorativeMotif,
   MarketingSection,
   PageContainer,
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
 
-// ponytail: Homepage stays fully hardcoded (no CMS) — Homepage schema is out of
+// ponytail: Homepage stays fully hardcoded (no CMS). Homepage schema is out of
 // scope per NIUVA_MASTER_SPEC.md and requires separate DEC-UX authorization.
 // Add CMS wiring here only after that approval.
 
@@ -84,7 +83,6 @@ function HeroProofPanel() {
   return (
     <div className="rounded-feature bg-decoration-brand-soft p-1.5 ring-1 ring-border-default">
       <div className="relative overflow-hidden rounded-card bg-action-primary p-5 text-text-inverse sm:p-6 lg:p-7">
-        <DecorativeMotif light density="sparse" className="-right-10 -top-10 h-40 w-40 opacity-30" />
         <div className="relative z-10">
           <p className="text-sm font-semibold text-text-inverse">Bukti kapabilitas</p>
           <h2 className="type-heading-subsection mt-4 max-w-sm text-text-inverse">
@@ -94,9 +92,8 @@ function HeroProofPanel() {
             {proofItems.map((item) => (
               <li
                 key={item}
-                className="flex min-h-12 items-center gap-3 border-t border-white/20 px-1 py-3"
+                className="flex min-h-12 items-center border-t border-white/20 px-1 py-3"
               >
-                <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-white/80" />
                 <span className="text-sm font-semibold leading-5 text-text-inverse">{item}</span>
               </li>
             ))}
@@ -118,7 +115,7 @@ function CoreCapabilitiesSection() {
           label="Capabilities"
           title="Kapabilitas utama untuk mengubah ide menjadi dasar produk yang dapat divalidasi."
           body="R&D dan Design & Prototyping menjadi wajah utama layanan Niuva. Konsultasi, workshop, apparel, dan merchandise mendukung kebutuhan kolaborasi, aktivasi, dan penguatan kapasitas."
-          align="split"
+          align="stacked"
         />
 
         <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
@@ -133,13 +130,15 @@ function CoreCapabilitiesSection() {
           ))}
         </div>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:mt-12 lg:gap-8">
-          {supportingCapabilities.map((service, index) => (
-            <article key={service.title} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-page p-6 sm:p-7">
-              <p className="text-sm font-semibold text-action-primary">Kapabilitas pendukung</p>
-              <h3 className="type-heading-card mt-4 text-text-primary">{service.title}</h3>
-              <p className="mt-3 max-w-xl text-base leading-7 text-text-secondary">{service.body}</p>
-              <BrandButton to="/capabilities" variant="quiet" className="mt-5 px-0" aria-label={`Lihat detail ${service.title}`}>
+        {/* Supporting capabilities are secondary, so they lose the card frame
+            the primary pair keeps. The rule carries the grouping instead. */}
+        <div className="mt-12 grid gap-x-10 gap-y-8 border-t border-border-default pt-8 md:grid-cols-2 lg:mt-14">
+          {supportingCapabilities.map((service) => (
+            <article key={service.title} className="brand-reveal">
+              <p className="type-label text-text-secondary">Kapabilitas pendukung</p>
+              <h3 className="type-heading-card mt-3 text-text-primary">{service.title}</h3>
+              <p className="type-body-small mt-3 max-w-[46ch] text-text-secondary">{service.body}</p>
+              <BrandButton to="/capabilities" variant="quiet" className="mt-4 px-0" aria-label={`Lihat detail ${service.title}`}>
                 Lihat detail capability
               </BrandButton>
             </article>
@@ -155,10 +154,9 @@ function OperatingModelSection() {
     <MarketingSection id="operating-model" tone="muted" className="overflow-hidden">
       <PageContainer>
         <SectionHeader
-          label="Operating model"
           title="Alur kerja teknis yang menjaga keputusan tetap dapat ditelusuri."
           body="Proses Niuva membantu calon mitra melihat titik masuk yang tepat, dari riset awal sampai implementasi. Setiap tahap dibuat untuk mengurangi asumsi dan memperjelas output."
-          align="split"
+          align="stacked"
         />
         <ProcessTimeline items={operatingModel} />
       </PageContainer>
@@ -174,7 +172,7 @@ function FeaturedProjectsSection() {
           label="Featured projects"
           title="Project sebagai bukti kapabilitas, bukan sekadar portfolio visual."
           body="Tiga project berikut menunjukkan pengalaman Niuva pada desain produk, mobilitas EV, simulator, perangkat interaktif, dan prototyping untuk kebutuhan teknis custom."
-          align="split"
+          align="stacked"
         />
         <div className="grid gap-12 lg:gap-16">
           {profileContent.projects.slice(0, 3).map((project, index) => (
@@ -206,14 +204,12 @@ function WhyNiuvaSection() {
       <PageContainer>
         <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr] xl:items-stretch xl:gap-10">
           <div className="brand-reveal relative h-full overflow-hidden rounded-feature bg-action-primary p-6 text-text-inverse sm:p-8 md:p-10">
-            <DecorativeMotif light density="sparse" className="-right-16 -top-14 h-72 w-72 opacity-55" />
             <div className="relative z-10 flex h-full flex-col justify-between gap-10">
               <div>
-                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-text-inverse">WHY NIUVA</p>
-                <h2 className="brand-heading mt-5 text-3xl leading-tight text-text-inverse md:text-4xl xl:text-5xl">
+                <h2 className="brand-heading text-3xl leading-tight text-text-inverse md:text-4xl xl:text-5xl">
                   Cukup strategis untuk bisnis, cukup teknis untuk eksekusi.
                 </h2>
-                <p className="mt-6 max-w-xl text-base leading-8 text-text-inverse">
+                <p className="mt-6 max-w-[46ch] text-base leading-8 text-text-inverse">
                   Niuva membantu organisasi membahas ide, risiko, bentuk produk, dan langkah realisasi dalam bahasa yang bisa dipahami tim bisnis maupun teknis.
                 </p>
               </div>
@@ -223,15 +219,15 @@ function WhyNiuvaSection() {
             </div>
           </div>
 
-          <div className="grid h-full auto-rows-fr gap-6 md:grid-cols-2">
+          {/* Four reasons, split by a rule rather than four identical boxes. */}
+          <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
             {whyNiuva.map((item) => (
               <article
                 key={item.title}
-                className="brand-reveal h-full overflow-hidden rounded-card border border-border-default bg-surface-default p-6 sm:p-7"
+                className="brand-reveal border-t border-border-default pt-5"
               >
-                <div className="mb-6 h-3 w-3 rounded-full bg-brand-primary" />
                 <h3 className="brand-heading text-2xl leading-tight text-text-primary">{item.title}</h3>
-                <p className="mt-3 text-base leading-7 text-text-secondary">{item.body}</p>
+                <p className="type-body-small mt-3 max-w-[44ch] text-text-secondary">{item.body}</p>
               </article>
             ))}
           </div>
@@ -260,8 +256,7 @@ export default function HomePage() {
           <PageContainer>
             <div className="grid gap-8 border-y border-border-default py-8 md:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-start lg:gap-12">
               <div className="brand-reveal">
-                <p className="text-sm font-semibold text-action-primary">Peran Niuva</p>
-                <h2 className="type-heading-section mt-4 max-w-3xl text-text-primary">
+                <h2 className="type-heading-section max-w-3xl text-text-primary">
                   Mitra strategis untuk kebutuhan produk yang harus diuji.
                 </h2>
                 <p className="mt-5 max-w-[65ch] text-base leading-8 text-text-secondary md:text-lg">
@@ -271,7 +266,7 @@ export default function HomePage() {
               <dl className="brand-reveal border-b border-border-default">
                 {positioningEvidence.map((item) => (
                   <div key={item.label} className="grid gap-2 border-t border-border-default py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
-                    <dt className="text-sm font-semibold text-action-primary">{item.label}</dt>
+                    <dt className="text-sm font-semibold text-text-secondary">{item.label}</dt>
                     <dd className="type-body-small text-text-primary sm:text-base sm:leading-[var(--type-body-leading)]">{item.value}</dd>
                   </div>
                 ))}
@@ -286,7 +281,7 @@ export default function HomePage() {
         <WhyNiuvaSection />
 
         <CTASection
-          label="Kolaborasi"
+          eyebrow={null}
           title="Diskusikan kebutuhan riset, desain, atau prototyping bersama Niuva."
           body="Sampaikan konteks proyek, target hasil, batasan teknis, dan bentuk output yang dibutuhkan. Tim Niuva akan membantu menentukan titik mulai yang paling relevan."
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}

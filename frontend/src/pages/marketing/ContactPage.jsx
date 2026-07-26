@@ -11,7 +11,6 @@ import {
   BrandPage,
   ContactForm,
   ContactSummary,
-  DecorativeMotif,
   MarketingSection,
   PageContainer,
   PageHero,
@@ -31,6 +30,37 @@ const initialForm = {
 
 // Mirrors the `brief` minimum on the canonical Inquiry payload.
 const MIN_BRIEF_LENGTH = 10;
+
+// Permissive on purpose: the goal is catching a visitor's typo, not policing
+// address grammar. The backend stays the authority.
+const EMAIL_SHAPE = /\S+@\S+\.\S+/;
+const MIN_PHONE_DIGITS = 8;
+
+// The form carries `noValidate`, so every rule the browser used to enforce
+// lives here. That buys consistent, styled, announceable messages instead of
+// native bubbles that vanish and are not reachable by assistive tech.
+function validateBrief(form) {
+  const errors = {};
+
+  if (!form.name.trim()) errors.name = "Isi nama lengkap Anda.";
+  if (!form.company.trim()) errors.company = "Isi nama perusahaan atau institusi.";
+
+  const email = form.email.trim();
+  if (!email) errors.email = "Isi alamat email yang bisa dihubungi.";
+  else if (!EMAIL_SHAPE.test(email)) errors.email = "Periksa kembali format email, contoh: nama@perusahaan.com.";
+
+  const phoneDigits = form.phone.replace(/\D/g, "");
+  if (!form.phone.trim()) errors.phone = "Isi nomor WhatsApp yang aktif.";
+  else if (phoneDigits.length < MIN_PHONE_DIGITS) errors.phone = "Nomor WhatsApp terlihat terlalu pendek.";
+
+  const brief = form.message.trim();
+  if (!brief) errors.message = "Jelaskan kebutuhan proyek Anda.";
+  else if (brief.length < MIN_BRIEF_LENGTH) {
+    errors.message = `Mohon jelaskan kebutuhan proyek minimal ${MIN_BRIEF_LENGTH} karakter.`;
+  }
+
+  return errors;
+}
 
 const needOptions = [
   "Research & Development",
@@ -65,9 +95,16 @@ const responseSteps = [
 
 export default function ContactPage() {
   const [form, setForm] = useState(initialForm);
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
-  const cmsBlocks = usePublicContent("contact");
+  // Clearing on edit means the message disappears the moment the visitor acts
+  // on it, instead of sitting there contradicting what they just typed.
+  const set = (key) => (event) => {
+    const { value } = event.target;
+    setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
+  };
+  const { blocks: cmsBlocks } = usePublicContent("contact");
   const cmsFields = useMemo(() => findBySlug(cmsBlocks, "primary"), [cmsBlocks]);
   const contact = { ...profileContent.contact, ...cmsFields };
 
@@ -76,13 +113,17 @@ export default function ContactPage() {
 
     // The canonical Inquiry requires a brief long enough to triage. Checking it
     // here keeps the visitor on a written sentence instead of a 422.
-    if (form.message.trim().length < MIN_BRIEF_LENGTH) {
-      toast.error(
-        `Mohon jelaskan kebutuhan proyek minimal ${MIN_BRIEF_LENGTH} karakter.`
-      );
+    const nextErrors = validateBrief(form);
+    const firstInvalid = Object.keys(nextErrors)[0];
+
+    if (firstInvalid) {
+      setErrors(nextErrors);
+      toast.error(nextErrors[firstInvalid]);
+      document.getElementById(`contact-${firstInvalid}`)?.focus();
       return;
     }
 
+    setErrors({});
     setLoading(true);
     // Each field lands on its own Inquiry attribute. The previous flattening
     // into subject/message made the brief unqueryable and untriageable.
@@ -100,6 +141,7 @@ export default function ContactPage() {
       await api.post("/inquiries", payload);
       toast.success("Brief berhasil dikirim. Tim Niuva akan menghubungi Anda.");
       setForm(initialForm);
+      setErrors({});
     } catch (error) {
       toast.error(formatApiError(error.response?.data?.detail));
     } finally {
@@ -118,10 +160,12 @@ export default function ContactPage() {
           secondaryAction={<BrandButton href="#form-konsultasi" variant="secondary">Isi Formulir Project</BrandButton>}
           variant="contact"
           visual={
-            <RoundedVisualFrame title="WhatsApp adalah jalur tercepat untuk memulai." kicker="Kanal konsultasi">
+            /* Sourced from the contact object so a CMS override reaches the
+               hero too; the rendered values are unchanged by default. */
+            <RoundedVisualFrame motif={false} title="WhatsApp adalah jalur tercepat untuk memulai." kicker="Kanal konsultasi">
               <div className="grid gap-3 text-sm font-semibold text-text-inverse">
-                <span>WhatsApp: 0851-1767-8901</span>
-                <span>Email: niuvamakerspace@gmail.com</span>
+                <span>WhatsApp: {contact.whatsapp}</span>
+                <span>Email: {contact.email}</span>
                 <span>Bandung Techno Park</span>
               </div>
             </RoundedVisualFrame>
@@ -129,13 +173,11 @@ export default function ContactPage() {
         />
 
         <MarketingSection tone="muted">
-          <DecorativeMotif className="-right-24 top-10 h-72 w-72 opacity-35" density="sparse" />
           <PageContainer className="relative z-10">
             <SectionHeader
-              eyebrow="Kanal resmi"
               title="Pilih jalur kontak sesuai kesiapan brief Anda."
               body="Gunakan WhatsApp untuk respons awal tercepat, email untuk dokumen formal, atau formulir untuk menyampaikan konteks proyek secara terstruktur."
-              align="split"
+              align="stacked"
             />
             <ContactSummary contact={contact} showMapLink />
           </PageContainer>
@@ -160,6 +202,7 @@ export default function ContactPage() {
                   onChange={set}
                   onSubmit={submit}
                   loading={loading}
+                  errors={errors}
                   needOptions={needOptions}
                   timelineOptions={timelineOptions}
                   submitLabel="Kirim Brief Project"
@@ -173,17 +216,15 @@ export default function ContactPage() {
         <MarketingSection tone="page">
           <PageContainer>
             <SectionHeader
-              eyebrow="Setelah brief dikirim"
               title="Tiga langkah menuju diskusi lanjutan."
               body="Respons awal difokuskan pada konteks kebutuhan, kecocokan kapabilitas, dan informasi yang masih perlu dilengkapi."
-              align="split"
+              align="stacked"
             />
-            <ol className="grid gap-5 md:grid-cols-3">
-              {responseSteps.map((step, index) => (
-                <li key={step.title} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6">
-                  <span className="font-heading text-sm font-semibold text-action-primary">{String(index + 1).padStart(2, "0")}</span>
-                  <h3 className="type-heading-card mt-5 text-text-primary">{step.title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-text-secondary">{step.body}</p>
+            <ol className="grid gap-x-10 gap-y-8 md:grid-cols-3">
+              {responseSteps.map((step) => (
+                <li key={step.title} className="brand-reveal border-t-2 border-[var(--color-brand-secondary)] pt-5">
+                  <h3 className="type-heading-card text-text-primary">{step.title}</h3>
+                  <p className="type-body-small mt-3 max-w-[42ch] text-text-secondary">{step.body}</p>
                 </li>
               ))}
             </ol>
@@ -193,10 +234,9 @@ export default function ContactPage() {
         <MarketingSection tone="muted">
           <PageContainer>
             <SectionHeader
-              eyebrow="Lokasi"
               title="Berbasis di Bandung Techno Park untuk riset dan prototyping."
               body="Alamat Niuva: Bandung Techno Park - Gedung D Lt.1, Ruang Makerspace. Pertemuan proyek dan kunjungan dilakukan berdasarkan janji."
-              align="split"
+              align="stacked"
             />
             <div className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default">
               <iframe

@@ -4,7 +4,6 @@ import { HAS_CONFIGURED_BACKEND, api } from "../../lib/api";
 import {
   BrandButton,
   ProjectCaseStudyCard,
-  RoundedVisualFrame,
   profileContent,
 } from "../../components/brand/CompanyProfileBlocks";
 import {
@@ -19,6 +18,10 @@ import {
 function normalizeTitle(value = "") {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
+
+// Second case rather than the first, so the hero is not immediately repeated by
+// the card directly beneath it. Left eager: it is the LCP element here.
+const heroProject = profileContent.projects[1];
 
 export default function ProjectsPage() {
   const [apiProjects, setApiProjects] = useState([]);
@@ -66,30 +69,35 @@ export default function ProjectsPage() {
   return (
     <MarketingLayout>
       <BrandPage>
+        {/* Real project photography was already in the bundle while the hero
+            showed a blue box listing category names. The evidence leads now. */}
         <PageHero
           eyebrow="Projects"
           title="Bukti produk, mobilitas, dan simulator Niuva."
           body="Halaman ini menampilkan proyek sebagai mini case study, bukan galeri visual. Setiap case menjelaskan konteks, tantangan, solusi, output, dan kapabilitas yang digunakan Niuva."
+          variant="showcase"
           primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
           visual={
-            <RoundedVisualFrame title="Empat proyek sebagai bukti proses dan kapabilitas." kicker="Bukti pekerjaan">
-              <div className="grid gap-3 text-sm font-semibold text-text-inverse">
-                <span>Mobilitas dan EV</span>
-                <span>Simulator interaktif</span>
-                <span>Redesain dan validasi produk</span>
-              </div>
-            </RoundedVisualFrame>
+            <div className="overflow-hidden rounded-card bg-surface-muted">
+              <img
+                src={heroProject.image}
+                alt={heroProject.imageAlt}
+                width={heroProject.imageWidth}
+                height={heroProject.imageHeight}
+                decoding="async"
+                className="aspect-[16/10] h-full w-full object-contain"
+              />
+            </div>
           }
         />
 
         <MarketingSection tone="default">
           <PageContainer className="relative z-10">
             <SectionHeader
-              eyebrow="Studi kasus"
               title="Empat proyek yang menunjukkan rentang kemampuan Niuva."
               body="Setiap project diringkas melalui konteks, tantangan, solusi, output, dan kapabilitas yang relevan agar calon mitra dapat menilai pendekatan kerja Niuva dengan cepat."
-              align="split"
+              align="stacked"
             />
             <div className="grid gap-12 lg:gap-16">
               {projects.map((project, index) => (
@@ -106,6 +114,7 @@ export default function ProjectsPage() {
         </MarketingSection>
 
         <CTASection
+          eyebrow={null}
           title="Diskusikan kebutuhan produk, EV, simulator, atau prototipe."
           body="Mulai dari konteks masalah, target pengguna, dan output yang dibutuhkan. Tim Niuva akan membantu membaca ruang lingkup riset, desain, teknologi, dan prototyping."
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}

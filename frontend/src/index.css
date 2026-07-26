@@ -389,6 +389,19 @@ body {
   overflow-wrap: break-word;
 }
 
+/* Hierarchy was carried by size alone: display, page, and section headings all
+   sat at 800, so every heading shouted equally. Stepping the lower levels down
+   gives the scale three readable tiers. Scoped to the public surface so
+   operational and customer screens keep their current weights. */
+.brand-page .type-heading-section {
+  font-weight: 700;
+}
+
+.brand-page .type-heading-subsection,
+.brand-page .type-heading-card {
+  font-weight: 600;
+}
+
 .brand-u-motif {
   position: relative;
   pointer-events: none;
@@ -458,6 +471,11 @@ body {
     opacity: 0;
     transform: translateY(28px);
   }
+
+  .brand-motion-ready [data-hero-entry] {
+    opacity: 0;
+    transform: translateY(20px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -465,7 +483,7 @@ body {
     scroll-behavior: auto;
   }
 
-  .reveal, .snap-in, .fade-up, .niuva-marquee, .brand-reveal {
+  .reveal, .snap-in, .fade-up, .niuva-marquee, .brand-reveal, [data-hero-entry] {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
