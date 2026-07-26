@@ -11,6 +11,9 @@ export const ADMIN_ROUTE_PERMISSIONS = Object.freeze({
   "/admin/contacts": "inquiries.read",
   "/admin/inquiries": "inquiries.read",
   "/admin/b2b/quotes": "quotes.read",
+  // Authoring a revision is a write, so read-only roles get the dedicated 403
+  // at the route rather than a form they cannot submit.
+  "/admin/b2b/quotes/revision": "quotes.write",
   "/admin/b2b/projects": "projects.read",
   "/admin/users": "users.read",
   "/admin/notifications": "notifications.write",

@@ -129,6 +129,17 @@ describe("B2B command permission scoping", () => {
   test("never dispatches create_revision as a plain status transition", () => {
     expect(detailSource).not.toContain("create_revision:");
     expect(detailSource).toContain("revisionPending");
-    expect(detailSource).toContain('t("b2b.revisionPending")');
+  });
+
+  test("routes create_revision to the editor rather than a one-click command", () => {
+    expect(detailSource).toContain("/revision`");
+    expect(detailSource).toContain('data-testid="open-revision-editor"');
+    expect(appSource).toContain('path="/admin/b2b/quotes/:id/revision"');
+  });
+
+  test("guards the revision editor with the write scope", () => {
+    expect(ADMIN_ROUTE_PERMISSIONS["/admin/b2b/quotes/revision"]).toBe(
+      "quotes.write"
+    );
   });
 });

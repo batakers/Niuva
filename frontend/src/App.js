@@ -51,6 +51,9 @@ const AdminQuoteDetail = lazy(() =>
 const AdminProjectDetail = lazy(() =>
   import("@/pages/admin/B2BDetail").then((m) => ({ default: m.ProjectDetail }))
 );
+const AdminQuoteRevisionEditor = lazy(() =>
+  import("@/pages/admin/QuoteRevisionEditor")
+);
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
 const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
@@ -143,6 +146,7 @@ function App() {
                   <Route path="/admin/inquiries/:id" element={protectedPage("/admin/inquiries", <AdminInquiryDetail />)} />
                   <Route path="/admin/b2b/quotes" element={protectedPage("/admin/b2b/quotes", <AdminQuoteList />)} />
                   <Route path="/admin/b2b/quotes/:id" element={protectedPage("/admin/b2b/quotes", <AdminQuoteDetail />)} />
+                  <Route path="/admin/b2b/quotes/:id/revision" element={protectedPage("/admin/b2b/quotes/revision", <AdminQuoteRevisionEditor />)} />
                   <Route path="/admin/b2b/projects" element={protectedPage("/admin/b2b/projects", <AdminProjectList />)} />
                   <Route path="/admin/b2b/projects/:id" element={protectedPage("/admin/b2b/projects", <AdminProjectDetail />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />

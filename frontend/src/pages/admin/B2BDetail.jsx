@@ -53,9 +53,9 @@ const CONFIG = {
   },
 };
 
-// Commands the workbench knows how to dispatch. `create_revision` is deliberately
-// absent: it needs an immutable scope snapshot editor that is not part of this
-// release, so it is surfaced as a blocker instead of a button that would 422.
+// Commands the workbench can dispatch inline from this panel. `create_revision`
+// is deliberately absent: it authors a whole scope snapshot, so it routes to the
+// revision editor instead of firing from a one-click button.
 const DEDICATED_COMMANDS = {
   inquiry: { convert: (id) => `/admin/inquiries/${id}/convert` },
   quote: { create_project: (id) => `/admin/b2b/quotes/${id}/project` },
@@ -286,9 +286,14 @@ function B2BDetail({ kind }) {
           <SurfacePanel padding="md">
             <p className="type-label text-text-secondary">{t("b2b.nextActions")}</p>
             {revisionPending && (
-              <p className="mt-3 text-sm leading-6 text-text-secondary">
-                {t("b2b.revisionPending")}
-              </p>
+              <Link
+                to={`/admin/b2b/quotes/${id}/revision`}
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-control bg-action-primary px-4 py-3 text-sm font-semibold text-text-inverse transition-colors duration-fast hover:bg-action-primary-hover motion-reduce:transition-none"
+                data-testid="open-revision-editor"
+              >
+                {t("b2b.action.create_revision")}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
             )}
             {actionable.length > 0 ? (
               <div className="mt-4 space-y-3">
