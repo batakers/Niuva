@@ -258,6 +258,30 @@ def test_apply_requires_an_existing_active_bootstrap_owner(bootstrap):
     assert database.audit_events.items == []
 
 
+def test_apply_accepts_reviewed_legacy_bootstrap_with_missing_status():
+    migration = load_migration()
+    database = FakeDatabase([{"id": "bootstrap-owner", "role": "admin"}])
+    guard = RecordingGuard(database)
+
+    report = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            bootstrap_owner_id="bootstrap-owner",
+            guard=guard,
+        )
+    )
+
+    migrated = database.users.items[0]
+    assert report["categories"] == {"bootstrap_owner_assigned": 1}
+    assert migrated["status"] == "active"
+    assert canonical_roles(migrated) == ("super_admin",)
+    assert migrated["access_state"] == "approved"
+    assert [event["action"] for event in database.audit_events.items] == [
+        "identity.bootstrap_owner_assigned"
+    ]
+
+
 @pytest.mark.parametrize("legacy_role", sorted(SUPERSEDED_INTERNAL_ROLE_MARKERS))
 def test_apply_quarantines_every_superseded_internal_role(legacy_role):
     migration = load_migration()
