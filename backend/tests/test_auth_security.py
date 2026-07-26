@@ -5,6 +5,7 @@ import sys
 import types
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 import jwt
@@ -484,6 +485,184 @@ def test_admin_boundary_projections_and_capability_gates():
 
 def test_authentication_and_authorization_security_matrix():
     asyncio.run(run_security_matrix())
+
+
+async def run_login_issuance_contract():
+    valid_password = "ValidPassword123"
+    users = [
+        {
+            "id": "disabled-customer",
+            "email": "disabled-customer@example.com",
+            "password_hash": server.hash_password(valid_password),
+            "role": "client",
+            "status": "disabled",
+        },
+        {
+            "id": "disabled-staff",
+            "email": "disabled-staff@niuva.com",
+            "password_hash": server.hash_password(valid_password),
+            "roles": ["operations"],
+            "status": "disabled",
+            "access_state": "approved",
+        },
+        {
+            "id": "review-blocked",
+            "email": "review-blocked@example.com",
+            "password_hash": server.hash_password(valid_password),
+            "roles": ["retail_customer"],
+            "status": "active",
+            "access_state": "access_review_required",
+        },
+        {
+            "id": "missing-hash",
+            "email": "missing-hash@example.com",
+            "role": "client",
+        },
+        {
+            "id": "malformed-hash",
+            "email": "malformed-hash@example.com",
+            "password_hash": "not-a-bcrypt-hash",
+            "role": "client",
+        },
+        {
+            "id": "legacy-admin",
+            "email": "legacy-admin@niuva.com",
+            "password_hash": server.hash_password(valid_password),
+            "role": "admin",
+        },
+        {
+            "id": "legacy-client",
+            "name": "Legacy Client",
+            "email": "legacy-client@example.com",
+            "password_hash": server.hash_password(valid_password),
+            "role": "client",
+        },
+        {
+            "id": "canonical-customer",
+            "name": "Canonical Customer",
+            "email": "canonical-customer@example.com",
+            "password_hash": server.hash_password(valid_password),
+            "roles": ["retail_customer"],
+            "status": "active",
+            "access_state": "approved",
+        },
+        {
+            "id": "canonical-staff",
+            "name": "Canonical Staff",
+            "email": "canonical-staff@niuva.com",
+            "password_hash": server.hash_password(valid_password),
+            "roles": ["operations"],
+            "status": "active",
+            "access_state": "approved",
+        },
+    ]
+    server.db = FakeDatabase(users)
+
+    invalid_cases = [
+        ("/api/auth/login", "unknown@example.com", valid_password, True),
+        ("/api/auth/admin/login", "unknown@example.com", valid_password, True),
+        ("/api/auth/login", "legacy-client@example.com", "WrongPassword123", False),
+        ("/api/auth/admin/login", "legacy-client@example.com", "WrongPassword123", False),
+        ("/api/auth/login", "disabled-customer@example.com", valid_password, False),
+        ("/api/auth/admin/login", "disabled-staff@niuva.com", valid_password, False),
+        ("/api/auth/login", "review-blocked@example.com", valid_password, False),
+        ("/api/auth/admin/login", "review-blocked@example.com", valid_password, False),
+        ("/api/auth/login", "missing-hash@example.com", valid_password, True),
+        ("/api/auth/admin/login", "malformed-hash@example.com", valid_password, True),
+        ("/api/auth/login", "legacy-admin@niuva.com", valid_password, False),
+    ]
+
+    transport = httpx.ASGITransport(app=server.app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+    ) as api:
+        real_verify_password = server.verify_password
+        with (
+            patch.object(
+                server,
+                "verify_password",
+                wraps=real_verify_password,
+            ) as verify_mock,
+            patch.object(
+                server,
+                "auth_response",
+                wraps=server.auth_response,
+            ) as response_mock,
+            patch.object(
+                server,
+                "create_token",
+                wraps=server.create_token,
+            ) as token_mock,
+        ):
+            for endpoint, email, password, uses_dummy_hash in invalid_cases:
+                verification_calls = verify_mock.call_count
+                response = await api.post(
+                    endpoint,
+                    json={"email": email, "password": password},
+                )
+
+                assert response.status_code == 401
+                assert response.json() == {"detail": "Invalid email or password"}
+                assert verify_mock.call_count == verification_calls + 1
+                if uses_dummy_hash:
+                    assert verify_mock.call_args.args[1] == server.DUMMY_PASSWORD_HASH
+
+            response_mock.assert_not_called()
+            token_mock.assert_not_called()
+
+        with patch.object(
+            server,
+            "verify_password",
+            wraps=real_verify_password,
+        ) as success_verify_mock:
+            legacy_login = await api.post(
+                "/api/auth/login",
+                json={
+                    "email": "legacy-client@example.com",
+                    "password": valid_password,
+                },
+            )
+            assert legacy_login.status_code == 200
+            assert legacy_login.json()["user"]["roles"] == ["retail_customer"]
+
+            canonical_login = await api.post(
+                "/api/auth/login",
+                json={
+                    "email": "canonical-customer@example.com",
+                    "password": valid_password,
+                },
+            )
+            assert canonical_login.status_code == 200
+            assert canonical_login.json()["user"]["roles"] == ["retail_customer"]
+
+            staff_login = await api.post(
+                "/api/auth/admin/login",
+                json={
+                    "email": "canonical-staff@niuva.com",
+                    "password": valid_password,
+                },
+            )
+            assert staff_login.status_code == 200
+            assert staff_login.json()["user"]["roles"] == ["operations"]
+
+            customer_admin_login = await api.post(
+                "/api/auth/admin/login",
+                json={
+                    "email": "legacy-client@example.com",
+                    "password": valid_password,
+                },
+            )
+            assert customer_admin_login.status_code == 403
+            assert customer_admin_login.json() == {
+                "detail": "Permission required: admin.access"
+            }
+            assert success_verify_mock.call_count == 4
+
+
+def test_login_issuance_is_generic_fail_closed_and_legacy_compatible():
+    asyncio.run(run_login_issuance_contract())
+
 
 async def run_admin_stats_counts_canonical_customer_roles():
     original_db = server.db
