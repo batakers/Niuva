@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AlertCircle, CheckCircle2, Download, Eye, Layers, Package } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,8 +11,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -62,6 +64,7 @@ const INITIAL_FILTERS = { status: "all", search: "", dateFrom: "", dateTo: "" };
 
 export default function AdminOrders() {
   const { t } = useI18n();
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [sel, setSel] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +72,13 @@ export default function AdminOrders() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkStatus, setBulkStatus] = useState("in_process");
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [filters, setFilters] = useState(() => {
+    const statusParam = searchParams.get("status");
+    if (statusParam && STATUS_FILTER_OPTIONS.some((o) => o.value === statusParam)) {
+      return { ...INITIAL_FILTERS, status: statusParam };
+    }
+    return INITIAL_FILTERS;
+  });
 
   const load = () => {
     setLoading(true);
@@ -146,13 +155,13 @@ export default function AdminOrders() {
       const { data } = await api.post("/admin/orders/bulk-status", {
         order_ids: selectedIds,
         status: bulkStatus,
-        note: "Bulk status update",
+        note: t("orders.bulkStatusNote"),
       });
       const failed = data.results.filter((row) => !row.success).length;
       if (failed === 0) {
-        toast.success(`${data.results.length} pesanan diperbarui.`);
+        toast.success(t("orders.bulkSuccess").replace("{count}", String(data.results.length)));
       } else {
-        toast.warning(`${data.results.length - failed} berhasil, ${failed} gagal.`);
+        toast.warning(`${data.results.length - failed} OK, ${failed} failed.`);
       }
       setSelectedIds([]);
       load();
@@ -186,21 +195,17 @@ export default function AdminOrders() {
 
         {/* Filter bar */}
         {!loading && !loadError && orders.length > 0 && (
-          <div className="flex flex-wrap items-end gap-3 border-b border-border-default px-6 py-4">
-            <div className="min-w-[200px] flex-1 space-y-1.5">
-              <Label className="type-label text-text-secondary">
-                {t("common.search")}
-              </Label>
-              <Input
-                value={filters.search}
-                onChange={(e) => updateFilter("search")(e.target.value)}
-                placeholder={t("orders.searchPlaceholder")}
-              />
+          <div className="flex flex-wrap items-end gap-3 border-b border-border-default px-4 sm:px-6 py-4">
+            <div className="min-w-[200px] flex-1">
+              <FormField label={t("common.search")}>
+                <Input
+                  value={filters.search}
+                  onChange={(e) => updateFilter("search")(e.target.value)}
+                  placeholder={t("orders.searchPlaceholder")}
+                />
+              </FormField>
             </div>
-            <div className="space-y-1.5">
-              <Label className="type-label text-text-secondary">
-                {t("common.status")}
-              </Label>
+            <FormField label={t("common.status")}>
               <Select
                 value={filters.status}
                 onValueChange={updateFilter("status")}
@@ -216,29 +221,23 @@ export default function AdminOrders() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="type-label text-text-secondary">
-                {t("dashboard.dateFrom")}
-              </Label>
+            </FormField>
+            <FormField label={t("dashboard.dateFrom")}>
               <Input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => updateFilter("dateFrom")(e.target.value)}
                 className="w-auto"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="type-label text-text-secondary">
-                {t("dashboard.dateTo")}
-              </Label>
+            </FormField>
+            <FormField label={t("dashboard.dateTo")}>
               <Input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => updateFilter("dateTo")(e.target.value)}
                 className="w-auto"
               />
-            </div>
+            </FormField>
             {hasActiveFilters && (
               <Button
                 variant="ghost"
@@ -312,9 +311,7 @@ export default function AdminOrders() {
             </Table>
           </div>
         ) : loadError ? (
-          <EmptyState icon={AlertCircle} className="py-16">
-            <span className="text-status-error">{loadError}</span>
-          </EmptyState>
+          <ErrorState error={loadError} onRetry={load} />
         ) : orders.length === 0 ? (
           <EmptyState icon={Package} className="py-16">
             {t("orders.empty")}
@@ -324,78 +321,113 @@ export default function AdminOrders() {
             {t("orders.noMatch")}
           </EmptyState>
         ) : (
-          <div className="overflow-x-auto">
-            <Table data-testid="admin-orders-table">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <input
-                      type="checkbox"
-                      aria-label={t("orders.selectAll")}
-                      checked={
-                        orderIds.length > 0 &&
-                        selectedIds.length === orderIds.length
-                      }
-                      onChange={toggleAll}
-                      className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
-                    />
-                  </TableHead>
-                  <TableHead>{t("orders.col.number")}</TableHead>
-                  <TableHead>{t("orders.col.client")}</TableHead>
-                  <TableHead>{t("orders.col.config")}</TableHead>
-                  <TableHead>{t("common.status")}</TableHead>
-                  <TableHead>{t("orders.col.date")}</TableHead>
-                  <TableHead className="text-right">
-                    {t("common.actions")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.map((o) => (
-                  <TableRow 
-                    key={o.id}
-                    data-state={selectedIds.includes(o.id) ? "selected" : undefined}
-                  >
-                    <TableCell>
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table data-testid="admin-orders-table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
                       <input
                         type="checkbox"
-                        aria-label={`${t("orders.select")} ${o.order_number}`}
-                        checked={selectedIds.includes(o.id)}
-                        onChange={() => toggleOne(o.id)}
+                        aria-label={t("orders.selectAll")}
+                        checked={
+                          orderIds.length > 0 &&
+                          selectedIds.length === orderIds.length
+                        }
+                        onChange={toggleAll}
                         className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
                       />
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-sm font-medium text-action-primary">
-                      {o.order_number}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium text-text-primary">{o.user_name}</span>
-                    </TableCell>
-                    <TableCell className="text-text-secondary">
-                      {o.material_name}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <StatusBadge status={o.status} />
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
-                      {fmtDay(o.created_at)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        data-testid={`manage-order-${o.order_number}`}
-                        onClick={() => setSel(o)}
-                      >
-                        <Eye className="h-4 w-4 mr-1.5" />
-                        {t("orders.inspect")}
-                      </Button>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead>{t("orders.col.number")}</TableHead>
+                    <TableHead>{t("orders.col.client")}</TableHead>
+                    <TableHead>{t("orders.col.config")}</TableHead>
+                    <TableHead>{t("common.status")}</TableHead>
+                    <TableHead>{t("orders.col.date")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("common.actions")}
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredOrders.map((o) => (
+                    <TableRow 
+                      key={o.id}
+                      data-state={selectedIds.includes(o.id) ? "selected" : undefined}
+                    >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          aria-label={`${t("orders.select")} ${o.order_number}`}
+                          checked={selectedIds.includes(o.id)}
+                          onChange={() => toggleOne(o.id)}
+                          className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
+                        />
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-sm font-medium text-action-primary">
+                        {o.order_number}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-text-primary">{o.user_name}</span>
+                      </TableCell>
+                      <TableCell className="text-text-secondary">
+                        {o.material_name}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <StatusBadge status={o.status} />
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
+                        {fmtDay(o.created_at)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          data-testid={`manage-order-${o.order_number}`}
+                          onClick={() => setSel(o)}
+                        >
+                          <Eye className="h-4 w-4 mr-1.5" />
+                          {t("orders.inspect")}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border-default">
+              {filteredOrders.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className="w-full text-left px-4 py-3 hover:bg-surface-muted/50 active:bg-surface-muted transition-colors duration-fast"
+                  onClick={() => setSel(o)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-sm font-medium text-action-primary">
+                      {o.order_number}
+                    </span>
+                    <StatusBadge status={o.status} />
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-text-primary truncate">
+                      {o.user_name}
+                    </span>
+                    <span className="text-xs font-mono text-text-secondary shrink-0">
+                      {fmtDay(o.created_at)}
+                    </span>
+                  </div>
+                  {o.material_name && (
+                    <p className="mt-0.5 text-xs text-text-secondary truncate">
+                      {o.material_name}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </SurfacePanel>
 
@@ -427,7 +459,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
     try {
       await downloadFile(path, filename);
     } catch {
-      toast.error("FILE_DOWNLOAD_FAILED");
+      toast.error(t("orders.fileDownloadFailed"));
     }
   };
 
@@ -436,7 +468,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
     try {
       const { data } = await fn();
       onUpdated(data);
-      toast.success("SYSTEM_UPDATED");
+      toast.success(t("orders.statusUpdated"));
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
     } finally {

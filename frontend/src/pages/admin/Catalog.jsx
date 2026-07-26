@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, Archive, BookOpen, Edit3, FolderOpen, Plus, RefreshCw } from "lucide-react";
+import { Archive, BookOpen, Edit3, FolderOpen, Plus, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -12,6 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -406,17 +408,15 @@ export default function Catalog() {
         </SurfacePanelHeader>
 
         <div className="grid gap-4 p-4 md:grid-cols-3 xl:grid-cols-6">
-          <div className="space-y-1.5 md:col-span-2">
-            <Label className="type-label text-text-secondary">{t("common.search")}</Label>
+          <FormField label={t("common.search")} className="md:col-span-2">
             <Input
               value={filters.search}
               onChange={changeFilterEvent("search")}
               placeholder={t("catalog.searchPlaceholder")}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label className="type-label text-text-secondary">{t("catalog.category")}</Label>
+          <FormField label={t("catalog.category")}>
             <Select value={filters.category} onValueChange={changeFilter("category")}>
               <SelectTrigger>
                 <SelectValue />
@@ -430,10 +430,9 @@ export default function Catalog() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label className="type-label text-text-secondary">{t("catalog.workflow")}</Label>
+          <FormField label={t("catalog.workflow")}>
             <Select value={filters.workflow} onValueChange={changeFilter("workflow")}>
               <SelectTrigger>
                 <SelectValue />
@@ -445,10 +444,9 @@ export default function Catalog() {
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label className="type-label text-text-secondary">{t("catalog.pricingMode")}</Label>
+          <FormField label={t("catalog.pricingMode")}>
             <Select value={filters.pricing} onValueChange={changeFilter("pricing")}>
               <SelectTrigger>
                 <SelectValue />
@@ -460,10 +458,9 @@ export default function Catalog() {
                 <SelectItem value="quote_required">Quote required</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label className="type-label text-text-secondary">{t("catalog.stockPolicy")}</Label>
+          <FormField label={t("catalog.stockPolicy")}>
             <Select value={filters.stock} onValueChange={changeFilter("stock")}>
               <SelectTrigger>
                 <SelectValue />
@@ -474,7 +471,7 @@ export default function Catalog() {
                 <SelectItem value="made_to_order">Made to order</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
         </div>
       </SurfacePanel>
 
@@ -528,9 +525,7 @@ export default function Catalog() {
             </TableBody>
           </Table>
         ) : error ? (
-          <EmptyState icon={AlertCircle} className="py-16">
-            <span className="text-status-error">{error}</span>
-          </EmptyState>
+          <ErrorState error={error} onRetry={load} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={BookOpen} className="py-16">
             {t("catalog.empty")}

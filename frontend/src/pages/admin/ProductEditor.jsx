@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/empty-state";
+import { ErrorState } from "../../components/ui/error-state";
+import { FormField } from "../../components/ui/form-field";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { SurfacePanel, SurfacePanelHeader } from "../../components/ui/surface-panel";
@@ -33,11 +35,9 @@ const emptyOption = () => ({
 
 function Field({ label, error, children }) {
   return (
-    <label className="block space-y-1">
-      <span className="type-label text-text-secondary">{label}</span>
+    <FormField label={label} error={error?.join("; ")}>
       {children}
-      {error?.map((message) => <span key={message} className="block text-xs text-destructive" role="alert">{message}</span>)}
-    </label>
+    </FormField>
   );
 }
 
@@ -205,7 +205,7 @@ export default function ProductEditor() {
   };
 
   if (loading) return <AdminLayout title={t("catalog.editor")}><div className="space-y-6 p-6"><Skeleton variant="heading" className="w-64" /><Skeleton className="h-10 w-full" /><Skeleton className="h-32 w-full" /></div></AdminLayout>;
-  if (error) return <AdminLayout title={t("catalog.editor")}><EmptyState icon={AlertCircle} className="py-16"><span role="alert" className="text-status-error">{error}</span></EmptyState></AdminLayout>;
+  if (error) return <AdminLayout title={t("catalog.editor")}><ErrorState error={error} onRetry={() => load()} /></AdminLayout>;
 
   return (
     <AdminLayout title={isNew ? t("catalog.create") : draft.name || t("catalog.editor")} subtitle={canWrite ? t("catalog.editHint") : t("catalog.readOnly")}>
