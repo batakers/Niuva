@@ -36,6 +36,7 @@ from dashboard_domain import (
     summarize_movements,
     withheld_revenue,
 )
+from notification_service import NotificationError, NotificationService
 from retail_domain import classify_legacy_order
 from retail_routes import build_retail_router
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
@@ -1041,9 +1042,51 @@ async def admin_stats_timeseries(
     }
 
 
+def notification_service() -> NotificationService:
+    return NotificationService(db=db)
+
+
+async def _invoke_notifications(awaitable):
+    try:
+        return await awaitable
+    except NotificationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.payload()) from exc
+
+
 @api.get("/notifications")
-async def my_notifications(user: dict = Depends(get_current_user)):
-    return await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+async def my_notifications(
+    unread_only: bool = False,
+    limit: int = 50,
+    user: dict = Depends(get_current_user),
+):
+    """The bell feed: what the system did that this reader may need to act on."""
+    return await _invoke_notifications(
+        notification_service().list_for_user(
+            user["id"], unread_only=unread_only, limit=limit
+        )
+    )
+
+
+@api.get("/notifications/unread-count")
+async def my_unread_notification_count(user: dict = Depends(get_current_user)):
+    return {"unread": await notification_service().unread_count(user["id"])}
+
+
+@api.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    user: dict = Depends(get_current_user),
+):
+    return await _invoke_notifications(
+        notification_service().mark_read(notification_id, user_id=user["id"])
+    )
+
+
+@api.post("/notifications/read-all")
+async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
+    return await _invoke_notifications(
+        notification_service().mark_all_read(user["id"])
+    )
 
 
 async def resolve_notification_recipients(req: AdminNotificationReq) -> list:
@@ -1285,6 +1328,22 @@ async def seed():
         await work_orders.create_index("id", unique=True)
         await work_orders.create_index([("project_id", 1), ("updated_at", -1)])
         await work_orders.create_index([("status", 1), ("updated_at", -1)])
+    notifications = getattr(db, "notifications", None)
+    if notifications is not None:
+        await notifications.create_index("id", unique=True)
+        # Partial: legacy rows predate the key, and several missing values
+        # would collide on a plain unique index.
+        await notifications.create_index(
+            "deduplication_key",
+            unique=True,
+            partialFilterExpression={"deduplication_key": {"$exists": True}},
+        )
+        await notifications.create_index([("user_id", 1), ("read_at", 1)])
+        await notifications.create_index([("user_id", 1), ("created_at", -1)])
+    outbox = getattr(db, "notification_outbox", None)
+    if outbox is not None:
+        await outbox.create_index("id", unique=True)
+        await outbox.create_index([("status", 1), ("created_at", 1)])
     retail_orders = getattr(db, "retail_orders", None)
     if retail_orders is not None:
         await retail_orders.create_index("id", unique=True)

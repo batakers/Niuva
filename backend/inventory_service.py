@@ -7,6 +7,7 @@ from bson.decimal128 import Decimal128
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from audit import append_audit_event
+from notification_service import NotificationService
 from inventory_domain import (
     InventoryConflict,
     apply_deltas,
@@ -677,28 +678,30 @@ class InventoryService:
         for user in users:
             if not has_permission(user, "restock_alerts.read"):
                 continue
-            notification = {
-                "id": str(uuid.uuid4()),
-                "user_id": user["id"],
-                "type": "restock_alert",
-                "subject": f"Restock diperlukan: {alert['subject_name']}",
-                "title": "Peringatan stok",
-                "body_html": f"Trigger: {alert['trigger_type']}",
-                "alert_id": alert["id"],
-                "read": False,
-                "created_at": now_iso(),
-            }
-            await self.db.notifications.insert_one(
-                notification, **_write_options(session)
+            subject = f"Restock diperlukan: {alert['subject_name']}"
+            body = f"Trigger: {alert['trigger_type']}"
+            # Published through the notification service so the bell holds one
+            # shape, with a deduplication key and an allowlisted reference: a
+            # recurring shortage is one row that resurfaces, not a new row per
+            # observation.
+            notification = await NotificationService(db=self.db).publish(
+                user_id=user["id"],
+                event=f"inventory.restock_{alert['trigger_type']}",
+                title=subject,
+                body=body,
+                reference_type="restock_alert",
+                reference_id=alert["id"],
+                session=session,
             )
             if user.get("email"):
                 recipients.append(
                     {
                         "user_id": user["id"],
                         "email": user["email"],
-                        "subject": notification["subject"],
-                        "title": notification["title"],
-                        "body_html": notification["body_html"],
+                        "subject": subject,
+                        "title": "Peringatan stok",
+                        "body_html": body,
+                        "notification_id": notification["id"],
                     }
                 )
         return recipients
