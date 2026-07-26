@@ -501,7 +501,7 @@ async def run_login_issuance_contract():
             "id": "disabled-staff",
             "email": "disabled-staff@niuva.com",
             "password_hash": server.hash_password(valid_password),
-            "roles": ["operations"],
+            "roles": ["order_admin"],
             "status": "disabled",
             "access_state": "approved",
         },
@@ -551,7 +551,10 @@ async def run_login_issuance_contract():
             "name": "Canonical Staff",
             "email": "canonical-staff@niuva.com",
             "password_hash": server.hash_password(valid_password),
-            "roles": ["operations"],
+            # A granular role. "operations" is superseded by migration 006 and
+            # no longer canonical, so an account still carrying it cannot be
+            # the fixture for a successful staff login.
+            "roles": ["order_admin"],
             "status": "active",
             "access_state": "approved",
         },
@@ -644,7 +647,7 @@ async def run_login_issuance_contract():
                 },
             )
             assert staff_login.status_code == 200
-            assert staff_login.json()["user"]["roles"] == ["operations"]
+            assert staff_login.json()["user"]["roles"] == ["order_admin"]
 
             customer_admin_login = await api.post(
                 "/api/auth/admin/login",
@@ -688,3 +691,57 @@ async def run_admin_stats_counts_canonical_customer_roles():
 
 def test_admin_stats_counts_legacy_and_canonical_customers():
     asyncio.run(run_admin_stats_counts_canonical_customer_roles())
+
+
+async def run_superseded_role_cannot_obtain_a_session():
+    """An account still carrying a pre-migration role cannot sign in.
+
+    This is the guarantee the login hardening and the granular role matrix
+    produce together, and neither one states it alone. "operations" was a real
+    role before migration 006 and is superseded by it, so an account that has
+    not been migrated resolves to no canonical role. Issuing a session for it
+    would hand out an identity the permission matrix can no longer reason
+    about: every has_permission call would answer no, and the holder would see
+    an empty, inexplicable admin shell.
+
+    Refusing is the safe direction. The account is not broken, it is unmigrated.
+    """
+    valid_password = "SupersededPassword123"
+    original_db = server.db
+    try:
+        server.db = FakeDatabase(
+            [
+                {
+                    "id": "unmigrated-staff",
+                    "name": "Unmigrated Staff",
+                    "email": "unmigrated-staff@niuva.com",
+                    "password_hash": server.hash_password(valid_password),
+                    "roles": ["operations"],
+                    "status": "active",
+                    "access_state": "approved",
+                    "created_at": server.now_iso(),
+                }
+            ]
+        )
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as api:
+            for path in ("/api/auth/login", "/api/auth/admin/login"):
+                response = await api.post(
+                    path,
+                    json={
+                        "email": "unmigrated-staff@niuva.com",
+                        "password": valid_password,
+                    },
+                )
+                assert response.status_code == 401, path
+                # Generic, like every other refusal: the response must not
+                # reveal that this address exists but is unmigrated.
+                assert response.json() == {"detail": "Invalid email or password"}
+    finally:
+        server.db = original_db
+
+
+def test_a_superseded_role_cannot_obtain_a_session():
+    asyncio.run(run_superseded_role_cannot_obtain_a_session())
