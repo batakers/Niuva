@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, Archive, Coins, Package, Pencil, Plus, RefreshCw, Truck } from "lucide-react";
+import { Archive, Coins, Package, Pencil, Plus, RefreshCw, Truck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -198,9 +200,7 @@ export default function AdminMaterials() {
             </Table>
           </div>
         ) : error ? (
-          <EmptyState icon={AlertCircle} className="py-16">
-            <span role="alert" className="text-status-error">{error}</span>
-          </EmptyState>
+          <ErrorState error={error} onRetry={load} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Package} className="py-16">{t("materials.empty")}</EmptyState>
         ) : (

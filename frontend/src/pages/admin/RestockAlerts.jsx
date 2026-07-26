@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { CheckCircle2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Label } from "@/components/ui/label";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import {
   Select,
   SelectContent,
@@ -85,8 +86,7 @@ export default function RestockAlerts() {
         </SurfacePanelHeader>
 
         <div className="p-4">
-          <div className="space-y-1.5 max-w-xs">
-            <Label>{t("common.status")}</Label>
+          <FormField label={t("common.status")} className="max-w-xs">
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger>
                 <SelectValue />
@@ -96,7 +96,7 @@ export default function RestockAlerts() {
                 <SelectItem value="resolved">Resolved</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
         </div>
       </SurfacePanel>
 
@@ -124,9 +124,7 @@ export default function RestockAlerts() {
             </TableBody>
           </Table>
         ) : error ? (
-          <EmptyState icon={AlertCircle} className="py-16">
-            <span role="alert" className="text-status-error">{error}</span>
-          </EmptyState>
+          <ErrorState error={error} onRetry={load} />
         ) : rows.length === 0 ? (
           <EmptyState className="py-16">{t("inventory.noAlerts")}</EmptyState>
         ) : (
@@ -263,8 +261,7 @@ function ResolveDialog({ alert, onClose, onResolved }) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-1.5">
-          <Label>{t("common.reason")}</Label>
+        <FormField label={t("common.reason")}>
           <Textarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
@@ -272,7 +269,7 @@ function ResolveDialog({ alert, onClose, onResolved }) {
             placeholder={t("common.reason")}
             rows={3}
           />
-        </div>
+        </FormField>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -124,8 +125,7 @@ export default function StockMovements() {
 
         <div className="grid gap-4 p-4 md:grid-cols-3 xl:grid-cols-6">
           {/* Subject Type */}
-          <div className="space-y-1.5">
-            <Label>{t("inventory.subjectType")}</Label>
+          <FormField label={t("inventory.subjectType")}>
             <Select
               value={filters.subject_type}
               onValueChange={updateFilter("subject_type")}
@@ -139,57 +139,52 @@ export default function StockMovements() {
                 <SelectItem value="product_variant">Product variant</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
 
           {/* Subject ID */}
-          <div className="space-y-1.5">
-            <Label>{t("inventory.subjectId")}</Label>
+          <FormField label={t("inventory.subjectId")}>
             <Input
               value={filters.subject_id}
               onChange={updateFilterEvent("subject_id")}
               placeholder="..."
             />
-          </div>
+          </FormField>
 
           {/* Movement Type */}
-          <div className="space-y-1.5">
-            <Label>{t("inventory.movementType")}</Label>
+          <FormField label={t("inventory.movementType")}>
             <Input
               value={filters.movement_type}
               onChange={updateFilterEvent("movement_type")}
               placeholder="..."
             />
-          </div>
+          </FormField>
 
           {/* Reference ID */}
-          <div className="space-y-1.5">
-            <Label>{t("inventory.referenceId")}</Label>
+          <FormField label={t("inventory.referenceId")}>
             <Input
               value={filters.reference_id}
               onChange={updateFilterEvent("reference_id")}
               placeholder="..."
             />
-          </div>
+          </FormField>
 
           {/* Actor */}
-          <div className="space-y-1.5">
-            <Label>{t("inventory.actor")}</Label>
+          <FormField label={t("inventory.actor")}>
             <Input
               value={filters.actor}
               onChange={updateFilterEvent("actor")}
               placeholder="..."
             />
-          </div>
+          </FormField>
 
           {/* Date */}
-          <div className="space-y-1.5">
-            <Label>{t("common.date")}</Label>
+          <FormField label={t("common.date")}>
             <Input
               type="date"
               value={filters.date}
               onChange={updateFilterEvent("date")}
             />
-          </div>
+          </FormField>
         </div>
       </SurfacePanel>
 
@@ -215,9 +210,7 @@ export default function StockMovements() {
             </TableBody>
           </Table>
         ) : error ? (
-          <EmptyState icon={AlertCircle} className="py-16">
-            <span role="alert" className="text-status-error">{error}</span>
-          </EmptyState>
+          <ErrorState error={error} onRetry={load} />
         ) : visible.length === 0 ? (
           <EmptyState className="py-16">{t("inventory.noMovements")}</EmptyState>
         ) : (

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, Download, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { Download, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -148,8 +149,7 @@ export default function Inventory() {
         </SurfacePanelHeader>
 
         <div className="grid gap-4 p-4 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>{t("inventory.subjectType")}</Label>
+          <FormField label={t("inventory.subjectType")}>
             <Select
               value={filters.subject_type}
               onValueChange={(value) =>
@@ -165,16 +165,15 @@ export default function Inventory() {
                 <SelectItem value="product_variant">Product variant</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("common.search")}</Label>
+          </FormField>
+          <FormField label={t("common.search")}>
             <Input
               value={filters.search}
               onChange={(event) =>
                 setFilters((current) => ({ ...current, search: event.target.value }))
               }
             />
-          </div>
+          </FormField>
         </div>
       </SurfacePanel>
 
@@ -204,9 +203,7 @@ export default function Inventory() {
             </TableBody>
           </Table>
         ) : error ? (
-          <EmptyState icon={AlertCircle} className="py-16">
-            <span role="alert" className="text-status-error">{error}</span>
-          </EmptyState>
+          <ErrorState error={error} onRetry={load} />
         ) : visible.length === 0 ? (
           <EmptyState className="py-16">{t("inventory.empty")}</EmptyState>
         ) : (
@@ -437,8 +434,7 @@ function OperationDialog({ formValue, permissions, onClose, onApplied }) {
         </DialogHeader>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>{t("inventory.movementType")}</Label>
+          <FormField label={t("inventory.movementType")}>
             <Select value={form.movement_type} onValueChange={updateField("movement_type")}>
               <SelectTrigger>
                 <SelectValue />
@@ -451,19 +447,17 @@ function OperationDialog({ formValue, permissions, onClose, onApplied }) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
 
           {form.movement_type === "adjustment" ? (
-            <div className="space-y-1.5">
-              <Label>{t("inventory.signedDelta")}</Label>
+            <FormField label={t("inventory.signedDelta")}>
               <Input
                 value={form.on_hand_delta}
                 onChange={updateField("on_hand_delta")}
               />
-            </div>
+            </FormField>
           ) : (
-            <div className="space-y-1.5">
-              <Label>{t("inventory.quantity")}</Label>
+            <FormField label={t("inventory.quantity")}>
               <Input
                 type="number"
                 min="0"
@@ -471,44 +465,40 @@ function OperationDialog({ formValue, permissions, onClose, onApplied }) {
                 value={form.quantity}
                 onChange={updateField("quantity")}
               />
-            </div>
+            </FormField>
           )}
 
-          <div className="space-y-1.5">
-            <Label>{t("inventory.referenceType")}</Label>
+          <FormField label={t("inventory.referenceType")}>
             <Input
               value={form.reference_type}
               onChange={updateField("reference_type")}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label>{t("inventory.referenceId")}</Label>
+          <FormField label={t("inventory.referenceId")}>
             <Input
               value={form.reference_id}
               onChange={updateField("reference_id")}
             />
-          </div>
+          </FormField>
 
           {form.movement_type === "reserve" && (
-            <div className="space-y-1.5">
-              <Label>{t("inventory.expiresAt")}</Label>
+            <FormField label={t("inventory.expiresAt")}>
               <Input
                 type="datetime-local"
                 value={form.expires_at || ""}
                 onChange={updateField("expires_at")}
               />
-            </div>
+            </FormField>
           )}
 
-          <div className="space-y-1.5 md:col-span-2">
-            <Label>{t("common.reason")}</Label>
+          <FormField label={t("common.reason")} className="md:col-span-2">
             <Textarea
               value={form.reason}
               onChange={updateField("reason")}
               maxLength={500}
             />
-          </div>
+          </FormField>
         </div>
 
         <DialogFooter>
@@ -572,8 +562,7 @@ function ReservationTransitionDialog({ value, onClose, onApplied }) {
           {value.reservation.quantity} · {value.reservation.subject_id}
         </p>
 
-        <div className="space-y-1.5">
-          <Label>{t("common.reason")}</Label>
+        <FormField label={t("common.reason")}>
           <Textarea
             value={form.reason}
             onChange={(event) =>
@@ -581,7 +570,7 @@ function ReservationTransitionDialog({ value, onClose, onApplied }) {
             }
             maxLength={500}
           />
-        </div>
+        </FormField>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
