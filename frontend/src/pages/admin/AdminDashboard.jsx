@@ -44,9 +44,9 @@ function defaultDateFrom() {
 }
 
 /**
- * Sum every numeric field on a row except "date" into a single total —
- * lets one <Line> render a combined trend without hardcoding field names
- * that vary by series (order statuses vs movement types).
+ * Sum the per-status counts on an order row. Safe only where every field
+ * carries the same unit: adding a signed quantity to a count of events would
+ * combine two different things into one meaningless number.
  */
 function totalForRow(row) {
   return Object.entries(row).reduce(
@@ -131,12 +131,31 @@ function queueCount(path, stats) {
  * Trend Chart Component — with accessible description
  * ────────────────────────────────────────────────────────────────────────── */
 
-function TrendChart({ title, rows, valueLabel, formatValue, loading, dateFrom, dateTo }) {
+function columnsOf(rows) {
+  const seen = [];
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      if (key !== "date" && !seen.includes(key)) seen.push(key);
+    }
+  }
+  return seen;
+}
+
+function TrendChart({
+  title,
+  rows,
+  value,
+  formatValue,
+  loading,
+  dateFrom,
+  dateTo,
+  emptyAction,
+}) {
   const { t } = useI18n();
-  const data = rows.map((row) => ({
-    date: row.date,
-    value: valueLabel === "revenue" ? row.amount : totalForRow(row),
-  }));
+  // The caller states which figure is plotted. Inferring it from the row shape
+  // silently changes meaning whenever a series gains a field.
+  const data = rows.map((row) => ({ date: row.date, value: value(row) }));
+  const columns = columnsOf(rows);
 
   const chartDescription = t("dashboard.chartDescription")
     .replace("{title}", title)
@@ -151,10 +170,22 @@ function TrendChart({ title, rows, valueLabel, formatValue, loading, dateFrom, d
           <Skeleton className="h-full w-full rounded-control" />
         </div>
       ) : data.length === 0 ? (
-        <div className="h-[200px] sm:h-[220px] flex items-center justify-center">
+        <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 sm:min-h-[220px]">
           <EmptyState icon={BarChart3}>
             {t("dashboard.noDataInRange")}
           </EmptyState>
+          {/* Actionable, and only where the reader can act: an empty chart
+              otherwise leaves them with nowhere to go. */}
+          {emptyAction && (
+            <Link
+              to={emptyAction.to}
+              className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-action-primary"
+              data-testid="chart-empty-action"
+            >
+              {t(emptyAction.labelKey)}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          )}
         </div>
       ) : (
         <div role="img" aria-label={chartDescription}>
@@ -216,6 +247,48 @@ function TrendChart({ title, rows, valueLabel, formatValue, loading, dateFrom, d
             </LineChart>
           </ResponsiveContainer>
         </div>
+      )}
+      {!loading && data.length > 0 && (
+        <details className="mt-4" data-testid="chart-data-table">
+          <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-action-primary">
+            {t("dashboard.showDataTable")}
+          </summary>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <caption className="sr-only">{chartDescription}</caption>
+              <thead>
+                <tr className="border-b border-border-default">
+                  <th scope="col" className="py-2 pr-4 font-semibold text-text-secondary">
+                    {t("common.date")}
+                  </th>
+                  {columns.map((column) => (
+                    <th
+                      key={column}
+                      scope="col"
+                      className="py-2 pr-4 font-semibold text-text-secondary"
+                    >
+                      {t(`dashboard.column.${column}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.date} className="border-b border-border-default last:border-0">
+                    <th scope="row" className="py-2 pr-4 font-mono text-xs font-normal text-text-secondary">
+                      {row.date}
+                    </th>
+                    {columns.map((column) => (
+                      <td key={column} className="py-2 pr-4 font-mono text-xs tabular-nums text-text-primary">
+                        {row[column] ?? "-"}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
       )}
     </SurfacePanel>
   );
@@ -352,20 +425,47 @@ export default function AdminDashboard() {
         <TrendChart
           title={t("dashboard.ordersTrend")}
           rows={series?.orders_by_status || []}
+          value={totalForRow}
           loading={seriesLoading}
           dateFrom={dateFrom}
           dateTo={dateTo}
+          emptyAction={
+            hasPermission(user, "orders.read")
+              ? { to: "/admin/retail-orders", labelKey: "dashboard.openOrders" }
+              : null
+          }
         />
         {canSeeInventory && (
           <TrendChart
             title={t("dashboard.stockMovementsTrend")}
             rows={series?.stock_movements || []}
+            value={(row) => Number(row.signed_quantity) || 0}
             loading={seriesLoading}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            emptyAction={{
+              to: "/admin/stock-movements",
+              labelKey: "dashboard.openStockMovements",
+            }}
           />
         )}
       </div>
+
+      {series?.revenue?.available === false && (
+        <SurfacePanel
+          intent="dashed"
+          padding="md"
+          className="mt-4"
+          data-testid="revenue-withheld"
+        >
+          <p className="type-label text-text-secondary">
+            {t("dashboard.revenueWithheldTitle")}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">
+            {t("dashboard.revenueWithheldBody")}
+          </p>
+        </SurfacePanel>
+      )}
     </AdminLayout>
   );
 }
