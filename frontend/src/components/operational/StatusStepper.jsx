@@ -77,6 +77,13 @@ export function StatusBadge({ status }) {
     // Work order
     in_progress: inFlight,
 
+    // Portfolio publication
+    review: attention,
+    preview: inFlight,
+    scheduled: inFlight,
+    published: settled,
+    archived: "bg-secondary text-text-secondary border-border-default",
+
     // Retail order: the canonical lifecycle, from placed to handed over.
     created: attention,
     paid: inFlight,

@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { FolderOpen, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  FolderOpen,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -27,6 +35,9 @@ import { SurfacePanel } from "@/components/ui/surface-panel";
 import { TechnicalLabel } from "@/components/ui/technical-label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Link } from "react-router-dom";
+
+import { StatusBadge } from "@/components/operational/StatusStepper";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
 import { AdminLayout } from "./AdminLayout";
@@ -38,6 +49,7 @@ export default function AdminPortfolio() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [reordering, setReordering] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -51,6 +63,26 @@ export default function AdminPortfolio() {
   useEffect(() => {
     load();
   }, []);
+
+  const move = async (index, offset) => {
+    const target = index + offset;
+    if (target < 0 || target >= items.length) return;
+    const ordered = items.map((entry) => entry.id);
+    [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+    setReordering(true);
+    try {
+      // The whole sequence goes up, never a single swap: the server rejects a
+      // partial order, so two people reordering at once cannot interleave.
+      const { data } = await api.post("/admin/portfolio/reorder", {
+        ordered_ids: ordered,
+      });
+      setItems(data);
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    } finally {
+      setReordering(false);
+    }
+  };
 
   const confirmRemove = async () => {
     if (!deleteTarget) return;
@@ -109,7 +141,7 @@ export default function AdminPortfolio() {
         <EmptyState icon={FolderOpen} frame="dashed">{t("portfolio.empty")}</EmptyState>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {items.map((p) => (
+          {items.map((p, index) => (
             <SurfacePanel
               key={p.id}
               className={`flex flex-col group overflow-hidden border-l-4 p-0 ${
@@ -142,12 +174,56 @@ export default function AdminPortfolio() {
                   <h3 className="font-heading text-lg font-bold text-text-primary tracking-tight">
                     {lang === "id" ? p.title_id : p.title_en}
                   </h3>
+                  <div className="mt-2">
+                    <StatusBadge status={p.status} />
+                  </div>
                   <p className="type-body-small text-text-secondary mt-1">
                     {p.category}
                   </p>
                 </div>
 
-                <div className="mt-auto pt-4 border-t border-border-default flex gap-2">
+                <div className="mt-auto space-y-2 border-t border-border-default pt-4">
+                  {/* Buttons, not drag handles: reordering has to be reachable
+                      by keyboard, and each press sends the whole sequence so a
+                      concurrent reorder cannot interleave. */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] text-text-disabled">
+                      #{index + 1}
+                    </span>
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-11 w-11"
+                        disabled={index === 0 || reordering}
+                        onClick={() => move(index, -1)}
+                        aria-label={`${t("portfolio.moveUp")}: ${lang === "id" ? p.title_id : p.title_en}`}
+                        data-testid={`portfolio-move-up-${p.id}`}
+                      >
+                        <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-11 w-11"
+                        disabled={index === items.length - 1 || reordering}
+                        onClick={() => move(index, 1)}
+                        aria-label={`${t("portfolio.moveDown")}: ${lang === "id" ? p.title_id : p.title_en}`}
+                        data-testid={`portfolio-move-down-${p.id}`}
+                      >
+                        <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/admin/portfolio/${p.id}`}
+                    className="inline-flex min-h-11 w-full items-center justify-between rounded-control border border-border-default px-3 text-sm font-semibold text-action-primary"
+                    data-testid={`portfolio-open-${p.id}`}
+                  >
+                    {t("portfolio.openLifecycle")}
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                <div className="flex gap-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -165,6 +241,7 @@ export default function AdminPortfolio() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                </div>
                 </div>
               </div>
             </SurfacePanel>

@@ -30,6 +30,7 @@ const AdminInventory = lazy(() => import("@/pages/admin/Inventory"));
 const AdminStockMovements = lazy(() => import("@/pages/admin/StockMovements"));
 const AdminRestockAlerts = lazy(() => import("@/pages/admin/RestockAlerts"));
 const AdminPortfolio = lazy(() => import("@/pages/admin/PortfolioAdmin"));
+const AdminPortfolioDetail = lazy(() => import("@/pages/admin/PortfolioDetail"));
 const AdminContent = lazy(() => import("@/pages/admin/ContentEditor"));
 const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
@@ -153,6 +154,7 @@ function App() {
                   <Route path="/admin/stock-movements" element={protectedPage("/admin/stock-movements", <AdminStockMovements />)} />
                   <Route path="/admin/restock-alerts" element={protectedPage("/admin/restock-alerts", <AdminRestockAlerts />)} />
                   <Route path="/admin/portfolio" element={protectedPage("/admin/portfolio", <AdminPortfolio />)} />
+                  <Route path="/admin/portfolio/:id" element={protectedPage("/admin/portfolio", <AdminPortfolioDetail />)} />
                   <Route path="/admin/content" element={protectedPage("/admin/content", <AdminContent />)} />
                   <Route path="/admin/contacts" element={protectedPage("/admin/contacts", <AdminContacts />)} />
                   <Route path="/admin/inquiries" element={protectedPage("/admin/inquiries", <AdminInquiryList />)} />

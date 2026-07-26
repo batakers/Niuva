@@ -62,6 +62,20 @@ export const B2B_ACTION_PERMISSIONS = Object.freeze({
   }),
 });
 
+// Mirrors the portfolio router: content.write authors a draft through the
+// review stages, while anything that reaches the public, or is scheduled to,
+// needs content.publish.
+export const PORTFOLIO_ACTION_PERMISSIONS = Object.freeze({
+  submit_review: "content.write",
+  return_to_draft: "content.write",
+  approve_preview: "content.write",
+  return_to_review: "content.write",
+  archive: "content.write",
+  restore: "content.write",
+  schedule: "content.publish",
+  publish: "content.publish",
+});
+
 export function hasPermission(user, permission) {
   const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
   return permissions.includes("*") || permissions.includes(permission);
