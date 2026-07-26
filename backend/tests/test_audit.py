@@ -157,12 +157,12 @@ def test_identity_audit_event_stores_only_allowlisted_access_projection_and_forw
                 "status": "active",
             },
             result={
-                "roles": ["operations"],
+                "roles": ["warehouse"],
                 "access_state": "approved",
                 "status": "active",
             },
             reason_code="role_review_approved",
-            policy_version="2026-07-22-v1",
+            policy_version="2026-07-26-v2",
             session=session,
         )
     )
@@ -185,7 +185,7 @@ def test_identity_audit_event_stores_only_allowlisted_access_projection_and_forw
         "status": "active",
     }
     assert event["result"] == {
-        "roles": ["operations"],
+        "roles": ["warehouse"],
         "access_state": "approved",
         "status": "active",
     }
@@ -214,9 +214,9 @@ def test_user_access_audit_accepts_only_public_reason_codes(reason_code):
             target_type="user",
             target_id="user-2",
             previous={"roles": ["retail_customer"]},
-            result={"roles": ["operations"]},
+            result={"roles": ["warehouse"]},
             reason_code=reason_code,
-            policy_version="2026-07-22-v1",
+            policy_version="2026-07-26-v2",
         )
     )
 
@@ -239,7 +239,7 @@ def test_user_access_audit_rejects_non_public_reason_code(reason_code):
                 target_type="user",
                 target_id="user-2",
                 previous={"roles": ["retail_customer"]},
-                result={"roles": ["operations"]},
+                result={"roles": ["warehouse"]},
                 reason_code=reason_code,
                 policy_version="2026-07-22-v1",
             )

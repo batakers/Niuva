@@ -112,13 +112,13 @@ def build_users():
     operations = {
         "id": "ops-1", "name": "Operations", "email": "operations@niuva.com",
         "password_hash": server.hash_password("OperationsPassword123"),
-        "phone": "", "company": "Niuva", "roles": ["operations"],
+        "phone": "", "company": "Niuva", "roles": ["warehouse"],
         "status": "active", "access_state": "approved", "created_at": server.now_iso(),
     }
     commercial = {
         "id": "commercial-1", "name": "Commercial", "email": "commercial@niuva.com",
         "password_hash": server.hash_password("CommercialPassword123"),
-        "phone": "", "company": "Niuva", "roles": ["commercial_finance"],
+        "phone": "", "company": "Niuva", "roles": ["finance"],
         "status": "active", "access_state": "approved", "created_at": server.now_iso(),
     }
     return operations, commercial

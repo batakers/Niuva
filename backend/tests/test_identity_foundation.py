@@ -212,8 +212,8 @@ def make_user(user_id, email, roles, *, status="active"):
 
 async def run_staff_access_matrix():
     super_admin = make_user("admin-1", "admin@niuva.com", ["super_admin"])
-    manager = make_user("manager-1", "manager@niuva.com", ["commercial_finance"])
-    warehouse = make_user("warehouse-1", "warehouse@niuva.com", ["operations"])
+    manager = make_user("manager-1", "manager@niuva.com", ["manager_approver"])
+    warehouse = make_user("warehouse-1", "warehouse@niuva.com", ["warehouse"])
     customer = make_user("user-2", "customer@example.com", ["retail_customer"])
     db = FakeDatabase([super_admin, manager, warehouse, customer])
     server.db = db
@@ -224,10 +224,10 @@ async def run_staff_access_matrix():
         super_admin["id"], super_admin["email"], "super_admin"
     )
     manager_token = server.create_token(
-        manager["id"], manager["email"], "commercial_finance"
+        manager["id"], manager["email"], "manager_approver"
     )
     warehouse_token = server.create_token(
-        warehouse["id"], warehouse["email"], "operations"
+        warehouse["id"], warehouse["email"], "warehouse"
     )
 
     transport = httpx.ASGITransport(app=server.app)
@@ -315,13 +315,13 @@ def test_identity_migration_is_dry_run_safe_and_idempotent():
 
 async def run_legacy_admin_route_permission_matrix():
     warehouse = make_user(
-        "warehouse-routes", "warehouse-routes@niuva.com", ["operations"]
+        "warehouse-routes", "warehouse-routes@niuva.com", ["warehouse"]
     )
-    order_admin = make_user("order-routes", "order-routes@niuva.com", ["operations"])
+    order_admin = make_user("order-routes", "order-routes@niuva.com", ["order_admin"])
     content_editor = make_user(
         "editor-routes",
         "editor-routes@niuva.com",
-        ["operations"],
+        ["content_editor"],
     )
     customer = make_user(
         "customer-routes",
@@ -355,13 +355,13 @@ async def run_legacy_admin_route_permission_matrix():
     server.db = db
 
     warehouse_token = server.create_token(
-        warehouse["id"], warehouse["email"], "operations"
+        warehouse["id"], warehouse["email"], "warehouse"
     )
     order_admin_token = server.create_token(
-        order_admin["id"], order_admin["email"], "operations"
+        order_admin["id"], order_admin["email"], "order_admin"
     )
     content_editor_token = server.create_token(
-        content_editor["id"], content_editor["email"], "operations"
+        content_editor["id"], content_editor["email"], "content_editor"
     )
     customer_token = server.create_token(
         other_customer["id"], other_customer["email"], "retail_customer"
@@ -382,7 +382,7 @@ async def run_legacy_admin_route_permission_matrix():
                 "/api/admin/orders",
                 headers=bearer(warehouse_token),
             )
-        ).status_code == 200
+        ).status_code == 403
         assert (
             await api.get(
                 "/api/admin/orders",
@@ -395,7 +395,7 @@ async def run_legacy_admin_route_permission_matrix():
             headers=bearer(content_editor_token),
             json={"name": "ABS", "description": "", "color": "", "active": True},
         )
-        assert forbidden_material.status_code == 200
+        assert forbidden_material.status_code == 403
 
         portfolio = await api.post(
             "/api/admin/portfolio",

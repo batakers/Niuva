@@ -143,7 +143,7 @@ async def run_security_matrix():
         "password_hash": server.hash_password("EditorPassword123"),
         "phone": "",
         "company": "Niuva",
-        "roles": ["operations"],
+        "roles": ["content_editor"],
         "status": "active",
         "access_state": "approved",
         "created_at": server.now_iso(),
@@ -155,7 +155,7 @@ async def run_security_matrix():
         "password_hash": server.hash_password("CommercialPassword123"),
         "phone": "",
         "company": "Niuva",
-        "roles": ["commercial_finance"],
+        "roles": ["order_admin", "sales_estimator", "finance"],
         "status": "active",
         "access_state": "approved",
         "created_at": server.now_iso(),
@@ -176,7 +176,7 @@ async def run_security_matrix():
         "name": "Review Blocked Staff",
         "email": "review-blocked@example.com",
         "password_hash": server.hash_password("ReviewBlockedPassword123"),
-        "roles": ["operations"],
+        "roles": ["content_editor"],
         "status": "active",
         "access_state": "access_review_required",
         "created_at": server.now_iso(),
@@ -223,15 +223,15 @@ async def run_security_matrix():
         )
         assert admin_login.status_code == 200
         admin_token = admin_login.json()["token"]
-        assert admin_login.json()["user"]["role_labels"] == ["Owner"]
-        assert admin_login.json()["user"]["role_policy_version"] == "2026-07-22-v1"
+        assert admin_login.json()["user"]["role_labels"] == ["Super Admin"]
+        assert admin_login.json()["user"]["role_policy_version"] == "2026-07-26-v2"
 
         editor_login = await api.post(
             "/api/auth/admin/login",
             json={"email": editor["email"], "password": "EditorPassword123"},
         )
         assert editor_login.status_code == 200
-        assert editor_login.json()["user"]["roles"] == ["operations"]
+        assert editor_login.json()["user"]["roles"] == ["content_editor"]
         assert "admin.access" in editor_login.json()["user"]["permissions"]
         assert "password_hash" not in editor_login.json()["user"]
 
@@ -239,7 +239,7 @@ async def run_security_matrix():
             "/api/auth/me", headers=bearer(editor_login.json()["token"])
         )
         assert editor_me.status_code == 200
-        assert editor_me.json()["roles"] == ["operations"]
+        assert editor_me.json()["roles"] == ["content_editor"]
         assert "roles.manage" not in editor_me.json()["permissions"]
 
         commercial_login = await api.post(
@@ -399,8 +399,8 @@ async def run_security_matrix():
 async def run_admin_boundary_projections_and_capability_gates():
     users = [
         {"id": "owner-1", "name": "Owner", "email": "owner@niuva.example.com", "password_hash": server.hash_password("OwnerPassword123"), "roles": ["super_admin"], "status": "active", "access_state": "approved"},
-        {"id": "operations-1", "name": "Operations", "email": "operations@niuva.example.com", "password_hash": server.hash_password("OperationsPassword123"), "roles": ["operations"], "status": "active", "access_state": "approved"},
-        {"id": "commercial-1", "name": "Commercial", "email": "commercial@niuva.example.com", "password_hash": server.hash_password("CommercialPassword123"), "roles": ["commercial_finance"], "status": "active", "access_state": "approved"},
+        {"id": "operations-1", "name": "Order Admin", "email": "operations@niuva.example.com", "password_hash": server.hash_password("OperationsPassword123"), "roles": ["order_admin"], "status": "active", "access_state": "approved"},
+        {"id": "commercial-1", "name": "Finance", "email": "commercial@niuva.example.com", "password_hash": server.hash_password("CommercialPassword123"), "roles": ["finance"], "status": "active", "access_state": "approved"},
     ]
     database = FakeDatabase(users)
     database.orders.items.append({"id": "order-safe-1", "order_number": "NIV-TEST-0001", "user_id": "customer-1", "user_name": "Customer", "user_email": "customer@niuva.test", "material_id": "material-1", "material_name": "Acrylic", "file": {"storage_path": "orders/customer-1/design.pdf"}, "notes": "Fulfil before Friday", "status": "awaiting_payment", "status_history": [{"status": "pending_estimate", "at": "2026-07-22T00:00:00Z", "note": "Received"}], "estimate": {"amount": 950000, "currency": "IDR", "note": "Internal quote"}, "payment": {"proof": {"storage_path": "payments/proof.png"}, "verified": False}, "internal_price": 600000})

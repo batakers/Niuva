@@ -332,7 +332,7 @@ def test_supplier_reference_requires_explicit_read_and_write_capabilities():
 
 
 def role_require_permission(permission):
-    async def dependency(x_role: str = Header(default="operations")):
+    async def dependency(x_role: str = Header(default="warehouse")):
         actor = {"id": f"actor-{x_role}", "email": f"{x_role}@niuva.example.com", "roles": [x_role], "status": "active", "access_state": "approved"}
         if not has_permission(actor, permission):
             raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
@@ -355,8 +355,8 @@ async def run_real_role_supplier_reference_boundaries():
     db.materials.items.append({"id": "material-delete", "name": "Delete Material", "description": "Original", "supplier_reference": "SUP-DELETE", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
-        operations = {"X-Role": "operations"}
-        commercial = {"X-Role": "commercial_finance"}
+        operations = {"X-Role": "warehouse"}
+        commercial = {"X-Role": "catalog_manager"}
         created = await api.post("/api/admin/materials", json={"name": "Operations Material"}, headers=operations)
         assert created.status_code == 200
         assert "supplier_reference" not in created.json()
@@ -390,7 +390,7 @@ async def run_supplier_reference_omission_preserves_stored_value():
     db.materials.items.append({"id": "material-omission", "name": "Omission Material", "supplier_reference": "SUP-ORIGINAL", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
-        commercial = {"X-Role": "commercial_finance"}
+        commercial = {"X-Role": "catalog_manager"}
         omitted = await api.put(
             "/api/admin/materials/material-omission/supplier-reference",
             json={},

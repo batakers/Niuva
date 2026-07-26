@@ -113,13 +113,13 @@ def build_users():
     admin = {
         "id": "admin-1", "name": "Notify Admin", "email": "admin@niuva.com",
         "password_hash": server.hash_password("AdminPassword123"),
-        "phone": "", "company": "Niuva", "roles": ["commercial_finance"],
+        "phone": "", "company": "Niuva", "roles": ["order_admin"],
         "status": "active", "access_state": "approved", "created_at": server.now_iso(),
     }
     warehouse = {
         "id": "warehouse-1", "name": "Warehouse Staff", "email": "warehouse@niuva.com",
         "password_hash": server.hash_password("WarehousePassword123"),
-        "phone": "", "company": "Niuva", "roles": ["operations"],
+        "phone": "", "company": "Niuva", "roles": ["warehouse"],
         "status": "active", "access_state": "approved", "created_at": server.now_iso(),
     }
     customer_a = {

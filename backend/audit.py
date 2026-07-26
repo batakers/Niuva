@@ -137,9 +137,17 @@ _PROJECTION_FIELDS = {
 
 _CANONICAL_ROLES = frozenset(
     {
+        "content_editor",
+        "catalog_manager",
+        "warehouse",
+        "order_admin",
+        "sales_estimator",
+        "designer_engineer",
+        "production",
+        "quality_control",
+        "finance",
+        "manager_approver",
         "super_admin",
-        "operations",
-        "commercial_finance",
         "retail_customer",
         "organization_customer",
     }
