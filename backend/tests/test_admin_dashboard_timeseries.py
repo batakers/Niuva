@@ -141,8 +141,18 @@ async def run_timeseries_role_based_series():
         },
     ]
     stock_movements = [
-        {"id": "mv-1", "created_at": "2026-07-01T08:00:00+00:00", "movement_type": "receive"},
-        {"id": "mv-2", "created_at": "2026-07-01T09:00:00+00:00", "movement_type": "consume"},
+        {
+            "id": "mv-1",
+            "created_at": "2026-07-01T08:00:00+00:00",
+            "movement_type": "receive",
+            "deltas": {"on_hand": "10"},
+        },
+        {
+            "id": "mv-2",
+            "created_at": "2026-07-01T09:00:00+00:00",
+            "movement_type": "consume",
+            "deltas": {"on_hand": "-4"},
+        },
     ]
     server.db = FakeDatabase([operations, commercial], orders=orders, stock_movements=stock_movements)
 
@@ -158,16 +168,16 @@ async def run_timeseries_role_based_series():
         assert ops_response.status_code == 200
         ops_series = ops_response.json()["series"]
 
-        # Operations sees production/stock trends, never revenue (DEC-OPS-001:
-        # role-appropriate dashboards, not identical views for every role).
+        # Operations sees production/stock trends (DEC-OPS-001: role-appropriate
+        # dashboards, not identical views for every role).
         assert "stock_movements" in ops_series
-        assert "revenue" not in ops_series
         day_one = next(row for row in ops_series["orders_by_status"] if row["date"] == "2026-07-01")
         assert day_one["completed"] == 1
         assert day_one["in_process"] == 1
         day_one_stock = next(row for row in ops_series["stock_movements"] if row["date"] == "2026-07-01")
-        assert day_one_stock["receive"] == 1
-        assert day_one_stock["consume"] == 1
+        # Signed on-hand effect, not a count: +10 received and -4 consumed.
+        assert day_one_stock["signed_quantity"] == "6"
+        assert day_one_stock["movements"] == 2
 
         commercial_response = await api.get(
             "/api/admin/stats/timeseries?date_from=2026-07-01&date_to=2026-07-02",
@@ -176,11 +186,15 @@ async def run_timeseries_role_based_series():
         assert commercial_response.status_code == 200
         commercial_series = commercial_response.json()["series"]
 
-        # Commercial/Finance sees revenue trends, never raw stock movement detail.
-        assert "revenue" in commercial_series
+        # Revenue is withheld from every reader, payments.read included, until an
+        # authoritative Payment aggregate exists. Serving it and hiding it in the
+        # client would still put the figure on the wire.
         assert "stock_movements" not in commercial_series
-        revenue_day_one = next(row for row in commercial_series["revenue"] if row["date"] == "2026-07-01")
-        assert revenue_day_one["amount"] == 500000  # only the verified order counts, matching real recorded value
+        for series in (ops_series, commercial_series):
+            assert series["revenue"] == {
+                "available": False,
+                "reason": "authoritative_payment_aggregate_unavailable",
+            }
 
         unauthenticated = await api.get("/api/admin/stats/timeseries")
         assert unauthenticated.status_code == 401

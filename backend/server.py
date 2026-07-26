@@ -27,6 +27,15 @@ import storage
 import emailer
 from audit import append_audit_event
 from b2b_routes import build_b2b_router
+from dashboard_domain import (
+    DashboardRangeError,
+    created_within,
+    date_bucket,
+    distinct_count,
+    resolve_date_range,
+    summarize_movements,
+    withheld_revenue,
+)
 from retail_domain import classify_legacy_order
 from retail_routes import build_retail_router
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
@@ -913,36 +922,70 @@ async def list_customers(
         if canonical_roles(candidate) in customer_roles
     ]
 
+def _resolve_range(date_from: Optional[str], date_to: Optional[str]) -> dict:
+    try:
+        return resolve_date_range(date_from, date_to)
+    except DashboardRangeError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+
+
 @api.get("/admin/stats")
 async def admin_stats(
+    *,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
     user: dict = Depends(require_permission("dashboard.read")),
 ):
-    total_orders = await db.orders.count_documents({})
-    pending = await db.orders.count_documents({"status": "pending_estimate"})
-    awaiting = await db.orders.count_documents({"status": "awaiting_payment"})
-    in_process = await db.orders.count_documents({"status": "in_process"})
-    completed = await db.orders.count_documents({"status": "completed"})
-    clients = await db.users.count_documents(CUSTOMER_QUERY)
+    """Counts for one applied date range, never for all of history.
+
+    Every figure below is scoped by the same range, so two panels on the same
+    dashboard always describe the same window.
+    """
+    applied = _resolve_range(date_from, date_to)
+    ranged = created_within(applied["query"])
+
+    orders = await db.orders.find(
+        ranged, {"_id": 0, "status": 1, "user_id": 1}
+    ).to_list(5000)
+    counts = {status: 0 for status in ORDER_STATUSES}
+    for order in orders:
+        if order.get("status") in counts:
+            counts[order["status"]] += 1
+
+    retail_orders = await db.retail_orders.count_documents(ranged)
+    inquiries = await db.inquiries.count_documents(ranged)
+    organizations = await db.inquiries.find(
+        ranged, {"_id": 0, "company": 1}
+    ).to_list(5000)
+
+    # Registered customers within the range, resolved through the canonical
+    # role query so a legacy marker and a canonical role both count once.
+    registered_customers = await db.users.count_documents(
+        {**CUSTOMER_QUERY, **ranged}
+    )
+
     return {
-        "total_orders": total_orders, "pending_estimate": pending, "awaiting_payment": awaiting,
-        "in_process": in_process, "completed": completed, "clients": clients,
+        "date_from": applied["date_from"],
+        "date_to": applied["date_to"],
+        "total_orders": len(orders),
+        "pending_estimate": counts["pending_estimate"],
+        "awaiting_payment": counts["awaiting_payment"],
+        "in_process": counts["in_process"],
+        "completed": counts["completed"],
+        "retail_orders": retail_orders,
+        "inquiries": inquiries,
+        # Distinct within the range, not lifetime registrations: a customer
+        # count that ignores the range cannot be read next to one that does not.
+        "clients": distinct_count(orders, "user_id"),
+        "registered_customers": registered_customers,
+        "organizations": distinct_count(organizations, "company"),
+        "revenue": withheld_revenue(),
     }
-
-
-def _validate_date(value: str, label: str) -> str:
-    try:
-        datetime.strptime(value, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"{label} must be YYYY-MM-DD")
-    return value
-
-
-def _date_bucket(timestamp: str) -> str:
-    return (timestamp or "")[:10]
 
 
 @api.get("/admin/stats/timeseries")
 async def admin_stats_timeseries(
+    *,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     user: dict = Depends(require_permission("dashboard.read")),
@@ -955,50 +998,47 @@ async def admin_stats_timeseries(
     direct count or sum over existing transaction records, never a fabricated
     metric.
     """
-    now = datetime.now(timezone.utc)
-    start = _validate_date(date_from or (now - timedelta(days=30)).strftime("%Y-%m-%d"), "date_from")
-    end = _validate_date(date_to or now.strftime("%Y-%m-%d"), "date_to")
+    applied = _resolve_range(date_from, date_to)
+    ranged = created_within(applied["query"])
 
     orders = await db.orders.find(
-        {"created_at": {"$gte": start, "$lte": f"{end}T23:59:59"}},
-        {"_id": 0, "created_at": 1, "status": 1, "payment": 1, "estimate": 1},
+        ranged,
+        {"_id": 0, "created_at": 1, "status": 1},
     ).to_list(5000)
 
     orders_by_status: dict = {}
     for order in orders:
-        bucket = _date_bucket(order.get("created_at"))
-        row = orders_by_status.setdefault(bucket, {status: 0 for status in ORDER_STATUSES})
+        bucket = orders_by_status.setdefault(
+            date_bucket(order.get("created_at")),
+            {status: 0 for status in ORDER_STATUSES},
+        )
         status = order.get("status")
-        if status in row:
-            row[status] += 1
+        if status in bucket:
+            bucket[status] += 1
 
-    series = {"orders_by_status": [{"date": date, **counts} for date, counts in sorted(orders_by_status.items())]}
+    series = {
+        "orders_by_status": [
+            {"date": date, **counts} for date, counts in sorted(orders_by_status.items())
+        ]
+    }
 
     if has_permission(user, "inventory.read"):
         movements = await db.stock_movements.find(
-            {"created_at": {"$gte": start, "$lte": f"{end}T23:59:59"}},
-            {"_id": 0, "created_at": 1, "movement_type": 1},
+            ranged,
+            {"_id": 0, "created_at": 1, "movement_type": 1, "deltas": 1},
         ).to_list(5000)
-        movement_totals: dict = {}
-        for movement in movements:
-            bucket = _date_bucket(movement.get("created_at"))
-            row = movement_totals.setdefault(bucket, {})
-            movement_type = movement.get("movement_type", "unknown")
-            row[movement_type] = row.get(movement_type, 0) + 1
-        series["stock_movements"] = [{"date": date, **counts} for date, counts in sorted(movement_totals.items())]
+        # Signed, not counted: a receipt and a write-off are not the same event.
+        series["stock_movements"] = summarize_movements(movements)
 
-    if has_permission(user, "payments.read"):
-        revenue_totals: dict = {}
-        for order in orders:
-            payment = order.get("payment") or {}
-            if not payment.get("verified"):
-                continue
-            bucket = _date_bucket(payment.get("verified_at") or order.get("created_at"))
-            amount = (order.get("estimate") or {}).get("amount") or 0
-            revenue_totals[bucket] = revenue_totals.get(bucket, 0) + amount
-        series["revenue"] = [{"date": date, "amount": amount} for date, amount in sorted(revenue_totals.items())]
+    # Revenue is withheld for every reader, including payments.read. Serving it
+    # and hiding it in the client would still put it on the wire.
+    series["revenue"] = withheld_revenue()
 
-    return {"date_from": start, "date_to": end, "series": series}
+    return {
+        "date_from": applied["date_from"],
+        "date_to": applied["date_to"],
+        "series": series,
+    }
 
 
 @api.get("/notifications")

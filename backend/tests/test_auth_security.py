@@ -55,6 +55,14 @@ class FakeCollection:
                 actual_values = actual if isinstance(actual, list) else [actual]
                 if not any(value in expected["$in"] for value in actual_values):
                     return False
+            elif isinstance(expected, dict) and {"$gte", "$lte"} & expected.keys():
+                # The dashboard scopes every aggregate by a date range.
+                if actual is None:
+                    return False
+                if "$gte" in expected and actual < expected["$gte"]:
+                    return False
+                if "$lte" in expected and actual > expected["$lte"]:
+                    return False
             elif isinstance(actual, list):
                 if expected not in actual:
                     return False
@@ -98,6 +106,10 @@ class FakeDatabase:
     def __init__(self, users):
         self.users = FakeCollection(users)
         self.orders = FakeCollection()
+        # The dashboard scopes every aggregate by one range, so it reads the
+        # canonical surfaces alongside the legacy one.
+        self.retail_orders = FakeCollection()
+        self.inquiries = FakeCollection()
 
 
 def bearer(token):
@@ -476,13 +488,21 @@ def test_authentication_and_authorization_security_matrix():
 async def run_admin_stats_counts_canonical_customer_roles():
     original_db = server.db
     try:
+        registered = "2026-07-10T00:00:00+00:00"
         server.db = FakeDatabase([
-            {"id": "legacy-client", "role": "client"},
-            {"id": "retail-customer", "roles": ["retail_customer"], "status": "active", "access_state": "approved"},
-            {"id": "organization-customer", "roles": ["organization_customer"], "status": "active", "access_state": "approved"},
+            {"id": "legacy-client", "role": "client", "created_at": registered},
+            {"id": "retail-customer", "roles": ["retail_customer"], "status": "active", "access_state": "approved", "created_at": registered},
+            {"id": "organization-customer", "roles": ["organization_customer"], "status": "active", "access_state": "approved", "created_at": registered},
+            {"id": "outside-range", "roles": ["retail_customer"], "status": "active", "access_state": "approved", "created_at": "2026-06-01T00:00:00+00:00"},
         ])
-        stats = await server.admin_stats({"id": "operations-1"})
-        assert stats["clients"] == 3
+        stats = await server.admin_stats(
+            date_from="2026-07-01",
+            date_to="2026-07-31",
+            user={"id": "operations-1"},
+        )
+        # A legacy marker and a canonical role each count once, and the applied
+        # range governs this figure like every other on the dashboard.
+        assert stats["registered_customers"] == 3
     finally:
         server.db = original_db
 
