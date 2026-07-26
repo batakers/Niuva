@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Download, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,34 @@ import {
 } from "@/lib/inventory";
 import { hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
+
+// Server-computed verdict on a balance; the tone mirrors its urgency.
+const STOCK_STATUS_TONE = {
+  normal: "success",
+  rendah: "warning",
+  habis: "destructive",
+};
+
+function StockStatusLabel({ status }) {
+  const { t } = useI18n();
+  if (!status) return null;
+  return (
+    <TechnicalLabel
+      tone={STOCK_STATUS_TONE[status] || "muted"}
+      data-testid={`stock-status-${status}`}
+    >
+      {t(`inventory.stockStatus.${status}`)}
+    </TechnicalLabel>
+  );
+}
+
+function movementHistoryPath(balance) {
+  const params = new URLSearchParams({
+    subject_type: balance.subject_type,
+    subject_id: balance.subject_id,
+  });
+  return `/admin/stock-movements?${params.toString()}`;
+}
 
 export default function Inventory() {
   const { t } = useI18n();
@@ -184,6 +213,7 @@ export default function Inventory() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("inventory.subject")}</TableHead>
+                <TableHead>{t("inventory.stockStatusLabel")}</TableHead>
                 <TableHead>{t("inventory.onHand")}</TableHead>
                 <TableHead>{t("inventory.reserved")}</TableHead>
                 <TableHead>{t("inventory.available")}</TableHead>
@@ -198,7 +228,7 @@ export default function Inventory() {
             </TableHeader>
             <TableBody>
               {[1, 2, 3, 4, 5].map((i) => (
-                <SkeletonTableRow key={i} columns={canWrite ? 9 : 8} />
+                <SkeletonTableRow key={i} columns={canWrite ? 10 : 9} />
               ))}
             </TableBody>
           </Table>
@@ -214,6 +244,7 @@ export default function Inventory() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t("inventory.subject")}</TableHead>
+                    <TableHead>{t("inventory.stockStatusLabel")}</TableHead>
                     <TableHead>{t("inventory.onHand")}</TableHead>
                     <TableHead>{t("inventory.reserved")}</TableHead>
                     <TableHead>{t("inventory.available")}</TableHead>
@@ -236,6 +267,17 @@ export default function Inventory() {
                         <TechnicalLabel size="micro">
                           {balance.subject_type} · {balance.subject_id}
                         </TechnicalLabel>
+                        <Link
+                          to={movementHistoryPath(balance)}
+                          className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-action-primary"
+                          data-testid="balance-history-link"
+                        >
+                          {t("inventory.viewMovements")}
+                          <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <StockStatusLabel status={balance.stock_status} />
                       </TableCell>
                       <TableCell className="tabular-nums">{balance.on_hand}</TableCell>
                       <TableCell className="tabular-nums">{balance.reserved}</TableCell>
@@ -289,11 +331,19 @@ export default function Inventory() {
                       {balance.projected}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-xs text-text-secondary">
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs text-text-secondary">
                     <span>
                       {t("inventory.available")}: {balance.available} · {t("inventory.reserved")}: {balance.reserved}
                     </span>
+                    <StockStatusLabel status={balance.stock_status} />
                   </div>
+                  <Link
+                    to={movementHistoryPath(balance)}
+                    className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-action-primary"
+                  >
+                    {t("inventory.viewMovements")}
+                    <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                  </Link>
                   {canWrite && (
                     <Button
                       variant="outline"

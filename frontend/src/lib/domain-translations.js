@@ -88,6 +88,11 @@ export const domainTranslations = {
     "materials.skuName": "SKU / Nama", "materials.needsReview": "Perlu ditinjau", "materials.ready": "Siap",
     "inventory.onHand": "On hand", "inventory.incoming": "Masuk", "inventory.plannedDemand": "Rencana permintaan",
     "inventory.projected": "Proyeksi", "inventory.version": "Versi",
+    "inventory.stockStatusLabel": "Status stok",
+    "inventory.stockStatus.normal": "Normal",
+    "inventory.stockStatus.rendah": "Rendah",
+    "inventory.stockStatus.habis": "Habis",
+    "inventory.viewMovements": "Lihat riwayat",
   },
   en: {
     "common.refresh": "Refresh", "common.search": "Search", "common.all": "All", "common.exportCsv": "Export CSV",
@@ -174,5 +179,10 @@ export const domainTranslations = {
     "materials.skuName": "SKU / Name", "materials.needsReview": "Needs review", "materials.ready": "Ready",
     "inventory.onHand": "On hand", "inventory.incoming": "Incoming", "inventory.plannedDemand": "Planned demand",
     "inventory.projected": "Projected", "inventory.version": "Version",
+    "inventory.stockStatusLabel": "Stock status",
+    "inventory.stockStatus.normal": "Normal",
+    "inventory.stockStatus.rendah": "Low",
+    "inventory.stockStatus.habis": "Out of stock",
+    "inventory.viewMovements": "View history",
   },
 };

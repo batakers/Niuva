@@ -727,7 +727,65 @@ class InventoryService:
         values = await self.db.inventory_balances.find(query, {"_id": 0}).sort(
             "updated_at", -1
         ).limit(min(limit, 500)).to_list(min(limit, 500))
+        await self._enrich_balances(values)
         return serialize_inventory(values)
+
+    async def _enrich_balances(self, values: list[dict]) -> None:
+        """Give each balance its subject identity, derived figures, and status.
+
+        A stored balance is deliberately lean: on_hand, reserved, incoming,
+        planned_demand, and a version. Reading it, an operator needs the name
+        behind the subject id, the available figure, and a verdict. The status
+        is computed here, server-side, so the table, the CSV export, and any
+        later consumer state the same verdict for the same numbers.
+        """
+        subjects: dict[str, dict[str, dict]] = {}
+        for collection_name, type_name in (
+            ("materials", "material"),
+            ("product_variants", "product_variant"),
+        ):
+            wanted = sorted(
+                {
+                    value["subject_id"]
+                    for value in values
+                    if value["subject_type"] == type_name
+                }
+            )
+            if not wanted:
+                subjects[type_name] = {}
+                continue
+            documents = await getattr(self.db, collection_name).find(
+                {"id": {"$in": wanted}}, {"_id": 0}
+            ).to_list(len(wanted))
+            subjects[type_name] = {item["id"]: item for item in documents}
+
+        for value in values:
+            subject = subjects[value["subject_type"]].get(value["subject_id"]) or {}
+            available = _decimal(value.get("on_hand", 0)) - _decimal(
+                value.get("reserved", 0)
+            )
+            projected = (
+                available
+                + _decimal(value.get("incoming", 0))
+                - _decimal(value.get("planned_demand", 0))
+            )
+            reorder_point = _decimal(subject.get("reorder_point", 0) or 0)
+            if available <= 0:
+                stock_status = "habis"
+            elif reorder_point > 0 and available <= reorder_point:
+                stock_status = "rendah"
+            else:
+                stock_status = "normal"
+            value.update(
+                {
+                    "subject_name": subject.get("name", ""),
+                    "sku": subject.get("sku", ""),
+                    "available": available,
+                    "projected": projected,
+                    "reorder_point": reorder_point,
+                    "stock_status": stock_status,
+                }
+            )
 
     async def get_balance(self, subject_type: str, subject_id: str) -> dict:
         value = await self._balance_document(subject_type, subject_id)
