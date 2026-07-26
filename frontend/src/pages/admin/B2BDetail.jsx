@@ -14,6 +14,7 @@ import { api, formatApiError } from "@/lib/api";
 import { fmtDate } from "@/lib/format";
 import { B2B_ACTION_PERMISSIONS, hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
+import ProjectWorkOrders from "./ProjectWorkOrders";
 
 const ACTION_TARGETS = {
   inquiry: { review: "reviewed", contact: "contacted", reject: "rejected" },
@@ -239,6 +240,10 @@ function B2BDetail({ kind }) {
               )}
             </dl>
           </SurfacePanel>
+
+          {kind === "project" && (
+            <ProjectWorkOrders project={record} onChanged={load} />
+          )}
 
           <SurfacePanel data-testid="b2b-operational-spine">
             <SurfacePanelHeader>

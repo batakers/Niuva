@@ -1,4 +1,10 @@
-import { ArrowRight, BriefcaseBusiness, FileText, Inbox } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  Factory,
+  FileText,
+  Inbox,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -40,6 +46,17 @@ const CONFIG = {
     icon: BriefcaseBusiness,
     primary: (record) => `Project · ${record.id.slice(0, 8)}`,
     secondary: (record) => `Quote ${record.quote_id.slice(0, 8)}`,
+  },
+  work_order: {
+    endpoint: "/admin/b2b/work-orders",
+    basePath: "/admin/b2b/work-orders",
+    titleKey: "admin.workOrders",
+    subtitleKey: "workOrder.subtitle",
+    emptyKey: "workOrder.empty",
+    icon: Factory,
+    primary: (record) => `WO · ${record.id.slice(0, 8)}`,
+    secondary: (record) =>
+      `Project ${record.project_id.slice(0, 8)} · ${record.quantity} unit`,
   },
 };
 
@@ -128,3 +145,4 @@ function B2BList({ kind }) {
 export const InquiryList = () => <B2BList kind="inquiry" />;
 export const QuoteList = () => <B2BList kind="quote" />;
 export const ProjectList = () => <B2BList kind="project" />;
+export const WorkOrderList = () => <B2BList kind="work_order" />;

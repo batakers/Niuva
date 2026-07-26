@@ -3,6 +3,7 @@ import {
   BookOpen,
   Boxes,
   BriefcaseBusiness,
+  Factory,
   FileText,
   History,
   Home,
@@ -54,6 +55,7 @@ export const ADMIN_MENU_GROUPS = Object.freeze([
         label: "admin.stockMovements",
         icon: History,
       },
+      { path: "/admin/b2b/work-orders", label: "admin.workOrders", icon: Factory },
     ],
   },
   {
@@ -97,7 +99,7 @@ const ROLE_HOME = Object.freeze({
   },
   quality_control: {
     labelKey: "admin.roleHome.qualityControl",
-    queuePaths: ["/admin/b2b/projects", "/admin/orders"],
+    queuePaths: ["/admin/b2b/work-orders", "/admin/b2b/projects", "/admin/orders"],
   },
   sales_estimator: {
     labelKey: "admin.roleHome.sales",
@@ -122,7 +124,12 @@ const ROLE_HOME = Object.freeze({
   },
   production: {
     labelKey: "admin.roleHome.production",
-    queuePaths: ["/admin/b2b/projects", "/admin/orders", "/admin/inventory"],
+    queuePaths: [
+      "/admin/b2b/work-orders",
+      "/admin/b2b/projects",
+      "/admin/orders",
+      "/admin/inventory",
+    ],
   },
   designer_engineer: {
     labelKey: "admin.roleHome.design",

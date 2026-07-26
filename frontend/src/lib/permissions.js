@@ -15,6 +15,7 @@ export const ADMIN_ROUTE_PERMISSIONS = Object.freeze({
   // at the route rather than a form they cannot submit.
   "/admin/b2b/quotes/revision": "quotes.write",
   "/admin/b2b/projects": "projects.read",
+  "/admin/b2b/work-orders": "production.read",
   "/admin/users": "users.read",
   "/admin/notifications": "notifications.write",
   "/admin/communication": "notifications.write",
@@ -48,6 +49,16 @@ export const B2B_ACTION_PERMISSIONS = Object.freeze({
     resume: "projects.write",
     complete: "projects.write",
     cancel: "projects.write",
+    // Opening a production run is a production write, not a project one.
+    create_work_order: "production.write",
+  }),
+  work_order: Object.freeze({
+    start: "production.write",
+    complete: "production.write",
+    cancel: "production.write",
+    // Allocation and consumption move stock, so they follow inventory.
+    allocate: "inventory.write",
+    consume: "inventory.write",
   }),
 });
 
