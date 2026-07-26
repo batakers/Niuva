@@ -561,22 +561,26 @@ async def get_order(oid: str, user: dict = Depends(get_current_user)):
 
 @api.post("/orders/{oid}/payment-proof")
 async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
-    rate_limit(f"proof:{user['id']}", limit=10, window=60)
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    if order["user_id"] != user["id"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    if order["status"] != "awaiting_payment":
-        raise HTTPException(status_code=400, detail="Order is not awaiting payment")
-    proof = await store_upload(file, f"payments/{user['id']}", IMAGE_EXTS)
-    payment = {"proof": proof, "uploaded_at": now_iso(), "verified": False, "verified_at": None}
-    await db.orders.update_one(
-        {"id": oid},
-        {"$set": {"payment": payment, "updated_at": now_iso()},
-         "$push": {"status_history": {"status": "awaiting_payment", "at": now_iso(), "note": "Payment proof uploaded"}}},
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_manual_transfer_disabled",
+            "message": "Mutasi pembayaran transfer manual baru dinonaktifkan.",
+        },
     )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
+
+
+@api.get("/admin/payment-capabilities")
+async def payment_capabilities(
+    _user: dict = Depends(require_permission("payments.read")),
+):
+    return {
+        "contract": "provider_neutral",
+        "provider_status": "inactive",
+        "manual_transfer_mutations": "disabled",
+        "checkout": "inactive",
+        "finance_activation": "not_approved",
+    }
 
 
 # ----------------------------- Admin orders -----------------------------
@@ -664,30 +668,13 @@ async def set_estimate(
     req: EstimateReq,
     user: dict = Depends(require_permission("quotes.write")),
 ):
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    settings = await get_settings()
-    estimate = {"amount": req.amount, "currency": "IDR", "note": req.note, "estimated_at": now_iso()}
-    await db.orders.update_one(
-        {"id": oid},
-        {"$set": {"estimate": estimate, "status": "awaiting_payment", "updated_at": now_iso()},
-         "$push": {"status_history": {"status": "awaiting_payment", "at": now_iso(), "note": f"Estimate set: Rp {req.amount:,.0f}"}}},
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_manual_transfer_disabled",
+            "message": "Mutasi pembayaran transfer manual baru dinonaktifkan.",
+        },
     )
-    await emailer.send_email(
-        order["user_email"],
-        f"Estimasi Biaya Pesanan {order['order_number']} — NIUVA",
-        "Estimasi biaya pesanan Anda sudah siap",
-        f"<p>Estimasi biaya untuk pesanan <strong>{order['order_number']}</strong> adalah "
-        f"<strong>Rp {req.amount:,.0f}</strong>.</p>"
-        f"<p>{req.note or ''}</p>"
-        f"<p>Silakan lakukan pembayaran ke:<br>"
-        f"<strong>{settings['bank_name']}</strong><br>No. Rek: <strong>{settings['account_number']}</strong><br>"
-        f"a.n. <strong>{settings['account_holder']}</strong></p>"
-        f"<p>Setelah transfer, unggah bukti pembayaran di dashboard Anda.</p>",
-        db=db, user_id=order["user_id"],
-    )
-    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 @api.post("/admin/orders/{oid}/verify-payment")
@@ -695,25 +682,13 @@ async def verify_payment(
     oid: str,
     user: dict = Depends(require_permission("payments.write")),
 ):
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    if not order.get("payment"):
-        raise HTTPException(status_code=400, detail="No payment proof uploaded")
-    await db.orders.update_one(
-        {"id": oid},
-        {"$set": {"payment.verified": True, "payment.verified_at": now_iso(), "status": "in_process", "updated_at": now_iso()},
-         "$push": {"status_history": {"status": "in_process", "at": now_iso(), "note": "Payment verified, production started"}}},
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_manual_transfer_disabled",
+            "message": "Mutasi pembayaran transfer manual baru dinonaktifkan.",
+        },
     )
-    await emailer.send_email(
-        order["user_email"],
-        f"Pembayaran Terverifikasi — {order['order_number']}",
-        "Pembayaran Anda telah terverifikasi",
-        f"<p>Pembayaran untuk pesanan <strong>{order['order_number']}</strong> telah kami verifikasi. "
-        f"Pesanan Anda kini <strong>sedang diproses</strong>.</p>",
-        db=db, user_id=order["user_id"],
-    )
-    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 async def apply_order_status(oid: str, status: str, note: str) -> dict:

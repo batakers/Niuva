@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import os
 import sys
 import types
@@ -291,6 +292,44 @@ async def run_security_matrix():
         )
         assert other_client_login.status_code == 200
         other_client_token = other_client_login.json()["token"]
+
+        order_before_payment_lockdown = copy.deepcopy(server.db.orders.items[0])
+        disabled_mutations = (
+            await api.post(
+                "/api/admin/orders/order-1/estimate",
+                json={"amount": 250000, "note": "Legacy estimate"},
+                headers=bearer(commercial_token),
+            ),
+            await api.post(
+                "/api/orders/order-1/payment-proof",
+                files={"file": ("proof.png", b"proof", "image/png")},
+                headers=bearer(client_token),
+            ),
+            await api.post(
+                "/api/admin/orders/order-1/verify-payment",
+                headers=bearer(commercial_token),
+            ),
+        )
+        for response in disabled_mutations:
+            assert response.status_code == 410
+            assert response.json()["detail"] == {
+                "code": "legacy_manual_transfer_disabled",
+                "message": "Mutasi pembayaran transfer manual baru dinonaktifkan.",
+            }
+        assert server.db.orders.items[0] == order_before_payment_lockdown
+
+        payment_capabilities = await api.get(
+            "/api/admin/payment-capabilities",
+            headers=bearer(commercial_token),
+        )
+        assert payment_capabilities.status_code == 200
+        assert payment_capabilities.json() == {
+            "contract": "provider_neutral",
+            "provider_status": "inactive",
+            "manual_transfer_mutations": "disabled",
+            "checkout": "inactive",
+            "finance_activation": "not_approved",
+        }
 
         assert (await api.get("/api/admin/users")).status_code == 401
         assert (await api.get("/api/admin/users", headers=bearer(client_token))).status_code == 403
