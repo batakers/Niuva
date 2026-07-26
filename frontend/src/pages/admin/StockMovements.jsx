@@ -135,8 +135,8 @@ export default function StockMovements() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">{t("common.all")}</SelectItem>
-                <SelectItem value="material">Material</SelectItem>
-                <SelectItem value="product_variant">Product variant</SelectItem>
+                <SelectItem value="material">{t("inventory.subjectMaterial")}</SelectItem>
+                <SelectItem value="product_variant">{t("inventory.subjectProductVariant")}</SelectItem>
               </SelectContent>
             </Select>
           </FormField>

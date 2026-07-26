@@ -28,7 +28,7 @@ export default function AdminLogin() {
       : "/admin";
 
   useEffect(() => {
-    document.title = "Admin Authentication - Niuva";
+    document.title = `${t("auth.adminLogin")} - Niuva`;
     document.querySelector('link[rel="canonical"]')?.remove();
 
     let robots = document.querySelector('meta[name="robots"]');
@@ -40,7 +40,7 @@ export default function AdminLogin() {
     robots.setAttribute("content", "noindex, nofollow");
 
     return () => robots.remove();
-  }, []);
+  }, [t]);
 
   if (!authLoading && hasPermission(user, "admin.access")) {
     return <Navigate to={destination} replace />;

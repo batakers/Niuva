@@ -161,8 +161,8 @@ export default function Inventory() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">{t("common.all")}</SelectItem>
-                <SelectItem value="material">Material</SelectItem>
-                <SelectItem value="product_variant">Product variant</SelectItem>
+                <SelectItem value="material">{t("inventory.subjectMaterial")}</SelectItem>
+                <SelectItem value="product_variant">{t("inventory.subjectProductVariant")}</SelectItem>
               </SelectContent>
             </Select>
           </FormField>
@@ -184,13 +184,13 @@ export default function Inventory() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("inventory.subject")}</TableHead>
-                <TableHead>On hand</TableHead>
-                <TableHead>Reserved</TableHead>
-                <TableHead>Available</TableHead>
-                <TableHead>Incoming</TableHead>
-                <TableHead>Planned demand</TableHead>
-                <TableHead>Projected</TableHead>
-                <TableHead>Version</TableHead>
+                <TableHead>{t("inventory.onHand")}</TableHead>
+                <TableHead>{t("inventory.reserved")}</TableHead>
+                <TableHead>{t("inventory.available")}</TableHead>
+                <TableHead>{t("inventory.incoming")}</TableHead>
+                <TableHead>{t("inventory.plannedDemand")}</TableHead>
+                <TableHead>{t("inventory.projected")}</TableHead>
+                <TableHead>{t("inventory.version")}</TableHead>
                 {canWrite && (
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 )}
@@ -211,13 +211,13 @@ export default function Inventory() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("inventory.subject")}</TableHead>
-                <TableHead>On hand</TableHead>
-                <TableHead>Reserved</TableHead>
-                <TableHead>Available</TableHead>
-                <TableHead>Incoming</TableHead>
-                <TableHead>Planned demand</TableHead>
-                <TableHead>Projected</TableHead>
-                <TableHead>Version</TableHead>
+                <TableHead>{t("inventory.onHand")}</TableHead>
+                <TableHead>{t("inventory.reserved")}</TableHead>
+                <TableHead>{t("inventory.available")}</TableHead>
+                <TableHead>{t("inventory.incoming")}</TableHead>
+                <TableHead>{t("inventory.plannedDemand")}</TableHead>
+                <TableHead>{t("inventory.projected")}</TableHead>
+                <TableHead>{t("inventory.version")}</TableHead>
                 {canWrite && (
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 )}

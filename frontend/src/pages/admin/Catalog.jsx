@@ -439,9 +439,9 @@ export default function Catalog() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("common.all")}</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem value="draft">{t("catalog.workflowDraft")}</SelectItem>
+                <SelectItem value="published">{t("catalog.workflowPublished")}</SelectItem>
+                <SelectItem value="archived">{t("catalog.workflowArchived")}</SelectItem>
               </SelectContent>
             </Select>
           </FormField>
@@ -453,9 +453,9 @@ export default function Catalog() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("common.all")}</SelectItem>
-                <SelectItem value="fixed">Fixed</SelectItem>
-                <SelectItem value="calculated">Calculated</SelectItem>
-                <SelectItem value="quote_required">Quote required</SelectItem>
+                <SelectItem value="fixed">{t("catalog.pricingFixed")}</SelectItem>
+                <SelectItem value="calculated">{t("catalog.pricingCalculated")}</SelectItem>
+                <SelectItem value="quote_required">{t("catalog.pricingQuoteRequired")}</SelectItem>
               </SelectContent>
             </Select>
           </FormField>
@@ -467,8 +467,8 @@ export default function Catalog() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("common.all")}</SelectItem>
-                <SelectItem value="status_only">Status only</SelectItem>
-                <SelectItem value="made_to_order">Made to order</SelectItem>
+                <SelectItem value="status_only">{t("catalog.stockStatusOnly")}</SelectItem>
+                <SelectItem value="made_to_order">{t("catalog.stockMadeToOrder")}</SelectItem>
               </SelectContent>
             </Select>
           </FormField>

@@ -180,7 +180,7 @@ export default function AdminMaterials() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>SKU / {t("common.name")}</TableHead>
+                  <TableHead>{t("materials.skuName")}</TableHead>
                   <TableHead>{t("materials.unit")}</TableHead>
                   <TableHead>{t("materials.supplier")}</TableHead>
                   <TableHead>{t("materials.setup")}</TableHead>
@@ -210,7 +210,7 @@ export default function AdminMaterials() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>SKU / {t("common.name")}</TableHead>
+                    <TableHead>{t("materials.skuName")}</TableHead>
                     <TableHead>{t("materials.unit")}</TableHead>
                     <TableHead>{t("materials.supplier")}</TableHead>
                     <TableHead>{t("materials.setup")}</TableHead>
@@ -602,8 +602,8 @@ function MaterialEditor({ value, onClose, onSaved }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="needs_review">Needs review</SelectItem>
-                <SelectItem value="ready">Ready</SelectItem>
+                <SelectItem value="needs_review">{t("materials.needsReview")}</SelectItem>
+                <SelectItem value="ready">{t("materials.ready")}</SelectItem>
               </SelectContent>
             </Select>
           </div>

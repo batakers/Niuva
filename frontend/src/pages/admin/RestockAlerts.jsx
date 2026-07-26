@@ -92,8 +92,8 @@ export default function RestockAlerts() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="active">{t("inventory.statusActive")}</SelectItem>
+                <SelectItem value="resolved">{t("inventory.statusResolved")}</SelectItem>
               </SelectContent>
             </Select>
           </FormField>
@@ -176,10 +176,10 @@ export default function RestockAlerts() {
                   {/* Metrics */}
                   <TableCell>
                     <div className="text-xs tabular-nums text-text-secondary">
-                      Available: {alert.last_balance?.available ?? "—"}
+                      {t("inventory.available")}: {alert.last_balance?.available ?? "—"}
                     </div>
                     <div className="text-xs tabular-nums text-text-secondary">
-                      Reserved: {alert.last_balance?.reserved ?? "—"}
+                      {t("inventory.reserved")}: {alert.last_balance?.reserved ?? "—"}
                     </div>
                   </TableCell>
 
