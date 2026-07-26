@@ -173,12 +173,6 @@
   --info: var(--blue-dark);
 }
 
-.home-production {
-  --font-family-display: 'Poppins', system-ui, sans-serif;
-  --font-family-body: 'Inter', system-ui, sans-serif;
-  --font-family-technical: var(--font-family-body);
-}
-
 .admin-workbench {
   --font-family-display: 'Poppins', system-ui, sans-serif;
   --font-family-body: 'Inter', system-ui, sans-serif;
@@ -486,9 +480,17 @@ body {
   max-width: 65ch;
 }
 
+/* Public type stack per DEC-UX-002.1, authorized across every public route and
+   superseding the Home-only `.home-production` scope. `font-family` is
+   re-declared because `body` resolves the variable in `:root`, so descendants
+   would otherwise inherit the computed Poppins rather than re-resolving Inter. */
 .brand-page {
+  --font-family-display: 'Poppins', system-ui, sans-serif;
+  --font-family-body: 'Inter', system-ui, sans-serif;
+  --font-family-technical: var(--font-family-body);
   background: var(--color-surface-page);
   color: var(--color-text-primary);
+  font-family: var(--font-family-body);
 }
 
 .brand-page section[id] {
