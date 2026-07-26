@@ -18,21 +18,6 @@ os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
 
 
-class _BootstrapMongoClient:
-    def __init__(self, *_args, **_kwargs):
-        pass
-
-    def __getitem__(self, _name):
-        return object()
-
-
-motor_package = types.ModuleType("motor")
-motor_asyncio = types.ModuleType("motor.motor_asyncio")
-motor_asyncio.AsyncIOMotorClient = _BootstrapMongoClient
-motor_package.motor_asyncio = motor_asyncio
-sys.modules.setdefault("motor", motor_package)
-sys.modules.setdefault("motor.motor_asyncio", motor_asyncio)
-
 resend_module = types.ModuleType("resend")
 resend_module.api_key = ""
 resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"})
