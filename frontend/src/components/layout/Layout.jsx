@@ -122,7 +122,7 @@ export function MarketingLayout({ children, hideFooter = false }) {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface-page selection:bg-primary/20 selection:text-foreground">
+    <div className="min-h-screen flex flex-col bg-surface-page selection:bg-primary/20 selection:text-text-primary">
       <a
         href="#main-content"
         className="fixed left-4 top-3 z-[60] inline-flex min-h-11 -translate-y-24 items-center rounded-full bg-[var(--color-text-primary)] px-4 py-2 text-sm font-semibold text-text-inverse transition-transform duration-emphasis ease-snap focus:translate-y-0"
@@ -157,7 +157,7 @@ export function OperationalLayout({ children, sidebar }) {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20 selection:text-foreground">
+    <div className="min-h-screen flex flex-col bg-surface-page selection:bg-primary/20 selection:text-text-primary">
       <Navbar />
       <main className="flex-1 px-4 pb-12 pt-[var(--space-page-start)] sm:px-6 w-full max-w-7xl mx-auto flex gap-6">
         {sidebar && (

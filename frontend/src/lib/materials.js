@@ -54,6 +54,8 @@ export function visibleMaterialActions(permissions = []) {
   if (allowed("materials.archive")) actions.push("archive");
   if (allowed("pricing.read")) actions.push("price_history");
   if (allowed("pricing.write")) actions.push("append_price");
+  if (allowed("supplier_reference.read")) actions.push("supplier_reference");
+  if (allowed("supplier_reference.write")) actions.push("edit_supplier_reference");
   return actions;
 }
 
@@ -65,4 +67,7 @@ export const materialsApi = {
   priceVersions: (id) => unwrap(api.get(`/admin/materials/${id}/price-versions`)),
   effectivePrice: (id) => unwrap(api.get(`/admin/materials/${id}/effective-price`)),
   appendPrice: (id, payload) => unwrap(api.post(`/admin/materials/${id}/price-versions`, payload)),
+  supplierReference: (id) => unwrap(api.get(`/admin/materials/${id}/supplier-reference`)),
+  updateSupplierReference: (id, supplierReference) =>
+    unwrap(api.put(`/admin/materials/${id}/supplier-reference`, { supplier_reference: supplierReference })),
 };

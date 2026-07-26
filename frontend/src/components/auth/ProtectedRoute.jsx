@@ -8,7 +8,7 @@ export function ProtectedRoute({ children, permission }) {
   const location = useLocation();
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-background">
+      <div className="min-h-screen grid place-items-center bg-surface-page">
         <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );

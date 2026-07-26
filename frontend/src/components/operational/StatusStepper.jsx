@@ -21,18 +21,18 @@ export function StatusStepper({ status }) {
                   done
                     ? "bg-status-success border-status-success text-white"
                     : active
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : "bg-secondary border-border text-muted-foreground"
+                    ? "bg-primary border-primary text-text-on-primary"
+                    : "bg-secondary border-border-default text-text-secondary"
                 }`}
               >
                 {done ? <Check className="h-4 w-4" strokeWidth={2} /> : i + 1}
               </div>
-              <span className={`mt-2 text-[11px] w-20 leading-tight ${active || done ? "text-foreground" : "text-muted-foreground"}`}>
+              <span className={`mt-2 text-[11px] w-20 leading-tight ${active || done ? "text-text-primary" : "text-text-secondary"}`}>
                 {t(`status.${s}`)}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-1 mb-6 ${i < current ? "bg-status-success" : "bg-border"}`} />
+              <div className={`flex-1 h-0.5 mx-1 mb-6 ${i < current ? "bg-status-success" : "bg-border-default"}`} />
             )}
           </React.Fragment>
         );
@@ -51,7 +51,7 @@ export function StatusBadge({ status }) {
     cancelled: "bg-destructive/10 text-destructive border-destructive/25",
   };
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${map[status] || "bg-secondary text-muted-foreground border-border"}`}>
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${map[status] || "bg-secondary text-text-secondary border-border-default"}`}>
       {t(`status.${status}`)}
     </span>
   );

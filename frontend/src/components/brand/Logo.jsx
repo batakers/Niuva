@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function Logo({ className = "h-6 w-auto text-foreground", ...props }) {
+export function Logo({ className = "h-6 w-auto text-text-primary", ...props }) {
   return (
     <svg 
       className={className} 
@@ -19,7 +19,7 @@ export function Logo({ className = "h-6 w-auto text-foreground", ...props }) {
   );
 }
 
-export function LogoWordmark({ className = "h-6 w-auto text-foreground" }) {
+export function LogoWordmark({ className = "h-6 w-auto text-text-primary" }) {
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
       <Logo className="h-full w-auto" />

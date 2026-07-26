@@ -34,7 +34,7 @@ test("maps catalog, material, and inventory routes to exact permissions", () => 
   expect(ADMIN_ROUTE_PERMISSIONS["/admin/restock-alerts"]).toBe("restock_alerts.read");
 });
 
-test("hides identity, audit, and settings navigation without their explicit permissions", () => {
+test("hides identity and settings navigation without their explicit permissions", () => {
   const operations = {
     permissions: ["dashboard.read", "catalog.read", "inventory.read"],
   };
@@ -42,6 +42,5 @@ test("hides identity, audit, and settings navigation without their explicit perm
   expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin"])).toBe(true);
   expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin/catalog"])).toBe(true);
   expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin/users"])).toBe(false);
-  expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin/audit"])).toBe(false);
   expect(hasPermission(operations, ADMIN_ROUTE_PERMISSIONS["/admin/settings"])).toBe(false);
 });

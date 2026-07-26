@@ -8,9 +8,9 @@ const technicalLabelVariants = cva(
   {
     variants: {
       tone: {
-        muted: "text-muted-foreground",
+        muted: "text-text-secondary",
         primary: "text-primary",
-        foreground: "text-foreground",
+        foreground: "text-text-primary",
         success: "text-status-success",
         warning: "text-status-warning",
         destructive: "text-destructive",

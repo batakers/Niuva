@@ -34,7 +34,6 @@ from identity_routes import build_identity_router
 from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
-from organization_routes import build_organization_router
 from permissions import (
     ROLE_LABELS,
     ROLE_POLICY_VERSION,
@@ -223,18 +222,6 @@ class BulkStatusReq(BaseModel):
     order_ids: List[str] = Field(min_length=1, max_length=100)
     status: str
     note: Optional[str] = ""
-
-
-class InternshipReq(BaseModel):
-    full_name: str
-    email: EmailStr
-    phone: str
-    university: str
-    major: str
-    semester: Optional[str] = ""
-    duration: Optional[str] = ""
-    motivation: str
-    portfolio_url: Optional[str] = ""
 
 
 class ContactReq(BaseModel):
@@ -805,31 +792,6 @@ async def download_file(path: str, request: Request):
     )
 
 
-# ----------------------------- Internship -----------------------------
-@api.post("/internships")
-async def apply_internship(req: InternshipReq):
-    doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
-    await db.internships.insert_one(dict(doc))
-    await emailer.send_email(
-        HRD_EMAIL,
-        f"Pelamar Magang Baru: {req.full_name}",
-        "Pendaftaran Magang Baru",
-        f"<p><strong>{req.full_name}</strong> ({req.email}, {req.phone}) mendaftar magang.</p>"
-        f"<p>Universitas: {req.university} — {req.major} (Sem {req.semester})<br>Durasi: {req.duration}</p>"
-        f"<p>Motivasi: {req.motivation}</p>"
-        f"<p>Portofolio: {req.portfolio_url or '-'}</p>",
-        db=db,
-    )
-    return {"ok": True, "message": "Pendaftaran berhasil dikirim"}
-
-
-@api.get("/admin/internships")
-async def list_internships(
-    user: dict = Depends(require_permission("internships.read")),
-):
-    return await db.internships.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-
-
 # ----------------------------- Contact -----------------------------
 @api.post("/contact")
 async def contact(req: ContactReq, request: Request):
@@ -949,10 +911,9 @@ async def admin_stats(
     in_process = await db.orders.count_documents({"status": "in_process"})
     completed = await db.orders.count_documents({"status": "completed"})
     clients = await db.users.count_documents(CUSTOMER_QUERY)
-    interns = await db.internships.count_documents({})
     return {
         "total_orders": total_orders, "pending_estimate": pending, "awaiting_payment": awaiting,
-        "in_process": in_process, "completed": completed, "clients": clients, "internships": interns,
+        "in_process": in_process, "completed": completed, "clients": clients,
     }
 
 
@@ -1136,15 +1097,7 @@ api.include_router(
         safe_user=safe_user,
     )
 )
-api.include_router(
-    build_organization_router(
-        get_db=lambda: db,
-        get_transaction_guard=lambda: app.state.transaction_guard,
-        require_permission=require_permission,
-        get_current_user=get_current_user,
-        has_permission=has_permission,
-    )
-)
+
 api.include_router(
     build_catalog_router(
         get_db=lambda: db,
