@@ -27,6 +27,7 @@ import storage
 import emailer
 from audit import append_audit_event
 from b2b_routes import build_b2b_router
+from retail_domain import classify_legacy_order
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
 from content_routes import build_content_router
@@ -555,7 +556,10 @@ async def create_order(
 
 @api.get("/orders")
 async def my_orders(user: dict = Depends(get_current_user)):
-    return await db.orders.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    documents = await db.orders.find(
+        {"user_id": user["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    return [classify_legacy_order(document) for document in documents]
 
 
 @api.get("/orders/{oid}")
@@ -565,7 +569,7 @@ async def get_order(oid: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Order not found")
     if not has_permission(user, "orders.read") and order["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Forbidden")
-    return order
+    return classify_legacy_order(order)
 
 
 @api.post("/orders/{oid}/payment-proof")
@@ -608,13 +612,18 @@ def rows_to_csv_response(fieldnames: list, rows: list, filename: str) -> Respons
 
 
 def serialize_admin_order_for(actor: dict, order: dict) -> dict:
-    """Return a role-safe order representation for internal readers."""
-    value = {key: item for key, item in order.items() if key != "_id"}
+    """Return a role-safe order representation for internal readers.
+
+    Classified as legacy on read: these records predate the separate retail
+    aggregate and follow a four-status flow, not the canonical lifecycle.
+    """
+    value = classify_legacy_order(order)
     if has_permission(actor, "payments.read"):
         return value
     operational_fields = {
         "id", "order_number", "user_id", "user_name", "user_email", "material_id",
         "material_name", "file", "notes", "status", "status_history", "created_at", "updated_at",
+        "record_class", "canonical_status_equivalent",
     }
     return {key: value[key] for key in operational_fields if key in value}
 
