@@ -60,6 +60,12 @@ const AdminWorkOrderList = lazy(() =>
 const AdminWorkOrderDetail = lazy(() =>
   import("@/pages/admin/WorkOrderDetail")
 );
+const AdminRetailOrderList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.RetailOrderList }))
+);
+const AdminRetailOrderDetail = lazy(() =>
+  import("@/pages/admin/RetailOrderDetail")
+);
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
 const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
@@ -157,6 +163,8 @@ function App() {
                   <Route path="/admin/b2b/projects/:id" element={protectedPage("/admin/b2b/projects", <AdminProjectDetail />)} />
                   <Route path="/admin/b2b/work-orders" element={protectedPage("/admin/b2b/work-orders", <AdminWorkOrderList />)} />
                   <Route path="/admin/b2b/work-orders/:id" element={protectedPage("/admin/b2b/work-orders", <AdminWorkOrderDetail />)} />
+                  <Route path="/admin/retail-orders" element={protectedPage("/admin/retail-orders", <AdminRetailOrderList />)} />
+                  <Route path="/admin/retail-orders/:id" element={protectedPage("/admin/retail-orders", <AdminRetailOrderDetail />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
                   <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotifications />)} />
                   <Route path="/admin/communication" element={protectedPage("/admin/communication", <AdminNotifications />)} />

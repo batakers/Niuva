@@ -77,6 +77,7 @@ describe("B2B workbench navigation and route permissions", () => {
       "/admin/inquiries",
       "/admin/b2b/quotes",
       "/admin/b2b/projects",
+      "/admin/retail-orders",
       "/admin/orders",
       "/admin/contacts",
     ]);

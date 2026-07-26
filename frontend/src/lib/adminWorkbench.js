@@ -11,6 +11,7 @@ import {
   Mail,
   Package,
   Settings,
+  ShoppingBag,
   Users,
 } from "lucide-react";
 import { ADMIN_ROUTE_PERMISSIONS, hasPermission } from "./permissions";
@@ -29,6 +30,11 @@ export const ADMIN_MENU_GROUPS = Object.freeze([
         path: "/admin/b2b/projects",
         label: "admin.projects",
         icon: BriefcaseBusiness,
+      },
+      {
+        path: "/admin/retail-orders",
+        label: "admin.retailOrders",
+        icon: ShoppingBag,
       },
       {
         path: "/admin/orders",
@@ -112,7 +118,7 @@ const ROLE_HOME = Object.freeze({
   },
   order_admin: {
     labelKey: "admin.roleHome.orderAdmin",
-    queuePaths: ["/admin/orders"],
+    queuePaths: ["/admin/retail-orders", "/admin/orders"],
   },
   catalog_manager: {
     labelKey: "admin.roleHome.catalog",

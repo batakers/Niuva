@@ -73,6 +73,21 @@ export function StatusBadge({ status }) {
     planned: attention,
     active: inFlight,
     on_hold: attention,
+
+    // Work order
+    in_progress: inFlight,
+
+    // Retail order: the canonical lifecycle, from placed to handed over.
+    created: attention,
+    paid: inFlight,
+    file_review: attention,
+    queued: attention,
+    in_production: inFlight,
+    quality_control: attention,
+    ready_to_ship: inFlight,
+    ready_to_pickup: inFlight,
+    shipped: inFlight,
+    picked_up: settled,
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${map[status] || "bg-secondary text-text-secondary border-border-default"}`}>

@@ -4,6 +4,7 @@ import {
   Factory,
   FileText,
   Inbox,
+  ShoppingBag,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -46,6 +47,17 @@ const CONFIG = {
     icon: BriefcaseBusiness,
     primary: (record) => `Project · ${record.id.slice(0, 8)}`,
     secondary: (record) => `Quote ${record.quote_id.slice(0, 8)}`,
+  },
+  retail_order: {
+    endpoint: "/admin/retail-orders",
+    basePath: "/admin/retail-orders",
+    titleKey: "admin.retailOrders",
+    subtitleKey: "retail.subtitle",
+    emptyKey: "retail.empty",
+    icon: ShoppingBag,
+    primary: (record) => record.order_number,
+    secondary: (record) =>
+      `${record.customer?.name || "—"} · ${record.items?.length || 0} item`,
   },
   work_order: {
     endpoint: "/admin/b2b/work-orders",
@@ -146,3 +158,4 @@ export const InquiryList = () => <B2BList kind="inquiry" />;
 export const QuoteList = () => <B2BList kind="quote" />;
 export const ProjectList = () => <B2BList kind="project" />;
 export const WorkOrderList = () => <B2BList kind="work_order" />;
+export const RetailOrderList = () => <B2BList kind="retail_order" />;
