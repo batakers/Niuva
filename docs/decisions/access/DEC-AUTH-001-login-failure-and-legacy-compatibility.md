@@ -96,3 +96,7 @@ This decision does not authorize:
 - persistent authentication-event storage;
 - granular-role migration;
 - production activation or go-live.
+
+## Subsequent Decisions
+
+The bounded Phase 0 selections recorded in `DEC-AUTH-003` through `DEC-AUTH-009` now govern recovery, password policy, Admin sessions, the abuse-protection interface, internal MFA direction, the support-channel deferral, and authentication-event governance. The generic login-failure contract and supported legacy-customer compatibility in this record remain authoritative. Residual timing behavior, signing-key and claim policy, role migration, and all source implementation remain separately gated.

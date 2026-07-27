@@ -1,12 +1,23 @@
 # Forgot & Reset Password — Implementation Plan
 
 Tanggal: 24 Juli 2026
-Status: **Context Only — Pending Separate Implementation Approval**
+Status: **Context Only — Implemented-State Evidence Reconciled**
 Scope: Menambah alur "Lupa Password" dan "Reset Password" untuk akun admin dan customer. Tidak ada source code yang diubah oleh dokumen ini.
 Canonical authority:
 - `docs/implementation/plans/pending-reconciliation/2026-07-23-auth-experience-remediation.md` (Bounded Scope: "entry to sign-in or account-access flows... recovery states"; menyatakan implementasi belum diotorisasi)
 - `AGENTS.md` (least-privilege authorization; "a documentation plan does not authorize application implementation")
 Sumber temuan: audit page-inventory frontend/backend read-only, 24-25 Juli 2026.
+
+> **Reconciliation notice — 27 Juli 2026:** Addendum implementasi di bagian
+> akhir dokumen ini dipertahankan sebagai bukti historis, tetapi tidak menaikkan
+> dokumen ini menjadi policy authority. Current source dan test harus
+> diverifikasi langsung. Nilai TTL, threshold rate limit, cakupan recovery,
+> session invalidation, password policy, dan status implementasi telah
+> direkonsiliasi melalui `DEC-AUTH-003`, `DEC-AUTH-004`, dan `DEC-AUTH-006`.
+> `docs/implementation/specs/candidates/2026-07-27-admin-auth-decision-packet.md`
+> sekarang dipertahankan sebagai konteks dan bukti persetujuan; dedicated
+> decision record adalah authority. Dokumen ini tetap tidak mengotorisasi
+> source change.
 
 Dokumen ini adalah rencana desain. `2026-07-23-auth-experience-remediation.md` baris 11-15
 menegaskan perubahan source, provider identitas, atau role model memerlukan "a later,
