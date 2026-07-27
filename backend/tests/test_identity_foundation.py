@@ -213,6 +213,9 @@ def make_user(user_id, email, roles, *, status="active"):
         "roles": list(roles),
         "status": status,
         "access_state": "approved",
+        "role_policy_version": server.ROLE_POLICY_VERSION,
+        "token_version": 0,
+        "version": 1,
         "created_at": "2026-07-14T00:00:00+00:00",
     }
 

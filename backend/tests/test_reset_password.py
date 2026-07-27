@@ -62,13 +62,13 @@ class FakeCollection:
                     result.pop(key, None)
         return result
 
-    async def find_one(self, query, projection=None):
+    async def find_one(self, query, projection=None, **_options):
         for item in self.items:
             if self._matches(item, query):
                 return self._project(item, projection)
         return None
 
-    async def insert_one(self, item):
+    async def insert_one(self, item, **_options):
         self.items.append(dict(item))
         return types.SimpleNamespace(inserted_id=item.get("id"))
 
@@ -90,14 +90,23 @@ class FakeCollection:
 
         return _Cursor(matched)
 
-    async def update_one(self, query, update):
+    async def update_one(self, query, update, upsert=False, **_options):
         for item in self.items:
             if self._matches(item, query):
                 self._apply_update(item, update)
                 return types.SimpleNamespace(matched_count=1, modified_count=1)
+        if upsert:
+            item = {
+                key: value
+                for key, value in query.items()
+                if not isinstance(value, dict)
+            }
+            self._apply_update(item, update)
+            self.items.append(item)
+            return types.SimpleNamespace(matched_count=0, modified_count=0)
         return types.SimpleNamespace(matched_count=0, modified_count=0)
 
-    async def update_many(self, query, update):
+    async def update_many(self, query, update, **_options):
         matched = 0
         for item in self.items:
             if self._matches(item, query):
@@ -114,6 +123,13 @@ class FakeCollection:
     async def count_documents(self, query):
         return sum(1 for item in self.items if self._matches(item, query))
 
+    async def delete_one(self, query, **_options):
+        for index, item in enumerate(self.items):
+            if self._matches(item, query):
+                self.items.pop(index)
+                return types.SimpleNamespace(deleted_count=1)
+        return types.SimpleNamespace(deleted_count=0)
+
 
 class FakeDatabase:
     def __init__(self, users):
@@ -122,6 +138,12 @@ class FakeDatabase:
         self.notifications = FakeCollection()
         self.auth_sessions = AuthCollection()
         self.login_rate_limits = AuthCollection()
+        self.public_rate_limits = AuthCollection()
+
+
+class EnabledGuard:
+    async def run(self, callback, **_options):
+        return await callback(None)
 
 
 def bearer(token):
@@ -132,13 +154,16 @@ def build_customer():
     return {
         "id": "customer-1", "name": "Reset Customer", "email": "reset-customer@example.com",
         "password_hash": server.hash_password("OldPassword123"),
-        "phone": "", "company": "", "role": "client", "created_at": server.now_iso(),
+        "phone": "", "company": "", "role": "client",
+        "role_policy_version": server.ROLE_POLICY_VERSION,
+        "token_version": 0,
+        "created_at": server.now_iso(),
     }
 
 
 async def run_forgot_password_generic_response_and_rate_limit():
     server.db = FakeDatabase([build_customer()])
-    server._rate_buckets.clear()
+    server.app.state.transaction_guard = EnabledGuard()
 
     transport = httpx.ASGITransport(app=server.app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
@@ -167,7 +192,7 @@ def test_forgot_password_never_leaks_account_existence_and_is_rate_limited():
 async def run_reset_password_lifecycle_and_session_invalidation():
     customer = build_customer()
     server.db = FakeDatabase([customer])
-    server._rate_buckets.clear()
+    server.app.state.transaction_guard = EnabledGuard()
 
     transport = httpx.ASGITransport(app=server.app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
@@ -231,7 +256,7 @@ def test_reset_password_invalidates_old_sessions_and_cannot_be_reused():
 
 async def run_reset_password_rejects_unknown_or_expired_token():
     server.db = FakeDatabase([build_customer()])
-    server._rate_buckets.clear()
+    server.app.state.transaction_guard = EnabledGuard()
 
     transport = httpx.ASGITransport(app=server.app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:

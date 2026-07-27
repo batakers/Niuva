@@ -27,7 +27,10 @@ from tests.auth_support import AuthCollection  # noqa: E402
 
 class AuthDatabase:
     def __init__(self, users):
-        self.users = AuthCollection(users)
+        self.users = AuthCollection([
+            {"role_policy_version": server.ROLE_POLICY_VERSION, **user}
+            for user in users
+        ])
         self.auth_sessions = AuthCollection()
         self.login_rate_limits = AuthCollection()
 

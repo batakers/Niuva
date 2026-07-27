@@ -1,62 +1,30 @@
 import { ArrowLeft, ArrowRight, CircleAlert, History, Lock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/operational/StatusStepper";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { OperationalState } from "@/components/ui/operational-state";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { TechnicalLabel } from "@/components/ui/technical-label";
-import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
 import { fmtDate, rupiah } from "@/lib/format";
-import { hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
-
-// Each action names the single stage it advances to. The backend owns the
-// graph; this only translates an offered action into its target.
-const ACTION_TARGETS = {
-  request_payment: "awaiting_payment",
-  mark_paid: "paid",
-  start_file_review: "file_review",
-  queue: "queued",
-  start_production: "in_production",
-  submit_quality_control: "quality_control",
-  mark_ready_to_ship: "ready_to_ship",
-  mark_ready_to_pickup: "ready_to_pickup",
-  mark_shipped: "shipped",
-  mark_picked_up: "picked_up",
-  complete: "completed",
-};
-
-function operationId() {
-  return globalThis.crypto?.randomUUID?.() ||
-    `op-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
 
 function blockerFor(record, t) {
   if (record.status === "awaiting_payment") return t("retail.blockerPayment");
   if (record.status === "file_review") return t("retail.blockerFileReview");
   if (record.status === "quality_control") return t("retail.blockerQualityControl");
-  if (!record.permitted_next_actions?.length) return t("b2b.noNextAction");
-  return t("b2b.noBlockerDetected");
+  return t("b2b.noNextAction");
 }
 
 export default function RetailOrderDetail() {
   const { id } = useParams();
   const { t } = useI18n();
-  const { user } = useAuth();
 
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reason, setReason] = useState("");
-  const [busyAction, setBusyAction] = useState("");
-
-  const canWrite = hasPermission(user, "orders.write");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -73,29 +41,6 @@ export default function RetailOrderDetail() {
   useEffect(() => {
     load();
   }, [load]);
-
-  const runAction = async (action) => {
-    if (reason.trim().length < 3) {
-      toast.error(t("b2b.reasonRequired"));
-      return;
-    }
-    setBusyAction(action);
-    try {
-      await api.post(`/admin/retail-orders/${id}/transitions`, {
-        target_status: ACTION_TARGETS[action],
-        expected_version: record.version,
-        operation_id: operationId(),
-        reason: reason.trim(),
-      });
-      setReason("");
-      toast.success(t("b2b.actionApplied"));
-      load();
-    } catch (requestError) {
-      setError(formatApiError(requestError.response?.data?.detail));
-    } finally {
-      setBusyAction("");
-    }
-  };
 
   if (loading) {
     return (
@@ -117,10 +62,6 @@ export default function RetailOrderDetail() {
       </AdminLayout>
     );
   }
-
-  const actionable = canWrite
-    ? (record.permitted_next_actions || []).filter((action) => ACTION_TARGETS[action])
-    : [];
 
   return (
     <AdminLayout
@@ -265,36 +206,16 @@ export default function RetailOrderDetail() {
           </SurfacePanel>
 
           <SurfacePanel padding="md">
-            <p className="type-label text-text-secondary">{t("b2b.nextActions")}</p>
-            {actionable.length > 0 ? (
-              <div className="mt-4 space-y-3">
-                <Input
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  placeholder={t("b2b.reasonPlaceholder")}
-                  aria-label={t("b2b.reason")}
-                  className="min-h-11"
-                />
-                {actionable.map((action) => (
-                  <Button
-                    key={action}
-                    type="button"
-                    className="min-h-11 w-full justify-between"
-                    loading={busyAction === action}
-                    disabled={Boolean(busyAction)}
-                    onClick={() => runAction(action)}
-                    data-testid={`retail-action-${action}`}
-                  >
-                    {t(`retail.action.${action}`)}
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm leading-6 text-text-secondary">
-                {t("b2b.noAvailableAction")}
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-text-secondary" aria-hidden="true" />
+              <p className="type-label text-text-secondary">
+                Retail transaction inactive
               </p>
-            )}
+            </div>
+            <p className="mt-3 text-sm leading-6 text-text-secondary">
+              Order historis ini hanya dapat dibaca. Payment, production,
+              fulfilment, refund, dan return belum diaktifkan.
+            </p>
           </SurfacePanel>
 
           {(record.suspended_actions || []).length > 0 && (

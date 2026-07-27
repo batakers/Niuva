@@ -129,6 +129,7 @@ class FakeDatabase:
         self.inventory_adjustment_requests = FakeCollection()
         self.restock_alerts = FakeCollection()
         self.notifications = FakeCollection()
+        self.notification_outbox = FakeCollection()
         self.audit_events = FakeCollection()
         self.users = FakeCollection(
             [
@@ -539,7 +540,9 @@ async def run_restock_dedup_resolution_and_email_isolation():
         payload=operation("54444444-4444-4444-4444-444444444444", quantity="20"),
     )
     assert all(item["status"] == "resolved" for item in db.restock_alerts.items)
-    assert emailer.calls
+    assert not emailer.calls
+    assert len(db.notification_outbox.items) == 6
+    assert all(item["status"] == "pending" for item in db.notification_outbox.items)
     assert db.inventory_balances.items[0]["version"] == 4
 
     manually_active = deepcopy(db.restock_alerts.items[0])

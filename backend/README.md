@@ -18,8 +18,8 @@ Cookie defaults:
 - access: HttpOnly, 15 minutes;
 - refresh: HttpOnly, seven absolute days, single-use rotation;
 - CSRF: readable cookie mirrored in `X-CSRF-Token`;
-- `Secure` is enabled outside development/test, or explicitly with
-  `AUTH_COOKIE_SECURE=true`;
+- `Secure` is enabled outside development/test. Production startup rejects
+  `AUTH_COOKIE_SECURE=false`;
 - `AUTH_COOKIE_DOMAIN` is optional and should normally remain unset.
 
 `TRUST_PROXY_HEADERS=false` is the safe default. Enable it only behind a proxy

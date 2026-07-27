@@ -57,17 +57,17 @@ class FakeCollection:
                     result.pop(key, None)
         return result
 
-    async def find_one(self, query, projection=None):
+    async def find_one(self, query, projection=None, **_options):
         for item in self.items:
             if self._matches(item, query):
                 return self._project(item, projection)
         return None
 
-    async def insert_one(self, item):
+    async def insert_one(self, item, **_options):
         self.items.append(dict(item))
         return types.SimpleNamespace(inserted_id=item.get("id"))
 
-    def find(self, query, projection=None):
+    def find(self, query, projection=None, **_options):
         matched = [self._project(item, projection) for item in self.items if self._matches(item, query)]
 
         class _Cursor:
@@ -93,13 +93,28 @@ class FakeCollection:
 
 class FakeDatabase:
     def __init__(self, users, orders=None):
-        self.users = FakeCollection(users)
+        self.users = FakeCollection([
+            {
+                "role_policy_version": server.ROLE_POLICY_VERSION,
+                "token_version": 0,
+                "version": 1,
+                **user,
+            }
+            for user in users
+        ])
         self.orders = FakeCollection(orders or [])
         self.admin_notification_log = FakeCollection()
         self.notifications = FakeCollection()
+        self.notification_outbox = FakeCollection()
         self.audit_events = FakeCollection()
         self.auth_sessions = AuthCollection()
         self.login_rate_limits = AuthCollection()
+        self.public_rate_limits = AuthCollection()
+
+
+class FakeTransactionGuard:
+    async def run(self, callback, *, operation_name, retry_safe=False):
+        return await callback(object())
 
 
 def bearer(token):
@@ -147,7 +162,7 @@ async def run_admin_notifications_matrix():
             {"id": "order-2", "user_id": customer_b["id"], "status": "completed"},
         ],
     )
-    server._rate_buckets.clear()
+    server.app.state.transaction_guard = FakeTransactionGuard()
 
     transport = httpx.ASGITransport(app=server.app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
@@ -199,11 +214,13 @@ async def run_admin_notifications_matrix():
         history_forbidden = await api.get("/api/admin/notifications/sent", headers=bearer(warehouse_token))
         assert history_forbidden.status_code == 403
 
-        # Every successful send must also land in the shared audit_events log.
-        sent_audit_events = [event for event in server.db.audit_events.items if event["action"] == "notifications.sent"]
-        assert len(sent_audit_events) == 3
-        assert sent_audit_events[-1]["after"]["target"] == "broadcast"
-        assert sent_audit_events[-1]["after"]["recipient_count"] == 2
+        # Every successful enqueue must also land in the shared audit log and
+        # durable delivery outbox; delivery is no longer performed inline.
+        queued_audit_events = [event for event in server.db.audit_events.items if event["action"] == "notifications.queued"]
+        assert len(queued_audit_events) == 3
+        assert queued_audit_events[-1]["after"]["target"] == "broadcast"
+        assert queued_audit_events[-1]["after"]["recipient_count"] == 2
+        assert len(server.db.notification_outbox.items) == 4
 
 
 def test_admin_notifications_permission_targets_and_history():

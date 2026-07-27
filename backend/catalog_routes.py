@@ -9,7 +9,7 @@ from permissions import has_permission
 
 
 class CategoryPayload(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=2, max_length=200)
     slug: str = Field(default="", max_length=200)
@@ -24,8 +24,15 @@ class MediaPayload(BaseModel):
 
 
 class ProductPayload(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
+    id: str | None = Field(default=None, exclude=True)
+    workflow_status: str | None = Field(default=None, exclude=True)
+    active_publication_id: str | None = Field(default=None, exclude=True)
+    created_at: str | None = Field(default=None, exclude=True)
+    created_by: str | None = Field(default=None, exclude=True)
+    updated_at: str | None = Field(default=None, exclude=True)
+    updated_by: str | None = Field(default=None, exclude=True)
     category_id: str
     name: str = Field(min_length=2, max_length=200)
     slug: str = Field(default="", max_length=200)
@@ -53,9 +60,14 @@ class BomEntryPayload(BaseModel):
 
 
 class VariantPayload(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     id: str | None = None
+    product_id: str | None = Field(default=None, exclude=True)
+    created_at: str | None = Field(default=None, exclude=True)
+    created_by: str | None = Field(default=None, exclude=True)
+    updated_at: str | None = Field(default=None, exclude=True)
+    updated_by: str | None = Field(default=None, exclude=True)
     sku: str = Field(min_length=2, max_length=100)
     name: str = Field(min_length=1, max_length=200)
     option_values: dict = Field(default_factory=dict)
@@ -73,9 +85,14 @@ class VariantListPayload(BaseModel):
 
 
 class OptionPayload(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     id: str | None = None
+    product_id: str | None = Field(default=None, exclude=True)
+    created_at: str | None = Field(default=None, exclude=True)
+    created_by: str | None = Field(default=None, exclude=True)
+    updated_at: str | None = Field(default=None, exclude=True)
+    updated_by: str | None = Field(default=None, exclude=True)
     code: str = Field(min_length=1, max_length=100)
     label: str = Field(min_length=1, max_length=200)
     type: Literal["select", "number", "text", "file", "boolean"]
@@ -114,15 +131,34 @@ def build_catalog_router(
     router = APIRouter(tags=["catalog"])
 
     def reject_operations_pricing(actor: dict, fields: set[str]):
-        if has_permission(actor, "catalog.publish"):
+        if has_permission(actor, "pricing.write") or has_permission(
+            actor, "pricing.override"
+        ):
             return
-        for field in ("pricing_mode", "price_from", "pricing_rule_reference", "currency", "fixed_price", "status"):
+        for field in (
+            "pricing_mode",
+            "price_from",
+            "pricing_rule_reference",
+            "currency",
+            "fixed_price",
+        ):
             if field in fields:
                 raise HTTPException(status_code=403, detail={
                     "code": "catalog_field_forbidden",
                     "field": field,
                     "message": f"Operations cannot write {field}.",
                 })
+
+    def reject_variant_lifecycle(actor: dict, fields: set[str]):
+        if "status" in fields and not has_permission(actor, "catalog.publish"):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "catalog_lifecycle_forbidden",
+                    "field": "status",
+                    "message": "Only an approver can change variant lifecycle.",
+                },
+            )
 
     def reject_operations_category_lifecycle(actor: dict, fields: set[str], *, requested_status: str, current_status: str | None = None):
         if has_permission(actor, "catalog.publish"):
@@ -254,6 +290,7 @@ def build_catalog_router(
         await reject_operations_archived_product(actor, product_id)
         for item in payload.variants:
             reject_operations_pricing(actor, item.model_fields_set)
+            reject_variant_lifecycle(actor, item.model_fields_set)
         values = [
             item.model_dump(
                 mode="json",
@@ -269,15 +306,23 @@ def build_catalog_router(
         payload: OptionListPayload,
         actor: dict = Depends(require_permission("catalog.write")),
     ):
+        await reject_operations_archived_product(actor, product_id)
         values = [item.model_dump(mode="json") for item in payload.options]
         return await invoke(service().replace_options(product_id, values, actor))
 
     @router.post("/admin/products/{product_id}/validate")
     async def validate_product(
         product_id: str,
-        _actor: dict = Depends(require_permission("catalog.write")),
+        payload: ReasonPayload,
+        actor: dict = Depends(require_permission("catalog.write")),
     ):
-        return {"errors": await invoke(service().validate_product(product_id))}
+        return await invoke(
+            service().submit_publication_candidate(
+                product_id,
+                actor=actor,
+                reason=payload.reason,
+            )
+        )
 
     @router.post("/admin/products/{product_id}/publish")
     async def publish_product(

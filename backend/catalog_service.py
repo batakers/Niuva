@@ -376,10 +376,9 @@ class CatalogService:
                 "updated_by": actor.get("id"),
             }
             if not current:
-                if not has_permission(actor, "catalog.publish"):
-                    value.setdefault("fixed_price", None)
-                    value.setdefault("currency", "IDR")
-                    value.setdefault("status", "active")
+                value.setdefault("fixed_price", None)
+                value.setdefault("currency", "IDR")
+                value.setdefault("status", "active")
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
             prepared.append((current, value))
@@ -572,6 +571,72 @@ class CatalogService:
     async def validate_product(self, product_id: str) -> list[dict]:
         return validate_catalog_aggregate(await self._load_aggregate(product_id))
 
+    async def submit_publication_candidate(
+        self,
+        product_id: str,
+        *,
+        actor: dict,
+        reason: str,
+    ) -> dict:
+        self._require_transactions()
+        aggregate = await self._load_aggregate(product_id)
+        errors = validate_catalog_aggregate(aggregate)
+        if errors:
+            raise CatalogError(
+                400,
+                "catalog_invalid",
+                "Produk belum memenuhi syarat kandidat publikasi.",
+                errors=errors,
+            )
+        product = aggregate["product"]
+        if product.get("workflow_status") == "archived":
+            raise CatalogError(
+                409,
+                "catalog_lifecycle_forbidden",
+                "Produk yang diarsipkan tidak dapat diajukan untuk publikasi.",
+            )
+        timestamp = now_iso()
+        changes = {
+            "workflow_status": "validated",
+            "updated_at": timestamp,
+            "updated_by": actor.get("id"),
+        }
+        after = {**product, **changes}
+
+        async def mutation(session):
+            result = await self.db.products.update_one(
+                {
+                    "id": product_id,
+                    "updated_at": product.get("updated_at"),
+                    "workflow_status": product.get("workflow_status"),
+                },
+                {"$set": changes},
+                **_write_options(session),
+            )
+            if not getattr(result, "matched_count", 0):
+                raise CatalogError(
+                    409,
+                    "catalog_candidate_conflict",
+                    "Produk berubah selama pengajuan kandidat publikasi.",
+                )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.product_candidate_submitted",
+                target_type="product",
+                target_id=product_id,
+                before={"workflow_status": product.get("workflow_status")},
+                after={"workflow_status": "validated"},
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(
+            mutation,
+            operation_name="catalog.submit_publication_candidate",
+        )
+        return after
+
     def _require_transactions(self):
         if not self.capabilities.transactions:
             raise CatalogError(
@@ -599,6 +664,12 @@ class CatalogService:
                 "Produk belum memenuhi syarat publikasi.",
                 errors=errors,
             )
+        if aggregate["product"].get("workflow_status") != "validated":
+            raise CatalogError(
+                409,
+                "catalog_candidate_required",
+                "Produk harus diajukan sebagai kandidat publikasi setelah perubahan terakhir.",
+            )
         publication = build_publication_snapshot(
             aggregate,
             revision=await self._next_revision(product_id),
@@ -611,8 +682,12 @@ class CatalogService:
             await self.db.catalog_publications.insert_one(
                 publication, **_write_options(session)
             )
-            await self.db.products.update_one(
-                {"id": product_id},
+            result = await self.db.products.update_one(
+                {
+                    "id": product_id,
+                    "workflow_status": "validated",
+                    "updated_at": aggregate["product"].get("updated_at"),
+                },
                 {
                     "$set": {
                         "active_publication_id": publication["id"],
@@ -622,6 +697,12 @@ class CatalogService:
                 },
                 **_write_options(session),
             )
+            if not getattr(result, "matched_count", 0):
+                raise CatalogError(
+                    409,
+                    "catalog_candidate_conflict",
+                    "Kandidat publikasi berubah sebelum persetujuan selesai.",
+                )
             await append_audit_event(
                 self.db,
                 actor=actor,

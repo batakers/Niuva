@@ -217,14 +217,14 @@ async def run_lifecycle_and_public_boundary():
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
         forbidden = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "forbidden", "fields": VALID_FAQ_FIELDS},
+            json={"content_type": "faq", "slug": "forbidden", "fields": VALID_FAQ_FIELDS, "reason": "Create forbidden fixture"},
             headers=headers("warehouse"),
         )
         assert forbidden.status_code == 403
 
         created = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "shipping", "fields": VALID_FAQ_FIELDS},
+            json={"content_type": "faq", "slug": "shipping", "fields": VALID_FAQ_FIELDS, "reason": "Create shipping FAQ"},
             headers=headers(),
         )
         assert created.status_code == 201
@@ -367,7 +367,7 @@ async def run_publish_validation_and_conflicts():
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
         incomplete = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "incomplete", "fields": {"question": ""}},
+            json={"content_type": "faq", "slug": "incomplete", "fields": {"question": ""}, "reason": "Create incomplete fixture"},
             headers=headers(),
         )
         assert incomplete.status_code == 201
@@ -387,7 +387,7 @@ async def run_publish_validation_and_conflicts():
 
         duplicate = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "incomplete", "fields": VALID_FAQ_FIELDS},
+            json={"content_type": "faq", "slug": "incomplete", "fields": VALID_FAQ_FIELDS, "reason": "Check duplicate slug"},
             headers=headers(),
         )
         assert duplicate.status_code == 409
@@ -398,6 +398,7 @@ async def run_publish_validation_and_conflicts():
             json={
                 "content_type": "capability", "slug": "rnd",
                 "fields": {"title": "R&D", "body": "x", "output": "x", "targetUsers": "x", "cta": "x"},
+                "reason": "Create capability fixture",
             },
             headers=headers(),
         )
@@ -420,7 +421,7 @@ async def run_scheduled_publish_sets_scheduled_status():
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
         created = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "scheduled-item", "fields": VALID_FAQ_FIELDS},
+            json={"content_type": "faq", "slug": "scheduled-item", "fields": VALID_FAQ_FIELDS, "reason": "Create scheduled FAQ"},
             headers=headers(),
         )
         block_id = created.json()["id"]

@@ -38,8 +38,9 @@ Authority: `DEC-REMED-001` /
   availability, CTA state, loading/empty/error/retry/unavailable states.
 - Customer cookie login, public settings, published capabilities/portfolio,
   staff/customer separation, portfolio-from-project, and Work Order wiring.
-- Retail/legacy creation, checkout, payment, production upload, Organization
-  Portal, and other inactive capabilities are visibly gated.
+- Retail/legacy creation and every Retail lifecycle mutation are gated;
+  historical Retail aggregates are read-only. Checkout, payment, production
+  upload, Organization Portal, and other inactive capabilities remain gated.
 
 ### Business invariants and operations
 
@@ -49,8 +50,17 @@ Authority: `DEC-REMED-001` /
   terminal Project child-state gates.
 - Inventory adjustment request/manager approve/reject flow with self-approval
   denial.
-- Durable notification outbox lease, retry/backoff, exhausted state, and
-  idempotent delivery key.
+- Admin and inventory notification producers enqueue durable outbox deliveries;
+  expired processing leases are reclaimable and UI/API reporting says
+  `queued`, not `sent`.
+- Quote lines carry stable `quote_line_id` values. Work Orders reference the
+  accepted Quote version and exact line, so repeated variants remain distinct
+  and each line receives its own cumulative hard cap.
+- Catalog Managers may edit draft prices and prepare candidates, while catalog
+  publication, rollback, and variant lifecycle remain Manager/Approver-only.
+  Candidate submission validates the aggregate, records an audit reason, and
+  is invalidated by later edits; publication uses compare-and-set against that
+  candidate state.
 - Consistent request ID/error envelope, strict mutation schemas, and
   formula-safe CSV serialization.
 - FastAPI lifespan, live readiness checks, and capability configuration.
@@ -80,11 +90,12 @@ Authority: `DEC-REMED-001` /
 
 Local source verification on 27 July 2026:
 
-- backend: 457 passed, 7 documented environment/topology skips, 14 subtests;
-- frontend: 201 passed;
+- backend: 460 passed, 7 documented environment/topology skips, 14 subtests;
+- frontend: 200 passed;
 - Retail Playwright: 4 passed on mobile and desktop, including controlled
   empty/error states and WCAG A/AA scan;
-- optimized frontend build: passed;
+- optimized frontend bundle compilation: passed; production release-file
+  generation remains gated on an approved `REACT_APP_PUBLIC_SITE_URL`;
 - `pip-audit`: no known vulnerabilities;
 - compile, fatal flake8, focused mypy, black/isort, and `git diff --check`:
   passed;

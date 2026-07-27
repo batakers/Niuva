@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+import inspect
 from typing import Literal
 from uuid import UUID
 
@@ -113,7 +114,7 @@ class ProjectTransitionPayload(ProjectCommandPayload):
 
 
 class WorkOrderCreatePayload(ProjectCommandPayload):
-    variant_id: str = Field(min_length=1, max_length=100)
+    quote_line_id: str = Field(min_length=1, max_length=100)
     quantity: int = Field(gt=0)
 
 
@@ -166,7 +167,9 @@ def build_b2b_router(
     @router.post("/inquiries", status_code=status.HTTP_201_CREATED)
     async def create_inquiry(payload: InquiryPayload, request: Request):
         if throttle_intake is not None:
-            throttle_intake(request)
+            throttle_result = throttle_intake(request)
+            if inspect.isawaitable(throttle_result):
+                await throttle_result
         inquiry = await invoke(service().create_inquiry(payload.model_dump()))
         # A lead is captured the moment it is persisted. Announcing it is a
         # best-effort side effect: a broken mailer must never cost us the lead.
@@ -361,7 +364,7 @@ def build_b2b_router(
                 expected_version=payload.expected_version,
                 operation_id=str(payload.operation_id),
                 reason=payload.reason,
-                variant_id=payload.variant_id,
+                quote_line_id=payload.quote_line_id,
                 quantity=payload.quantity,
                 actor=actor,
             )

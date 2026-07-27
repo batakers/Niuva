@@ -95,3 +95,56 @@ class LoginRateLimiter:
         now = datetime.now(timezone.utc)
         bucket, _expires_at = self._window(now)
         await self.collection.delete_one({"_id": self._key("account", account, bucket)})
+
+
+class PublicRateLimiter:
+    """Bounded-window limiter for anonymous and administrative public edges."""
+
+    def __init__(self, *, collection, secret: str):
+        self.collection = collection
+        self.secret = secret.encode("utf-8")
+
+    def _digest(self, value: str) -> str:
+        return hmac.new(
+            self.secret,
+            value.casefold().strip().encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+    async def consume(
+        self,
+        *,
+        scope: str,
+        identifier: str,
+        limit: int,
+        window_seconds: int,
+        detail: str = "Terlalu banyak permintaan. Coba lagi sesaat.",
+    ) -> None:
+        now = datetime.now(timezone.utc)
+        bucket = int(now.timestamp()) // window_seconds
+        expires_at = datetime.fromtimestamp(
+            (bucket + 1) * window_seconds,
+            tz=timezone.utc,
+        )
+        key = f"{scope}:{self._digest(identifier)}:{bucket}"
+        await self.collection.update_one(
+            {"_id": key},
+            {
+                "$inc": {"count": 1},
+                "$setOnInsert": {
+                    "scope": scope,
+                    "window": bucket,
+                    "created_at": now,
+                    "expires_at": expires_at,
+                },
+            },
+            upsert=True,
+        )
+        record = await self.collection.find_one({"_id": key}, {"count": 1})
+        if record and int(record.get("count", 0)) > limit:
+            retry_after = max(1, int((expires_at - now).total_seconds()))
+            raise HTTPException(
+                status_code=429,
+                detail=detail,
+                headers={"Retry-After": str(retry_after)},
+            )

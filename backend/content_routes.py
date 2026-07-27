@@ -9,11 +9,12 @@ from content_service import ContentError, ContentService
 
 
 class ContentBlockPayload(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     content_type: Literal["about", "capability", "faq", "cta", "contact"]
     slug: str = Field(default="", max_length=200)
     fields: dict = Field(default_factory=dict)
+    reason: str = Field(min_length=3, max_length=500)
 
 
 class ContentFieldsPayload(BaseModel):
@@ -87,7 +88,7 @@ def build_content_router(
         return await invoke(
             service().create_block(
                 content_type=payload.content_type, slug=payload.slug,
-                fields=payload.fields, actor=actor,
+                fields=payload.fields, actor=actor, reason=payload.reason,
             )
         )
 

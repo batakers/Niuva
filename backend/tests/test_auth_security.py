@@ -106,7 +106,15 @@ class FakeCollection:
 
 class FakeDatabase:
     def __init__(self, users):
-        self.users = FakeCollection(users)
+        canonical_users = []
+        for user in users:
+            canonical_users.append({
+                "role_policy_version": server.ROLE_POLICY_VERSION,
+                "token_version": 0,
+                "version": 1,
+                **user,
+            })
+        self.users = FakeCollection(canonical_users)
         self.orders = FakeCollection()
         self.file_objects = FakeCollection(
             [

@@ -104,7 +104,16 @@ class ContentService:
     async def get_block(self, block_id: str) -> dict:
         return await self._get_block(block_id)
 
-    async def create_block(self, *, content_type: str, slug: str, fields: dict, actor: dict) -> dict:
+    async def create_block(
+        self,
+        *,
+        content_type: str,
+        slug: str,
+        fields: dict,
+        actor: dict,
+        reason: str,
+    ) -> dict:
+        self._require_transactions()
         if content_type not in CONTENT_TYPES:
             raise ContentError(400, "unknown_content_type", "Jenis konten tidak dikenal.")
         normalized_slug = normalize_slug(slug) or str(uuid.uuid4())[:8]
@@ -127,11 +136,22 @@ class ContentService:
             "created_at": timestamp,
             "updated_at": timestamp,
         }
-        await self.db.content_blocks.insert_one(dict(block))
-        await append_audit_event(
-            self.db, actor=actor, action="content.block_created",
-            target_type="content_block", target_id=block["id"], after=block,
-        )
+        async def mutation(session):
+            await self.db.content_blocks.insert_one(
+                dict(block), **_write_options(session)
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="content.block_created",
+                target_type="content_block",
+                target_id=block["id"],
+                after=block,
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="content.create_block")
         return block
 
     async def update_block(
@@ -143,6 +163,7 @@ class ContentService:
         actor: dict,
         reason: str,
     ) -> dict:
+        self._require_transactions()
         block = await self._get_block(block_id)
         if block.get("version", 1) != expected_version:
             self._conflict(block)
@@ -158,18 +179,29 @@ class ContentService:
             "version": expected_version + 1,
             "updated_at": now_iso(),
         }
-        result = await self.db.content_blocks.update_one(
-            {"id": block_id, "version": expected_version},
-            {"$set": changes},
-        )
-        if not getattr(result, "matched_count", 0):
-            self._conflict(await self._get_block(block_id))
         after = {**block, **changes}
-        await append_audit_event(
-            self.db, actor=actor, action="content.block_updated",
-            target_type="content_block", target_id=block_id,
-            before=before, after=after, reason=reason,
-        )
+
+        async def mutation(session):
+            result = await self.db.content_blocks.update_one(
+                {"id": block_id, "version": expected_version},
+                {"$set": changes},
+                **_write_options(session),
+            )
+            if not getattr(result, "matched_count", 0):
+                self._conflict(block)
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="content.block_updated",
+                target_type="content_block",
+                target_id=block_id,
+                before=before,
+                after=after,
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="content.update_block")
         return after
 
     async def validate_block(self, block_id: str) -> list[dict]:
@@ -294,6 +326,17 @@ class ContentService:
             )
             if not getattr(result, "matched_count", 0):
                 self._conflict(block)
+            if block.get("status") == "scheduled":
+                retired_at = utc_now()
+                await self.db.content_publications.update_many(
+                    {
+                        "content_block_id": block_id,
+                        "retired_at": None,
+                        "activates_at": {"$gt": retired_at},
+                    },
+                    {"$set": {"retired_at": retired_at}},
+                    **_write_options(session),
+                )
             await append_audit_event(
                 self.db, actor=actor, action="content.block_rolled_back",
                 target_type="content_block", target_id=block_id,
@@ -383,6 +426,7 @@ class ContentService:
         can_publish: bool,
     ) -> dict:
         """Move a block along the review lifecycle."""
+        self._require_transactions()
         block = await self._get_block(block_id)
         if block.get("version", 1) != expected_version:
             self._conflict(block)
@@ -415,6 +459,8 @@ class ContentService:
         }
         if target_status == "published":
             changes["scheduled_at"] = None
+        elif block.get("status") == "scheduled":
+            changes["scheduled_at"] = None
         after = {**block, **changes}
         snapshot = build_version_snapshot(
             after, actor_id=actor.get("id"), reason=reason, event=target_status
@@ -431,6 +477,17 @@ class ContentService:
             )
             if not getattr(result, "matched_count", 0):
                 self._conflict(block)
+            if block.get("status") == "scheduled" and target_status != "published":
+                retired_at = utc_now()
+                await self.db.content_publications.update_many(
+                    {
+                        "content_block_id": block_id,
+                        "retired_at": None,
+                        "activates_at": {"$gt": retired_at},
+                    },
+                    {"$set": {"retired_at": retired_at}},
+                    **_write_options(session),
+                )
             await append_audit_event(
                 self.db,
                 actor=actor,

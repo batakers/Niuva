@@ -98,6 +98,7 @@ def test_readiness_reports_transaction_capability_when_available():
                 "status": "ready",
                 "required": False,
                 "enabled": False,
+                "heartbeat_fresh": False,
             },
             "email_delivery": {
                 "status": "inactive",
@@ -134,6 +135,7 @@ def test_readiness_is_degraded_without_disabling_public_liveness():
                 "status": "ready",
                 "required": False,
                 "enabled": False,
+                "heartbeat_fresh": False,
             },
             "email_delivery": {
                 "status": "inactive",

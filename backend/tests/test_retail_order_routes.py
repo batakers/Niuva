@@ -128,7 +128,7 @@ def test_a_caller_cannot_name_its_own_price():
     asyncio.run(scenario())
 
 
-def test_the_transition_surface_walks_the_canonical_graph():
+def test_the_transition_surface_is_explicitly_read_only():
     async def scenario():
         app, db = await build_app()
         order = await RetailOrderService(
@@ -143,31 +143,18 @@ def test_the_transition_surface_walks_the_canonical_graph():
             actor={"id": "fixture-admin"},
         )
         async with client(app) as api:
-            skipped = await api.post(
-                f"/api/admin/retail-orders/{order['id']}/transitions",
-                headers={"X-Role": "order_admin"},
-                json={
-                    "target_status": "paid",
-                    "expected_version": order["version"],
-                    "operation_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-                    "reason": "Lompat tagihan",
-                },
-            )
-            assert skipped.status_code == 409
-            assert skipped.json()["detail"]["code"] == "retail_transition_invalid"
-
-            billed = await api.post(
+            blocked = await api.post(
                 f"/api/admin/retail-orders/{order['id']}/transitions",
                 headers={"X-Role": "order_admin"},
                 json={
                     "target_status": "awaiting_payment",
                     "expected_version": order["version"],
-                    "operation_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+                    "operation_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
                     "reason": "Tagihan dikirim",
                 },
             )
-            assert billed.status_code == 200
-            assert billed.json()["status"] == "awaiting_payment"
+            assert blocked.status_code == 503
+            assert blocked.json()["detail"]["code"] == "retail_transaction_inactive"
 
     asyncio.run(scenario())
 

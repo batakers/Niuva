@@ -124,7 +124,7 @@ export default function AdminNotifications() {
       const { data } = await api.post("/admin/notifications", payload);
 
       toast.success(
-        `${t("notifications.sentTo")} ${data.recipient_count} ${t("notifications.recipients")}`
+        `${data.recipient_count} ${t("notifications.recipients")} queued`
       );
 
       setForm(INITIAL_FORM);

@@ -44,7 +44,10 @@ The following are explicitly deferred:
 4. Inventory tracks raw materials and ready-stock product variants.
 5. Customers see stock status only, never exact quantities.
 6. Catalog stores `fixed`, `calculated`, and `quote_required` modes without implementing the full calculation engine.
-7. Catalog Managers may publish directly after server validation; audit is mandatory.
+7. Catalog Managers may prepare pricing drafts and publication candidates.
+   Publication and rollback require `manager_approver` (or `super_admin`) and
+   an audit reason. This sentence supersedes the earlier direct-publish rule
+   under `DEC-ACCESS-002`.
 8. Restock notifications are internal only.
 9. Legacy materials are migrated in place and retain their IDs.
 10. Catalog, material pricing, and inventory remain modules in the current application.
@@ -411,7 +414,7 @@ The legacy `DELETE /api/admin/materials/{id}` temporarily remains as a deprecate
 |---|---|
 | Read catalog drafts | Catalog Manager, Sales/Estimator, Manager/Approver, Super Admin |
 | Edit catalog | Catalog Manager, Manager/Approver, Super Admin |
-| Publish or rollback catalog | Catalog Manager, Manager/Approver, Super Admin |
+| Publish or rollback catalog | Manager/Approver, Super Admin |
 | Read materials | Warehouse, Catalog Manager, Sales/Estimator, Manager/Approver, Super Admin |
 | Edit materials | Warehouse, Manager/Approver, Super Admin |
 | Read material prices | Catalog Manager, Sales/Estimator, Manager/Approver, Super Admin |
@@ -628,7 +631,8 @@ Transaction tests run against an isolated MongoDB replica set.
 
 The foundation is complete when:
 
-1. Catalog Managers can manage and publish validated catalog aggregates.
+1. Catalog Managers can manage validated catalog drafts and publication
+   candidates; Manager/Approver or Super Admin performs audited publication.
 2. Public APIs return only active publication snapshots and safe stock status.
 3. Material prices are immutable versions with effective dates and reasons.
 4. Materials and ready-stock variants have atomic, idempotent balance operations.

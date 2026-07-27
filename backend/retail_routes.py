@@ -115,15 +115,15 @@ def build_retail_router(
         payload: RetailTransitionPayload,
         actor: dict = Depends(require_permission("orders.write")),
     ):
-        return await invoke(
-            service().transition_order(
-                order_id,
-                target_status=payload.target_status,
-                expected_version=payload.expected_version,
-                operation_id=str(payload.operation_id),
-                reason=payload.reason,
-                actor=actor,
-            )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "retail_transaction_inactive",
+                "message": (
+                    "Retail order historis bersifat read-only; payment, "
+                    "production, dan fulfilment belum diaktifkan."
+                ),
+            },
         )
 
     # Named rather than absent, so an attempt is answered with the reason it is

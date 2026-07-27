@@ -566,12 +566,40 @@ class B2BService:
         ).limit(500).to_list(500)
         return [project_work_order(document) for document in documents]
 
-    async def _accepted_line_for_variant(self, project: dict, variant_id: str) -> dict:
-        """Find the accepted quotation line a production run draws from."""
+    async def _accepted_line(
+        self,
+        project: dict,
+        *,
+        quote_line_id: str | None,
+        variant_id: str | None,
+    ) -> dict:
+        """Resolve one immutable accepted line, never merely the first variant."""
         version = await self._get_quote_version(project["source_quote_version_id"])
-        for item in version.get("items") or []:
-            if item.get("variant_id") == variant_id:
-                return item
+        if quote_line_id:
+            for item in version.get("items") or []:
+                if item.get("quote_line_id") == quote_line_id:
+                    return item
+            raise B2BDomainError(
+                422,
+                "work_order_line_not_quoted",
+                "Baris penawaran tidak ada pada Quote yang diterima.",
+                details={"quote_line_id": quote_line_id},
+            )
+        # Internal compatibility for historical callers. It is safe only when
+        # one line matches; the HTTP contract always requires quote_line_id.
+        matches = [
+            item
+            for item in version.get("items") or []
+            if item.get("variant_id") == variant_id
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise B2BDomainError(
+                409,
+                "work_order_quote_line_ambiguous",
+                "Variant muncul pada beberapa baris; quote_line_id wajib dipilih.",
+            )
         raise B2BDomainError(
             422,
             "work_order_line_not_quoted",
@@ -586,7 +614,8 @@ class B2BService:
         expected_version: int,
         operation_id: str,
         reason: str,
-        variant_id: str,
+        quote_line_id: str | None = None,
+        variant_id: str | None = None,
         quantity: int,
         actor: dict,
     ) -> dict:
@@ -630,11 +659,29 @@ class B2BService:
                 "Jumlah produksi harus minimal satu.",
             )
 
-        line = await self._accepted_line_for_variant(project, variant_id)
+        line = await self._accepted_line(
+            project,
+            quote_line_id=quote_line_id,
+            variant_id=variant_id,
+        )
+        resolved_line_id = line.get("quote_line_id")
+        if not resolved_line_id:
+            raise B2BDomainError(
+                409,
+                "work_order_quote_line_identity_missing",
+                "Quote historis tidak memiliki quote_line_id dan harus direkonsiliasi.",
+            )
+        resolved_variant_id = line.get("variant_id")
+        if not resolved_variant_id:
+            raise B2BDomainError(
+                422,
+                "work_order_line_has_no_variant",
+                "Baris Quote tidak mereferensikan varian produksi.",
+            )
         active_work_orders = await self.db.work_orders.find(
             {
                 "project_id": project_id,
-                "variant_id": variant_id,
+                "quote_line_id": resolved_line_id,
                 "status": {"$ne": "cancelled"},
             },
             {"_id": 0, "quantity": 1},
@@ -666,7 +713,8 @@ class B2BService:
             "project_id": project_id,
             "quote_id": project["quote_id"],
             "source_quote_version_id": project["source_quote_version_id"],
-            "variant_id": variant_id,
+            "quote_line_id": resolved_line_id,
+            "variant_id": resolved_variant_id,
             "quantity": quantity,
             "status": "planned",
             "version": 1,

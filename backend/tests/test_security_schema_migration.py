@@ -1,7 +1,8 @@
 import importlib
+import json
 import types
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from schema_manifest import INDEX_DECLARATIONS
 
@@ -9,6 +10,34 @@ from schema_manifest import INDEX_DECLARATIONS
 migration = importlib.import_module(
     "migrations.007_security_publication_schema"
 )
+
+
+def backup_evidence(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "reviewed-backup-manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "migration_id": migration.MIGRATION_ID,
+                "environment": "test",
+                "database": "niuva_test",
+                "backup_at": "2026-07-27T08:00:00+07:00",
+                "checksum": {"algorithm": "sha256", "value": "abc123"},
+                "location": "/backups/niuva-test.archive",
+                "reviewer": "test-reviewer",
+                "restore_test": {
+                    "status": "passed",
+                    "tested_at": "2026-07-27T09:00:00+07:00",
+                },
+                "approval_window": {
+                    "starts_at": (now - timedelta(minutes=5)).isoformat(),
+                    "ends_at": (now + timedelta(minutes=5)).isoformat(),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    return str(path.resolve())
 
 
 def nested(document, path):
@@ -60,11 +89,12 @@ class Cursor:
 class MigrationCollection:
     def __init__(self, rows=None):
         self.rows = [deepcopy(row) for row in (rows or [])]
+        self.fail_inserts = False
         self.indexes = {
             "_id_": {"key": [("_id", 1)]},
         }
 
-    async def find_one(self, query, projection=None):
+    async def find_one(self, query, projection=None, **_options):
         for row in self.rows:
             if matches(row, query):
                 return deepcopy(row)
@@ -129,11 +159,13 @@ class MigrationCollection:
             else []
         )
 
-    async def insert_one(self, row):
+    async def insert_one(self, row, **_options):
+        if self.fail_inserts:
+            raise RuntimeError("forced migration write failure")
         self.rows.append(deepcopy(row))
         return types.SimpleNamespace(inserted_id=row.get("_id") or row.get("id"))
 
-    async def update_one(self, query, update):
+    async def update_one(self, query, update, **_options):
         for row in self.rows:
             if matches(row, query):
                 row.update(deepcopy(update.get("$set", {})))
@@ -161,11 +193,53 @@ class MigrationCollection:
 class MigrationDatabase:
     def __init__(self):
         self.collections = {}
+        self.client = MigrationClient(self)
 
     def __getattr__(self, name):
         if name.startswith("_"):
             raise AttributeError(name)
         return self.collections.setdefault(name, MigrationCollection())
+
+
+class MigrationTransaction:
+    def __init__(self, database):
+        self.database = database
+        self.snapshots = None
+
+    async def __aenter__(self):
+        self.snapshots = {
+            name: deepcopy(collection.rows)
+            for name, collection in self.database.collections.items()
+        }
+        return self
+
+    async def __aexit__(self, exc_type, _exc, _traceback):
+        if exc_type is not None:
+            for name, rows in self.snapshots.items():
+                self.database.collections[name].rows = rows
+        return False
+
+
+class MigrationSession:
+    def __init__(self, database):
+        self.database = database
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, _exc_type, _exc, _traceback):
+        return False
+
+    def start_transaction(self):
+        return MigrationTransaction(self.database)
+
+
+class MigrationClient:
+    def __init__(self, database):
+        self.database = database
+
+    async def start_session(self):
+        return MigrationSession(self.database)
 
 
 def build_database():
@@ -256,7 +330,7 @@ def build_database():
     return database
 
 
-async def run_idempotent_migration_contract():
+async def run_idempotent_migration_contract(evidence):
     database = build_database()
     dry_run = await migration.migrate(database, dry_run=True)
     assert dry_run["status"] == "ready"
@@ -272,7 +346,7 @@ async def run_idempotent_migration_contract():
     applied = await migration.migrate(
         database,
         dry_run=False,
-        backup_evidence="reviewed-backup-manifest.json",
+        backup_evidence=evidence,
     )
     assert applied["status"] == "applied"
     assert len(database.file_objects.rows) == 1
@@ -303,20 +377,20 @@ async def run_idempotent_migration_contract():
     second = await migration.migrate(
         database,
         dry_run=False,
-        backup_evidence="reviewed-backup-manifest.json",
+        backup_evidence=evidence,
     )
     assert second["status"] == "already_applied"
     assert len(database.file_objects.rows) == 1
     assert len(database.content_publications.rows) == 1
 
 
-def test_security_schema_migration_is_dry_run_first_and_idempotent():
+def test_security_schema_migration_is_dry_run_first_and_idempotent(tmp_path):
     import asyncio
 
-    asyncio.run(run_idempotent_migration_contract())
+    asyncio.run(run_idempotent_migration_contract(backup_evidence(tmp_path)))
 
 
-async def run_duplicate_preflight_contract():
+async def run_duplicate_preflight_contract(evidence):
     database = build_database()
     database.users.rows.extend(
         [
@@ -327,7 +401,7 @@ async def run_duplicate_preflight_contract():
     report = await migration.migrate(
         database,
         dry_run=False,
-        backup_evidence="reviewed-backup-manifest.json",
+        backup_evidence=evidence,
     )
     assert report["status"] == "blocked_duplicates"
     assert report["duplicate_groups_by_index"]["uq_user_email"] == 1
@@ -335,10 +409,58 @@ async def run_duplicate_preflight_contract():
     assert database.file_objects.rows == []
 
 
-def test_duplicate_preflight_blocks_apply_without_exposing_values():
+def test_duplicate_preflight_blocks_apply_without_exposing_values(tmp_path):
     import asyncio
 
-    asyncio.run(run_duplicate_preflight_contract())
+    asyncio.run(run_duplicate_preflight_contract(backup_evidence(tmp_path)))
+
+
+def test_apply_backfills_and_ledger_roll_back_as_one_transaction(tmp_path):
+    import asyncio
+
+    async def scenario():
+        database = build_database()
+        database.portfolio_revisions.fail_inserts = True
+        try:
+            await migration.migrate(
+                database,
+                dry_run=False,
+                backup_evidence=backup_evidence(tmp_path),
+            )
+        except RuntimeError as exc:
+            assert str(exc) == "forced migration write failure"
+        else:
+            raise AssertionError("migration failure injection did not fail")
+
+        assert database.file_objects.rows == []
+        assert database.content_publications.rows == []
+        assert database.portfolio_revisions.rows == []
+        assert database.schema_migrations.rows == []
+        assert "versions" in database.portfolio.rows[0]
+
+    asyncio.run(scenario())
+
+
+def test_portfolio_preflight_blocks_when_active_revision_is_not_unique(tmp_path):
+    import asyncio
+
+    async def scenario():
+        database = build_database()
+        duplicate = deepcopy(database.portfolio.rows[0]["versions"][0])
+        duplicate["revision"] = 2
+        database.portfolio.rows[0]["versions"].append(duplicate)
+        report = await migration.migrate(
+            database,
+            dry_run=False,
+            backup_evidence=backup_evidence(tmp_path),
+        )
+        assert report["status"] == "blocked_portfolio_history"
+        assert report["portfolio_preflight_issues"] == {
+            "active_revision_ambiguous": 1
+        }
+        assert database.schema_migrations.rows == []
+
+    asyncio.run(scenario())
 
 
 def test_active_schema_manifest_never_recreates_archived_organization_collections():

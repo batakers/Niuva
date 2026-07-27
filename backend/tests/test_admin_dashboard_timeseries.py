@@ -93,7 +93,15 @@ class FakeCollection:
 
 class FakeDatabase:
     def __init__(self, users, orders=None, stock_movements=None):
-        self.users = FakeCollection(users)
+        self.users = FakeCollection([
+            {
+                "role_policy_version": server.ROLE_POLICY_VERSION,
+                "token_version": 0,
+                "version": 1,
+                **user,
+            }
+            for user in users
+        ])
         self.orders = FakeCollection(orders or [])
         self.stock_movements = FakeCollection(stock_movements or [])
         self.notifications = FakeCollection()

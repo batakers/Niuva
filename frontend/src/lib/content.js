@@ -60,6 +60,7 @@ export const CONTENT_TYPE_SCHEMAS = {
     { key: "targetUsers", label: "Target Users", type: "text" },
     { key: "cta", label: "CTA Label", type: "text" },
     { key: "priority", label: "Priority", type: "select", options: ["primary", "supporting"] },
+    { key: "display_order", label: "Display Order", type: "number", optional: true },
   ],
   faq: [
     { key: "question", label: "Question", type: "text" },

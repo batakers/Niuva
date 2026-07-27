@@ -16,13 +16,22 @@ import {
 } from "../../components/brand/BrandSystem";
 import { usePublicContent } from "../../lib/content";
 
-// CMS blocks (content_type=capability) override matching fallback services by
-// title. Unmatched or unpublished capabilities keep the hardcoded copy.
-function mergeCapabilities(cmsBlocks) {
-  return profileContent.services.map((service) => {
-    const match = cmsBlocks.find((block) => block.fields?.title === service.title);
-    return match ? { ...service, ...match.fields } : service;
-  });
+function mergeCapabilities(cmsBlocks, status) {
+  if (status !== "ready") return profileContent.services;
+  const fallbackBySlug = new Map(
+    profileContent.services.map((service) => [service.slug, service])
+  );
+  return cmsBlocks
+    .map((block) => ({
+      ...(fallbackBySlug.get(block.slug) || {}),
+      ...block.fields,
+      slug: block.slug,
+    }))
+    .sort(
+      (left, right) =>
+        Number(left.display_order || 0) - Number(right.display_order || 0) ||
+        left.slug.localeCompare(right.slug)
+    );
 }
 
 const engagementSteps = [
@@ -49,8 +58,11 @@ const engagementSteps = [
 ];
 
 export default function CapabilitiesPage() {
-  const { blocks: cmsBlocks } = usePublicContent("capability");
-  const capabilities = useMemo(() => mergeCapabilities(cmsBlocks), [cmsBlocks]);
+  const { blocks: cmsBlocks, status } = usePublicContent("capability");
+  const capabilities = useMemo(
+    () => mergeCapabilities(cmsBlocks, status),
+    [cmsBlocks, status]
+  );
   const primaryCapabilities = capabilities.filter((service) => service.priority === "primary");
   const supportingCapabilities = capabilities.filter((service) => service.priority === "supporting");
 
@@ -69,7 +81,7 @@ export default function CapabilitiesPage() {
           visual={
             <div className="grid gap-6 rounded-card bg-surface-muted p-6 sm:p-8">
               {primaryCapabilities.map((service) => (
-                <div key={service.title} className="border-t-2 border-[var(--color-brand-secondary)] pt-4">
+                <div key={service.slug} className="border-t-2 border-[var(--color-brand-secondary)] pt-4">
                   <p className="type-heading-card text-text-primary">{service.title}</p>
                   <p className="type-body-small mt-2 max-w-[42ch] text-text-secondary">{service.output}</p>
                 </div>
@@ -88,7 +100,7 @@ export default function CapabilitiesPage() {
             />
             <div className="grid gap-8 lg:gap-10">
               {primaryCapabilities.map((service, index) => (
-                <CapabilityPanel key={service.title} service={service} index={index} />
+                <CapabilityPanel key={service.slug} service={service} index={index} />
               ))}
             </div>
           </PageContainer>
@@ -103,7 +115,7 @@ export default function CapabilitiesPage() {
             />
             <div className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
               {supportingCapabilities.map((service) => (
-                <article key={service.title} className="brand-reveal border-t border-border-default pt-6">
+                <article key={service.slug} className="brand-reveal border-t border-border-default pt-6">
                   <p className="type-label text-text-secondary">Kapabilitas pendukung</p>
                   <h3 className="type-heading-subsection mt-4 text-text-primary">{service.title}</h3>
                   <p className="type-body mt-4 max-w-[52ch] text-text-secondary">{service.body}</p>

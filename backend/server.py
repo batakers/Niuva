@@ -29,13 +29,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 import storage
 import emailer
 from audit import append_audit_event, append_identity_governance_event
-from auth_rate_limit import LoginRateLimiter
+from auth_rate_limit import LoginRateLimiter, PublicRateLimiter
 from auth_sessions import (
     ACCESS_COOKIE,
     CSRF_COOKIE,
     CSRF_HEADER,
     REFRESH_COOKIE,
     AuthSessionService,
+    validate_cookie_configuration,
 )
 from b2b_routes import build_b2b_router
 from dashboard_domain import (
@@ -227,6 +228,25 @@ async def validation_error_envelope(request: Request, exc: RequestValidationErro
     )
 
 
+@app.exception_handler(Exception)
+async def unhandled_error_envelope(request: Request, exc: Exception):
+    logger.exception(
+        "unhandled_request_error request_id=%s method=%s path=%s",
+        request_id_for(request),
+        request.method,
+        request.url.path,
+        exc_info=exc,
+    )
+    detail = {
+        "code": "internal_server_error",
+        "message": "Terjadi kesalahan internal.",
+    }
+    return JSONResponse(
+        error_payload(request, detail, default_code="internal_server_error"),
+        status_code=500,
+    )
+
+
 @app.middleware("http")
 async def request_context(request: Request, call_next):
     supplied = request.headers.get("X-Request-ID", "").strip()
@@ -390,7 +410,11 @@ require_admin = require_permission("admin.access")
 
 
 # ----------------------------- Models -----------------------------
-class ClientProvisionReq(BaseModel):
+class StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ClientProvisionReq(StrictModel):
     name: str
     email: EmailStr
     password: str = Field(min_length=1, max_length=256)
@@ -398,49 +422,49 @@ class ClientProvisionReq(BaseModel):
     company: Optional[str] = None
 
 
-class CustomerStatusReq(BaseModel):
+class CustomerStatusReq(StrictModel):
     expected_version: int = Field(ge=1)
     reason: str = Field(min_length=3, max_length=500)
 
 
-class LoginReq(BaseModel):
+class LoginReq(StrictModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=256)
 
 
-class ForgotPasswordReq(BaseModel):
+class ForgotPasswordReq(StrictModel):
     email: EmailStr
 
 
-class ResetPasswordReq(BaseModel):
+class ResetPasswordReq(StrictModel):
     token: str = Field(min_length=1)
     new_password: str = Field(min_length=1, max_length=256)
 
 
-class EstimateReq(BaseModel):
+class EstimateReq(StrictModel):
     amount: float
     note: Optional[str] = ""
 
 
-class StatusReq(BaseModel):
+class StatusReq(StrictModel):
     status: str
     note: Optional[str] = ""
 
 
-class BulkStatusReq(BaseModel):
+class BulkStatusReq(StrictModel):
     order_ids: List[str] = Field(min_length=1, max_length=100)
     status: str
     note: Optional[str] = ""
 
 
-class ContactReq(BaseModel):
+class ContactReq(StrictModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     subject: str = Field(min_length=3, max_length=180)
     message: str = Field(min_length=10, max_length=5000)
 
 
-class AdminNotificationReq(BaseModel):
+class AdminNotificationReq(StrictModel):
     target: str = Field(pattern="^(user|segment|broadcast)$")
     user_id: Optional[str] = None
     segment: Optional[str] = Field(default=None, pattern="^(active_orders)$")
@@ -448,7 +472,7 @@ class AdminNotificationReq(BaseModel):
     message: str = Field(min_length=3, max_length=2000)
 
 
-class SettingsReq(BaseModel):
+class SettingsReq(StrictModel):
     """Company profile only.
 
     extra="forbid" keeps a caller from writing anything the public projection
@@ -485,7 +509,7 @@ def safe_user(user: dict) -> dict:
         "company": user.get("company", ""),
         "status": user.get("status", "active"),
         "access_state": user.get("access_state", "approved"),
-        "role_policy_version": ROLE_POLICY_VERSION,
+        "role_policy_version": user.get("role_policy_version"),
         "role": roles[0] if roles else "",
         "roles": list(roles),
         "role_labels": [ROLE_LABELS[role] for role in roles],
@@ -524,6 +548,7 @@ async def authenticate_credentials(req: LoginReq, *, surface: str) -> dict:
         or explicitly_blocked
         or not eligible_roles
         or not correct_surface
+        or user.get("role_policy_version") != ROLE_POLICY_VERSION
     ):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if (
@@ -559,16 +584,22 @@ async def provision_client(req: ClientProvisionReq) -> dict:
     return safe_user(user)
 
 
-_rate_buckets: dict = {}
-
-
-def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terlalu banyak permintaan. Coba lagi sesaat."):
-    now = datetime.now(timezone.utc).timestamp()
-    bucket = [t for t in _rate_buckets.get(key, []) if now - t < window]
-    if len(bucket) >= limit:
-        raise HTTPException(status_code=429, detail=detail)
-    bucket.append(now)
-    _rate_buckets[key] = bucket
+async def rate_limit(
+    key: str,
+    limit: int = 10,
+    window: int = 60,
+    detail: str = "Terlalu banyak permintaan. Coba lagi sesaat.",
+):
+    await PublicRateLimiter(
+        collection=db.public_rate_limits,
+        secret=JWT_SECRET,
+    ).consume(
+        scope=key.split(":", 1)[0],
+        identifier=key,
+        limit=limit,
+        window_seconds=window,
+        detail=detail,
+    )
 
 
 def client_ip(request: Request) -> str:
@@ -706,8 +737,8 @@ def _hash_reset_token(raw_token: str) -> str:
 @api.post("/auth/forgot-password")
 async def forgot_password(req: ForgotPasswordReq, request: Request):
     client_host = client_ip(request)
-    rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
-    rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
+    await rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
+    await rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
 
     # Always return the same generic response whether or not the email is
     # registered, to avoid leaking account existence (user-enumeration).
@@ -752,45 +783,66 @@ async def reset_password(req: ResetPasswordReq):
     validate_password(req.new_password)
     token_hash = _hash_reset_token(req.token)
     now = datetime.now(timezone.utc)
-    record = await db.password_reset_tokens.find_one(
-        {"token_hash": token_hash, "used_at": None, "expires_at": {"$gt": now}},
-        {"_id": 0},
-    )
-    if not record:
-        raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
+    invalid_message = "Link reset tidak valid atau sudah kedaluwarsa."
 
-    user = await db.users.find_one({"id": record["user_id"]}, {"_id": 0, "id": 1, "token_version": 1})
-    if not user:
-        raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
+    async def mutation(session):
+        options = {"session": session}
+        record = await db.password_reset_tokens.find_one(
+            {
+                "token_hash": token_hash,
+                "used_at": None,
+                "expires_at": {"$gt": now},
+            },
+            {"_id": 0},
+            **options,
+        )
+        if not record:
+            raise HTTPException(status_code=400, detail=invalid_message)
 
-    claimed = await db.password_reset_tokens.update_one(
-        {
-            "id": record["id"],
-            "used_at": None,
-            "expires_at": {"$gt": now},
-        },
-        {"$set": {"used_at": now}},
-    )
-    if not getattr(claimed, "matched_count", 0):
-        raise HTTPException(
-            status_code=400,
-            detail="Link reset tidak valid atau sudah kedaluwarsa.",
+        user = await db.users.find_one(
+            {"id": record["user_id"]},
+            {"_id": 0, "id": 1, "token_version": 1},
+            **options,
+        )
+        if not user:
+            raise HTTPException(status_code=400, detail=invalid_message)
+
+        claimed = await db.password_reset_tokens.update_one(
+            {
+                "id": record["id"],
+                "used_at": None,
+                "expires_at": {"$gt": now},
+            },
+            {"$set": {"used_at": now}},
+            **options,
+        )
+        if not getattr(claimed, "matched_count", 0):
+            raise HTTPException(status_code=400, detail=invalid_message)
+
+        updated = await db.users.update_one(
+            {"id": user["id"], "token_version": user.get("token_version", 0)},
+            {
+                "$set": {"password_hash": hash_password(req.new_password)},
+                "$inc": {"token_version": 1},
+            },
+            **options,
+        )
+        if not getattr(updated, "matched_count", 0):
+            raise HTTPException(status_code=409, detail="Account berubah selama reset.")
+        await db.password_reset_tokens.update_many(
+            {"user_id": user["id"], "used_at": None},
+            {"$set": {"used_at": now}},
+            **options,
+        )
+        await _session_service().revoke_user_sessions(
+            user["id"],
+            reason="password_reset",
+            session=session,
         )
 
-    await db.users.update_one(
-        {"id": user["id"]},
-        {
-            "$set": {"password_hash": hash_password(req.new_password)},
-            "$inc": {"token_version": 1},
-        },
-    )
-    await db.password_reset_tokens.update_many(
-        {"user_id": user["id"], "used_at": None},
-        {"$set": {"used_at": now}},
-    )
-    await _session_service().revoke_user_sessions(
-        user["id"],
-        reason="password_reset",
+    await app.state.transaction_guard.run(
+        mutation,
+        operation_name="auth.reset_password",
     )
     return {"ok": True, "message": "Password berhasil diubah. Silakan login dengan password baru."}
 
@@ -1062,7 +1114,7 @@ async def download_file(path: str, user: dict = Depends(get_current_user)):
 # ----------------------------- Contact -----------------------------
 @api.post("/contact")
 async def contact(req: ContactReq, request: Request):
-    rate_limit(f"contact:{client_ip(request)}", limit=5, window=600)
+    await rate_limit(f"contact:{client_ip(request)}", limit=5, window=600)
 
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.contacts.insert_one(dict(doc))
@@ -1508,32 +1560,68 @@ async def send_admin_notification(
     req: AdminNotificationReq,
     actor: dict = Depends(require_permission("notifications.write")),
 ):
-    rate_limit(f"admin_notify:{actor['id']}", limit=10, window=600)
+    await rate_limit(f"admin_notify:{actor['id']}", limit=10, window=600)
     recipients = await resolve_notification_recipients(req)
-    sent_count = 0
-    for recipient in recipients:
-        await emailer.send_email(
-            recipient["email"], req.subject, req.subject,
-            html.escape(req.message).replace(chr(10), "<br>"),
-            db=db, user_id=recipient["id"],
-        )
-        sent_count += 1
+    log_id = str(uuid.uuid4())
+    queued_count = 0
+    service = notification_service()
     log_entry = {
-        "id": str(uuid.uuid4()),
+        "id": log_id,
         "target": req.target,
         "user_id": req.user_id,
         "segment": req.segment,
         "subject": req.subject,
         "message": req.message,
-        "recipient_count": sent_count,
+        "recipient_count": len(recipients),
+        "delivery_status": "queued",
         "sent_by": actor["id"],
         "created_at": now_iso(),
     }
-    await db.admin_notification_log.insert_one(dict(log_entry))
-    await append_audit_event(
-        db, actor=actor, action="notifications.sent",
-        target_type="notification", target_id=log_entry["id"],
-        after={"target": req.target, "segment": req.segment, "recipient_count": sent_count},
+
+    async def mutation(session):
+        nonlocal queued_count
+        for recipient in recipients:
+            notification = await service.publish(
+                user_id=recipient["id"],
+                event=f"admin.message.{log_id}",
+                title=req.subject,
+                body=req.message,
+                session=session,
+            )
+            await service.enqueue_delivery(
+                notification_id=notification["id"],
+                channel="email",
+                recipient=recipient["email"],
+                payload={
+                    "subject": req.subject,
+                    "title": req.subject,
+                    "body_html": html.escape(req.message).replace(chr(10), "<br>"),
+                },
+                session=session,
+            )
+            queued_count += 1
+        await db.admin_notification_log.insert_one(
+            dict(log_entry), session=session
+        )
+        await append_audit_event(
+            db,
+            actor=actor,
+            action="notifications.queued",
+            target_type="notification",
+            target_id=log_entry["id"],
+            after={
+                "target": req.target,
+                "segment": req.segment,
+                "recipient_count": queued_count,
+                "delivery_status": "queued",
+            },
+            reason="Admin communication queued for delivery",
+            session=session,
+        )
+
+    await app.state.transaction_guard.run(
+        mutation,
+        operation_name="notifications.queue_admin_message",
     )
     log_entry.pop("_id", None)
     return log_entry
@@ -1573,11 +1661,17 @@ async def health_ready():
     )
     worker_status = app.state.notification_worker_status
     worker_task = app.state.notification_worker_task
+    heartbeat = worker_status.get("last_heartbeat_at")
+    heartbeat_fresh = bool(
+        isinstance(heartbeat, datetime)
+        and datetime.now(timezone.utc) - heartbeat <= timedelta(seconds=30)
+    )
     worker_ready = bool(
         not worker_required
         or (
             worker_status.get("enabled")
             and worker_status.get("running")
+            and heartbeat_fresh
             and worker_task is not None
             and not worker_task.done()
         )
@@ -1609,6 +1703,7 @@ async def health_ready():
                 "status": "ready" if worker_ready else "unavailable",
                 "required": worker_required,
                 "enabled": bool(worker_status.get("enabled")),
+                "heartbeat_fresh": heartbeat_fresh,
             },
             "email_delivery": {
                 "status": (
@@ -1639,9 +1734,9 @@ api.include_router(
 )
 
 
-def throttle_inquiry_intake(request: Request) -> None:
+async def throttle_inquiry_intake(request: Request) -> None:
     """Throttle anonymous project intake at parity with the legacy form."""
-    rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)
+    await rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)
 
 
 async def notify_new_inquiry(inquiry: dict) -> None:
@@ -1780,6 +1875,7 @@ async def seed():
         canonical_roles(existing) != ("super_admin",)
         or existing.get("status") != "active"
         or existing.get("access_state") != "approved"
+        or existing.get("role_policy_version") != ROLE_POLICY_VERSION
         or not is_valid_password_hash(existing.get("password_hash"))
     ):
         raise RuntimeError(
@@ -1953,6 +2049,7 @@ async def notification_outbox_loop():
 
 
 async def _startup_runtime():
+    validate_cookie_configuration()
     storage.init_storage()
     await seed()
     app.state.database_capabilities = await probe_database_capabilities(

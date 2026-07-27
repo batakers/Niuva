@@ -994,6 +994,7 @@ class InventoryService:
             {"status": "active"}, {"_id": 0}, **_write_options(session)
         ).to_list(1000)
         recipients = []
+        notification_service = NotificationService(db=self.db)
         for user in users:
             if not has_permission(user, "restock_alerts.read"):
                 continue
@@ -1003,7 +1004,7 @@ class InventoryService:
             # shape, with a deduplication key and an allowlisted reference: a
             # recurring shortage is one row that resurfaces, not a new row per
             # observation.
-            notification = await NotificationService(db=self.db).publish(
+            notification = await notification_service.publish(
                 user_id=user["id"],
                 event=f"inventory.restock_{alert['trigger_type']}",
                 title=subject,
@@ -1013,15 +1014,16 @@ class InventoryService:
                 session=session,
             )
             if user.get("email"):
-                recipients.append(
-                    {
-                        "user_id": user["id"],
-                        "email": user["email"],
+                await notification_service.enqueue_delivery(
+                    notification_id=notification["id"],
+                    channel="email",
+                    recipient=user["email"],
+                    payload={
                         "subject": subject,
                         "title": "Peringatan stok",
                         "body_html": body,
-                        "notification_id": notification["id"],
-                    }
+                    },
+                    session=session,
                 )
         return recipients
 

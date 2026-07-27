@@ -249,7 +249,12 @@ function InviteStaffDialog({ open, onOpenChange, onCreated }) {
         email: form.email.trim(),
         reason: form.reason.trim(),
       });
-      setSetupToken(response.data.setup_token || "");
+      const token = response.data.setup_token || "";
+      setSetupToken(
+        token
+          ? `${window.location.origin}/staff-invitation?token=${encodeURIComponent(token)}`
+          : ""
+      );
       toast.success("Undangan staff berhasil dibuat.");
       await onCreated();
     } catch (requestError) {
@@ -279,8 +284,8 @@ function InviteStaffDialog({ open, onOpenChange, onCreated }) {
         </DialogHeader>
         {setupToken ? (
           <div className="space-y-4">
-            <Alert>Simpan token setup ini sebelum menutup dialog.</Alert>
-            <Input readOnly value={setupToken} aria-label="Token setup staff" />
+            <Alert>Simpan dan bagikan link setup ini melalui kanal yang disetujui sebelum menutup dialog.</Alert>
+            <Input readOnly value={setupToken} aria-label="Link setup staff" />
           </div>
         ) : (
           <div className="space-y-4">

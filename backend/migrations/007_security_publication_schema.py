@@ -23,6 +23,76 @@ from pathlib import Path
 from schema_manifest import INDEX_DECLARATIONS, REQUIRED_SCHEMA_VERSION
 
 MIGRATION_ID = REQUIRED_SCHEMA_VERSION
+BACKUP_EVIDENCE_FIELDS = frozenset(
+    {
+        "migration_id",
+        "environment",
+        "database",
+        "backup_at",
+        "checksum",
+        "location",
+        "reviewer",
+        "restore_test",
+        "approval_window",
+    }
+)
+
+
+def validate_backup_evidence(reference: str) -> dict:
+    path = Path(reference).expanduser()
+    if not path.is_absolute() or not path.is_file():
+        raise ValueError("backup_evidence must be an existing absolute JSON file")
+    try:
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("backup_evidence must be readable valid JSON") from exc
+    if not isinstance(evidence, dict) or not BACKUP_EVIDENCE_FIELDS <= evidence.keys():
+        raise ValueError("backup_evidence is missing required fields")
+    if evidence.get("migration_id") != MIGRATION_ID:
+        raise ValueError("backup_evidence is not bound to Migration 007")
+    for field in ("environment", "database", "backup_at", "location", "reviewer"):
+        if not str(evidence.get(field) or "").strip():
+            raise ValueError(f"backup_evidence.{field} is required")
+    checksum = evidence.get("checksum")
+    if not isinstance(checksum, dict) or not all(
+        str(checksum.get(field) or "").strip() for field in ("algorithm", "value")
+    ):
+        raise ValueError("backup_evidence.checksum requires algorithm and value")
+    restore = evidence.get("restore_test")
+    if (
+        not isinstance(restore, dict)
+        or restore.get("status") != "passed"
+        or not str(restore.get("tested_at") or "").strip()
+    ):
+        raise ValueError("backup_evidence requires a passed restore test")
+    window = evidence.get("approval_window")
+    if not isinstance(window, dict) or not all(
+        str(window.get(field) or "").strip() for field in ("starts_at", "ends_at")
+    ):
+        raise ValueError("backup_evidence approval window is incomplete")
+    for timestamp in (
+        evidence["backup_at"],
+        restore["tested_at"],
+        window["starts_at"],
+        window["ends_at"],
+    ):
+        parsed = _as_utc_date(timestamp)
+        if (
+            parsed is None
+            or datetime.fromisoformat(str(timestamp).replace("Z", "+00:00")).tzinfo
+            is None
+        ):
+            raise ValueError("backup evidence timestamps require timezone")
+    window_start = _as_utc_date(window["starts_at"])
+    window_end = _as_utc_date(window["ends_at"])
+    if window_start >= window_end:
+        raise ValueError("backup evidence approval window is invalid")
+    now = datetime.now(timezone.utc)
+    if not window_start <= now <= window_end:
+        raise ValueError("Migration 007 apply is outside the approved window")
+    if "://" in str(evidence["location"]) and "@" in str(evidence["location"]):
+        raise ValueError("backup evidence location must not contain credentials")
+    return evidence
 
 
 def _keys(declaration: dict) -> list[tuple[str, int]]:
@@ -218,28 +288,41 @@ async def _plan_portfolio_backfill(database) -> dict:
     revisions = []
     publications = []
     entry_updates = []
+    issues: dict[str, int] = {}
     cursor = database.portfolio.find({}, {"_id": 0})
     async for entry in cursor:
-        legacy_versions = entry.get("versions") or [
-            {
-                "revision": 1,
-                "content": {
-                    field: deepcopy(entry.get(field))
-                    for field in (
-                        "title_id",
-                        "title_en",
-                        "category",
-                        "description_id",
-                        "description_en",
-                        "images",
-                        "featured",
-                    )
-                },
-                "actor_user_id": "migration:007",
-                "reason": "Legacy portfolio snapshot",
-                "created_at": entry.get("created_at"),
-            }
+        if entry.get("current_revision_id") and entry.get("revision_count"):
+            continue
+        legacy_versions = entry.get("versions")
+        if not isinstance(legacy_versions, list) or not legacy_versions:
+            issues["empty_or_missing_versions"] = (
+                issues.get("empty_or_missing_versions", 0) + 1
+            )
+            continue
+        try:
+            revision_numbers = [int(item["revision"]) for item in legacy_versions]
+        except (KeyError, TypeError, ValueError):
+            issues["invalid_revision"] = issues.get("invalid_revision", 0) + 1
+            continue
+        if revision_numbers != list(range(1, len(revision_numbers) + 1)):
+            issues["unordered_or_duplicate_revision"] = (
+                issues.get("unordered_or_duplicate_revision", 0) + 1
+            )
+            continue
+        matching_revisions = [
+            index
+            for index, legacy in enumerate(legacy_versions)
+            if isinstance(legacy.get("content"), dict)
+            and legacy["content"]
+            and all(
+                entry.get(field) == value for field, value in legacy["content"].items()
+            )
         ]
+        if matching_revisions != [len(legacy_versions) - 1]:
+            issues["active_revision_ambiguous"] = (
+                issues.get("active_revision_ambiguous", 0) + 1
+            )
+            continue
         current_revision_id = None
         for legacy in legacy_versions:
             revision_number = int(legacy.get("revision", 1))
@@ -323,6 +406,7 @@ async def _plan_portfolio_backfill(database) -> dict:
         "revisions": revisions,
         "publications": publications,
         "entry_updates": entry_updates,
+        "issues": issues,
     }
 
 
@@ -430,8 +514,11 @@ async def migrate(
             "dry_run": dry_run,
             "status": "already_applied",
         }
-    if not dry_run and not backup_evidence:
-        raise ValueError("apply requires reviewed backup_evidence")
+    evidence = None
+    if not dry_run:
+        if not backup_evidence:
+            raise ValueError("apply requires reviewed backup_evidence")
+        evidence = validate_backup_evidence(backup_evidence)
 
     duplicates = {}
     for declaration in INDEX_DECLARATIONS:
@@ -447,8 +534,13 @@ async def migrate(
     report = {
         "migration": MIGRATION_ID,
         "dry_run": dry_run,
-        "status": "blocked_duplicates" if duplicates else "ready",
+        "status": (
+            "blocked_duplicates"
+            if duplicates
+            else "blocked_portfolio_history" if portfolio["issues"] else "ready"
+        ),
         "duplicate_groups_by_index": duplicates,
+        "portfolio_preflight_issues": portfolio["issues"],
         "planned": {
             "file_objects": len(files),
             "content_publications": len(publications),
@@ -461,59 +553,90 @@ async def migrate(
             "indexes": len(INDEX_DECLARATIONS),
         },
     }
-    if dry_run or duplicates:
+    if dry_run or duplicates or portfolio["issues"]:
         return report
 
-    for item in files:
-        await database.file_objects.insert_one(item)
-    for item in publications:
-        await database.content_publications.insert_one(item)
-    for item in portfolio["revisions"]:
-        await database.portfolio_revisions.insert_one(item)
-    for item in portfolio["publications"]:
-        await database.portfolio_publications.insert_one(item)
-    for item in portfolio["entry_updates"]:
-        await database.portfolio.update_one(
-            {"id": item["id"]},
-            {
-                "$set": {
-                    "revision_count": item["revision_count"],
-                    "current_revision_id": item["current_revision_id"],
-                },
-                "$unset": {"versions": ""},
-            },
-        )
-    for conversion in date_conversions:
-        await getattr(database, conversion["collection"]).update_one(
-            conversion["selector"],
-            {
-                "$set": {
-                    conversion["field"]: conversion["converted"],
-                    ("migration_007_legacy_" f"{conversion['field']}"): conversion[
-                        "legacy"
-                    ],
-                }
-            },
-        )
-    for update in runtime_backfills["outbox"]:
-        await database.notification_outbox.update_one(
-            update["selector"],
-            {"$set": update["fields"]},
-        )
-    for update in runtime_backfills["settings"]:
-        await database.settings.update_one(
-            update["selector"],
-            {"$set": update["fields"]},
-        )
+    # Indexes cannot participate in MongoDB multi-document transactions. Create
+    # compatible indexes first; the data backfill and migration ledger then
+    # commit atomically. A retry treats already-created indexes as compatible.
     report["indexes"] = await ensure_indexes(database)
-    await database.schema_migrations.insert_one(
-        {
-            "_id": MIGRATION_ID,
-            "applied_at": datetime.now(timezone.utc),
-            "backup_evidence": str(backup_evidence),
-            "manifest_index_count": len(INDEX_DECLARATIONS),
-        }
-    )
+
+    async with await database.client.start_session() as session:
+        async with session.start_transaction():
+            options = {"session": session}
+            for item in files:
+                await database.file_objects.insert_one(item, **options)
+            for item in publications:
+                await database.content_publications.insert_one(item, **options)
+            for item in portfolio["revisions"]:
+                await database.portfolio_revisions.insert_one(item, **options)
+            for item in portfolio["publications"]:
+                await database.portfolio_publications.insert_one(item, **options)
+            for item in portfolio["entry_updates"]:
+                await database.portfolio.update_one(
+                    {"id": item["id"]},
+                    {
+                        "$set": {
+                            "revision_count": item["revision_count"],
+                            "current_revision_id": item["current_revision_id"],
+                        },
+                        "$unset": {"versions": ""},
+                    },
+                    **options,
+                )
+            for conversion in date_conversions:
+                await getattr(database, conversion["collection"]).update_one(
+                    conversion["selector"],
+                    {
+                        "$set": {
+                            conversion["field"]: conversion["converted"],
+                            (
+                                "migration_007_legacy_" f"{conversion['field']}"
+                            ): conversion["legacy"],
+                        }
+                    },
+                    **options,
+                )
+            for update in runtime_backfills["outbox"]:
+                await database.notification_outbox.update_one(
+                    update["selector"],
+                    {"$set": update["fields"]},
+                    **options,
+                )
+            for update in runtime_backfills["settings"]:
+                await database.settings.update_one(
+                    update["selector"],
+                    {"$set": update["fields"]},
+                    **options,
+                )
+            await database.schema_migrations.insert_one(
+                {
+                    "_id": MIGRATION_ID,
+                    "applied_at": datetime.now(timezone.utc),
+                    "backup_evidence": {
+                        "manifest_filename": Path(str(backup_evidence)).name,
+                        "migration_id": evidence["migration_id"],
+                        "environment": evidence["environment"],
+                        "database": evidence["database"],
+                        "backup_at": _as_utc_date(evidence["backup_at"]),
+                        "checksum_algorithm": evidence["checksum"]["algorithm"],
+                        "checksum_value": evidence["checksum"]["value"],
+                        "restore_test_status": evidence["restore_test"]["status"],
+                        "restore_tested_at": _as_utc_date(
+                            evidence["restore_test"]["tested_at"]
+                        ),
+                        "reviewer": evidence["reviewer"],
+                        "approval_window_start": _as_utc_date(
+                            evidence["approval_window"]["starts_at"]
+                        ),
+                        "approval_window_end": _as_utc_date(
+                            evidence["approval_window"]["ends_at"]
+                        ),
+                    },
+                    "manifest_index_count": len(INDEX_DECLARATIONS),
+                },
+                **options,
+            )
     report["status"] = "applied"
     return report
 

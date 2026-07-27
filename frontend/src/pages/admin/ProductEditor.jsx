@@ -147,21 +147,26 @@ export default function ProductEditor() {
   };
 
   const validate = async () => {
-    const result = await catalogApi.validateProduct(productId);
-    const grouped = normalizeValidationErrors(result.errors || []);
-    setValidation(grouped);
-    return result.errors || [];
+    if (reason.trim().length < 3) return;
+    setBusy(true);
+    try {
+      await catalogApi.validateProduct(productId, reason.trim());
+      setValidation({});
+      toast.success(t("catalog.validationPassed"));
+      await load();
+    } catch (requestError) {
+      const detail = requestError.response?.data?.detail;
+      setValidation(normalizeValidationErrors(detail?.errors || []));
+      toast.error(formatApiError(detail?.message || detail));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const publish = async () => {
     if (reason.trim().length < 3) return;
     setBusy(true);
     try {
-      const errors = await validate();
-      if (errors.length) {
-        toast.error(t("catalog.validationFailed"));
-        return;
-      }
       await catalogApi.publishProduct(productId, reason.trim());
       toast.success(t("catalog.publishSuccess"));
       setReason("");
@@ -275,7 +280,7 @@ export default function ProductEditor() {
 
         <TabsContent value="publish"><Section title={t("catalog.publication")}>
           {Object.keys(validation).length > 0 && <Alert><TechnicalLabel tone="destructive">{t("catalog.validationFailed")}</TechnicalLabel>{Object.entries(validation).map(([field, messages]) => <div key={field} className="mt-2 text-sm"><strong>{field}</strong><ul className="list-disc pl-5">{messages.map((message) => <li key={message}>{message}</li>)}</ul></div>)}</Alert>}
-          {!isNew && <Button variant="outline" onClick={validate}>{t("catalog.validate")}</Button>}
+          {canWrite && !isNew && <Button variant="outline" onClick={validate} disabled={busy || reason.trim().length < 3}>{t("catalog.validate")}</Button>}
           <Field label={t("common.reason")}><Textarea value={reason} onChange={(event) => setReason(event.target.value)} minLength={3} maxLength={500} rows={3} /></Field>
           <div className="flex flex-wrap gap-2">
             {canPublish && !isNew && <Button onClick={publish} disabled={busy || reason.trim().length < 3}>{t("catalog.publish")}</Button>}

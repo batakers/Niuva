@@ -17,6 +17,7 @@ from typing import Any
 
 import jwt
 from fastapi import HTTPException, Request, Response
+from permissions import ROLE_POLICY_VERSION
 
 AUTH_POLICY_VERSION = "2026-07-27-secure-cookie-v1"
 ACCESS_TTL = timedelta(minutes=15)
@@ -48,6 +49,14 @@ def _cookie_secure() -> bool:
         "demo",
         "test",
     }
+
+
+def validate_cookie_configuration() -> None:
+    environment = os.environ.get("APP_ENV", "production").strip().lower()
+    if environment not in {"development", "demo", "test"} and not _cookie_secure():
+        raise RuntimeError(
+            "AUTH_COOKIE_SECURE must be true outside development, demo, or test"
+        )
 
 
 def _cookie_domain() -> str | None:
@@ -302,6 +311,7 @@ class AuthSessionService:
         if (
             user.get("status", "active") != "active"
             or user.get("access_state", "approved") == "access_review_required"
+            or user.get("role_policy_version") != ROLE_POLICY_VERSION
             or payload.get("token_version", 0) != user.get("token_version", 0)
             or session.get("token_version", 0) != user.get("token_version", 0)
         ):
@@ -363,6 +373,7 @@ class AuthSessionService:
             not user
             or user.get("status", "active") != "active"
             or user.get("access_state", "approved") == "access_review_required"
+            or user.get("role_policy_version") != ROLE_POLICY_VERSION
             or session.get("token_version", 0) != user.get("token_version", 0)
         ):
             await self.revoke_family(session["family_id"], reason="account_ineligible")
@@ -435,8 +446,11 @@ class AuthSessionService:
                     )
         clear_auth_cookies(response)
 
-    async def revoke_user_sessions(self, user_id: str, *, reason: str) -> None:
+    async def revoke_user_sessions(
+        self, user_id: str, *, reason: str, session=None
+    ) -> None:
         now = utc_now()
+        options = {"session": session} if session is not None else {}
         await self.db.auth_sessions.update_many(
             {"user_id": user_id, "status": "active"},
             {
@@ -447,4 +461,5 @@ class AuthSessionService:
                     "updated_at": now,
                 }
             },
+            **options,
         )

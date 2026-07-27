@@ -79,7 +79,8 @@ export const catalogApi = {
   updateProduct: (id, payload) => unwrap(api.put(`/admin/products/${id}`, payload)),
   replaceVariants: (id, variants) => unwrap(api.put(`/admin/products/${id}/variants`, { variants })),
   replaceOptions: (id, options) => unwrap(api.put(`/admin/products/${id}/options`, { options })),
-  validateProduct: (id) => unwrap(api.post(`/admin/products/${id}/validate`)),
+  validateProduct: (id, reason) =>
+    unwrap(api.post(`/admin/products/${id}/validate`, { reason })),
   publishProduct: (id, reason) => unwrap(api.post(`/admin/products/${id}/publish`, { reason })),
   rollbackProduct: (id, publicationId, reason) => unwrap(api.post(`/admin/products/${id}/rollback`, { publication_id: publicationId, reason })),
   archiveProduct: (id, reason) => unwrap(api.post(`/admin/products/${id}/archive`, { reason })),

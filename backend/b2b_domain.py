@@ -1,5 +1,6 @@
 from copy import deepcopy
 from decimal import Decimal
+import uuid
 
 INQUIRY_TRANSITIONS = {
     "new": {"reviewed", "rejected"},
@@ -71,6 +72,7 @@ def build_quote_item_snapshot(
     quantity = int(item["quantity"])
     unit_price_minor = int(item["unit_price_minor"])
     snapshot = {
+        "quote_line_id": str(uuid.uuid4()),
         "description": str(item.get("description", "")).strip(),
         "quantity": quantity,
         # Derived, never taken from the caller: an immutable document must not

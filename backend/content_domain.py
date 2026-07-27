@@ -46,6 +46,19 @@ def validate_content_fields(content_type: str, fields: dict) -> list[dict]:
             _require_text(fields, field, errors)
         if fields.get("priority") not in ("primary", "supporting"):
             errors.append(_error("invalid_choice", "priority", "priority harus 'primary' atau 'supporting'."))
+        display_order = fields.get("display_order", 0)
+        if (
+            isinstance(display_order, bool)
+            or not isinstance(display_order, int)
+            or display_order < 0
+        ):
+            errors.append(
+                _error(
+                    "invalid_number",
+                    "display_order",
+                    "display_order harus integer non-negatif.",
+                )
+            )
 
     elif content_type == "faq":
         _require_text(fields, "question", errors)

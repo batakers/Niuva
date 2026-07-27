@@ -48,6 +48,11 @@ CORE_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
         "options": {"name": "ttl_login_rate_limit", "expireAfterSeconds": 0},
     },
     {
+        "collection": "public_rate_limits",
+        "keys": "expires_at",
+        "options": {"name": "ttl_public_rate_limit", "expireAfterSeconds": 0},
+    },
+    {
         "collection": "password_reset_tokens",
         "keys": "token_hash",
         "options": {"name": "uq_password_reset_hash", "unique": True},

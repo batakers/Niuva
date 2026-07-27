@@ -94,23 +94,10 @@ describe("Retail order detail surface", () => {
     expect(detailSource).toContain("record.version");
   });
 
-  test("carries expected_version, operation_id, and reason on every command", () => {
-    expect(detailSource).toContain("expected_version: record.version");
-    expect(detailSource).toContain("operation_id: operationId()");
-    expect(detailSource).toContain("reason: reason.trim()");
-  });
-
-  test("maps every canonical action to exactly one stage", () => {
-    const block = detailSource
-      .split("const ACTION_TARGETS = {")[1]
-      .split("};")[0];
-    const targets = [...block.matchAll(/:\s*"([a-z_]+)"/g)].map((m) => m[1]);
-
-    // Every target is a canonical status, and none is claimed twice.
-    expect(new Set(targets).size).toBe(targets.length);
-    for (const target of targets) {
-      expect(RETAIL_STATUSES).toContain(target);
-    }
+  test("keeps historical orders read-only", () => {
+    expect(detailSource).toContain("Retail transaction inactive");
+    expect(detailSource).not.toContain("/transitions");
+    expect(detailSource).not.toContain("retail-action-");
   });
 
   test("names the suspended actions rather than hiding them", () => {
@@ -119,9 +106,8 @@ describe("Retail order detail surface", () => {
     expect(detailSource).toContain('t("retail.suspendedBody")');
   });
 
-  test("offers no command to a reader without write authority", () => {
-    expect(detailSource).toContain('hasPermission(user, "orders.write")');
-    expect(detailSource).toContain("canWrite");
+  test("offers no command even when the record advertises historical actions", () => {
+    expect(detailSource).not.toContain("permitted_next_actions");
   });
 });
 

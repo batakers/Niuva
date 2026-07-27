@@ -60,10 +60,15 @@ export default function ContentEditor() {
   useEffect(() => { load(); }, [load]);
 
   const createDraft = async () => {
-    if (!creating?.slug.trim()) return;
+    if (!creating?.slug.trim() || creating?.reason.trim().length < 3) return;
     setBusy(true);
     try {
-      const block = await contentApi.create({ content_type: contentType, slug: creating.slug.trim(), fields: emptyFieldsFor(contentType) });
+      const block = await contentApi.create({
+        content_type: contentType,
+        slug: creating.slug.trim(),
+        fields: emptyFieldsFor(contentType),
+        reason: creating.reason.trim(),
+      });
       toast.success(t("content.createSuccess"));
       setCreating(null);
       setEditingId(block.id);
@@ -112,7 +117,7 @@ export default function ContentEditor() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={load} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />{t("common.refresh")}</Button>
-            <Button size="sm" onClick={() => setCreating({ slug: "" })}><Plus className="mr-2 h-4 w-4" />{t("content.create")}</Button>
+            <Button size="sm" onClick={() => setCreating({ slug: "", reason: "" })}><Plus className="mr-2 h-4 w-4" />{t("content.create")}</Button>
           </div>
         </SurfacePanelHeader>
       </SurfacePanel>
@@ -191,11 +196,14 @@ export default function ContentEditor() {
         <DialogContent>
           <DialogHeader><DialogTitle>{t("content.create")} · {t(`content.type.${contentType}`)}</DialogTitle></DialogHeader>
           <FormField label={t("content.slug")}>
-            <Input value={creating?.slug || ""} onChange={(event) => setCreating({ slug: event.target.value })} placeholder={t("content.slugPlaceholder")} />
+            <Input value={creating?.slug || ""} onChange={(event) => setCreating((current) => ({ ...current, slug: event.target.value }))} placeholder={t("content.slugPlaceholder")} />
+          </FormField>
+          <FormField label={t("common.reason")}>
+            <Input value={creating?.reason || ""} onChange={(event) => setCreating((current) => ({ ...current, reason: event.target.value }))} minLength={3} maxLength={500} />
           </FormField>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreating(null)}>{t("common.cancel")}</Button>
-            <Button disabled={busy || !creating?.slug.trim()} onClick={createDraft}>{t("common.save")}</Button>
+            <Button disabled={busy || !creating?.slug.trim() || creating?.reason.trim().length < 3} onClick={createDraft}>{t("common.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -215,11 +215,19 @@ class NotificationService:
             lease_token = str(uuid.uuid4())
             entry = await self.db.notification_outbox.find_one_and_update(
                 {
-                    "status": "pending",
-                    "next_attempt_at": {"$lte": moment},
                     "$or": [
-                        {"lease_until": None},
-                        {"lease_until": {"$lte": moment}},
+                        {
+                            "status": "pending",
+                            "next_attempt_at": {"$lte": moment},
+                            "$or": [
+                                {"lease_until": None},
+                                {"lease_until": {"$lte": moment}},
+                            ],
+                        },
+                        {
+                            "status": "processing",
+                            "lease_until": {"$lte": moment},
+                        },
                     ],
                 },
                 {
