@@ -1,9 +1,12 @@
 # Admin Authentication Phase 2 — Session Safety Authorization Packet
 
-Status: **Candidate — Owner Decisions Required — No Implementation Authorization**
+Status: **Approved Implementation Authorization — G0 Pending Checkpoint/Isolation — No Production Activation**
 Date: 27 July 2026
 Decision owner: Project Owner
 Technical reviewer: Acting Technical Owner
+Operational owner: Acting Technical Owner
+Approval source: Explicit owner approval of all `AUTH-P2-*` and `P2-PROD-*`
+recommendations on 27 July 2026
 Proposed slice: **Admin Session Safety Baseline**
 
 ## 1. Authority and Approval Boundary
@@ -22,19 +25,20 @@ Read this packet after:
 - `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`; and
 - `docs/decisions/architecture/ADR-004-surface-boundary-topology.md`.
 
-`DEC-AUTH-005` approves the Admin-session direction but leaves the exact store,
-cookie/CSRF implementation, signing policy, and legacy cutover open. This packet
-proposes those bounded implementation choices for explicit review.
+`DEC-AUTH-005` approves the Admin-session direction. The owner has now approved
+the bounded store, cookie/CSRF implementation, signing policy, cutover,
+retention, ownership, monitoring, and production-readiness gates in this packet.
 
-Until every `AUTH-P2-*` item in Section 6 has an explicit owner response, this
-packet authorizes no source edit, dependency/configuration change, migration,
-commit, push, shared-data mutation, deployment, rollout, production activation,
-or go-live.
+This approval authorizes local implementation and disposable local
+replica-set verification on a new isolated Phase 2 branch/worktree, subject to
+the sequential gates in Section 8. It also defines the evidence required before
+a later staging rehearsal or production activation proposal.
 
-Approval of this packet would authorize only local source/test work on a new
-isolated Phase 2 branch/worktree, subject to the sequential gates in Section 7.
-Commit, push, pull request, shared-data migration, deployment, and rollout would
-remain separately gated.
+It does not authorize commit, push, pull request, shared/staging/production data
+mutation, deployment, real cutover, production activation, or go-live. Those
+remain explicit follow-up actions. Production activation requires separate
+two-person approval from the Project Owner and Acting Technical Owner after all
+readiness gates pass.
 
 ## 2. Objective
 
@@ -258,7 +262,7 @@ source/config/provider/dependency/migration file is required.
 
 ## 6. Approval Docket
 
-Each item requires an explicit owner response.
+The owner approved every item without amendment on 27 July 2026.
 
 ### AUTH-P2-01 — Scope
 
@@ -266,7 +270,7 @@ Each item requires an explicit owner response.
 customer-session migration, MFA, distributed limiter, persistent auth events,
 surface-topology change, provider activation, and production rollout.
 
-Status: **Awaiting owner decision.**
+Status: **Approved on 27 July 2026.**
 
 ### AUTH-P2-02 — Session store
 
@@ -274,7 +278,7 @@ Status: **Awaiting owner decision.**
 a deep provider-neutral store seam. Add no dependency/provider. Reopen adapter
 selection if deployment topology later makes MongoDB unsuitable.
 
-Status: **Awaiting owner decision.**
+Status: **Approved on 27 July 2026.**
 
 ### AUTH-P2-03 — Cookie and lifetime contract
 
@@ -282,7 +286,7 @@ Status: **Awaiting owner decision.**
 15-minute/30-minute/8-hour/default plus 15-minute/8-hour/7-day/remembered
 lifetimes in Section 4.
 
-Status: **Awaiting owner decision.**
+Status: **Approved on 27 July 2026.**
 
 ### AUTH-P2-04 — CSRF/origin contract
 
@@ -290,7 +294,7 @@ Status: **Awaiting owner decision.**
 `PUBLIC_SITE_URL` Origin/Referer validation, and `withCredentials` Admin API
 requests. Do not use a JavaScript-readable double-submit cookie.
 
-Status: **Awaiting owner decision.**
+Status: **Approved on 27 July 2026.**
 
 ### AUTH-P2-05 — Signing and claims
 
@@ -298,7 +302,7 @@ Status: **Awaiting owner decision.**
 policy. Keep existing HS256 JWT only for supported customer bearer
 compatibility. Defer customer JWT claim/signing-key modernization.
 
-Status: **Awaiting owner decision.**
+Status: **Approved on 27 July 2026.**
 
 ### AUTH-P2-06 — Cutover
 
@@ -306,16 +310,17 @@ Status: **Awaiting owner decision.**
 do not create a dual Admin bearer/cookie window or import legacy JWTs. Preserve
 customer bearer routes.
 
-Status: **Awaiting owner decision.**
+Status: **Approved on 27 July 2026.**
 
 ### AUTH-P2-07 — Migration and retention
 
 **Recommendation:** Authorize migration `008` implementation plus disposable
-replica-set dry-run/apply/rollback tests. Add session indexes but no TTL deletion
-index until retention/backup policy receives separate approval. No shared-data
-execution.
+replica-set dry-run/apply/rollback tests. Add session indexes without a TTL
+index. Expired/revoked sessions use an approved 90-day retention baseline and a
+controlled scheduled cleanup job with dry-run and aggregate evidence. No
+shared-data execution.
 
-Status: **Awaiting owner decision.**
+Status: **Approved on 27 July 2026.**
 
 ### AUTH-P2-08 — Isolation and Git behavior
 
@@ -324,9 +329,86 @@ separate commit authorization, create a new isolated branch/worktree from the
 exact Phase 1 lineage. Permit local edits/tests only. No commit, push, PR,
 shared-data mutation, deploy, or rollout without explicit follow-up instruction.
 
-Status: **Awaiting owner decision.**
+Status: **Approved on 27 July 2026.**
 
-## 7. Sequential Gates
+## 7. Production-Readiness Decisions
+
+These decisions govern readiness work and a later activation proposal. They do
+not themselves authorize staging/production execution.
+
+### P2-PROD-01 — Topology assumption
+
+**Decision:** Phase 2 production readiness uses the current single-origin,
+route-based application shape. This does not resolve `ADR-004` globally. Any
+subdomain, cross-origin, or separate-application move reopens the cookie, CSRF,
+CORS, and cutover contract before implementation or rollout.
+
+Status: **Approved on 27 July 2026.**
+
+### P2-PROD-02 — Retention and cleanup
+
+**Decision:** Expired/revoked Admin session records are retained for 90 days,
+then deleted by a controlled scheduled cleanup job. The job supports dry-run,
+bounded batches, aggregate evidence, interruption/retry, backup-window
+coordination, and rollback/restore procedures. No TTL index is used for initial
+rollout.
+
+Status: **Approved on 27 July 2026.**
+
+### P2-PROD-03 — Ownership and activation authority
+
+**Decision:** Acting Technical Owner is accountable for session security,
+readiness, incidents, rollback, and operational acceptance. An Authorized
+Technical Operator may execute approved procedures. Production activation
+requires explicit Project Owner plus Acting Technical Owner approval; the
+operator does not self-approve.
+
+Status: **Approved on 27 July 2026.**
+
+### P2-PROD-04 — HTTPS boundary
+
+**Decision:** Production Admin sessions require end-to-end approved HTTPS and
+the exact Secure cookie contract. There is no production HTTP fallback. Proxy
+termination and forwarded-header handling must be verified before activation.
+
+Status: **Approved on 27 July 2026.**
+
+### P2-PROD-05 — Cutover window
+
+**Decision:** Production cutover, if later authorized, uses a communicated
+maintenance window and forces every Admin to log in again. Existing Admin
+bearer tokens are not imported or accepted as session credentials.
+
+Status: **Approved on 27 July 2026.**
+
+### P2-PROD-06 — Monitoring
+
+**Decision:** Readiness requires monitoring for session issuance, rotation,
+rotated-secret replay, revocation/logout failure, CSRF/origin rejection,
+MongoDB session latency/availability, cleanup failure, and customer-auth
+regression. Evidence excludes cookie/CSRF/session values, passwords,
+Authorization headers, raw IP addresses, and plaintext unknown identifiers.
+
+Status: **Approved on 27 July 2026.**
+
+### P2-PROD-07 — Failure and rollback
+
+**Decision:** A session-safety failure disables Admin login/session issuance
+while preserving customer bearer compatibility. Rollback never restores Admin
+`localStorage` bearer persistence or a version unable to verify existing
+Argon2id credentials.
+
+Status: **Approved on 27 July 2026.**
+
+### P2-PROD-08 — Rehearsal gate
+
+**Decision:** A staging-equivalent rehearsal, backup/restore exercise, cutover
+drill, rollback/disablement drill, and evidence review must pass before any
+production activation proposal.
+
+Status: **Approved on 27 July 2026.**
+
+## 8. Sequential Gates
 
 ### G0 — Decision and isolation
 
@@ -368,12 +450,28 @@ Status: **Awaiting owner decision.**
 - runbook covers disablement, cutover, rollback floor, and handoff; and
 - implementation remains uncommitted/unpushed unless separately approved.
 
+### G5 — Production-readiness evidence
+
+- deployment topology proves same-origin HTTPS, Secure-cookie handling, trusted
+  proxy behavior, and no HTTP fallback;
+- the 90-day cleanup job passes dry-run, bounded deletion, retry, backup-window,
+  and restore tests without deleting active sessions;
+- monitoring and redacted alert destinations are owned and exercised;
+- staging-equivalent migration/cutover, forced re-login, customer compatibility,
+  backup/restore, disablement, and rollback drills pass;
+- a 60-minute intensive and 24-hour extended observation plan is approved;
+- operator, independent reviewer, Project Owner, and Acting Technical Owner
+  handoff is complete; and
+- production activation has its own explicit two-person approval and window.
+
 Stop if any gate fails, exact origin cannot be validated, cookie and CSRF
 changes cannot ship together, customer compatibility regresses, transaction
 capability is absent for rotation/migration, session material reaches evidence,
-or rollback would restore Admin browser bearer persistence.
+or rollback would restore Admin browser bearer persistence. Stop production
+readiness if monitoring ownership, HTTPS proof, cleanup/restore evidence, or
+two-person activation control is absent.
 
-## 8. Explicitly Out of Scope
+## 9. Explicitly Out of Scope
 
 - Customer cookie/session migration or customer JWT modernization.
 - MFA enrollment, challenge, recovery codes, TOTP, passkeys, or step-up.
@@ -382,9 +480,10 @@ or rollback would restore Admin browser bearer persistence.
 - Support-channel or break-glass identity procedure selection.
 - Subdomain/separate-app topology.
 - New provider, infrastructure, dependency, secrets, or key rotation.
-- Shared/staging/production migration, deployment, rollout, readiness, or go-live.
+- Shared/staging/production migration execution, deployment, activation, or
+  go-live without their explicit follow-up approvals.
 
-## 9. Proposed Verification
+## 10. Approved Verification
 
 From repository root:
 
@@ -407,20 +506,10 @@ The disposable replica-set suite extends
 migration integration tests. It uses only generated opaque test data and removes
 the isolated database and volume after execution.
 
-## 10. Approval Response Template
+## 11. Approval Summary
 
-The owner may respond compactly:
-
-```text
-AUTH-P2-01 approve/reject/change: ...
-AUTH-P2-02 approve/reject/change: ...
-AUTH-P2-03 approve/reject/change: ...
-AUTH-P2-04 approve/reject/change: ...
-AUTH-P2-05 approve/reject/change: ...
-AUTH-P2-06 approve/reject/change: ...
-AUTH-P2-07 approve/reject/change: ...
-AUTH-P2-08 approve/reject/change: ...
-```
-
-Approval of all recommendations still does not authorize commit, push, shared
-data, deployment, or production activation.
+The owner explicitly approved all `AUTH-P2-01` through `AUTH-P2-08` and
+`P2-PROD-01` through `P2-PROD-08` recommendations without amendment on 27 July
+2026. This activates bounded local implementation authorization after G0
+checkpoint/isolation. It does not authorize commit, push, shared/staging/
+production data mutation, deployment, production activation, or go-live.
