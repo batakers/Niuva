@@ -24,18 +24,37 @@ export function BrandPage({ children, className }) {
 
       pageRef.current?.classList.add("brand-motion-ready");
 
-      gsap.utils.toArray(".brand-reveal").forEach((item) => {
+      // Hero copy resolves on mount rather than on scroll: it is already in the
+      // viewport, so a scroll trigger would either fire instantly with no
+      // sequence or not at all.
+      const heroEntry = pageRef.current?.querySelectorAll("[data-hero-entry]");
+      if (heroEntry?.length) {
         gsap.fromTo(
-          item,
-          { opacity: 0, y: 28 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.85,
-            ease: "power3.out",
-            scrollTrigger: { trigger: item, start: "top 88%", once: true },
-          }
+          heroEntry,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", stagger: 0.09 }
         );
+      }
+
+      // batch() groups everything crossing the trigger line in the same frame,
+      // so a row of siblings cascades instead of each element firing its own
+      // identical tween. That grouping is the choreography.
+      ScrollTrigger.batch(".brand-reveal", {
+        start: "top 88%",
+        once: true,
+        onEnter: (batch) =>
+          gsap.fromTo(
+            batch,
+            { opacity: 0, y: 28 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.75,
+              ease: "power3.out",
+              stagger: 0.08,
+              overwrite: true,
+            }
+          ),
       });
 
       gsap.utils.toArray("[data-brand-visual]").forEach((visual) => {
@@ -118,28 +137,80 @@ export function MarketingSection({
   );
 }
 
-export function DecorativeMotif({ className, light = false, density = "standard" }) {
-  const isSparse = density === "sparse";
-  return (
-    <div aria-hidden="true" className={cn("pointer-events-none absolute hidden sm:block", className)}>
-      <ULineMotif light={light} className={cn("absolute inset-0", isSparse && "opacity-70")} />
-      <span
-        className={cn(
-          "absolute bottom-[12%] right-[10%] rounded-full",
-          isSparse ? "h-10 w-10" : "h-16 w-16",
-          light ? "bg-white/20" : "bg-[var(--color-decoration-brand-soft)]"
-        )}
-      />
-      <span
-        className={cn(
-          "absolute bottom-[28%] right-[28%] rounded-full",
-          isSparse ? "h-3 w-3" : "h-5 w-5",
-          light ? "bg-white/40" : "bg-decoration-brand-soft"
-        )}
-      />
-    </div>
-  );
-}
+// DecorativeMotif was removed. It was the vehicle for nine repeated U-curve
+// placements across the public pages, which DEC-UX-002 rules out as ornament.
+// The U-curve returns only when it is built as the semantic
+// Need -> Research -> Experiment -> Prototype -> Output path, under its own
+// authorization.
+
+// `standard` is frozen: PrivacyPolicyPage and NotFoundPage render through it,
+// and both sit outside the approved redesign scope. Every new public
+// composition gets its own name so those two pages cannot shift. The previous
+// home/standard/contact trio all mapped to identical geometry, which is why the
+// six public heroes looked the same; each entry below now differs for real.
+const heroVariants = {
+  standard: {
+    grid: "xl:grid-cols-[minmax(0,1.62fr)_minmax(320px,1fr)]",
+    alignment: "xl:items-center",
+    title: "type-heading-page",
+    titleWidth: "max-w-5xl",
+    bodyWidth: "max-w-[64ch]",
+    visual: "side",
+    entry: "wrapper",
+  },
+  home: {
+    grid: "xl:grid-cols-[minmax(0,1.42fr)_minmax(340px,1fr)]",
+    alignment: "xl:items-end",
+    title: "type-display-home",
+    titleWidth: "max-w-[26ch]",
+    bodyWidth: "max-w-[58ch]",
+    visual: "side",
+    entry: "children",
+  },
+  // Contact leads with the copy; the channel panel is the smaller partner.
+  contact: {
+    grid: "xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.78fr)]",
+    alignment: "xl:items-start",
+    title: "type-heading-page",
+    titleWidth: "max-w-[24ch]",
+    bodyWidth: "max-w-[54ch]",
+    visual: "side",
+    entry: "children",
+  },
+  // Capabilities: near-even pair. The copy column has to stay wide enough to
+  // hold the headline to two lines, which is what sets the ratio.
+  index: {
+    grid: "xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]",
+    alignment: "xl:items-center",
+    title: "type-heading-page",
+    titleWidth: "max-w-[30ch]",
+    bodyWidth: "max-w-[56ch]",
+    visual: "side",
+    entry: "children",
+  },
+  // Projects: the evidence still leads, but not at the cost of a third line.
+  showcase: {
+    grid: "xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]",
+    alignment: "xl:items-end",
+    title: "type-heading-page",
+    titleWidth: "max-w-[30ch]",
+    bodyWidth: "max-w-[52ch]",
+    visual: "side",
+    entry: "children",
+  },
+  // About and FAQ: one column, no visual slot. FAQ previously fell through to a
+  // placeholder panel it never asked for. The measure is set by About's
+  // headline, whose best two-line split needs roughly 714px to avoid a third.
+  stack: {
+    grid: "",
+    alignment: "",
+    title: "type-heading-page",
+    titleWidth: "max-w-[28ch]",
+    bodyWidth: "max-w-[62ch]",
+    visual: "none",
+    entry: "children",
+  },
+};
 
 export function PageHero({
   label,
@@ -158,21 +229,22 @@ export function PageHero({
 }) {
   const labelText = label ?? eyebrow;
   const visualContent = proofPanel ?? visual;
-  const variantGrid = {
-    home: "xl:grid-cols-[minmax(0,1.62fr)_minmax(320px,1fr)]",
-    standard: "xl:grid-cols-[minmax(0,1.62fr)_minmax(320px,1fr)]",
-    contact: "xl:grid-cols-[minmax(0,1.62fr)_minmax(320px,1fr)]",
-  };
-  const variantTitle = {
-    home: "type-display-home",
-    standard: "type-heading-page",
-    contact: "type-heading-page",
-  };
-  const variantAlignment = {
-    home: "xl:items-center",
-    standard: "xl:items-center",
-    contact: "xl:items-center",
-  };
+  const config = heroVariants[variant] || heroVariants.standard;
+  const staggered = config.entry === "children";
+  // Legacy path reveals the whole column at once; new variants cascade their
+  // own children on mount, so the wrapper must not also animate.
+  const entryProps = staggered ? { "data-hero-entry": "" } : {};
+
+  const visualSlot =
+    config.visual === "none" ? null : (
+      <div className={cn("relative z-10 min-w-0", staggered ? "" : "brand-reveal")} {...entryProps}>
+        {visualContent || (
+          <RoundedVisualFrame title="Dari riset ke realisasi" kicker="Niuva Inovasi Utama">
+            <DotPagination active={1} className="[&_span]:bg-surface-default" />
+          </RoundedVisualFrame>
+        )}
+      </div>
+    );
 
   return (
     <section className={cn("marketing-page-hero relative overflow-hidden", className)} data-marketing-section="hero">
@@ -187,53 +259,52 @@ export function PageHero({
                 : "lg:-right-24 lg:top-20 lg:h-72 lg:w-72"
             )}
           />
-          <ULineMotif
-            className={cn(
-              "pointer-events-none absolute -bottom-20 -left-16 hidden h-52 w-52 opacity-40 sm:block sm:-bottom-28 sm:-left-20 sm:h-64 sm:w-64",
-              variant === "home"
-                ? "lg:-bottom-24 lg:-left-20 lg:h-64 lg:w-64 lg:opacity-30"
-                : "lg:-bottom-32 lg:-left-24 lg:h-80 lg:w-80 lg:opacity-50"
-            )}
-          />
+          {/* DEC-UX-002 forbids repeating the U-curve as ornament, so the new
+              public variants drop it. `standard` keeps it because NotFoundPage
+              renders through that path and must not change. */}
+          {variant === "standard" && (
+            <ULineMotif className="pointer-events-none absolute -bottom-20 -left-16 hidden h-52 w-52 opacity-40 sm:block sm:-bottom-28 sm:-left-20 sm:h-64 sm:w-64 lg:-bottom-32 lg:-left-24 lg:h-80 lg:w-80 lg:opacity-50" />
+          )}
         </>
       )}
       <PageContainer
         className={cn(
           "relative grid min-w-0 gap-9 md:gap-10",
-          variantGrid[variant] || variantGrid.standard,
-          variantAlignment[variant] || variantAlignment.standard
+          config.grid,
+          config.alignment
         )}
       >
-        <div className={cn("brand-reveal relative z-10 min-w-0", contentClassName)}>
-          {labelText && <p className="brand-eyebrow mb-6">{labelText}</p>}
+        <div className={cn("relative z-10 min-w-0", staggered ? "" : "brand-reveal", contentClassName)}>
+          {labelText && (
+            <p className="brand-eyebrow mb-6" {...entryProps}>
+              {labelText}
+            </p>
+          )}
           <h1
-            className={cn(
-              "max-w-5xl text-text-primary",
-              variantTitle[variant] || variantTitle.standard,
-              titleClassName
-            )}
+            className={cn(config.titleWidth, "text-text-primary", config.title, titleClassName)}
+            {...entryProps}
           >
             {title}
           </h1>
           {body && (
-            <p className="mt-5 max-w-[64ch] text-base leading-7 text-text-secondary md:mt-6 md:text-lg md:leading-8">
+            <p
+              className={cn(
+                "mt-5 text-base leading-7 text-text-secondary md:mt-6 md:text-lg md:leading-8",
+                config.bodyWidth
+              )}
+              {...entryProps}
+            >
               {body}
             </p>
           )}
           {(primaryAction || secondaryAction) && (
-            <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:gap-4">
+            <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:gap-4" {...entryProps}>
               {primaryAction}
               {secondaryAction}
             </div>
           )}
         </div>
-        <div className="brand-reveal relative z-10 min-w-0">
-          {visualContent || (
-            <RoundedVisualFrame title="Dari riset ke realisasi" kicker="Niuva Inovasi Utama">
-              <DotPagination active={1} className="[&_span]:bg-surface-default" />
-            </RoundedVisualFrame>
-          )}
-        </div>
+        {visualSlot}
       </PageContainer>
     </section>
   );
@@ -254,7 +325,11 @@ export function SectionHeader({
   const alignment = {
     left: "text-left",
     center: "mx-auto text-center",
+    // `split` is the "big headline left, small explainer right" pattern. It is
+    // frozen rather than fixed because PrivacyPolicyPage uses it seven times.
+    // In-scope pages move to `stacked`, which keeps one focused column.
     split: "grid gap-5 xl:max-w-none xl:grid-cols-[1.12fr_0.88fr] xl:items-start xl:gap-10",
+    stacked: "max-w-3xl",
   };
   const copyAlignment = align === "center" ? "mx-auto" : "";
 
@@ -278,7 +353,7 @@ export function SectionHeader({
       </div>
       {(body || metadata || note) && (
         <div>
-          {metadata && <div className="mb-4 text-sm font-semibold text-action-primary">{metadata}</div>}
+          {metadata && <div className="mb-4 text-sm font-semibold text-text-secondary">{metadata}</div>}
           {body && (
             <p className={cn("mt-5 max-w-[65ch] text-base leading-8 text-text-secondary md:text-lg", copyAlignment, align === "split" && "mt-0")}>
               {body}
@@ -301,7 +376,6 @@ export function CTASection({
   contactEmphasis,
   whatsappHref,
   email,
-  showMotif = true,
   className,
 }) {
   const labelText = label ?? eyebrow;
@@ -310,7 +384,6 @@ export function CTASection({
       <PageContainer>
         <div className="brand-reveal relative overflow-hidden rounded-feature bg-surface-default p-1.5 shadow-surface ring-1 ring-white/40">
           <div className="relative overflow-hidden rounded-card bg-action-primary p-6 sm:p-8 md:p-12">
-            {showMotif && <DecorativeMotif light density="sparse" className="-right-20 -top-16 h-64 w-64 opacity-50 md:-right-24 md:-top-20 md:h-96 md:w-96 md:opacity-70" />}
             <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.55fr)] xl:items-end">
               <div className="max-w-4xl">
                 {labelText && <p className="brand-eyebrow mb-6 bg-white/20 text-text-inverse">{labelText}</p>}
@@ -350,22 +423,18 @@ export function ContactSummary({ className, contact, showMapLink = false }) {
   return (
     <div className={cn("grid gap-4 md:grid-cols-3", className)}>
       {items.map((item) => (
-        <div key={item.label} className="brand-reveal relative min-h-[170px] overflow-hidden rounded-card border border-border-default bg-surface-default p-5 sm:p-6">
-          <span aria-hidden="true" className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[var(--color-decoration-brand-soft)]" />
-          <div className="relative z-10">
-            <div className="mb-5 h-3 w-3 rounded-full bg-brand-primary" />
-            <p className="text-sm font-semibold text-action-primary">{item.label}</p>
-            {item.href ? (
-              <a
-                href={item.href}
-                className="mt-3 inline-flex min-h-11 items-center break-words font-semibold leading-7 text-text-primary transition-colors duration-emphasis ease-snap hover:text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                {item.value}
-              </a>
-            ) : (
-              <p className="mt-3 leading-7 text-text-primary">{item.value}</p>
-            )}
-          </div>
+        <div key={item.label} className="brand-reveal border-t-2 border-[var(--color-brand-secondary)] pt-5">
+          <p className="type-label text-text-secondary">{item.label}</p>
+          {item.href ? (
+            <a
+              href={item.href}
+              className="mt-2 inline-flex min-h-11 items-center break-words font-semibold leading-7 text-text-primary transition-colors duration-emphasis ease-snap hover:text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              {item.value}
+            </a>
+          ) : (
+            <p className="mt-2 leading-7 text-text-primary">{item.value}</p>
+          )}
         </div>
       ))}
     </div>
@@ -380,6 +449,22 @@ function RequiredLabel({ children }) {
   );
 }
 
+// Errors were toast-only, so they were unreachable for a screen-reader user and
+// gone before the visitor got back to the field. The message now sits under its
+// own input and is wired through aria-describedby.
+function FieldError({ id, message }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="type-body-small font-semibold text-[var(--color-status-error)]">
+      {message}
+    </p>
+  );
+}
+
+function describedBy(fieldId, message) {
+  return message ? `${fieldId}-error` : undefined;
+}
+
 export function ContactForm({
   form,
   onChange,
@@ -387,10 +472,13 @@ export function ContactForm({
   loading = false,
   needOptions = [],
   timelineOptions = [],
+  errors = {},
   className,
   submitLabel = "Kirim Permintaan",
   loadingLabel = "Mengirim",
 }) {
+  const errorCount = Object.values(errors).filter(Boolean).length;
+
   return (
     <form
       onSubmit={onSubmit}
@@ -398,11 +486,20 @@ export function ContactForm({
       data-testid="contact-form"
       data-ph-no-capture
       data-private
+      noValidate
       aria-describedby="contact-required-note contact-privacy-note"
     >
       <p id="contact-required-note" className="mb-6 text-sm leading-6 text-text-secondary">
         Semua field wajib diisi agar tim Niuva dapat meninjau brief awal dengan konteks yang cukup.
       </p>
+
+      {/* Announced once per failed submit. Individual messages sit with their
+          own field; this only tells a screen-reader user that something needs
+          attention before they walk back through the form. */}
+      <p role="alert" aria-live="polite" className="sr-only">
+        {errorCount > 0 ? `Ada ${errorCount} field yang perlu diperbaiki.` : ""}
+      </p>
+
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="contact-name" className="text-sm font-semibold text-text-primary">
@@ -415,10 +512,13 @@ export function ContactForm({
             onChange={onChange("name")}
             required
             aria-required="true"
+            aria-invalid={errors.name ? "true" : undefined}
+            aria-describedby={describedBy("contact-name", errors.name)}
             autoComplete="name"
             className="brand-field"
             placeholder="Nama lengkap"
           />
+          <FieldError id="contact-name-error" message={errors.name} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-company" className="text-sm font-semibold text-text-primary">
@@ -431,10 +531,13 @@ export function ContactForm({
             onChange={onChange("company")}
             required
             aria-required="true"
+            aria-invalid={errors.company ? "true" : undefined}
+            aria-describedby={describedBy("contact-company", errors.company)}
             autoComplete="organization"
             className="brand-field"
             placeholder="Nama perusahaan atau institusi"
           />
+          <FieldError id="contact-company-error" message={errors.company} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-email" className="text-sm font-semibold text-text-primary">
@@ -448,10 +551,13 @@ export function ContactForm({
             onChange={onChange("email")}
             required
             aria-required="true"
+            aria-invalid={errors.email ? "true" : undefined}
+            aria-describedby={describedBy("contact-email", errors.email)}
             autoComplete="email"
             className="brand-field"
             placeholder="nama@perusahaan.com"
           />
+          <FieldError id="contact-email-error" message={errors.email} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-phone" className="text-sm font-semibold text-text-primary">
@@ -464,10 +570,13 @@ export function ContactForm({
             onChange={onChange("phone")}
             required
             aria-required="true"
+            aria-invalid={errors.phone ? "true" : undefined}
+            aria-describedby={describedBy("contact-phone", errors.phone)}
             autoComplete="tel"
             className="brand-field"
             placeholder="08xx xxxx xxxx"
           />
+          <FieldError id="contact-phone-error" message={errors.phone} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-need" className="text-sm font-semibold text-text-primary">
@@ -518,10 +627,13 @@ export function ContactForm({
           onChange={onChange("message")}
           required
           aria-required="true"
+          aria-invalid={errors.message ? "true" : undefined}
+          aria-describedby={describedBy("contact-message", errors.message)}
           rows={7}
           className="brand-field min-h-[190px] resize-y py-4"
           placeholder="Jelaskan konteks, tujuan, ruang lingkup, target pengguna, bentuk hasil, atau batasan proyek."
         />
+        <FieldError id="contact-message-error" message={errors.message} />
       </div>
 
       <div className="mt-8 flex flex-col gap-4 border-t border-border-default pt-7 md:flex-row md:items-center md:justify-between">

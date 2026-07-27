@@ -262,13 +262,20 @@ export function DotPagination({ count = 5, active = 0, className }) {
   );
 }
 
-export function RoundedVisualFrame({ title, kicker, className, children }) {
+// `motif` defaults to true because NotFoundPage and the `standard` hero
+// fallback still render the original treatment. In-scope pages opt out, which
+// is how the repeated U-curve ornament comes down without touching them.
+export function RoundedVisualFrame({ title, kicker, className, children, motif = true }) {
   return (
     <div className={cn("rounded-feature bg-decoration-brand-soft p-1.5 ring-1 ring-border-default", className)}>
       <div className="relative min-h-[210px] overflow-hidden rounded-card bg-action-primary p-5 text-text-inverse sm:min-h-[240px] sm:p-7 md:p-8 xl:min-h-[260px]">
-        <ULineMotif light className="absolute -right-10 -top-8 hidden h-44 w-44 opacity-30 sm:block sm:h-56 sm:w-56" />
-        <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full bg-white/20 sm:bottom-8 sm:right-8 sm:h-24 sm:w-24" />
-        <div className="absolute bottom-16 right-20 h-5 w-5 rounded-full bg-white/40 sm:bottom-20 sm:right-24 sm:h-8 sm:w-8" />
+        {motif && (
+          <>
+            <ULineMotif light className="absolute -right-10 -top-8 hidden h-44 w-44 opacity-30 sm:block sm:h-56 sm:w-56" />
+            <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full bg-white/20 sm:bottom-8 sm:right-8 sm:h-24 sm:w-24" />
+            <div className="absolute bottom-16 right-20 h-5 w-5 rounded-full bg-white/40 sm:bottom-20 sm:right-24 sm:h-8 sm:w-8" />
+          </>
+        )}
         <div className="relative z-10 flex h-full min-h-[164px] flex-col justify-between sm:min-h-[188px] xl:min-h-[196px]">
           <div>
             <p className="text-sm font-semibold text-text-inverse">{kicker}</p>
@@ -281,13 +288,16 @@ export function RoundedVisualFrame({ title, kicker, className, children }) {
   );
 }
 
-function CapabilityDetailRow({ label, value }) {
+// A hairline under every row turned this into a spec table. Pairs now sit in a
+// two-column grid with whitespace doing the separating; a lone final row spans
+// the full width so an odd count never leaves a hole.
+function CapabilityDetailRow({ label, value, spanFull = false }) {
   if (!value) return null;
 
   return (
-    <div className="grid gap-3 border-t border-border-default py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
-      <dt className="text-sm font-semibold text-action-primary">{label}</dt>
-      <dd className="type-body text-text-primary">{value}</dd>
+    <div className={spanFull ? "sm:col-span-2" : undefined}>
+      <dt className="type-label text-text-secondary">{label}</dt>
+      <dd className="type-body-small mt-2 max-w-[52ch] text-text-primary">{value}</dd>
     </div>
   );
 }
@@ -306,14 +316,9 @@ export function CapabilityPanel({
   if (compact) {
     return (
       <article className={cn("brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6 sm:p-8 lg:col-span-6", className)}>
-        <div className="flex items-start justify-between gap-5">
-          <p className="text-sm font-semibold text-action-primary">
-            {item.accent || "Kapabilitas utama"}
-          </p>
-          <span className="font-heading text-xs font-semibold text-text-secondary">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-        </div>
+        <p className="type-label text-text-secondary">
+          {item.accent || "Kapabilitas utama"}
+        </p>
         <h3 className="brand-heading mt-5 max-w-xl text-3xl leading-tight text-text-primary">
           {item.title}
         </h3>
@@ -342,6 +347,7 @@ export function CapabilityPanel({
     { label: "Contoh kebutuhan", value: item.needs },
     { label: "Target pengguna", value: item.targetUsers },
   ];
+  const visibleDetails = details.filter((detail) => detail.value);
 
   return (
     <article
@@ -352,32 +358,29 @@ export function CapabilityPanel({
     >
       <div className="grid gap-8 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-10">
         <div>
-          <div className="flex items-start justify-between gap-5 border-b border-border-default pb-4">
-            <div>
-              <p className="text-sm font-semibold text-action-primary">{item.accent || "Kapabilitas"}</p>
-              {featured && <p className="mt-1 text-sm text-text-secondary">Kapabilitas utama</p>}
-            </div>
-            <span className="font-heading text-sm font-semibold text-action-primary">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-          </div>
-          <h3 className="type-heading-section mt-6 max-w-xl text-text-primary">
+          <p className="type-label text-text-secondary">{item.accent || "Kapabilitas"}</p>
+          <h3 className="type-heading-section mt-4 max-w-xl text-text-primary">
             {item.title}
           </h3>
-          <p className="mt-5 max-w-xl text-base leading-8 text-text-secondary">{item.body}</p>
+          <p className="type-body mt-5 max-w-[54ch] text-text-secondary">{item.body}</p>
           <BrandButton
             to="/contact"
             variant="secondary"
-            className="mt-6"
+            className="mt-7"
             aria-label={`${actionLabel} untuk ${item.title}`}
           >
             {actionLabel}
           </BrandButton>
         </div>
 
-        <dl className="border-b border-border-default">
-          {details.map((detail) => (
-            <CapabilityDetailRow key={detail.label} label={detail.label} value={detail.value} />
+        <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+          {visibleDetails.map((detail, detailIndex) => (
+            <CapabilityDetailRow
+              key={detail.label}
+              label={detail.label}
+              value={detail.value}
+              spanFull={visibleDetails.length % 2 === 1 && detailIndex === visibleDetails.length - 1}
+            />
           ))}
         </dl>
       </div>
@@ -405,7 +408,7 @@ export function ServiceCard({ service, index, featured = false, className }) {
     >
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-sm font-semibold text-action-primary">{service.accent}</p>
+          <p className="text-sm font-semibold text-text-secondary">{service.accent}</p>
           <p className="mt-1 text-sm text-text-secondary">Kapabilitas pendukung</p>
         </div>
         <span className="font-heading text-xs font-semibold text-text-secondary">
@@ -450,27 +453,29 @@ export function ServiceGrid({ services = profileContent.services, className }) {
   );
 }
 
+// Steps are grouped by a rule rather than boxed. The card frame added no
+// hierarchy here, and the visible "01/02/03" counters were redundant with the
+// ordered list that already carries sequence.
 export function ProcessTimeline({ items = [], className }) {
   return (
     <ol
       className={cn(
-        "grid gap-6 md:grid-cols-2 lg:grid-cols-3",
+        "grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:grid-cols-3",
         className
       )}
     >
       {items.map((item, index) => (
-        <li key={`${item.title}-${index}`} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <span className="font-heading text-sm font-semibold text-action-primary">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 rounded-full bg-brand-primary" />
-          </div>
-          {item.label && <p className="mt-5 text-sm font-semibold text-text-secondary">{item.label}</p>}
-          <h3 className="type-heading-card mt-3 text-text-primary">
+        <li
+          key={`${item.title}-${index}`}
+          className="brand-reveal border-t-2 border-[var(--color-brand-secondary)] pt-5"
+        >
+          {item.label && <p className="type-label text-text-secondary">{item.label}</p>}
+          <h3 className={cn("type-heading-card text-text-primary", item.label && "mt-2")}>
             {item.title}
           </h3>
-          {item.body && <p className="type-body-small mt-3 text-text-secondary sm:text-base sm:leading-[var(--type-body-leading)]">{item.body}</p>}
+          {item.body && (
+            <p className="type-body-small mt-3 max-w-[44ch] text-text-secondary">{item.body}</p>
+          )}
         </li>
       ))}
     </ol>
@@ -488,21 +493,11 @@ export function GoalItem({ children, index }) {
   );
 }
 
-function ProjectMotifFallback({ index }) {
-  return (
-    <div aria-hidden="true" className="absolute inset-0 bg-surface-muted">
-      <ULineMotif className="absolute -right-12 -top-14 hidden h-48 w-48 opacity-20 sm:block" />
-      <div className="relative flex h-full flex-col justify-between p-6 sm:p-8">
-        <span className="font-heading text-xs font-semibold uppercase tracking-widest text-text-secondary">PROJECT DOSSIER</span>
-        <div className="flex items-end justify-between gap-6">
-          <span className="font-heading text-6xl font-semibold leading-none text-decoration-brand-line sm:text-7xl">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <span className="h-3 w-3 rounded-full bg-brand-primary" />
-        </div>
-      </div>
-    </div>
-  );
+// A quiet surface when a case has no photography yet. The previous version
+// simulated a dossier with a fake label and an oversized plate number, which
+// DEC-UX-002 rules out as fabricated evidence.
+function ProjectMotifFallback() {
+  return <div aria-hidden="true" className="absolute inset-0 bg-surface-muted" />;
 }
 
 export function ProjectCaseStudyCard({
@@ -522,7 +517,11 @@ export function ProjectCaseStudyCard({
   ].filter((item) => item.value);
   const actionLabel = ctaLabel || (onClick ? "Buka Studi Kasus" : project.cta || "Lihat Projects");
   const destination = to || (project.cta ? "/contact" : "/projects");
-  const reverse = index % 2 === 1;
+  // Pure index%2 mirroring produced an unbroken run of image-and-text splits.
+  // Every third case switches to a full-width band instead, so no more than two
+  // neighbours ever share a layout family.
+  const wide = index % 3 === 2;
+  const reverse = !wide && index % 2 === 1;
 
   return (
     <Component
@@ -535,11 +534,21 @@ export function ProjectCaseStudyCard({
         className
       )}
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)] lg:gap-10">
+      <div
+        className={cn(
+          "grid gap-6",
+          wide
+            ? "lg:grid-cols-1 lg:gap-8"
+            : "lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)] lg:gap-10"
+        )}
+      >
         <div
           data-brand-visual
           className={cn(
-            "relative aspect-[4/3] min-h-0 overflow-hidden bg-surface-muted sm:aspect-[16/10] lg:aspect-auto lg:min-h-full",
+            "relative min-h-0 overflow-hidden bg-surface-muted",
+            wide
+              ? "aspect-[16/9] lg:aspect-[21/9]"
+              : "aspect-[4/3] sm:aspect-[16/10] lg:aspect-auto lg:min-h-full",
             reverse && "lg:order-2"
           )}
         >
@@ -554,39 +563,41 @@ export function ProjectCaseStudyCard({
               className={cn("h-full w-full transition-transform duration-emphasis ease-snap group-hover:scale-[1.03]", project.imageFit === "contain" ? "object-contain" : "object-cover")}
             />
           ) : (
-            <ProjectMotifFallback index={index} />
+            <ProjectMotifFallback />
           )}
         </div>
 
         <div className={cn("flex min-w-0 flex-col px-5 pb-6 sm:px-7 sm:pb-8 lg:p-8", reverse && "lg:order-1")}>
-          <div className="flex items-start justify-between gap-5">
-            <p className="text-sm font-semibold leading-6 text-action-primary">{project.category}</p>
-            <span className="shrink-0 font-heading text-xs font-semibold uppercase tracking-widest text-text-secondary">
-              CASE {String(index + 1).padStart(2, "0")}
-            </span>
-          </div>
+          <p className="type-label text-text-secondary">{project.category}</p>
           <h3 className="type-heading-subsection mt-4 max-w-2xl text-text-primary">
             {project.title}
           </h3>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-text-secondary">{project.body}</p>
+          <p className="type-body mt-4 max-w-[58ch] text-text-secondary">{project.body}</p>
           {project.capability && (
-            <p className="type-body-small mt-4 text-text-primary">
+            <p className="type-body-small mt-4 max-w-[58ch] text-text-primary">
               <span className="font-semibold">Kapabilitas:</span> {project.capability}
             </p>
           )}
 
-          <dl className="mt-6 divide-y divide-[var(--color-border-default)] border-y border-border-default">
+          {/* Three short proofs read faster as parallel columns than as a
+              hairline-per-row spec table. */}
+          <dl
+            className={cn(
+              "mt-7 grid gap-x-8 gap-y-5 border-t border-border-default pt-6",
+              wide ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-3"
+            )}
+          >
             {proofItems.map((item) => (
-              <div key={item.label} className="grid gap-3 py-4 sm:grid-cols-[7rem_1fr] sm:gap-5">
-                <dt className="text-sm font-semibold text-action-primary">{item.label}</dt>
-                <dd className="type-body-small text-text-primary">{item.value}</dd>
+              <div key={item.label}>
+                <dt className="type-label text-text-secondary">{item.label}</dt>
+                <dd className="type-body-small mt-2 text-text-primary">{item.value}</dd>
               </div>
             ))}
           </dl>
 
-          <div className="mt-6 border-t border-border-default pt-5">
-            <span className="text-sm font-semibold text-action-primary group-hover:text-text-primary">{actionLabel}</span>
-          </div>
+          <span className="type-label mt-7 text-action-primary group-hover:text-text-primary">
+            {actionLabel}
+          </span>
         </div>
       </div>
     </Component>

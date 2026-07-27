@@ -8,8 +8,11 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        heading: ["var(--font-family-sans)"],
-        body: ["var(--font-family-sans)"],
+        // Resolve through the display/body roles so surface scopes
+        // (.brand-page, .admin-workbench) can rebind them. Both still fall back
+        // to --font-family-sans at :root, leaving other surfaces unchanged.
+        heading: ["var(--font-family-display)"],
+        body: ["var(--font-family-body)"],
         mono: ["var(--font-family-mono)"],
       },
       borderRadius: {
