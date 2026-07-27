@@ -28,7 +28,7 @@ class StaffInvitationRequest(BaseModel):
 
 class StaffInvitationAcceptRequest(BaseModel):
     token: str = Field(min_length=32, max_length=500)
-    password: str = Field(min_length=8, max_length=256)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class StaffRoleAssignmentRequest(BaseModel):
@@ -85,7 +85,7 @@ def _conflict(record: dict):
 
 
 def build_identity_router(
-    *, get_db, get_transaction_guard, require_permission, safe_user, hash_password
+    *, get_db, get_transaction_guard, require_permission, safe_user, hash_new_password
 ) -> APIRouter:
     router = APIRouter(tags=["identity"])
 
@@ -170,7 +170,10 @@ def build_identity_router(
                 "id": str(uuid.uuid4()),
                 "name": invitation["name"],
                 "email": invitation["email"],
-                "password_hash": hash_password(payload.password),
+                "password_hash": hash_new_password(
+                    payload.password,
+                    context_terms=(invitation["email"], invitation["name"]),
+                ),
                 "roles": list(_internal_roles(invitation["roles"])),
                 "status": "active",
                 "access_state": "approved",

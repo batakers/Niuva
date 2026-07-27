@@ -167,7 +167,9 @@ class AuthPassword:
             try:
                 self.argon2_hasher.verify(stored_hash, candidate)
             except (InvalidHashError, VerificationError, VerifyMismatchError):
+                self._dummy_verify()
                 return PasswordVerification(valid=False, algorithm="argon2id")
+            self._dummy_verify()
             return PasswordVerification(
                 valid=True,
                 algorithm="argon2id",

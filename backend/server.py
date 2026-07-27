@@ -199,6 +199,13 @@ def get_password_module():
     )
 
 
+def hash_new_password(candidate: str, context_terms=()) -> str:
+    return get_password_module().hash_new_password(
+        candidate,
+        context_terms=context_terms,
+    )
+
+
 def verify_password(p: str, h: str) -> bool:
     return get_password_module().verify_password(p, h).valid
 
@@ -303,7 +310,7 @@ require_admin = require_permission("admin.access")
 class ClientProvisionReq(BaseModel):
     name: str
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: str = Field(min_length=1, max_length=128)
     phone: Optional[str] = None
     company: Optional[str] = None
 
@@ -449,7 +456,10 @@ async def provision_client(req: ClientProvisionReq) -> dict:
         "id": str(uuid.uuid4()),
         "name": req.name,
         "email": email,
-        "password_hash": hash_password(req.password),
+        "password_hash": hash_new_password(
+            req.password,
+            context_terms=(email, req.name),
+        ),
         "phone": req.phone or "",
         "company": req.company or "",
         "roles": ["retail_customer"],
@@ -1260,7 +1270,7 @@ api.include_router(
         get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         safe_user=safe_user,
-        hash_password=hash_password,
+        hash_new_password=hash_new_password,
     )
 )
 
@@ -1457,16 +1467,18 @@ async def seed():
     admin_password = os.environ["ADMIN_PASSWORD"]
     existing = await db.users.find_one({"email": admin_email})
     if not existing:
+        admin_name = "NIUVA Admin"
         await db.users.insert_one({
-            "id": str(uuid.uuid4()), "name": "NIUVA Admin", "email": admin_email,
-            "password_hash": hash_password(admin_password), "phone": "", "company": "PT Niuva Inovasi Utama",
+            "id": str(uuid.uuid4()), "name": admin_name, "email": admin_email,
+            "password_hash": hash_new_password(
+                admin_password,
+                context_terms=(admin_email, admin_name),
+            ), "phone": "", "company": "PT Niuva Inovasi Utama",
             "roles": [], "status": "active",
             "access_state": "access_review_required",
             "role_policy_version": ROLE_POLICY_VERSION,
             "created_at": now_iso(),
         })
-    elif not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
 
     if await db.materials.count_documents({}) == 0:
         defaults = [

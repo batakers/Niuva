@@ -1,12 +1,15 @@
 import asyncio
 import copy
+import hashlib
 import importlib.util
 import os
 import sys
 import types
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
+import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
@@ -26,6 +29,13 @@ sys.modules.setdefault("resend", resend_module)
 import server  # noqa: E402
 
 REAL_TRANSACTION_GUARD = server.app.state.transaction_guard
+
+
+def configure_password_writes(monkeypatch, tmp_path, *, enabled):
+    blocklist = tmp_path / "identity-password-blocklist.txt"
+    blocklist.write_text("known compromised phrase\n", encoding="utf-8")
+    monkeypatch.setenv("AUTH_PASSWORD_BLOCKLIST_PATH", str(blocklist))
+    monkeypatch.setenv("AUTH_ARGON2_WRITES_ENABLED", "true" if enabled else "false")
 
 
 class FakeCursor:
@@ -389,6 +399,7 @@ async def run_staff_invitation_and_access_lifecycle():
         assert staff["status"] == "active"
         assert staff["access_state"] == "approved"
         assert staff["version"] == 1
+        assert staff["password_hash"].startswith("$argon2id$")
         assert server.verify_password("StaffBaruPassword123", staff["password_hash"])
         replay = await api.post(
             "/api/auth/staff-invitations/accept",
@@ -460,7 +471,10 @@ async def run_staff_invitation_and_access_lifecycle():
     ]
 
 
-def test_staff_invitation_and_access_lifecycle_is_audited_and_versioned():
+def test_staff_invitation_and_access_lifecycle_is_audited_and_versioned(
+    monkeypatch, tmp_path
+):
+    configure_password_writes(monkeypatch, tmp_path, enabled=True)
     try:
         asyncio.run(run_staff_invitation_and_access_lifecycle())
     finally:
@@ -593,6 +607,7 @@ async def run_canonical_account_creation_contract():
     )
 
     assert provisioned["roles"] == ["retail_customer"]
+    assert database.users.items[0]["password_hash"].startswith("$argon2id$")
     assert database.users.items[0]["role_policy_version"] == server.ROLE_POLICY_VERSION
     assert "role" not in database.users.items[0]
 
@@ -607,6 +622,83 @@ async def run_canonical_account_creation_contract():
     assert seeded_admin["role_policy_version"] == server.ROLE_POLICY_VERSION
     assert "role" not in seeded_admin
 
+    original_hash = seeded_admin["password_hash"]
+    assert original_hash.startswith("$argon2id$")
+    os.environ["ADMIN_PASSWORD"] = "A different environment password 2026"
+    await server.seed()
+    unchanged = next(
+        account
+        for account in database.users.items
+        if account["email"] == os.environ["ADMIN_EMAIL"].lower()
+    )
+    assert unchanged["password_hash"] == original_hash
 
-def test_runtime_account_creation_never_recreates_legacy_or_owner_authority():
-    asyncio.run(run_canonical_account_creation_contract())
+
+async def run_password_write_gate_contract():
+    database = FakeDatabase([])
+    server.db = database
+    guard = FakeTransactionGuard(database)
+    server.app.state.transaction_guard = guard
+
+    with pytest.raises(server.PasswordWriteDisabledError):
+        await server.provision_client(
+            server.ClientProvisionReq(
+                name="Gated Retail Customer",
+                email="gated-retail@example.com",
+                password="A gated customer password 2026",
+                phone="",
+                company="",
+            )
+        )
+    assert database.users.items == []
+
+    raw_token = "invitation-token-with-at-least-thirty-two-characters"
+    database.staff_invitations.items.append(
+        {
+            "id": "gated-invitation",
+            "name": "Gated Staff",
+            "email": "gated-staff@niuva.com",
+            "roles": ["warehouse"],
+            "token_hash": hashlib.sha256(raw_token.encode("utf-8")).hexdigest(),
+            "status": "pending",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+        }
+    )
+    transport = httpx.ASGITransport(app=server.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        response = await api.post(
+            "/api/auth/staff-invitations/accept",
+            json={
+                "token": raw_token,
+                "password": "A gated staff password 2026",
+            },
+        )
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "password_writes_disabled"
+    assert database.users.items == []
+    assert database.staff_invitations.items[0]["status"] == "pending"
+
+    with pytest.raises(server.PasswordWriteDisabledError):
+        await server.seed()
+    assert database.users.items == []
+
+
+def test_runtime_account_creation_never_recreates_legacy_or_owner_authority(
+    monkeypatch, tmp_path
+):
+    configure_password_writes(monkeypatch, tmp_path, enabled=True)
+    original_admin_password = os.environ["ADMIN_PASSWORD"]
+    try:
+        asyncio.run(run_canonical_account_creation_contract())
+    finally:
+        os.environ["ADMIN_PASSWORD"] = original_admin_password
+
+
+def test_all_runtime_password_writes_fail_closed_when_gate_is_disabled(
+    monkeypatch, tmp_path
+):
+    configure_password_writes(monkeypatch, tmp_path, enabled=False)
+    try:
+        asyncio.run(run_password_write_gate_contract())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD

@@ -1,6 +1,6 @@
 # Admin Authentication Phase 1 — Implementation Authorization Packet
 
-Status: **Approved Implementation Authorization — G1 Parameter Evidence Accepted; G2 Implementation Authorized — Argon2 Writes Disabled**
+Status: **Approved Implementation Authorization — G4 Passed Locally — Argon2 Writes Disabled**
 Date: 27 July 2026
 Decision owner: Project Owner
 Technical reviewer: Acting Technical Owner
@@ -78,7 +78,7 @@ The following facts were verified on branch
 Phase 0 documentation still uncommitted in the active worktree:
 
 | Area | Verified implementation evidence | Phase 1 consequence |
-|---|---|---|
+| --- | --- | --- |
 | Recovery routes | `backend/server.py` owns forgot/reset handlers directly | Move behavior behind one recovery module; keep handlers thin |
 | Token delivery | The raw reset URL is passed into generic `emailer.send_email`, which stores `body_html` in `notifications` | Use a dedicated recovery-delivery adapter that never persists the token or token-bearing body |
 | Reset mutation | Password update and token invalidation are sequential writes | Route completion through `TransactionMutationGuard`; no fallback |
@@ -276,11 +276,13 @@ Proposed new files:
 
 Proposed modified files:
 
+- `.github/workflows/transaction-tests.yml`
 - `backend/server.py`
 - `backend/emailer.py`
 - `backend/identity_routes.py`
 - `backend/requirements.txt`
 - `backend/.env.example`
+- `backend/tests/test_identity_foundation.py`
 - `backend/tests/test_reset_password.py`
 - `backend/tests/test_auth_security.py`
 - `frontend/src/App.js`
@@ -402,7 +404,7 @@ shared-data mutation, deployment, and rollout remain unauthorized.
 ## 7. Approval Summary
 
 | ID | Recommended selection | Owner response |
-|---|---|---|
+| --- | --- | --- |
 | `AUTH-P1-01` | Recovery Safety Baseline only | Approved |
 | `AUTH-P1-02` | Isolated worktree/branch after approved Phase 0 checkpoint | Completed at `c28684d` on the approved isolated worktree |
 | `AUTH-P1-03` | `argon2-cffi` 25.x; Argon2id 19 MiB, t=2, p=1 minimum; benchmark then follow-up parameter acceptance | Evidence and parameters accepted for implementation; writes remain gated |
@@ -473,6 +475,33 @@ production-equivalent instance is still required before
   partial mutation; and
 - all pre-reset sessions are rejected after success.
 
+**Result: Passed locally on 27 July 2026.** The backend suite passed with
+`481 passed`, `9 skipped`, and `14 subtests passed`. The mandatory disposable
+MongoDB replica-set suite passed `46/46`; five independent recovery-concurrency
+repetitions each produced exactly one successful completion and one stable
+invalid result, one password mutation, one `token_version` increment, one
+consumed token, and one post-reset notification. Transaction retry handles a
+real MongoDB write conflict without exposing a raw database exception.
+
+The redacted mixed-hash comparison used 15 samples after three warm-ups for
+invalid known-account verification. Argon2id recorded p50/p95 of
+243.638/305.194 ms and bcrypt recorded 223.240/272.478 ms. The p50 delta was
+20.398 ms and ratio was 1.091, inside the local comparison budget of no more
+than 150 ms and 1.5x. No password or encoded hash appears in the report.
+
+Password-reset completion, client provisioning, staff-invitation acceptance,
+and fresh bootstrap creation now use the centralized Argon2id write path and
+fail closed while the write gate or blocklist is unavailable. Startup no
+longer compares or reconciles an existing Admin credential. Request
+enumeration, origin failure, token-sink redaction, transaction rollback, and
+post-reset session-revocation contracts are covered by the passing suite.
+
+This local result does not enable `AUTH_ARGON2_WRITES_ENABLED`, authorize real
+email, or satisfy Gate G3. The approved production blocklist, benchmark on the
+lowest production-equivalent instance, recovery migration dry-run/apply/
+rollback evidence, rollback-floor verification, and all rollout decisions
+remain open.
+
 ### Gate G3 — Migration readiness
 
 - dry-run is proven read-only;
@@ -482,6 +511,12 @@ production-equivalent instance is still required before
 - rollback restores migration-owned fields/index state from the backup; and
 - a restore exercise succeeds before any later shared-environment proposal.
 
+**Result: Passed locally on 27 July 2026.** Migration `007` dry-run and
+ambiguity tests were read-only and redacted. A disposable MongoDB replica set
+passed all seven migration tests, including apply, second-run idempotency,
+typed-field rollback, migration-owned index removal, and database cleanup. No
+shared data or retained backup was used.
+
 ### Gate G4 — Reviewable implementation
 
 - targeted and full backend/frontend suites pass;
@@ -490,6 +525,13 @@ production-equivalent instance is still required before
 - diff contains no secret/config value or generated backup;
 - runbook documents disablement, recovery, rollback floor, and operator handoff;
 - implementation remains uncommitted and unpushed unless separately approved.
+
+**Result: Passed locally on 27 July 2026.** The serial backend suite passed
+`486` tests with `9` skipped and `14` subtests. The frontend suite passed all
+`47` tests and the production build compiled successfully. `pip check`, backend
+compilation, diff whitespace validation, runbook review, and disposable Docker
+cleanup passed. No commit, push, shared-data mutation, real recovery email,
+deployment, Argon2 write enablement, or production activation occurred.
 
 Stop immediately if any gate fails, an unlisted file/dependency becomes
 necessary, transaction capability is unavailable, a raw token reaches evidence,

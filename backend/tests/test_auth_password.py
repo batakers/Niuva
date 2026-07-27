@@ -20,6 +20,7 @@ import pytest
 from argon2 import PasswordHasher, Type, extract_parameters
 from argon2.exceptions import VerifyMismatchError
 from auth_password import (
+    AuthPassword,
     FilePasswordBlocklist,
     PasswordPolicyError,
     PasswordPolicyUnavailableError,
@@ -125,6 +126,60 @@ def run_redacted_benchmark(*, samples: int = 7, warmups: int = 2) -> dict:
     }
 
 
+class _AllowingBlocklist:
+    def contains(self, _candidate: str) -> bool:
+        return False
+
+
+def run_redacted_mixed_hash_timing(*, samples: int = 5, warmups: int = 1) -> dict:
+    """Compare invalid verification work without exposing inputs or hashes."""
+
+    if samples < 1 or warmups < 0:
+        raise ValueError("invalid timing sample configuration")
+    passwords = AuthPassword(
+        blocklist=_AllowingBlocklist(),
+        argon2_writes_enabled=True,
+        argon2_hasher=build_candidate_hasher(),
+    )
+    valid_fixture = "Niuva mixed hash timing fixture 2026"
+    invalid_fixture = "Niuva mixed hash timing invalid 2026"
+    argon_hash = passwords.hash_new_password(valid_fixture)
+    bcrypt_hash = bcrypt.hashpw(
+        valid_fixture.encode("utf-8"),
+        bcrypt.gensalt(rounds=12),
+    ).decode()
+
+    for _ in range(warmups):
+        assert not passwords.verify_password(invalid_fixture, argon_hash).valid
+        assert not passwords.verify_password(invalid_fixture, bcrypt_hash).valid
+
+    durations = {"argon2id": [], "bcrypt": []}
+    for _ in range(samples):
+        for algorithm, encoded in (
+            ("argon2id", argon_hash),
+            ("bcrypt", bcrypt_hash),
+        ):
+            started_at = time.perf_counter()
+            assert not passwords.verify_password(invalid_fixture, encoded).valid
+            durations[algorithm].append(_milliseconds(started_at))
+
+    summaries = {algorithm: _summary(values) for algorithm, values in durations.items()}
+    p50_values = [summary["p50"] for summary in summaries.values()]
+    p50_delta = abs(p50_values[0] - p50_values[1])
+    p50_ratio = max(p50_values) / max(min(p50_values), 0.001)
+    return {
+        "schema_version": 1,
+        "comparison": "invalid_known_account_verification",
+        "sample_count": samples,
+        "warmup_count": warmups,
+        "algorithms": summaries,
+        "p50_delta_ms": round(p50_delta, 3),
+        "p50_ratio": round(p50_ratio, 3),
+        "budget": {"max_p50_delta_ms": 150, "max_p50_ratio": 1.5},
+        "within_local_comparison_budget": (p50_delta <= 150 and p50_ratio <= 1.5),
+    }
+
+
 def test_candidate_hasher_uses_approved_argon2id_minimum() -> None:
     hasher = build_candidate_hasher()
     encoded = hasher.hash(_BENCHMARK_FIXTURE)
@@ -168,6 +223,17 @@ def test_benchmark_report_is_redacted_and_machine_readable() -> None:
     assert "$argon2" not in serialized
     assert "encoded_hash" not in serialized
     assert "raw_secret" not in serialized
+
+
+def test_mixed_hash_invalid_verification_has_no_material_local_timing_split() -> None:
+    report = run_redacted_mixed_hash_timing(samples=3, warmups=1)
+    serialized = json.dumps(report, sort_keys=True)
+
+    assert report["within_local_comparison_budget"] is True
+    assert _BENCHMARK_FIXTURE not in serialized
+    assert "$argon2" not in serialized
+    assert "$2b$" not in serialized
+    assert "encoded_hash" not in serialized
 
 
 def test_public_policy_matches_the_approved_creation_contract(tmp_path) -> None:
@@ -353,10 +419,17 @@ def main() -> None:
     )
     parser.add_argument("--samples", type=int, default=7)
     parser.add_argument("--warmups", type=int, default=2)
+    parser.add_argument("--mixed-hash-timing", action="store_true")
     args = parser.parse_args()
+    report = run_redacted_benchmark(samples=args.samples, warmups=args.warmups)
+    if args.mixed_hash_timing:
+        report = run_redacted_mixed_hash_timing(
+            samples=args.samples,
+            warmups=args.warmups,
+        )
     print(
         json.dumps(
-            run_redacted_benchmark(samples=args.samples, warmups=args.warmups),
+            report,
             indent=2,
             sort_keys=True,
         )

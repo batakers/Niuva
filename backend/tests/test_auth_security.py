@@ -371,7 +371,7 @@ async def run_security_matrix():
         new_client_payload = {
             "name": "Provisioned Client",
             "email": "provisioned@example.com",
-            "password": "Provisioned123",
+            "password": "ProvisionedPassword123",
         }
         assert (await api.post("/api/admin/users", json=new_client_payload)).status_code == 401
         assert (
@@ -390,6 +390,10 @@ async def run_security_matrix():
         assert provisioned.json()["roles"] == ["retail_customer"]
         assert provisioned.json()["access_state"] == "approved"
         assert "password_hash" not in provisioned.json()
+        provisioned_user = await server.db.users.find_one(
+            {"email": new_client_payload["email"]}
+        )
+        assert provisioned_user["password_hash"].startswith("$argon2id$")
 
         assert (await api.get("/api/admin/customers")).status_code == 401
         assert (await api.get("/api/admin/customers", headers=bearer(client_token))).status_code == 403
@@ -483,7 +487,11 @@ async def run_admin_boundary_projections_and_capability_gates():
 def test_admin_boundary_projections_and_capability_gates():
     asyncio.run(run_admin_boundary_projections_and_capability_gates())
 
-def test_authentication_and_authorization_security_matrix():
+def test_authentication_and_authorization_security_matrix(monkeypatch, tmp_path):
+    blocklist = tmp_path / "password-blocklist.txt"
+    blocklist.write_text("password\nqwerty\n", encoding="utf-8")
+    monkeypatch.setenv("AUTH_PASSWORD_BLOCKLIST_PATH", str(blocklist))
+    monkeypatch.setenv("AUTH_ARGON2_WRITES_ENABLED", "true")
     asyncio.run(run_security_matrix())
 
 

@@ -52,6 +52,8 @@ jobs:
           backend/tests/test_inventory_transactions.py
           backend/tests/test_identity_access_migration.py
           backend/tests/test_granular_role_migration.py
+          backend/tests/test_auth_recovery_migration.py
+          backend/tests/test_auth_recovery_transaction_integration.py
       - name: Stop isolated MongoDB replica set
         if: always()
         run: docker compose -f docker-compose.transaction-test.yml down --volumes --remove-orphans

@@ -323,6 +323,7 @@ class AuthRecovery:
         result, notification_email = await self.transaction_guard.run(
             complete,
             operation_name="auth.password_recovery.complete",
+            retry_safe=True,
         )
         if result.ok and notification_email:
             try:

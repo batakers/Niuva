@@ -18,6 +18,7 @@ const Faq = lazy(() => import("@/pages/marketing/FaqPage"));
 const AdminLogin = lazy(() => import("@/pages/admin/AdminLogin"));
 const ForgotPassword = lazy(() => import("@/pages/auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/auth/ResetPassword"));
+const ResetPasswordState = lazy(() => import("@/pages/auth/ResetPasswordState"));
 const ClientDashboard = lazy(() => import("@/pages/operational/ClientDashboard"));
 const NewOrder = lazy(() => import("@/pages/operational/NewOrder"));
 const OrderDetail = lazy(() => import("@/pages/operational/OrderDetail"));
@@ -144,7 +145,10 @@ function App() {
                   <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/forgot-password/check-email" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/reset-password/success" element={<ResetPasswordState success />} />
+                  <Route path="/reset-password/error" element={<ResetPasswordState />} />
                   <Route path="/admin" element={protectedPage("/admin", <AdminDashboard />)} />
                   <Route path="/admin/orders" element={protectedPage("/admin/orders", <AdminOrders />)} />
                   <Route path="/admin/catalog" element={protectedPage("/admin/catalog", <AdminCatalog />)} />
