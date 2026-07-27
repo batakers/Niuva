@@ -163,7 +163,7 @@ export default function ContactPage() {
             /* Sourced from the contact object so a CMS override reaches the
                hero too; the rendered values are unchanged by default. */
             <RoundedVisualFrame motif={false} title="WhatsApp adalah jalur tercepat untuk memulai." kicker="Kanal konsultasi">
-              <div className="grid gap-3 text-sm font-semibold text-text-inverse">
+              <div className="grid gap-3 [overflow-wrap:anywhere] text-sm font-semibold text-text-inverse">
                 <span>WhatsApp: {contact.whatsapp}</span>
                 <span>Email: {contact.email}</span>
                 <span>Bandung Techno Park</span>

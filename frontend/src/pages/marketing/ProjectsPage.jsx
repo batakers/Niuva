@@ -86,6 +86,7 @@ export default function ProjectsPage() {
                 width={heroProject.imageWidth}
                 height={heroProject.imageHeight}
                 decoding="async"
+                fetchPriority="high"
                 className="aspect-[16/10] h-full w-full object-contain"
               />
             </div>

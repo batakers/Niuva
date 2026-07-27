@@ -289,13 +289,13 @@ export function RoundedVisualFrame({ title, kicker, className, children, motif =
 }
 
 // A hairline under every row turned this into a spec table. Pairs now sit in a
-// two-column grid with whitespace doing the separating; the final pair spans
+// two-column grid with whitespace doing the separating; a lone final row spans
 // the full width so an odd count never leaves a hole.
-function CapabilityDetailRow({ label, value }) {
+function CapabilityDetailRow({ label, value, spanFull = false }) {
   if (!value) return null;
 
   return (
-    <div className="last:sm:col-span-2">
+    <div className={spanFull ? "sm:col-span-2" : undefined}>
       <dt className="type-label text-text-secondary">{label}</dt>
       <dd className="type-body-small mt-2 max-w-[52ch] text-text-primary">{value}</dd>
     </div>
@@ -347,6 +347,7 @@ export function CapabilityPanel({
     { label: "Contoh kebutuhan", value: item.needs },
     { label: "Target pengguna", value: item.targetUsers },
   ];
+  const visibleDetails = details.filter((detail) => detail.value);
 
   return (
     <article
@@ -373,8 +374,13 @@ export function CapabilityPanel({
         </div>
 
         <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-          {details.map((detail) => (
-            <CapabilityDetailRow key={detail.label} label={detail.label} value={detail.value} />
+          {visibleDetails.map((detail, detailIndex) => (
+            <CapabilityDetailRow
+              key={detail.label}
+              label={detail.label}
+              value={detail.value}
+              spanFull={visibleDetails.length % 2 === 1 && detailIndex === visibleDetails.length - 1}
+            />
           ))}
         </dl>
       </div>
