@@ -91,14 +91,16 @@ class Context:
         self.client = client
         self.database = client[database_name]
         executor = TransactionExecutor(client, lambda: capabilities)
+        guard = TransactionMutationGuard(executor, lambda: True)
         self.b2b = B2BService(
             db=self.database,
-            transaction_guard=TransactionMutationGuard(executor, lambda: True),
+            transaction_guard=guard,
         )
         self.inventory = InventoryService(
             db=self.database,
             client=client,
             capabilities=capabilities,
+            guard=guard,
             emailer=None,
         )
 
