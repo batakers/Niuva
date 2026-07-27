@@ -34,11 +34,11 @@ beforeEach(() => jest.clearAllMocks());
 function renderPage() {
   render(
     <I18nProvider>
-      <AuthProvider>
-        <MemoryRouter>
+      <MemoryRouter>
+        <AuthProvider>
           <FaqPage />
-        </MemoryRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </MemoryRouter>
     </I18nProvider>
   );
 }

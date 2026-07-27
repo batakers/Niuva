@@ -731,11 +731,21 @@ async def current_admin_session(request: Request):
 
 @api.post("/auth/admin/logout")
 async def admin_logout(request: Request):
-    await get_admin_user(request)
-    await get_admin_session_module().revoke_admin_session(
-        request.state.admin_session,
-        "logout",
-    )
+    try:
+        await get_admin_user(request)
+        session = request.state.admin_session
+    except SessionExpiredError:
+        verify_admin_origin(request)
+        session_secret = request.cookies.get(SESSION_COOKIE_NAME)
+        try:
+            session = await get_admin_session_module().rotate_admin_session(
+                None,
+                {"session_secret": session_secret},
+            )
+        except SessionExpiredError:
+            session = None
+    if session is not None:
+        await get_admin_session_module().revoke_admin_session(session, "logout")
     response = JSONResponse(
         {"ok": True},
         headers={"Cache-Control": "no-store"},

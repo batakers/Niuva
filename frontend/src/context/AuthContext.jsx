@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   api,
   clearAdminCsrfToken,
@@ -10,33 +11,42 @@ import {
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const { pathname } = useLocation();
+  const adminSurface = pathname.startsWith("/admin");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessExpiresAt, setAccessExpiresAt] = useState(null);
 
   useEffect(() => {
-    const adminSurface = window.location.pathname.startsWith("/admin");
+    let active = true;
+    setLoading(true);
+    setUser(null);
+    setAccessExpiresAt(null);
     if (adminSurface) clearStoredToken();
+    else clearAdminCsrfToken();
     const customerToken = getStoredToken();
     if (!adminSurface && !customerToken) {
       setLoading(false);
-      return;
+      return () => { active = false; };
     }
     const bootstrap = adminSurface
       ? api.post("/auth/admin/session/refresh")
       : api.get("/auth/me");
     bootstrap
       .then(({ data }) => {
+        if (!active) return;
         if (adminSurface) setAdminCsrfToken(data.csrf_token);
         setUser(adminSurface ? data.user : data);
         if (adminSurface) setAccessExpiresAt(data.access_expires_at);
       })
       .catch(() => {
+        if (!active) return;
         clearAdminCsrfToken();
         setUser(null);
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [adminSurface]);
 
   useEffect(() => {
     const interceptor = api.interceptors.response.use(
@@ -73,16 +83,17 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      await api.post("/auth/admin/logout");
+      if (adminSurface) await api.post("/auth/admin/logout");
     } finally {
+      clearStoredToken();
       clearAdminCsrfToken();
       setUser(null);
       setAccessExpiresAt(null);
     }
-  }, []);
+  }, [adminSurface]);
 
   useEffect(() => {
-    if (!user || !accessExpiresAt || !window.location.pathname.startsWith("/admin")) {
+    if (!user || !accessExpiresAt || !adminSurface) {
       return undefined;
     }
     const delay = Math.max(Date.parse(accessExpiresAt) - Date.now() - 60_000, 0);
@@ -94,7 +105,7 @@ export function AuthProvider({ children }) {
       });
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [accessExpiresAt, refreshSession, user]);
+  }, [accessExpiresAt, adminSurface, refreshSession, user]);
 
   const value = useMemo(
     () => ({ user, loading, login, logout, refreshSession }),

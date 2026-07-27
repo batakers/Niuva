@@ -1,5 +1,6 @@
 import { act } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import { BrowserRouter, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import {
   api,
@@ -28,21 +29,25 @@ jest.mock("../lib/api", () => ({
 
 function Probe() {
   const { user, loading, login, logout } = useAuth();
+  const navigate = useNavigate();
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="user">{user ? user.name : "none"}</span>
       <button onClick={() => login({ name: "Logged In User" }, "csrf-login")}>login</button>
       <button onClick={() => logout()}>logout</button>
+      <button onClick={() => navigate("/admin")}>admin</button>
     </div>
   );
 }
 
 function renderProbe() {
   return render(
-    <AuthProvider>
-      <Probe />
-    </AuthProvider>,
+    <BrowserRouter>
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    </BrowserRouter>,
   );
 }
 
@@ -120,6 +125,41 @@ test("logout revokes the server session then clears client state", async () => {
   expect(api.post).toHaveBeenCalledWith("/auth/admin/logout");
   expect(clearAdminCsrfToken).toHaveBeenCalledTimes(1);
   expect(screen.getByTestId("user")).toHaveTextContent("none");
+});
+
+test("customer logout deletes the bearer token without calling the Admin endpoint", async () => {
+  setPath("/account");
+  getStoredToken.mockReturnValue("customer-token");
+  api.get.mockResolvedValue({ data: { id: "customer-1", name: "Customer" } });
+  renderProbe();
+  await waitFor(() => expect(screen.getByTestId("user")).toHaveTextContent("Customer"));
+
+  await act(async () => {
+    screen.getByText("logout").click();
+  });
+
+  expect(clearStoredToken).toHaveBeenCalledTimes(1);
+  expect(api.post).not.toHaveBeenCalled();
+  expect(screen.getByTestId("user")).toHaveTextContent("none");
+});
+
+test("switching to the Admin surface clears customer auth and bootstraps Admin", async () => {
+  setPath("/account");
+  getStoredToken.mockReturnValue("customer-token");
+  api.get.mockResolvedValue({ data: { id: "customer-1", name: "Customer" } });
+  api.post.mockResolvedValue({
+    data: { user: { id: "admin-1", name: "Admin" }, csrf_token: "csrf-admin" },
+  });
+  renderProbe();
+  await waitFor(() => expect(screen.getByTestId("user")).toHaveTextContent("Customer"));
+
+  await act(async () => {
+    screen.getByText("admin").click();
+  });
+
+  await waitFor(() => expect(screen.getByTestId("user")).toHaveTextContent("Admin"));
+  expect(clearStoredToken).toHaveBeenCalledTimes(1);
+  expect(api.post).toHaveBeenCalledWith("/auth/admin/session/refresh");
 });
 
 test("refreshes an Admin session one minute before access expiry", async () => {

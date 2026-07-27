@@ -126,8 +126,8 @@ function App() {
   return (
     <div className="App">
       <I18nProvider>
-        <AuthProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider>
             <AppErrorBoundary>
               <Suspense fallback={<RouteFallback />}>
                 <Routes>
@@ -182,8 +182,8 @@ function App() {
               </Suspense>
             </AppErrorBoundary>
             <Toaster position="top-right" theme="light" richColors />
-          </BrowserRouter>
-        </AuthProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </I18nProvider>
     </div>
   );

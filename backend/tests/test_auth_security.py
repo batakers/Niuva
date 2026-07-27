@@ -624,6 +624,9 @@ async def run_security_matrix():
             for key, value in session_module.sessions.items()
             if value["grant"].user_id == admin["id"] and not value["revoked"]
         )
+        session_module.sessions[session_id]["grant"].access_secret = (
+            "expired-access-secret"
+        )
         logout = await admin_api.request("POST", "/api/auth/admin/logout")
         assert logout.status_code == 200
         assert logout.headers["cache-control"] == "no-store"
