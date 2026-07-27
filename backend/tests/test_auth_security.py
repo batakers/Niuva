@@ -19,6 +19,8 @@ os.environ.setdefault("DB_NAME", "niuva_security_test")
 os.environ.setdefault("JWT_SECRET", "security-test-secret-at-least-32-characters")
 os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
+os.environ.setdefault("PUBLIC_SITE_URL", "https://testserver")
+os.environ.setdefault("AUTH_SESSION_CSRF_KEY", "security-test-csrf-key-at-least-32-bytes")
 
 
 resend_module = types.ModuleType("resend")
@@ -27,6 +29,126 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+
+
+ORIGIN = {"Origin": "https://testserver"}
+
+
+class FakeAdminSessionModule:
+    def __init__(self):
+        self.counter = 0
+        self.sessions = {}
+
+    def _grant(self, user_id, remember_me, session_id=None):
+        self.counter += 1
+        now = datetime.now(timezone.utc)
+        session_id = session_id or f"session-{self.counter}"
+        grant = types.SimpleNamespace(
+            session_id=session_id,
+            user_id=user_id,
+            access_secret=f"access-{self.counter}",
+            session_secret=f"session-secret-{self.counter}",
+            csrf_token=f"csrf-{self.counter}",
+            access_expires_at=now + timedelta(minutes=15),
+            idle_expires_at=now + timedelta(hours=8 if remember_me else 0.5),
+            absolute_expires_at=now + timedelta(days=7 if remember_me else 1 / 3),
+            remember_me=remember_me,
+        )
+        self.sessions[session_id] = {
+            "grant": grant,
+            "revoked": False,
+        }
+        return grant
+
+    async def create_admin_session(self, user, remember_me, _request_context):
+        return self._grant(user["id"], remember_me)
+
+    async def authenticate_admin_session(self, request_context):
+        access_secret = request_context.get("access_secret")
+        for session_id, record in self.sessions.items():
+            if not record["revoked"] and record["grant"].access_secret == access_secret:
+                grant = record["grant"]
+                session = types.SimpleNamespace(
+                    session_id=session_id,
+                    user_id=grant.user_id,
+                    _csrf_token=grant.csrf_token,
+                )
+                if "csrf_token" in request_context:
+                    self.verify_csrf(session, request_context["csrf_token"])
+                return session
+        raise server.SessionExpiredError()
+
+    async def rotate_admin_session(self, _session, request_context):
+        session_secret = request_context.get("session_secret")
+        for session_id, record in self.sessions.items():
+            grant = record["grant"]
+            if not record["revoked"] and grant.session_secret == session_secret:
+                return self._grant(grant.user_id, grant.remember_me, session_id)
+        raise server.SessionExpiredError()
+
+    async def revoke_admin_session(self, session, _reason):
+        record = self.sessions.get(session.session_id)
+        if not record or record["revoked"]:
+            return False
+        record["revoked"] = True
+        return True
+
+    def verify_csrf(self, session, candidate):
+        if candidate != session._csrf_token:
+            raise server.RequestVerificationError()
+
+
+class AdminApi:
+    def __init__(self, transport):
+        self.api = httpx.AsyncClient(transport=transport, base_url="https://testserver")
+        self.csrf = None
+
+    async def login(self, email, password, *, remember_me=False):
+        response = await self.api.post(
+            "/api/auth/admin/login",
+            json={"email": email, "password": password, "remember_me": remember_me},
+            headers=ORIGIN,
+        )
+        if response.status_code == 200:
+            self.csrf = response.json()["csrf_token"]
+        return response
+
+    async def request(self, method, path, **kwargs):
+        headers = dict(kwargs.pop("headers", {}))
+        if method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+            headers.update(ORIGIN)
+            headers["X-CSRF-Token"] = self.csrf
+        return await self.api.request(method, path, headers=headers, **kwargs)
+
+    async def close(self):
+        await self.api.aclose()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args):
+        await self.close()
+
+
+def install_fake_admin_sessions():
+    module = FakeAdminSessionModule()
+    server.app.state.admin_session_module = module
+    return module
+
+
+def assert_admin_login_contract(response):
+    assert response.headers["cache-control"] == "no-store"
+    assert "token" not in response.json()
+    assert response.json()["csrf_token"]
+    cookies = response.headers.get_list("set-cookie")
+    assert len(cookies) == 2
+    for cookie in cookies:
+        lowered = cookie.lower()
+        assert "httponly" in lowered
+        assert "secure" in lowered
+        assert "samesite=strict" in lowered
+        assert "path=/" in lowered
+        assert "domain=" not in lowered
 
 
 class FakeCursor:
@@ -206,6 +328,7 @@ async def run_security_matrix():
             review_blocked_staff,
         ]
     )
+    session_module = install_fake_admin_sessions()
     server.db.orders.items.append(
         {
             "id": "order-1",
@@ -218,7 +341,12 @@ async def run_security_matrix():
     )
 
     transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with (
+        httpx.AsyncClient(transport=transport, base_url="https://testserver") as api,
+        AdminApi(transport) as admin_api,
+        AdminApi(transport) as editor_api,
+        AdminApi(transport) as commercial_api,
+    ):
         registration = await api.post(
             "/api/auth/register",
             json={"name": "Public User", "email": "public@example.com", "password": "Password123"},
@@ -231,47 +359,48 @@ async def run_security_matrix():
         assert malformed_registration.status_code == 403
         assert malformed_registration.json()["detail"].startswith("Public registration is disabled")
 
-        admin_login = await api.post(
+        missing_origin = await api.post(
             "/api/auth/admin/login",
             json={"email": admin["email"], "password": "AdminPassword123"},
         )
+        assert missing_origin.status_code == 403
+        assert missing_origin.json()["detail"]["code"] == "request_verification_failed"
+
+        admin_login = await admin_api.login(admin["email"], "AdminPassword123")
         assert admin_login.status_code == 200
-        admin_token = admin_login.json()["token"]
+        assert_admin_login_contract(admin_login)
         assert admin_login.json()["user"]["role_labels"] == ["Super Admin"]
         assert admin_login.json()["user"]["role_policy_version"] == "2026-07-26-v2"
 
-        editor_login = await api.post(
-            "/api/auth/admin/login",
-            json={"email": editor["email"], "password": "EditorPassword123"},
-        )
+        editor_login = await editor_api.login(editor["email"], "EditorPassword123")
         assert editor_login.status_code == 200
+        assert_admin_login_contract(editor_login)
         assert editor_login.json()["user"]["roles"] == ["content_editor"]
         assert "admin.access" in editor_login.json()["user"]["permissions"]
         assert "password_hash" not in editor_login.json()["user"]
 
-        editor_me = await api.get(
-            "/api/auth/me", headers=bearer(editor_login.json()["token"])
-        )
+        editor_me = await editor_api.request("GET", "/api/auth/me")
         assert editor_me.status_code == 200
         assert editor_me.json()["roles"] == ["content_editor"]
         assert "roles.manage" not in editor_me.json()["permissions"]
 
-        commercial_login = await api.post(
-            "/api/auth/admin/login",
-            json={"email": commercial["email"], "password": "CommercialPassword123"},
+        commercial_login = await commercial_api.login(
+            commercial["email"], "CommercialPassword123"
         )
         assert commercial_login.status_code == 200
-        commercial_token = commercial_login.json()["token"]
+        assert_admin_login_contract(commercial_login)
 
         client_admin_login = await api.post(
             "/api/auth/admin/login",
             json={"email": client["email"], "password": "ClientPassword123"},
+            headers=ORIGIN,
         )
         assert client_admin_login.status_code == 403
 
         invalid_admin_login = await api.post(
             "/api/auth/admin/login",
             json={"email": admin["email"], "password": "WrongPassword123"},
+            headers=ORIGIN,
         )
         assert invalid_admin_login.status_code == 401
 
@@ -286,6 +415,7 @@ async def run_security_matrix():
             blocked_login = await api.post(
                 path,
                 json={"email": email, "password": password},
+                headers=ORIGIN if "/admin/" in path else None,
             )
             assert blocked_login.status_code == 401
             assert blocked_login.json() == {"detail": "Invalid email or password"}
@@ -308,19 +438,19 @@ async def run_security_matrix():
 
         order_before_payment_lockdown = copy.deepcopy(server.db.orders.items[0])
         disabled_mutations = (
-            await api.post(
+            await commercial_api.request(
+                "POST",
                 "/api/admin/orders/order-1/estimate",
                 json={"amount": 250000, "note": "Legacy estimate"},
-                headers=bearer(commercial_token),
             ),
             await api.post(
                 "/api/orders/order-1/payment-proof",
                 files={"file": ("proof.png", b"proof", "image/png")},
                 headers=bearer(client_token),
             ),
-            await api.post(
+            await commercial_api.request(
+                "POST",
                 "/api/admin/orders/order-1/verify-payment",
-                headers=bearer(commercial_token),
             ),
         )
         for response in disabled_mutations:
@@ -331,9 +461,8 @@ async def run_security_matrix():
             }
         assert server.db.orders.items[0] == order_before_payment_lockdown
 
-        payment_capabilities = await api.get(
-            "/api/admin/payment-capabilities",
-            headers=bearer(commercial_token),
+        payment_capabilities = await commercial_api.request(
+            "GET", "/api/admin/payment-capabilities"
         )
         assert payment_capabilities.status_code == 200
         assert payment_capabilities.json() == {
@@ -346,19 +475,23 @@ async def run_security_matrix():
 
         assert (await api.get("/api/admin/users")).status_code == 401
         assert (await api.get("/api/admin/users", headers=bearer(client_token))).status_code == 403
-        assert (await api.get("/api/admin/users", headers=bearer(admin_token))).status_code == 200
-        assert (await api.get("/api/admin/users", headers=bearer(commercial_token))).status_code == 403
+        internal_bearer = server.create_token(admin["id"], admin["email"], "super_admin")
+        rejected = await api.get("/api/admin/users", headers=bearer(internal_bearer))
+        assert rejected.status_code == 401
+        assert rejected.json()["detail"]["code"] == "admin_session_expired"
+        assert (await admin_api.request("GET", "/api/admin/users")).status_code == 200
+        assert (await commercial_api.request("GET", "/api/admin/users")).status_code == 403
 
         assert (await api.get("/api/orders")).status_code == 401
         assert (await api.get("/api/orders", headers=bearer(client_token))).status_code == 200
-        assert (await api.get("/api/orders", headers=bearer(admin_token))).status_code == 200
+        assert (await admin_api.request("GET", "/api/orders")).status_code == 200
 
         assert (await api.get("/api/orders/order-1")).status_code == 401
         assert (await api.get("/api/orders/order-1", headers=bearer(client_token))).status_code == 200
         assert (
             await api.get("/api/orders/order-1", headers=bearer(other_client_token))
         ).status_code == 403
-        assert (await api.get("/api/orders/order-1", headers=bearer(admin_token))).status_code == 200
+        assert (await admin_api.request("GET", "/api/orders/order-1")).status_code == 200
 
         assert (await api.get("/api/files/niuva/orders/client-2/private.stl")).status_code == 401
         assert (
@@ -371,7 +504,7 @@ async def run_security_matrix():
         new_client_payload = {
             "name": "Provisioned Client",
             "email": "provisioned@example.com",
-            "password": "Provisioned123",
+            "password": "ProvisionedPassword123",
         }
         assert (await api.post("/api/admin/users", json=new_client_payload)).status_code == 401
         assert (
@@ -381,21 +514,25 @@ async def run_security_matrix():
                 headers=bearer(client_token),
             )
         ).status_code == 403
-        provisioned = await api.post(
+        provisioned = await commercial_api.request(
+            "POST",
             "/api/admin/users",
             json=new_client_payload,
-            headers=bearer(commercial_token),
         )
         assert provisioned.status_code == 201
         assert provisioned.json()["roles"] == ["retail_customer"]
         assert provisioned.json()["access_state"] == "approved"
         assert "password_hash" not in provisioned.json()
+        provisioned_user = await server.db.users.find_one(
+            {"email": new_client_payload["email"]}
+        )
+        assert provisioned_user["password_hash"].startswith("$argon2id$")
 
         assert (await api.get("/api/admin/customers")).status_code == 401
         assert (await api.get("/api/admin/customers", headers=bearer(client_token))).status_code == 403
 
-        commercial_customers = await api.get(
-            "/api/admin/customers", headers=bearer(commercial_token)
+        commercial_customers = await commercial_api.request(
+            "GET", "/api/admin/customers"
         )
         assert commercial_customers.status_code == 200
         assert {customer["email"] for customer in commercial_customers.json()} == {
@@ -447,6 +584,75 @@ async def run_security_matrix():
         role_mismatch = await api.get("/api/admin/users", headers=bearer(forged_role_token))
         assert role_mismatch.status_code == 403
 
+        missing_csrf = await admin_api.api.post(
+            "/api/admin/users",
+            json={
+                "name": "No CSRF",
+                "email": "no-csrf@example.com",
+                "password": "A valid provisioning password",
+            },
+            headers=ORIGIN,
+        )
+        assert missing_csrf.status_code == 403
+        wrong_origin = await admin_api.api.post(
+            "/api/admin/users",
+            json={
+                "name": "Wrong Origin",
+                "email": "wrong-origin@example.com",
+                "password": "A valid provisioning password",
+            },
+            headers={"Origin": "https://evil.example", "X-CSRF-Token": admin_api.csrf},
+        )
+        assert wrong_origin.status_code == 403
+        for response in (missing_csrf, wrong_origin):
+            assert response.json()["detail"]["code"] == "request_verification_failed"
+
+        stored_admin = next(
+            user for user in server.db.users.items if user["id"] == admin["id"]
+        )
+        blocked_session_id = next(
+            key
+            for key, record in session_module.sessions.items()
+            if record["grant"].session_secret
+            == admin_api.api.cookies.get(server.SESSION_COOKIE_NAME)
+        )
+        stored_admin["status"] = "disabled"
+        blocked_refresh = await admin_api.api.post(
+            "/api/auth/admin/session/refresh", headers=ORIGIN
+        )
+        assert blocked_refresh.status_code == 401
+        assert session_module.sessions[blocked_session_id]["revoked"] is True
+        stored_admin["status"] = "active"
+        assert (await admin_api.login(admin["email"], "AdminPassword123")).status_code == 200
+        old_access = admin_api.api.cookies.get(server.ACCESS_COOKIE_NAME)
+        old_session = admin_api.api.cookies.get(server.SESSION_COOKIE_NAME)
+        refresh = await admin_api.api.post(
+            "/api/auth/admin/session/refresh", headers=ORIGIN
+        )
+        assert refresh.status_code == 200
+        assert refresh.headers["cache-control"] == "no-store"
+        assert refresh.json()["csrf_token"] != admin_api.csrf
+        admin_api.csrf = refresh.json()["csrf_token"]
+        assert admin_api.api.cookies.get(server.ACCESS_COOKIE_NAME) != old_access
+        assert admin_api.api.cookies.get(server.SESSION_COOKIE_NAME) != old_session
+
+        session_id = next(
+            key
+            for key, value in session_module.sessions.items()
+            if value["grant"].access_secret
+            == admin_api.api.cookies.get(server.ACCESS_COOKIE_NAME)
+        )
+        session_module.sessions[session_id]["grant"].access_secret = (
+            "expired-access-secret"
+        )
+        logout = await admin_api.request("POST", "/api/auth/admin/logout")
+        assert logout.status_code == 200
+        assert logout.headers["cache-control"] == "no-store"
+        assert session_module.sessions[session_id]["revoked"] is True
+        assert server.ACCESS_COOKIE_NAME not in admin_api.api.cookies
+        assert server.SESSION_COOKIE_NAME not in admin_api.api.cookies
+        assert (await admin_api.request("GET", "/api/admin/users")).status_code == 401
+
 
 async def run_admin_boundary_projections_and_capability_gates():
     users = [
@@ -457,33 +663,42 @@ async def run_admin_boundary_projections_and_capability_gates():
     database = FakeDatabase(users)
     database.orders.items.append({"id": "order-safe-1", "order_number": "NIV-TEST-0001", "user_id": "customer-1", "user_name": "Customer", "user_email": "customer@niuva.test", "material_id": "material-1", "material_name": "Acrylic", "file": {"storage_path": "orders/customer-1/design.pdf"}, "notes": "Fulfil before Friday", "status": "awaiting_payment", "status_history": [{"status": "pending_estimate", "at": "2026-07-22T00:00:00Z", "note": "Received"}], "estimate": {"amount": 950000, "currency": "IDR", "note": "Internal quote"}, "payment": {"proof": {"storage_path": "payments/proof.png"}, "verified": False}, "internal_price": 600000})
     server.db = database
+    install_fake_admin_sessions()
 
     transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
-        async def login(email, password):
-            response = await api.post("/api/auth/admin/login", json={"email": email, "password": password})
+    async with (
+        AdminApi(transport) as owner_api,
+        AdminApi(transport) as operations_api,
+        AdminApi(transport) as commercial_api,
+    ):
+        for api, email, password in (
+            (owner_api, "owner@niuva.example.com", "OwnerPassword123"),
+            (operations_api, "operations@niuva.example.com", "OperationsPassword123"),
+            (commercial_api, "commercial@niuva.example.com", "CommercialPassword123"),
+        ):
+            response = await api.login(email, password)
             assert response.status_code == 200, response.text
-            return bearer(response.json()["token"])
 
-        owner_headers = await login("owner@niuva.example.com", "OwnerPassword123")
-        operations_headers = await login("operations@niuva.example.com", "OperationsPassword123")
-        commercial_headers = await login("commercial@niuva.example.com", "CommercialPassword123")
-        operations_orders = await api.get("/api/admin/orders", headers=operations_headers)
+        operations_orders = await operations_api.request("GET", "/api/admin/orders")
         assert operations_orders.status_code == 200
         safe_order = operations_orders.json()[0]
         assert {"id", "order_number", "user_name", "user_email", "material_id", "material_name", "file", "notes", "status", "status_history"}.issubset(safe_order)
         assert not {"estimate", "payment", "internal_price"}.intersection(safe_order)
-        commercial_orders = await api.get("/api/admin/orders", headers=commercial_headers)
+        commercial_orders = await commercial_api.request("GET", "/api/admin/orders")
         assert commercial_orders.status_code == 200
         assert commercial_orders.json()[0]["payment"]["verified"] is False
-        assert (await api.get("/api/admin/stats", headers=operations_headers)).status_code == 200
-        assert (await api.get("/api/admin/stats", headers=commercial_headers)).status_code == 200
+        assert (await operations_api.request("GET", "/api/admin/stats")).status_code == 200
+        assert (await commercial_api.request("GET", "/api/admin/stats")).status_code == 200
 
 
 def test_admin_boundary_projections_and_capability_gates():
     asyncio.run(run_admin_boundary_projections_and_capability_gates())
 
-def test_authentication_and_authorization_security_matrix():
+def test_authentication_and_authorization_security_matrix(monkeypatch, tmp_path):
+    blocklist = tmp_path / "password-blocklist.txt"
+    blocklist.write_text("password\nqwerty\n", encoding="utf-8")
+    monkeypatch.setenv("AUTH_PASSWORD_BLOCKLIST_PATH", str(blocklist))
+    monkeypatch.setenv("AUTH_ARGON2_WRITES_ENABLED", "true")
     asyncio.run(run_security_matrix())
 
 
@@ -560,6 +775,7 @@ async def run_login_issuance_contract():
         },
     ]
     server.db = FakeDatabase(users)
+    install_fake_admin_sessions()
 
     invalid_cases = [
         ("/api/auth/login", "unknown@example.com", valid_password, True),
@@ -578,7 +794,7 @@ async def run_login_issuance_contract():
     transport = httpx.ASGITransport(app=server.app)
     async with httpx.AsyncClient(
         transport=transport,
-        base_url="http://testserver",
+        base_url="https://testserver",
     ) as api:
         real_verify_password = server.verify_password
         with (
@@ -603,6 +819,7 @@ async def run_login_issuance_contract():
                 response = await api.post(
                     endpoint,
                     json={"email": email, "password": password},
+                    headers=ORIGIN if "/admin/" in endpoint else None,
                 )
 
                 assert response.status_code == 401
@@ -639,14 +856,29 @@ async def run_login_issuance_contract():
             assert canonical_login.status_code == 200
             assert canonical_login.json()["user"]["roles"] == ["retail_customer"]
 
+            rejected_public_staff = await api.post(
+                "/api/auth/login",
+                json={
+                    "email": "canonical-staff@niuva.com",
+                    "password": valid_password,
+                },
+            )
+            assert rejected_public_staff.status_code == 401
+            assert rejected_public_staff.json() == {
+                "detail": "Invalid email or password"
+            }
+            assert "token" not in rejected_public_staff.json()
+
             staff_login = await api.post(
                 "/api/auth/admin/login",
                 json={
                     "email": "canonical-staff@niuva.com",
                     "password": valid_password,
                 },
+                headers=ORIGIN,
             )
             assert staff_login.status_code == 200
+            assert_admin_login_contract(staff_login)
             assert staff_login.json()["user"]["roles"] == ["order_admin"]
 
             customer_admin_login = await api.post(
@@ -655,12 +887,13 @@ async def run_login_issuance_contract():
                     "email": "legacy-client@example.com",
                     "password": valid_password,
                 },
+                headers=ORIGIN,
             )
             assert customer_admin_login.status_code == 403
             assert customer_admin_login.json() == {
                 "detail": "Permission required: admin.access"
             }
-            assert success_verify_mock.call_count == 4
+            assert success_verify_mock.call_count == 5
 
 
 def test_login_issuance_is_generic_fail_closed_and_legacy_compatible():
@@ -725,7 +958,7 @@ async def run_superseded_role_cannot_obtain_a_session():
         )
         transport = httpx.ASGITransport(app=server.app)
         async with httpx.AsyncClient(
-            transport=transport, base_url="http://testserver"
+            transport=transport, base_url="https://testserver"
         ) as api:
             for path in ("/api/auth/login", "/api/auth/admin/login"):
                 response = await api.post(
@@ -734,6 +967,7 @@ async def run_superseded_role_cannot_obtain_a_session():
                         "email": "unmigrated-staff@niuva.com",
                         "password": valid_password,
                     },
+                    headers=ORIGIN if "/admin/" in path else None,
                 )
                 assert response.status_code == 401, path
                 # Generic, like every other refusal: the response must not

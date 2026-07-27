@@ -112,27 +112,53 @@ def test_file_download_requires_authorization_header_and_safe_media_type(local_s
 
     monkeypatch.setattr(server, "get_user_from_token", fake_user)
 
+    class FakeAdminSessions:
+        async def authenticate_admin_session(self, context):
+            if context.get("access_secret") != "admin-cookie":
+                raise server.SessionExpiredError()
+            return types.SimpleNamespace(session_id="session-1", user_id="staff-1")
+
+    class FakeUsers:
+        async def find_one(self, *_args, **_kwargs):
+            return {
+                "id": "staff-1",
+                "roles": ["super_admin"],
+                "status": "active",
+                "access_state": "approved",
+            }
+
+    server.app.state.admin_session_module = FakeAdminSessions()
+    original_db = server.db
+    server.db = types.SimpleNamespace(users=FakeUsers())
+
     async def run():
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        async with httpx.AsyncClient(transport=transport, base_url="https://testserver") as api:
             owner = await api.get(f"/api/files/{path}", params={"auth": "owner"})
             owner_header = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer owner"})
             other = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer other"})
             staff = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer staff"})
+            api.cookies.set(server.ACCESS_COOKIE_NAME, "admin-cookie")
+            staff_cookie = await api.get(f"/api/files/{path}")
             missing = await api.get(
                 "/api/files/niuva/orders/customer-1/missing.stl",
                 headers={"Authorization": "Bearer owner"},
             )
-            return owner, owner_header, other, staff, missing
+            return owner, owner_header, other, staff, staff_cookie, missing
 
-    owner, owner_header, other, staff, missing = asyncio.run(run())
+    try:
+        owner, owner_header, other, staff, staff_cookie, missing = asyncio.run(run())
+    finally:
+        server.db = original_db
+        server.app.state.admin_session_module = None
     assert owner.status_code == 401
     assert owner_header.status_code == 200
     assert owner_header.content == b"solid part"
     assert owner_header.headers["content-type"] == "model/stl"
     assert owner_header.headers["x-content-type-options"] == "nosniff"
     assert other.status_code == 403
-    assert staff.status_code == 200
+    assert staff.status_code == 401
+    assert staff_cookie.status_code == 200
     assert missing.status_code == 404
     assert missing.json() == {"detail": "File not found"}
 

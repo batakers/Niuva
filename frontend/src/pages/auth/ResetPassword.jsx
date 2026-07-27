@@ -1,26 +1,82 @@
-import React, { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { api, formatApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const MIN_PASSWORD_LENGTH = 6;
+function captureToken() {
+  const url = new URL(window.location.href);
+  const token = url.searchParams.get("token") || "";
+  url.searchParams.delete("token");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  return token;
+}
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get("token") || "";
+  const capturedToken = useRef(null);
+  const [token, setToken] = useState(null);
+  const [policy, setPolicy] = useState(null);
+  const [validating, setValidating] = useState(true);
+  const [preparationError, setPreparationError] = useState(false);
+  const [preparationAttempt, setPreparationAttempt] = useState(0);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
+  const errorRef = useRef(null);
 
+  useLayoutEffect(() => {
+    if (capturedToken.current === null) capturedToken.current = captureToken();
+    setToken(capturedToken.current);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function prepare() {
+      if (token === null) return;
+      setValidating(true);
+      setPreparationError(false);
+      if (!token) {
+        navigate("/reset-password/error", { replace: true });
+        return;
+      }
+      try {
+        const validation = await api.post("/auth/reset-password/validate", { token });
+        if (!active) return;
+        if (!validation.data?.valid) {
+          navigate("/reset-password/error", { replace: true });
+          return;
+        }
+        const policyResponse = await api.get("/auth/password-policy");
+        if (!active) return;
+        setPolicy(policyResponse.data);
+        setValidating(false);
+      } catch {
+        if (!active) return;
+        setPreparationError(true);
+        setValidating(false);
+      }
+    }
+    prepare();
+    return () => { active = false; };
+  }, [navigate, preparationAttempt, token]);
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+
+  const codePoints = Array.from(newPassword).length;
+  const utf8Bytes = new TextEncoder().encode(newPassword).length;
   const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
-  const tooShort = newPassword.length > 0 && newPassword.length < MIN_PASSWORD_LENGTH;
-  const canSubmit = Boolean(token) && newPassword.length >= MIN_PASSWORD_LENGTH && newPassword === confirmPassword;
+  const lengthValid = policy
+    && codePoints >= policy.min_code_points
+    && codePoints <= policy.max_code_points
+    && utf8Bytes <= policy.max_utf8_bytes;
+  const canSubmit = lengthValid && newPassword === confirmPassword;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -29,37 +85,13 @@ export default function ResetPassword() {
     setSubmitting(true);
     try {
       await api.post("/auth/reset-password", { token, new_password: newPassword });
-      setDone(true);
+      navigate("/reset-password/success", { replace: true });
     } catch (requestError) {
-      // The backend intentionally returns one generic message whether the
-      // token is unknown, expired, or already used — do not try to guess
-      // the reason here either.
       setError(formatApiError(requestError.response?.data?.detail));
     } finally {
       setSubmitting(false);
     }
   };
-
-  if (!token) {
-    return (
-      <AuthShell heading={"Account\nRecovery"} tagline="Reset password akun Anda.">
-        <div className="border border-border-default bg-surface-default p-8">
-          <h1 className="mb-4 font-heading text-2xl font-bold uppercase tracking-tight text-text-primary">
-            Link Tidak Valid
-          </h1>
-          <p className="mb-8 text-sm leading-relaxed text-text-secondary" role="alert" data-testid="reset-password-missing-token">
-            Link reset password ini tidak lengkap atau tidak valid. Silakan minta link baru.
-          </p>
-          <Link
-            to="/forgot-password"
-            className="block text-center font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:text-text-primary"
-          >
-            Minta Link Baru
-          </Link>
-        </div>
-      </AuthShell>
-    );
-  }
 
   return (
     <AuthShell heading={"Account\nRecovery"} tagline="Buat password baru untuk akun Anda.">
@@ -67,40 +99,50 @@ export default function ResetPassword() {
         <h1 className="mb-2 font-heading text-2xl font-bold uppercase tracking-tight text-text-primary">
           Reset Password
         </h1>
-        <p className="mb-8 text-sm leading-relaxed text-text-secondary">
-          Masukkan password baru untuk akun Anda.
-        </p>
-
-        {done ? (
-          <div className="space-y-6" data-testid="reset-password-success" role="status">
-            <div className="border border-border-default bg-surface-muted p-4 text-sm text-text-primary">
-              Password berhasil diubah. Sesi lama Anda telah diakhiri untuk keamanan — silakan login dengan password baru.
-            </div>
-            <Button
-              onClick={() => navigate("/admin/login", { replace: true })}
-              className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90"
-            >
-              Ke Halaman Login
+        {preparationError ? (
+          <div className="space-y-6" role="alert">
+            <p className="text-sm text-text-secondary">Link belum dapat diperiksa. Periksa koneksi, lalu coba lagi.</p>
+            <Button type="button" onClick={() => setPreparationAttempt((attempt) => attempt + 1)} className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90">
+              Coba Lagi
             </Button>
           </div>
+        ) : validating ? (
+          <p className="text-sm text-text-secondary" role="status" aria-live="polite">Memeriksa link reset...</p>
         ) : (
           <form onSubmit={submit} className="space-y-6" data-testid="reset-password-form">
+            <p className="text-sm leading-relaxed text-text-secondary">Masukkan password baru untuk akun Anda.</p>
             <div className="space-y-2">
               <Label htmlFor="reset-password-new" className="block font-mono text-[10px] uppercase tracking-widest text-text-secondary">
                 Password Baru
               </Label>
-              <Input
-                id="reset-password-new"
-                data-testid="reset-password-new"
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                required
-                minLength={MIN_PASSWORD_LENGTH}
-                autoComplete="new-password"
-                className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
-              />
-              {tooShort && <p className="text-xs text-destructive">Minimal {MIN_PASSWORD_LENGTH} karakter.</p>}
+              <div className="flex">
+                <Input
+                  id="reset-password-new"
+                  data-testid="reset-password-new"
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  required
+                  minLength={policy.min_code_points}
+                  autoComplete="new-password"
+                  aria-describedby="reset-password-rules"
+                  className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((shown) => !shown)}
+                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  className="min-h-12 border border-l-0 border-border-default px-3 font-mono text-[10px] uppercase tracking-wider text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                >
+                  {showPassword ? "Sembunyikan" : "Tampilkan"}
+                </button>
+              </div>
+              <ul id="reset-password-rules" className="space-y-1 text-xs text-text-secondary">
+                <li className={newPassword && codePoints < policy.min_code_points ? "text-destructive" : ""}>
+                  {policy.min_code_points}-{policy.max_code_points} karakter Unicode.
+                </li>
+                <li>Maksimal {policy.max_utf8_bytes} byte; tanpa aturan kombinasi karakter.</li>
+              </ul>
             </div>
 
             <div className="space-y-2">
@@ -110,18 +152,20 @@ export default function ResetPassword() {
               <Input
                 id="reset-password-confirm"
                 data-testid="reset-password-confirm"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
                 autoComplete="new-password"
+                aria-invalid={mismatch || undefined}
+                aria-describedby={mismatch ? "reset-password-mismatch" : undefined}
                 className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
               />
-              {mismatch && <p className="text-xs text-destructive">Password tidak cocok.</p>}
+              {mismatch && <p id="reset-password-mismatch" className="text-xs text-destructive">Password tidak cocok.</p>}
             </div>
 
             {error && (
-              <div className="flex items-start gap-2 border border-destructive/50 bg-destructive/10 p-3" role="alert">
+              <div ref={errorRef} tabIndex={-1} className="border border-destructive/50 bg-destructive/10 p-3" role="alert">
                 <p className="text-sm text-destructive" data-testid="reset-password-error">{error}</p>
               </div>
             )}
@@ -134,6 +178,9 @@ export default function ResetPassword() {
             >
               {submitting ? "MEMPROSES..." : "Reset Password"}
             </Button>
+            <Link to="/forgot-password" className="block text-center font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary">
+              Minta Link Baru
+            </Link>
           </form>
         )}
       </div>

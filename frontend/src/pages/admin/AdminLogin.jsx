@@ -17,6 +17,7 @@ export default function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const requestedDestination = location.state?.from;
@@ -52,8 +53,12 @@ export default function AdminLogin() {
     setSubmitting(true);
 
     try {
-      const { data } = await api.post("/auth/admin/login", { email, password });
-      login(data.token, data.user);
+      const { data } = await api.post("/auth/admin/login", {
+        email,
+        password,
+        remember_me: rememberMe,
+      });
+      login(data.user, data.csrf_token, data.access_expires_at);
       navigate(destination, { replace: true });
     } catch (requestError) {
       setError(formatApiError(requestError.response?.data?.detail));
@@ -106,6 +111,19 @@ export default function AdminLogin() {
                 required
                 autoComplete="current-password"
               />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                id="admin-login-remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(event) => setRememberMe(event.target.checked)}
+                className="h-4 w-4 rounded border-border-strong text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+              />
+              <Label htmlFor="admin-login-remember-me" className="type-body-small text-text-secondary">
+                Ingat saya
+              </Label>
             </div>
 
             {error && (

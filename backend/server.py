@@ -10,22 +10,47 @@ import io
 import uuid
 import logging
 import asyncio
-import hashlib
-import secrets
 import html
 import re
+import secrets
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
+from urllib.parse import urlsplit
 
 import jwt
 import bcrypt
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Header, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 import storage
 import emailer
+from auth_password import (
+    PasswordPolicyError,
+    PasswordPolicyUnavailableError,
+    PasswordWriteDisabledError,
+    build_password_module,
+)
+from auth_recovery import (
+    MongoRecoveryStore,
+    PublicSiteOrigin,
+    PublicSiteOriginError,
+    build_recovery_module,
+)
+from auth_session import (
+    ACCESS_COOKIE_NAME,
+    SESSION_COOKIE_NAME,
+    AdminSessionError,
+    AdminSessionModule,
+    MongoSessionStore,
+    RequestVerificationError,
+    SessionExpiredError,
+    access_cookie_options,
+    clear_cookie_options,
+    session_cookie_options,
+)
 from audit import append_audit_event
 from b2b_routes import build_b2b_router
 from dashboard_domain import (
@@ -57,6 +82,7 @@ from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
 from permissions import (
+    CUSTOMER_ROLES,
     ROLE_LABELS,
     ROLE_POLICY_VERSION,
     canonical_roles,
@@ -118,10 +144,51 @@ app.state.transaction_guard = TransactionMutationGuard(
         "TRANSACTION_MUTATIONS_ENABLED", "false"
     ).strip().lower() == "true",
 )
+app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
+    get_database=lambda: db,
+)
+app.state.admin_session_module = None
 app.add_exception_handler(
     TransactionUnavailableError,
     transaction_unavailable_handler,
 )
+
+
+async def password_policy_error_handler(_request, exc):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": {"code": exc.code}},
+    )
+
+
+async def password_policy_unavailable_handler(_request, exc):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": {"code": exc.code}},
+    )
+
+
+app.add_exception_handler(PasswordPolicyError, password_policy_error_handler)
+app.add_exception_handler(
+    PasswordPolicyUnavailableError,
+    password_policy_unavailable_handler,
+)
+app.add_exception_handler(
+    PasswordWriteDisabledError,
+    password_policy_unavailable_handler,
+)
+
+
+async def admin_session_error_handler(_request, exc):
+    status_code = 403 if isinstance(exc, RequestVerificationError) else 401
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": {"code": exc.code}},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+app.add_exception_handler(AdminSessionError, admin_session_error_handler)
 api = APIRouter(prefix="/api")
 
 
@@ -137,20 +204,64 @@ DUMMY_PASSWORD_HASH = (
 
 
 def hash_password(p: str) -> str:
+    """Create legacy bcrypt fixtures; runtime writes use the password module."""
+
     return bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
 
 
 def is_valid_password_hash(password_hash: object) -> bool:
-    return isinstance(password_hash, str) and bool(
-        BCRYPT_HASH_PATTERN.fullmatch(password_hash)
+    return isinstance(password_hash, str) and (
+        bool(BCRYPT_HASH_PATTERN.fullmatch(password_hash))
+        or password_hash.startswith("$argon2id$")
+    )
+
+
+def _environment_flag(name: str) -> bool:
+    return os.environ.get(name, "false").strip().lower() == "true"
+
+
+def get_password_module():
+    return build_password_module(
+        blocklist_path=os.environ.get("AUTH_PASSWORD_BLOCKLIST_PATH"),
+        argon2_writes_enabled=_environment_flag("AUTH_ARGON2_WRITES_ENABLED"),
+    )
+
+
+def hash_new_password(candidate: str, context_terms=()) -> str:
+    return get_password_module().hash_new_password(
+        candidate,
+        context_terms=context_terms,
     )
 
 
 def verify_password(p: str, h: str) -> bool:
+    return get_password_module().verify_password(p, h).valid
+
+
+def _public_site_origin():
+    value = os.environ.get("PUBLIC_SITE_URL")
+    if not value:
+        return None
+    local_mode = os.environ.get("APP_ENV", "production").strip().lower() in {
+        "development",
+        "local",
+        "test",
+    }
     try:
-        return bcrypt.checkpw(p.encode(), h.encode())
-    except Exception:
-        return False
+        return PublicSiteOrigin.parse(value, local_mode=local_mode)
+    except PublicSiteOriginError:
+        logger.error("Password recovery origin configuration is invalid")
+        return None
+
+
+def get_recovery_module():
+    return build_recovery_module(
+        store=MongoRecoveryStore(db),
+        transaction_guard=app.state.transaction_guard,
+        passwords=get_password_module(),
+        delivery=app.state.password_recovery_delivery,
+        public_site_origin=_public_site_origin(),
+    )
 
 
 def create_token(user_id: str, email: str, role: str, token_version: int = 0) -> str:
@@ -196,16 +307,97 @@ async def get_user_from_token(token: str) -> dict:
     return user
 
 
+def get_admin_session_module():
+    if app.state.admin_session_module is not None:
+        return app.state.admin_session_module
+    csrf_key = os.environ.get("AUTH_SESSION_CSRF_KEY", "").encode("utf-8")
+    if len(csrf_key) < 32:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "admin_session_unavailable"},
+        )
+
+    async def current_token_version(user_id, session):
+        user = await db.users.find_one(
+            {"id": user_id}, {"_id": 0, "token_version": 1}, session=session
+        )
+        return user.get("token_version", 0) if user else None
+
+    return AdminSessionModule(
+        store=MongoSessionStore(db),
+        transaction_guard=app.state.transaction_guard,
+        csrf_key=csrf_key,
+        user_version_provider=current_token_version,
+    )
+
+
+def _approved_request_origin() -> str:
+    origin = _public_site_origin()
+    if origin is None:
+        raise RequestVerificationError()
+    return origin.value
+
+
+def _request_origin(request: Request) -> str | None:
+    candidate = request.headers.get("origin")
+    if candidate:
+        return candidate.rstrip("/")
+    referer = request.headers.get("referer")
+    if not referer:
+        return None
+    parsed = urlsplit(referer)
+    if not parsed.scheme or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def verify_admin_origin(request: Request) -> None:
+    if not secrets.compare_digest(
+        _request_origin(request) or "invalid",
+        _approved_request_origin(),
+    ):
+        raise RequestVerificationError()
+
+
+async def get_admin_user(request: Request, *, verify_csrf: bool = True) -> dict:
+    access_secret = request.cookies.get(ACCESS_COOKIE_NAME)
+    if not access_secret:
+        raise SessionExpiredError()
+    context = {"access_secret": access_secret}
+    if verify_csrf and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+        verify_admin_origin(request)
+        context["csrf_token"] = request.headers.get("x-csrf-token")
+    session = await get_admin_session_module().authenticate_admin_session(
+        context
+    )
+    user = await db.users.find_one(
+        {"id": session.user_id}, {"_id": 0, "password_hash": 0}
+    )
+    if (
+        not user
+        or user.get("status", "active") == "disabled"
+        or user.get("access_state", "approved") != "approved"
+        or not has_permission(user, "admin.access")
+    ):
+        await get_admin_session_module().revoke_admin_session(
+            session,
+            "user_ineligible",
+        )
+        raise SessionExpiredError()
+    request.state.admin_session = session
+    return user
+
+
 async def get_current_user(request: Request) -> dict:
-    token = None
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-    if not token:
-        token = request.cookies.get("access_token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await get_user_from_token(token)
+        user = await get_user_from_token(auth_header[7:])
+        if has_permission(user, "admin.access"):
+            raise SessionExpiredError()
+        return user
+    if request.cookies.get(ACCESS_COOKIE_NAME):
+        return await get_admin_user(request)
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 def require_permission(permission: str):
@@ -227,7 +419,7 @@ require_admin = require_permission("admin.access")
 class ClientProvisionReq(BaseModel):
     name: str
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: str = Field(min_length=1, max_length=128)
     phone: Optional[str] = None
     company: Optional[str] = None
 
@@ -237,13 +429,21 @@ class LoginReq(BaseModel):
     password: str
 
 
+class AdminLoginReq(LoginReq):
+    remember_me: bool = False
+
+
 class ForgotPasswordReq(BaseModel):
     email: EmailStr
 
 
 class ResetPasswordReq(BaseModel):
-    token: str = Field(min_length=1)
-    new_password: str = Field(min_length=6)
+    token: str = Field(min_length=1, max_length=1024)
+    new_password: str = Field(min_length=1, max_length=128)
+
+
+class ValidatePasswordResetReq(BaseModel):
+    token: str = Field(min_length=1, max_length=1024)
 
 
 class EstimateReq(BaseModel):
@@ -329,6 +529,40 @@ def auth_response(user: dict) -> dict:
     return {"token": token, "user": safe_user(user)}
 
 
+def _set_admin_cookies(response: Response, grant) -> None:
+    response.set_cookie(
+        ACCESS_COOKIE_NAME,
+        grant.access_secret,
+        **access_cookie_options(),
+    )
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        grant.session_secret,
+        **session_cookie_options(grant.remember_me),
+    )
+
+
+def _clear_admin_cookies(response: Response) -> None:
+    options = clear_cookie_options()
+    response.delete_cookie(ACCESS_COOKIE_NAME, **options)
+    response.delete_cookie(SESSION_COOKIE_NAME, **options)
+
+
+def _admin_session_response(user: dict, grant) -> JSONResponse:
+    response = JSONResponse(
+        {
+            "user": safe_user(user),
+            "csrf_token": grant.csrf_token,
+            "access_expires_at": grant.access_expires_at.isoformat(),
+            "idle_expires_at": grant.idle_expires_at.isoformat(),
+            "absolute_expires_at": grant.absolute_expires_at.isoformat(),
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+    _set_admin_cookies(response, grant)
+    return response
+
+
 async def authenticate_credentials(req: LoginReq) -> dict:
     user = await db.users.find_one({"email": req.email.lower()})
     stored_hash = user.get("password_hash") if user else None
@@ -369,7 +603,10 @@ async def provision_client(req: ClientProvisionReq) -> dict:
         "id": str(uuid.uuid4()),
         "name": req.name,
         "email": email,
-        "password_hash": hash_password(req.password),
+        "password_hash": hash_new_password(
+            req.password,
+            context_terms=(email, req.name),
+        ),
         "phone": req.phone or "",
         "company": req.company or "",
         "roles": ["retail_customer"],
@@ -447,34 +684,92 @@ async def register():
 @api.post("/auth/login")
 async def login(req: LoginReq):
     user = await authenticate_credentials(req)
+    if not set(canonical_roles(user)) & CUSTOMER_ROLES:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     return auth_response(user)
 
 
 @api.post("/auth/admin/login")
-async def admin_login(req: LoginReq):
+async def admin_login(req: AdminLoginReq, request: Request):
+    verify_admin_origin(request)
     user = await authenticate_credentials(req)
     if not has_permission(user, "admin.access"):
         raise HTTPException(
             status_code=403,
             detail="Permission required: admin.access",
         )
-    return auth_response(user)
+    grant = await get_admin_session_module().create_admin_session(
+        user,
+        req.remember_me,
+        {},
+    )
+    return _admin_session_response(user, grant)
+
+
+@api.post("/auth/admin/session/refresh")
+async def refresh_admin_session(request: Request):
+    verify_admin_origin(request)
+    session_secret = request.cookies.get(SESSION_COOKIE_NAME)
+    if not session_secret:
+        raise SessionExpiredError()
+    grant = await get_admin_session_module().rotate_admin_session(
+        None,
+        {"session_secret": session_secret},
+    )
+    user = await db.users.find_one(
+        {"id": grant.user_id}, {"_id": 0, "password_hash": 0}
+    )
+    if (
+        not user
+        or user.get("status", "active") == "disabled"
+        or user.get("access_state", "approved") != "approved"
+        or not has_permission(user, "admin.access")
+    ):
+        await get_admin_session_module().revoke_admin_session(
+            grant,
+            "user_ineligible",
+        )
+        raise SessionExpiredError()
+    return _admin_session_response(user, grant)
+
+
+@api.get("/auth/admin/session")
+async def current_admin_session(request: Request):
+    user = await get_admin_user(request, verify_csrf=False)
+    return JSONResponse(
+        {"user": safe_user(user)},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@api.post("/auth/admin/logout")
+async def admin_logout(request: Request):
+    try:
+        await get_admin_user(request)
+        session = request.state.admin_session
+    except SessionExpiredError:
+        verify_admin_origin(request)
+        session_secret = request.cookies.get(SESSION_COOKIE_NAME)
+        try:
+            session = await get_admin_session_module().rotate_admin_session(
+                None,
+                {"session_secret": session_secret},
+            )
+        except SessionExpiredError:
+            session = None
+    if session is not None:
+        await get_admin_session_module().revoke_admin_session(session, "logout")
+    response = JSONResponse(
+        {"ok": True},
+        headers={"Cache-Control": "no-store"},
+    )
+    _clear_admin_cookies(response)
+    return response
 
 
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
     return safe_user(user)
-
-
-RESET_TOKEN_TTL_MINUTES = 30
-_GENERIC_FORGOT_PASSWORD_RESPONSE = {
-    "ok": True,
-    "message": "Jika email terdaftar, instruksi reset password telah dikirim.",
-}
-
-
-def _hash_reset_token(raw_token: str) -> str:
-    return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
 @api.post("/auth/forgot-password")
@@ -485,70 +780,38 @@ async def forgot_password(req: ForgotPasswordReq, request: Request):
     rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
     rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
 
-    # Always return the same generic response whether or not the email is
-    # registered, to avoid leaking account existence (user-enumeration).
-    user = await db.users.find_one({"email": req.email.lower()}, {"_id": 0, "id": 1, "email": 1, "name": 1})
-    if not user:
-        return _GENERIC_FORGOT_PASSWORD_RESPONSE
-
-    # Invalidate any earlier unused tokens for this user before issuing a new one.
-    await db.password_reset_tokens.update_many(
-        {"user_id": user["id"], "used_at": None},
-        {"$set": {"used_at": now_iso()}},
+    return await get_recovery_module().request_password_reset(
+        req.email.lower(),
+        {"client_ip": client_host},
     )
-    raw_token = secrets.token_urlsafe(32)
-    created_at = datetime.now(timezone.utc)
-    await db.password_reset_tokens.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": user["id"],
-        "token_hash": _hash_reset_token(raw_token),
-        "expires_at": (created_at + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)).isoformat(),
-        "used_at": None,
-        "created_at": created_at.isoformat(),
-    })
 
-    site_url = (os.environ.get("REACT_APP_PUBLIC_SITE_URL") or "").rstrip("/")
-    reset_link = f"{site_url}/reset-password?token={raw_token}"
-    await emailer.send_email(
-        user["email"],
-        "Reset Password — NIUVA",
-        "Permintaan reset password",
-        f"<p>Kami menerima permintaan untuk mereset password akun Anda.</p>"
-        f"<p>Link ini berlaku selama {RESET_TOKEN_TTL_MINUTES} menit: "
-        f"<a href=\"{reset_link}\">{reset_link}</a></p>"
-        f"<p>Jika Anda tidak meminta ini, abaikan email ini.</p>",
-        db=db, user_id=user["id"],
-    )
-    return _GENERIC_FORGOT_PASSWORD_RESPONSE
+
+@api.get("/auth/password-policy")
+async def password_policy():
+    return get_password_module().public_policy()
+
+
+@api.post("/auth/reset-password/validate")
+async def validate_reset_password(req: ValidatePasswordResetReq):
+    result = await get_recovery_module().validate_password_reset(req.token)
+    response = {"valid": result.valid}
+    if result.code:
+        response["code"] = result.code
+    return response
 
 
 @api.post("/auth/reset-password")
 async def reset_password(req: ResetPasswordReq):
-    token_hash = _hash_reset_token(req.token)
-    now = datetime.now(timezone.utc).isoformat()
-    record = await db.password_reset_tokens.find_one(
-        {"token_hash": token_hash, "used_at": None, "expires_at": {"$gt": now}},
-        {"_id": 0},
+    result = await get_recovery_module().complete_password_reset(
+        req.token,
+        req.new_password,
     )
-    if not record:
-        raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
-
-    user = await db.users.find_one({"id": record["user_id"]}, {"_id": 0, "id": 1, "token_version": 1})
-    if not user:
-        raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
-
-    await db.users.update_one(
-        {"id": user["id"]},
-        {
-            "$set": {"password_hash": hash_password(req.new_password)},
-            "$inc": {"token_version": 1},
-        },
-    )
-    await db.password_reset_tokens.update_many(
-        {"user_id": user["id"], "used_at": None},
-        {"$set": {"used_at": now}},
-    )
-    return {"ok": True, "message": "Password berhasil diubah. Silakan login dengan password baru."}
+    if not result.ok:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": result.code},
+        )
+    return {"ok": True, "message": result.message}
 
 
 # ----------------------------- Orders -----------------------------
@@ -817,11 +1080,7 @@ async def bulk_update_status(
 # ----------------------------- File download -----------------------------
 @api.get("/files/{path:path}")
 async def download_file(path: str, request: Request):
-    authorization = request.headers.get("Authorization", "")
-    token = authorization[7:] if authorization.startswith("Bearer ") else None
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    user = await get_user_from_token(token)
+    user = await get_current_user(request)
     # Staff with file-read access can fetch shared files; customers remain path-scoped.
     if not has_permission(user, "files.read") and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -1223,7 +1482,7 @@ api.include_router(
         get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         safe_user=safe_user,
-        hash_password=hash_password,
+        hash_new_password=hash_new_password,
     )
 )
 
@@ -1420,16 +1679,18 @@ async def seed():
     admin_password = os.environ["ADMIN_PASSWORD"]
     existing = await db.users.find_one({"email": admin_email})
     if not existing:
+        admin_name = "NIUVA Admin"
         await db.users.insert_one({
-            "id": str(uuid.uuid4()), "name": "NIUVA Admin", "email": admin_email,
-            "password_hash": hash_password(admin_password), "phone": "", "company": "PT Niuva Inovasi Utama",
+            "id": str(uuid.uuid4()), "name": admin_name, "email": admin_email,
+            "password_hash": hash_new_password(
+                admin_password,
+                context_terms=(admin_email, admin_name),
+            ), "phone": "", "company": "PT Niuva Inovasi Utama",
             "roles": [], "status": "active",
             "access_state": "access_review_required",
             "role_policy_version": ROLE_POLICY_VERSION,
             "created_at": now_iso(),
         })
-    elif not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
 
     if await db.materials.count_documents({}) == 0:
         defaults = [
