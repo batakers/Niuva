@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from inventory_service import InventoryError
+from csv_safety import safe_csv_row
 
 
 SubjectType = Literal["material", "product_variant"]
@@ -78,13 +79,42 @@ class ReasonPayload(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+class AdjustmentRequestPayload(BaseModel):
+    request_operation_id: UUID
+    subject_type: SubjectType
+    subject_id: str = Field(min_length=1, max_length=200)
+    on_hand_delta: Decimal
+    reference_type: str = Field(min_length=1, max_length=100)
+    reference_id: str = Field(default="", max_length=200)
+    expected_balance_version: int | None = Field(default=None, ge=0)
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("on_hand_delta")
+    @classmethod
+    def non_zero_delta(cls, value):
+        if value == 0:
+            raise ValueError("on_hand_delta must be non-zero")
+        return value
+
+
+class AdjustmentDecisionPayload(BaseModel):
+    expected_version: int = Field(ge=1)
+    operation_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class AdjustmentRejectionPayload(BaseModel):
+    expected_version: int = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=500)
+
+
 def _csv_response(fieldnames: list, rows: list, filename: str) -> Response:
     """Serialize dict rows to a CSV download. Bounded data (<=500 rows), no disk write."""
     buffer = io.StringIO()
     writer = csv.DictWriter(buffer, fieldnames=fieldnames, extrasaction="ignore")
     writer.writeheader()
     for row in rows:
-        writer.writerow({key: row.get(key, "") for key in fieldnames})
+        writer.writerow(safe_csv_row(row, fieldnames))
     return Response(
         content=buffer.getvalue(),
         media_type="text/csv; charset=utf-8",
@@ -193,7 +223,15 @@ def build_inventory_router(
                     "message": "Reserve dan release wajib melalui endpoint lifecycle reservation.",
                 },
             )
-        if payload.movement_type in {"damage", "adjustment"} and not has_permission(
+        if payload.movement_type == "adjustment":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "adjustment_approval_required",
+                    "message": "Adjustment wajib melalui request dan approval manager.",
+                },
+            )
+        if payload.movement_type == "damage" and not has_permission(
             actor, "inventory.adjust"
         ):
             raise HTTPException(
@@ -204,6 +242,65 @@ def build_inventory_router(
             get_service().apply_operation(
                 actor=actor,
                 payload=payload.model_dump(mode="json", exclude_none=True),
+            )
+        )
+
+    @router.post("/adjustment-requests", status_code=status.HTTP_201_CREATED)
+    async def create_adjustment_request(
+        payload: AdjustmentRequestPayload,
+        actor: dict = Depends(require_permission("inventory.write")),
+    ):
+        return await invoke(
+            get_service().create_adjustment_request(
+                actor=actor,
+                payload=payload.model_dump(mode="json"),
+            )
+        )
+
+    @router.get("/adjustment-requests")
+    async def list_adjustment_requests(
+        request_status: Literal["pending", "approved", "rejected"] | None = Query(
+            default=None,
+            alias="status",
+        ),
+        limit: int = Query(default=200, ge=1, le=500),
+        _actor: dict = Depends(require_permission("inventory.adjust")),
+    ):
+        return await invoke(
+            get_service().list_adjustment_requests(
+                status=request_status,
+                limit=limit,
+            )
+        )
+
+    @router.post("/adjustment-requests/{request_id}/approve")
+    async def approve_adjustment_request(
+        request_id: str,
+        payload: AdjustmentDecisionPayload,
+        actor: dict = Depends(require_permission("inventory.adjust")),
+    ):
+        return await invoke(
+            get_service().approve_adjustment_request(
+                request_id,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                actor=actor,
+            )
+        )
+
+    @router.post("/adjustment-requests/{request_id}/reject")
+    async def reject_adjustment_request(
+        request_id: str,
+        payload: AdjustmentRejectionPayload,
+        actor: dict = Depends(require_permission("inventory.adjust")),
+    ):
+        return await invoke(
+            get_service().reject_adjustment_request(
+                request_id,
+                expected_version=payload.expected_version,
+                reason=payload.reason,
+                actor=actor,
             )
         )
 

@@ -84,6 +84,7 @@ export default function Inventory() {
   const { user } = useAuth();
   const permissions = user?.permissions || [];
   const canWrite = hasPermission(user, "inventory.write");
+  const canApproveAdjustment = hasPermission(user, "inventory.adjust");
 
   const [filters, setFilters] = useState({ subject_type: "", search: "" });
   const [balances, setBalances] = useState([]);
@@ -92,24 +93,30 @@ export default function Inventory() {
   const [error, setError] = useState("");
   const [operation, setOperation] = useState(null);
   const [transition, setTransition] = useState(null);
+  const [adjustmentRequests, setAdjustmentRequests] = useState([]);
+  const [adjustmentDecision, setAdjustmentDecision] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const requestFilters = { subject_type: filters.subject_type, limit: 500 };
-      const [balanceRows, reservationRows] = await Promise.all([
+      const [balanceRows, reservationRows, requestRows] = await Promise.all([
         inventoryApi.balances(requestFilters),
         inventoryApi.reservations({ ...requestFilters, status: "active" }),
+        canApproveAdjustment
+          ? inventoryApi.adjustmentRequests({ status: "pending", limit: 200 })
+          : Promise.resolve([]),
       ]);
       setBalances(balanceRows);
       setReservations(reservationRows);
+      setAdjustmentRequests(requestRows);
     } catch (requestError) {
       setError(parseInventoryConflict(requestError.response?.data?.detail));
     } finally {
       setLoading(false);
     }
-  }, [filters.subject_type]);
+  }, [canApproveAdjustment, filters.subject_type]);
 
   useEffect(() => {
     load();
@@ -205,6 +212,60 @@ export default function Inventory() {
           </FormField>
         </div>
       </SurfacePanel>
+
+      {canApproveAdjustment && (
+        <SurfacePanel className="mt-4">
+          <SurfacePanelHeader>
+            <p className="type-label text-text-secondary">
+              Pending inventory adjustments
+            </p>
+          </SurfacePanelHeader>
+          {adjustmentRequests.length === 0 ? (
+            <p className="p-4 text-sm text-text-secondary">
+              Tidak ada adjustment yang menunggu approval.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Delta</TableHead>
+                  <TableHead>Requester</TableHead>
+                  <TableHead>Alasan</TableHead>
+                  <TableHead>Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {adjustmentRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell>{request.subject_type} · {request.subject_id}</TableCell>
+                    <TableCell className="font-mono">{request.on_hand_delta}</TableCell>
+                    <TableCell className="font-mono text-xs">{request.requested_by}</TableCell>
+                    <TableCell>{request.reason}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => setAdjustmentDecision({ request, action: "approve" })}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAdjustmentDecision({ request, action: "reject" })}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </SurfacePanel>
+      )}
 
       {/* Balances Table */}
       <SurfacePanel className="mt-4">
@@ -508,6 +569,16 @@ export default function Inventory() {
           }}
         />
       )}
+      {adjustmentDecision && (
+        <AdjustmentDecisionDialog
+          value={adjustmentDecision}
+          onClose={() => setAdjustmentDecision(null)}
+          onApplied={() => {
+            setAdjustmentDecision(null);
+            load();
+          }}
+        />
+      )}
     </AdminLayout>
   );
 }
@@ -539,6 +610,17 @@ function OperationDialog({ formValue, permissions, onClose, onApplied }) {
           expires_at: form.expires_at
             ? new Date(form.expires_at).toISOString()
             : undefined,
+        });
+      } else if (form.movement_type === "adjustment") {
+        await inventoryApi.requestAdjustment({
+          request_operation_id: payload.operation_id,
+          subject_type: payload.subject_type,
+          subject_id: payload.subject_id,
+          on_hand_delta: payload.on_hand_delta,
+          reference_type: payload.reference_type,
+          reference_id: payload.reference_id,
+          expected_balance_version: payload.expected_balance_version,
+          reason: payload.reason,
         });
       } else {
         await inventoryApi.apply(payload);
@@ -648,6 +730,64 @@ function OperationDialog({ formValue, permissions, onClose, onApplied }) {
             onClick={submit}
           >
             {t("inventory.apply")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AdjustmentDecisionDialog({ value, onClose, onApplied }) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const payload = {
+        expected_version: value.request.version,
+        reason: reason.trim(),
+      };
+      if (value.action === "approve") {
+        await inventoryApi.approveAdjustment(value.request.id, {
+          ...payload,
+          operation_id: operationDefaults().operation_id,
+        });
+      } else {
+        await inventoryApi.rejectAdjustment(value.request.id, payload);
+      }
+      toast.success("Request adjustment diproses.");
+      onApplied();
+    } catch (error) {
+      toast.error(parseInventoryConflict(error.response?.data?.detail));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {value.action === "approve" ? "Approve" : "Reject"} adjustment
+          </DialogTitle>
+        </DialogHeader>
+        <FormField label="Alasan keputusan">
+          <Textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={500}
+          />
+        </FormField>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Batal</Button>
+          <Button
+            onClick={submit}
+            disabled={busy || !validInventoryReason(reason)}
+            loading={busy}
+          >
+            Konfirmasi
           </Button>
         </DialogFooter>
       </DialogContent>

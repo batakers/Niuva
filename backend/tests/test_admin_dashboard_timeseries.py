@@ -22,6 +22,7 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+from tests.auth_support import AuthCollection  # noqa: E402
 
 
 class FakeCollection:
@@ -96,6 +97,8 @@ class FakeDatabase:
         self.orders = FakeCollection(orders or [])
         self.stock_movements = FakeCollection(stock_movements or [])
         self.notifications = FakeCollection()
+        self.auth_sessions = AuthCollection()
+        self.login_rate_limits = AuthCollection()
 
 
 def bearer(token):
@@ -105,7 +108,7 @@ def bearer(token):
 async def login(api, email, password):
     response = await api.post("/api/auth/admin/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
-    return response.json()["token"]
+    return response.cookies["niuva_access"]
 
 
 def build_users():
@@ -196,8 +199,15 @@ async def run_timeseries_role_based_series():
                 "reason": "authoritative_payment_aggregate_unavailable",
             }
 
-        unauthenticated = await api.get("/api/admin/stats/timeseries")
-        assert unauthenticated.status_code == 401
+        # Login now establishes an HttpOnly cookie session. Use a fresh client
+        # to prove the unauthenticated contract rather than accidentally
+        # reusing the most recent staff cookie.
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as anonymous:
+            unauthenticated = await anonymous.get("/api/admin/stats/timeseries")
+            assert unauthenticated.status_code == 401
 
         bad_date = await api.get(
             "/api/admin/stats/timeseries?date_from=not-a-date",

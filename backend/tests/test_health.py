@@ -14,15 +14,33 @@ CHECKED_AT = "2026-07-17T09:00:00+00:00"
 
 async def get(path, capabilities):
     previous = server.app.state.database_capabilities
+    previous_schema = server.app.state.schema_status
+    previous_db = server.db
+
+    class HealthDatabase:
+        async def command(self, name):
+            assert name == "ping"
+            return {"ok": 1}
+
     transport = httpx.ASGITransport(app=server.app)
     try:
+        server.db = HealthDatabase()
         server.app.state.database_capabilities = capabilities
+        server.app.state.schema_status = {
+            "required_version": "007_security_publication_schema",
+            "applied": True,
+            "indexes_ready": True,
+            "missing_index_count": 0,
+            "ready": True,
+        }
         async with httpx.AsyncClient(
             transport=transport, base_url="http://testserver"
         ) as api:
             return await api.get(path)
     finally:
         server.app.state.database_capabilities = previous
+        server.app.state.schema_status = previous_schema
+        server.db = previous_db
 
 
 def available_capabilities():
@@ -58,29 +76,69 @@ def test_readiness_reports_transaction_capability_when_available():
     assert response.status_code == 200
     assert response.json() == {
         "status": "ready",
+        "database": "ready",
         "transaction_mutations": "ready",
+        "schema": {
+            "required_version": "007_security_publication_schema",
+            "applied": True,
+            "indexes_ready": True,
+            "missing_index_count": 0,
+            "ready": True,
+        },
         "capabilities": {
             "transactions": {
                 "available": True,
                 "reason": "available",
                 "checked_at": CHECKED_AT,
-            }
+            },
+            "production_upload": {"status": "inactive", "required": False},
+            "payment": {"status": "inactive", "required": False},
+            "organization_portal": {"status": "inactive", "required": False},
+            "notification_worker": {
+                "status": "ready",
+                "required": False,
+                "enabled": False,
+            },
+            "email_delivery": {
+                "status": "inactive",
+                "required": False,
+            },
         },
     }
 
 
 def test_readiness_is_degraded_without_disabling_public_liveness():
     response = asyncio.run(get("/api/health/ready", unavailable_capabilities()))
-    assert response.status_code == 200
+    assert response.status_code == 503
     assert response.json() == {
-        "status": "degraded",
+        "status": "not_ready",
+        "database": "ready",
         "transaction_mutations": "unavailable",
+        "schema": {
+            "required_version": "007_security_publication_schema",
+            "applied": True,
+            "indexes_ready": True,
+            "missing_index_count": 0,
+            "ready": True,
+        },
         "capabilities": {
             "transactions": {
                 "available": False,
                 "reason": "replica_set_required",
                 "checked_at": CHECKED_AT,
-            }
+            },
+            "production_upload": {"status": "inactive", "required": False},
+            "payment": {"status": "inactive", "required": False},
+            "organization_portal": {"status": "inactive", "required": False},
+            "notification_worker": {
+                "status": "ready",
+                "required": False,
+                "enabled": False,
+            },
+            "email_delivery": {
+                "status": "inactive",
+                "required": False,
+            },
         },
     }
     serialized = response.text.lower()

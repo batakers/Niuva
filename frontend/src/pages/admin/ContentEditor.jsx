@@ -34,6 +34,7 @@ import { AdminLayout } from "./AdminLayout";
 
 export default function ContentEditor() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [contentType, setContentType] = useState("about");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +79,11 @@ export default function ContentEditor() {
     if (archiveReason.trim().length < 3) return;
     setBusy(true);
     try {
-      await contentApi.archive(archiveTarget.id, archiveReason.trim());
+      await contentApi.archive(
+        archiveTarget.id,
+        archiveReason.trim(),
+        archiveTarget.version,
+      );
       toast.success(t("content.archiveSuccess"));
       setArchiveTarget(null);
       setArchiveReason("");
@@ -148,7 +153,7 @@ export default function ContentEditor() {
                           <TableCell>
                             <div className="flex justify-end gap-1">
                               <Button variant="ghost" size="icon" onClick={() => setEditingId(item.id)} aria-label={`${t("common.open")} ${item.slug}`}><Edit3 className="h-4 w-4" /></Button>
-                              {item.status !== "archived" && <Button variant="ghost" size="icon" onClick={() => setArchiveTarget(item)} aria-label={`${t("content.archive")} ${item.slug}`}><Archive className="h-4 w-4" /></Button>}
+                              {item.status !== "archived" && hasPermission(user, "content.archive") && <Button variant="ghost" size="icon" onClick={() => setArchiveTarget(item)} aria-label={`${t("content.archive")} ${item.slug}`}><Archive className="h-4 w-4" /></Button>}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -352,7 +357,8 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
       await contentApi.transition(
         blockId,
         CONTENT_ACTION_TARGETS[action],
-        reason.trim()
+        reason.trim(),
+        block.version,
       );
       toast.success(t("content.stageChanged"));
       setReason("");
@@ -367,7 +373,11 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
   const saveDraft = async () => {
     setBusy(true);
     try {
-      await contentApi.update(blockId, fields);
+      if (reason.trim().length < 3) {
+        toast.error(t("content.rollbackReasonRequired"));
+        return;
+      }
+      await contentApi.update(blockId, fields, block.version, reason.trim());
       toast.success(t("content.saveSuccess"));
       await load();
     } catch (error) {
@@ -391,7 +401,12 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
     if (reason.trim().length < 3) return;
     setBusy(true);
     try {
-      await contentApi.publish(blockId, reason.trim(), scheduledAt || null);
+      await contentApi.publish(
+        blockId,
+        reason.trim(),
+        block.version,
+        scheduledAt || null,
+      );
       toast.success(scheduledAt ? t("content.scheduleSuccess") : t("content.publishSuccess"));
       setReason("");
       setScheduledAt("");
@@ -416,7 +431,12 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
         setBusy(false);
         return;
       }
-      await contentApi.rollback(blockId, versionId, reason.trim());
+      await contentApi.rollback(
+        blockId,
+        versionId,
+        reason.trim(),
+        block.version,
+      );
       toast.success(t("content.rollbackSuccess"));
       await load();
     } catch (error) {
@@ -529,7 +549,13 @@ export function ContentBlockEditorPanel({ blockId, onBack }) {
                 <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">{new Date(version.created_at).toLocaleString()}</TableCell>
                 <TableCell>{version.event}</TableCell>
                 <TableCell>{version.reason}</TableCell>
-                <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => rollback(version.id)} disabled={busy}>{t("content.rollback")}</Button></TableCell>
+                <TableCell className="text-right">
+                  {hasPermission(user, "content.publish") && (
+                    <Button variant="ghost" size="sm" onClick={() => rollback(version.id)} disabled={busy}>
+                      {t("content.rollback")}
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))}</TableBody>
           </Table>

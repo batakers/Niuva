@@ -1,4 +1,6 @@
-INDEX_DECLARATIONS = (
+from typing import Any
+
+INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
     {
         "collection": "categories",
         "keys": "slug",

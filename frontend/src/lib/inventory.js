@@ -27,7 +27,7 @@ export function visibleMovementTypes(subjectType, permissions = []) {
   const allowed = (permission) => permissions.includes("*") || permissions.includes(permission);
   if (!allowed("inventory.write")) return [];
   return movementTypesForSubject(subjectType).filter(
-    (movement) => !["damage", "adjustment"].includes(movement) || allowed("inventory.adjust"),
+    (movement) => movement !== "damage" || allowed("inventory.adjust"),
   );
 }
 
@@ -117,6 +117,14 @@ export const inventoryApi = {
   balance: (subjectType, subjectId) => unwrap(api.get(`/admin/inventory/balances/${subjectType}/${subjectId}`)),
   movements: (filters = {}) => unwrap(api.get("/admin/inventory/movements", query(filters))),
   apply: (payload) => unwrap(api.post("/admin/inventory/movements", payload)),
+  requestAdjustment: (payload) =>
+    unwrap(api.post("/admin/inventory/adjustment-requests", payload)),
+  adjustmentRequests: (filters = {}) =>
+    unwrap(api.get("/admin/inventory/adjustment-requests", query(filters))),
+  approveAdjustment: (id, payload) =>
+    unwrap(api.post(`/admin/inventory/adjustment-requests/${id}/approve`, payload)),
+  rejectAdjustment: (id, payload) =>
+    unwrap(api.post(`/admin/inventory/adjustment-requests/${id}/reject`, payload)),
   reserve: (payload) => unwrap(api.post("/admin/inventory/reservations", payload)),
   reservations: (filters = {}) => unwrap(api.get("/admin/inventory/reservations", query(filters))),
   release: (id, payload) => unwrap(api.post(`/admin/inventory/reservations/${id}/release`, payload)),

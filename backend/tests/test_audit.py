@@ -57,6 +57,7 @@ def test_audit_event_redacts_sensitive_fields():
         "profile": {"name": "Visible name"},
     }
     assert event["after"] == {"roles": ["warehouse"]}
+    assert event["reason"] == "Assigned warehouse duties"
     assert db.audit_events.items == [event]
     assert db.audit_events.insert_options == [{}]
 
@@ -113,7 +114,7 @@ def test_generic_catalog_audit_event_redacts_expanded_sensitive_fields():
 
     assert event["before"] == {"name": "Visible product"}
     assert event["after"] == {"name": "Updated product"}
-    assert event["reason"] is None
+    assert event["reason"] == "Catalog update rationale"
 
 
 def test_generic_audit_event_strips_nested_mongo_ids():

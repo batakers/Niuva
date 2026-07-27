@@ -91,15 +91,15 @@ def build_retail_router(
         payload: RetailOrderCreatePayload,
         actor: dict = Depends(require_permission("orders.write")),
     ):
-        return await invoke(
-            service().create_order(
-                operation_id=str(payload.operation_id),
-                customer=payload.customer.model_dump(mode="json"),
-                items=[item.model_dump() for item in payload.items],
-                fulfilment_method=payload.fulfilment_method,
-                notes=payload.notes,
-                actor=actor,
-            )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "retail_transaction_inactive",
+                "message": (
+                    "Retail saat ini hanya mendukung discovery; pembuatan "
+                    "pesanan belum diaktifkan."
+                ),
+            },
         )
 
     @router.get("/{order_id}")

@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, CircleAlert, History } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/operational/StatusStepper";
@@ -59,7 +59,10 @@ const CONFIG = {
 // revision editor instead of firing from a one-click button.
 const DEDICATED_COMMANDS = {
   inquiry: { convert: (id) => `/admin/inquiries/${id}/convert` },
-  quote: { create_project: (id) => `/admin/b2b/quotes/${id}/project` },
+  quote: {
+    accept: (id) => `/admin/b2b/quotes/${id}/acceptance`,
+    create_project: (id) => `/admin/b2b/quotes/${id}/project`,
+  },
   project: {},
 };
 
@@ -87,12 +90,20 @@ function B2BDetail({ kind }) {
   const { id } = useParams();
   const { t } = useI18n();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const config = CONFIG[kind];
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reason, setReason] = useState("");
   const [busyAction, setBusyAction] = useState("");
+  const [acceptance, setAcceptance] = useState({
+    approver_name: "",
+    approver_identity: "",
+    accepted_at: "",
+    channel: "email",
+    evidence_reference: "",
+  });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -120,6 +131,18 @@ function B2BDetail({ kind }) {
       toast.error(t("b2b.reasonRequired"));
       return;
     }
+    if (
+      action === "accept" &&
+      (
+        acceptance.approver_name.trim().length < 2 ||
+        acceptance.approver_identity.trim().length < 3 ||
+        !acceptance.accepted_at ||
+        acceptance.evidence_reference.trim().length < 3
+      )
+    ) {
+      toast.error("Identitas approver, waktu, channel, dan evidence wajib diisi.");
+      return;
+    }
     setBusyAction(action);
     const command = {
       expected_version: record.version,
@@ -129,7 +152,19 @@ function B2BDetail({ kind }) {
     try {
       const dedicated = DEDICATED_COMMANDS[kind][action];
       if (dedicated) {
-        await api.post(dedicated(id), command);
+        await api.post(
+          dedicated(id),
+          action === "accept"
+            ? {
+                ...command,
+                ...acceptance,
+                approver_name: acceptance.approver_name.trim(),
+                approver_identity: acceptance.approver_identity.trim(),
+                accepted_at: new Date(acceptance.accepted_at).toISOString(),
+                evidence_reference: acceptance.evidence_reference.trim(),
+              }
+            : command,
+        );
       } else {
         await api.post(`${config.endpoint(id)}/transitions`, {
           ...command,
@@ -144,6 +179,19 @@ function B2BDetail({ kind }) {
       const current = detail?.details;
       setError(formatApiError(detail));
       if (current?.current_version) load();
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const createPortfolioDraft = async () => {
+    setBusyAction("create_portfolio");
+    try {
+      const response = await api.post(`/admin/portfolio/from-project/${id}`);
+      toast.success("Draft portfolio dibuat dari Project selesai.");
+      navigate(`/admin/portfolio/${response.data.id}`);
+    } catch (requestError) {
+      setError(formatApiError(requestError.response?.data?.detail));
     } finally {
       setBusyAction("");
     }
@@ -290,6 +338,20 @@ function B2BDetail({ kind }) {
 
           <SurfacePanel padding="md">
             <p className="type-label text-text-secondary">{t("b2b.nextActions")}</p>
+            {kind === "project" &&
+              record.status === "completed" &&
+              hasPermission(user, "content.write") && (
+                <Button
+                  type="button"
+                  className="mt-4 min-h-11 w-full justify-between"
+                  loading={busyAction === "create_portfolio"}
+                  disabled={Boolean(busyAction)}
+                  onClick={createPortfolioDraft}
+                >
+                  Buat draft portfolio
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
             {revisionPending && (
               <Link
                 to={`/admin/b2b/quotes/${id}/revision`}
@@ -302,6 +364,75 @@ function B2BDetail({ kind }) {
             )}
             {actionable.length > 0 ? (
               <div className="mt-4 space-y-3">
+                {kind === "quote" && actionable.includes("accept") && (
+                  <div className="space-y-3 rounded-control border border-border-default p-3">
+                    <p className="type-label text-text-secondary">
+                      Evidence penerimaan offline
+                    </p>
+                    <Input
+                      value={acceptance.approver_name}
+                      onChange={(event) =>
+                        setAcceptance((current) => ({
+                          ...current,
+                          approver_name: event.target.value,
+                        }))
+                      }
+                      placeholder="Nama approver customer"
+                      aria-label="Nama approver customer"
+                    />
+                    <Input
+                      value={acceptance.approver_identity}
+                      onChange={(event) =>
+                        setAcceptance((current) => ({
+                          ...current,
+                          approver_identity: event.target.value,
+                        }))
+                      }
+                      placeholder="Email atau identitas approver"
+                      aria-label="Identitas approver customer"
+                    />
+                    <Input
+                      type="datetime-local"
+                      value={acceptance.accepted_at}
+                      max={new Date().toISOString().slice(0, 16)}
+                      onChange={(event) =>
+                        setAcceptance((current) => ({
+                          ...current,
+                          accepted_at: event.target.value,
+                        }))
+                      }
+                      aria-label="Waktu penerimaan"
+                    />
+                    <select
+                      value={acceptance.channel}
+                      onChange={(event) =>
+                        setAcceptance((current) => ({
+                          ...current,
+                          channel: event.target.value,
+                        }))
+                      }
+                      className="min-h-11 w-full rounded-control border border-border-default bg-surface-default px-3 text-sm"
+                      aria-label="Channel penerimaan"
+                    >
+                      <option value="email">Email</option>
+                      <option value="signed_document">Dokumen bertanda tangan</option>
+                      <option value="meeting_minutes">Notulen rapat</option>
+                      <option value="messaging">Pesan</option>
+                      <option value="other">Lainnya</option>
+                    </select>
+                    <Input
+                      value={acceptance.evidence_reference}
+                      onChange={(event) =>
+                        setAcceptance((current) => ({
+                          ...current,
+                          evidence_reference: event.target.value,
+                        }))
+                      }
+                      placeholder="Referensi evidence (ID/path/URL)"
+                      aria-label="Referensi evidence"
+                    />
+                  </div>
+                )}
                 <Input
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}

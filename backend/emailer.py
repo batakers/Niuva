@@ -36,7 +36,15 @@ def _wrap(title: str, body_html: str) -> str:
     """
 
 
-async def send_email(to_email: str, subject: str, title: str, body_html: str, db=None, user_id: str = None):
+async def send_email(
+    to_email: str,
+    subject: str,
+    title: str,
+    body_html: str,
+    db=None,
+    user_id: str = None,
+    idempotency_key: str | None = None,
+):
     """Send email via Resend; always store an in-app notification as fallback."""
     html = _wrap(title, body_html)
     if db is not None:
@@ -57,7 +65,17 @@ async def send_email(to_email: str, subject: str, title: str, body_html: str, db
         logger.info(f"[EMAIL-MOCK] To {to_email} | {subject}")
         return {"status": "mock", "to": to_email}
 
-    params = {"from": SENDER_EMAIL, "to": [to_email], "subject": subject, "html": html}
+    params = {
+        "from": SENDER_EMAIL,
+        "to": [to_email],
+        "subject": subject,
+        "html": html,
+        **(
+            {"headers": {"Idempotency-Key": idempotency_key}}
+            if idempotency_key
+            else {}
+        ),
+    }
     try:
         result = await asyncio.to_thread(resend.Emails.send, params)
         return {"status": "sent", "id": result.get("id")}

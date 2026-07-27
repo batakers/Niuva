@@ -7,6 +7,7 @@ sold, and the catalog is free to move on afterwards.
 """
 
 import asyncio
+from datetime import datetime, timezone
 
 import pytest
 
@@ -113,7 +114,7 @@ async def active_project(db, service):
         expected_version=quote["version"],
         operation_id="op-revision",
         reason="Menambahkan item katalog",
-        scope_snapshot={"company": "PT Contoh"},
+        scope_snapshot=quote["current_version"]["scope_snapshot"],
         items=[
             {
                 "description": "Desk sign biru",
@@ -126,7 +127,7 @@ async def active_project(db, service):
         actor=actor,
     )
     quote = revised
-    for target in ["internal_review", "sent", "accepted"]:
+    for target in ["internal_review", "sent"]:
         quote = await service.transition_quote(
             quote["id"],
             target_status=target,
@@ -135,6 +136,17 @@ async def active_project(db, service):
             reason=f"Move to {target}",
             actor=actor,
         )
+    quote = await service.accept_quote(
+        quote["id"],
+        expected_version=quote["version"],
+        operation_id="op-second-accepted",
+        reason="Customer approval recorded",
+        approver={"name": "Ayu", "identity": "ayu@example.com"},
+        accepted_at=datetime.now(timezone.utc),
+        channel="email",
+        evidence_reference="email-thread-wo",
+        actor=actor,
+    )
     created = await service.create_project_from_quote(
         quote["id"],
         expected_version=quote["version"],
@@ -215,6 +227,39 @@ async def run_replayed_creation_returns_the_same_work_order():
 
 def test_a_replayed_operation_does_not_create_a_second_run():
     asyncio.run(run_replayed_creation_returns_the_same_work_order())
+
+
+def test_cumulative_work_orders_cannot_exceed_accepted_quantity():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        project, actor = await active_project(db, service)
+        first = await service.create_work_order(
+            project["id"],
+            expected_version=project["version"],
+            operation_id="op-cap-first",
+            reason="Batch pertama",
+            variant_id="var-1",
+            quantity=3,
+            actor=actor,
+        )
+        current_project = await service.get_project(project["id"])
+        with pytest.raises(B2BDomainError) as rejected:
+            await service.create_work_order(
+                project["id"],
+                expected_version=current_project["version"],
+                operation_id="op-cap-over",
+                reason="Melebihi accepted quantity",
+                variant_id="var-1",
+                quantity=2,
+                actor=actor,
+            )
+        assert first["quantity"] == 3
+        assert rejected.value.code == "work_order_quote_quantity_exceeded"
+        assert rejected.value.details["remaining_quantity"] == 1
+        assert len(db.work_orders.items) == 1
+
+    asyncio.run(scenario())
 
 
 async def run_unquoted_variant_is_refused():

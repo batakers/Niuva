@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 
 import pytest
 
@@ -10,7 +11,7 @@ from tests.test_b2b_quote_lifecycle import converted_quote
 
 async def accepted_quote(service):
     quote, actor = await converted_quote(service)
-    for target in ["internal_review", "sent", "accepted"]:
+    for target in ["internal_review", "sent"]:
         quote = await service.transition_quote(
             quote["id"],
             target_status=target,
@@ -19,6 +20,17 @@ async def accepted_quote(service):
             reason=f"Move to {target}",
             actor=actor,
         )
+    quote = await service.accept_quote(
+        quote["id"],
+        expected_version=quote["version"],
+        operation_id="op-accepted",
+        reason="Customer approval recorded",
+        approver={"name": "Ayu", "identity": "ayu@example.com"},
+        accepted_at=datetime.now(timezone.utc),
+        channel="email",
+        evidence_reference="email-thread-001",
+        actor=actor,
+    )
     return quote, actor
 
 
@@ -66,7 +78,7 @@ def test_accepted_quote_creates_exactly_one_project():
         assert first["project"]["source_quote_version_id"] == quote[
             "accepted_version_id"
         ]
-        assert first["project"]["quote_snapshot"]["revision"] == 1
+        assert first["project"]["quote_snapshot"]["revision"] == 2
         assert first["quote"]["project_id"] == first["project"]["id"]
         assert first["quote"]["permitted_next_actions"] == []
 

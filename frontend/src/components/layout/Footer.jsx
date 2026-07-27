@@ -1,16 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { profileContent } from "@/components/brand/CompanyProfileBlocks";
+import { HAS_CONFIGURED_BACKEND, api } from "@/lib/api";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const [settings, setSettings] = useState(null);
+  useEffect(() => {
+    if (!HAS_CONFIGURED_BACKEND) return undefined;
+    let active = true;
+    api.get("/settings").then((response) => {
+      if (active) setSettings(response.data);
+    }).catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+  const contact = {
+    location: settings?.address || profileContent.contact.location,
+    email: settings?.email || profileContent.contact.email,
+    whatsapp: settings?.whatsapp || profileContent.contact.whatsapp,
+    whatsappHref: settings?.whatsapp
+      ? `https://wa.me/${String(settings.whatsapp).replace(/\D/g, "")}`
+      : profileContent.contact.whatsappHref,
+  };
   const navigation = [
     { label: "Home", to: "/" },
     { label: "About", to: "/about" },
     { label: "Capabilities", to: "/capabilities" },
     { label: "Projects", to: "/projects" },
     { label: "FAQ", to: "/faq" },
+    { label: "Retail", to: "/retail" },
     { label: "Contact", to: "/contact" },
   ];
 
@@ -40,15 +61,15 @@ export function Footer() {
             <div>
               <h2 className="text-base font-bold text-text-primary">Kontak</h2>
               <ul className="mt-4 space-y-3 break-words text-sm leading-6 text-text-secondary md:text-base">
-                <li>{profileContent.contact.location}</li>
+                <li>{contact.location}</li>
                 <li>
-                  <a href={`mailto:${profileContent.contact.email}`} className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
-                    {profileContent.contact.email}
+                  <a href={`mailto:${contact.email}`} className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
+                    {contact.email}
                   </a>
                 </li>
                 <li>
-                  <a href={profileContent.contact.whatsappHref} className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
-                    WhatsApp {profileContent.contact.whatsapp}
+                  <a href={contact.whatsappHref} className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
+                    WhatsApp {contact.whatsapp}
                   </a>
                 </li>
               </ul>

@@ -71,7 +71,7 @@ describe("CMS lifecycle wiring", () => {
 describe("Rollback carries a real reason", () => {
   test("the reason comes from the operator, not a canned string", () => {
     // A canned reason would stamp every rollback with the same sentence.
-    expect(editorSource).toContain("contentApi.rollback(blockId, versionId, reason.trim())");
+    expect(editorSource).toContain("versionId,\n        reason.trim(),\n        block.version,");
     expect(editorSource).not.toContain('t("content.rollbackReason")');
     expect(editorSource).toContain('t("content.rollbackReasonRequired")');
   });

@@ -14,8 +14,13 @@ class FakeCursor:
     def __init__(self, items):
         self.items = [dict(item) for item in items]
 
-    def sort(self, key, direction):
-        self.items.sort(key=lambda item: item.get(key, 0), reverse=direction < 0)
+    def sort(self, key, direction=None):
+        declarations = key if isinstance(key, list) else [(key, direction)]
+        for field, field_direction in reversed(declarations):
+            self.items.sort(
+                key=lambda item: item.get(field, 0),
+                reverse=field_direction < 0,
+            )
         return self
 
     def limit(self, value):
@@ -33,6 +38,10 @@ class FakeCollection:
     @classmethod
     def matches(cls, item, query):
         for key, expected in query.items():
+            if key == "$or":
+                if not any(cls.matches(item, branch) for branch in expected):
+                    return False
+                continue
             actual = item.get(key)
             if isinstance(expected, dict):
                 if "$ne" in expected and actual == expected["$ne"]:
@@ -40,6 +49,10 @@ class FakeCollection:
                 if "$in" in expected and actual not in expected["$in"]:
                     return False
                 if "$exists" in expected and (key in item) != expected["$exists"]:
+                    return False
+                if "$lt" in expected and not (
+                    actual is not None and actual < expected["$lt"]
+                ):
                     return False
                 continue
             if actual != expected:
@@ -282,6 +295,11 @@ async def run_publish_and_public_boundary():
         body = public.json()
         assert body["product"]["slug"] == "desk-sign"
         assert body["variants"][0]["stock_status"] == "out_of_stock"
+        assert body["cta_state"] == "discovery_only"
+        listing = await api.get("/api/catalog/products?limit=24")
+        assert listing.status_code == 200
+        assert listing.json()["next_cursor"] is None
+        assert listing.json()["items"][0]["product"]["slug"] == "desk-sign"
         serialized = str(body)
         for internal in (
             "supplier_reference",

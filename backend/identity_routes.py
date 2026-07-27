@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
 from audit import append_identity_governance_event
+from password_policy import validate_password
 from permissions import CUSTOMER_ROLES, INTERNAL_ROLES, validate_roles
 
 
@@ -28,7 +29,7 @@ class StaffInvitationRequest(BaseModel):
 
 class StaffInvitationAcceptRequest(BaseModel):
     token: str = Field(min_length=32, max_length=500)
-    password: str = Field(min_length=8, max_length=256)
+    password: str = Field(min_length=1, max_length=256)
 
 
 class StaffRoleAssignmentRequest(BaseModel):
@@ -152,6 +153,7 @@ def build_identity_router(
     async def accept_staff_invitation(payload: StaffInvitationAcceptRequest):
         database = get_db()
         guard = get_transaction_guard()
+        validate_password(payload.password)
         digest = token_hash(payload.token)
         created = {}
 

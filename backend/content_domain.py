@@ -81,8 +81,39 @@ def build_version_snapshot(block: dict, *, actor_id: str, reason: str, event: st
     }
 
 
+def build_publication_snapshot(
+    block: dict,
+    *,
+    version_id: str,
+    activates_at,
+    actor_id: str,
+) -> dict:
+    """Immutable public payload detached from the mutable working revision."""
+    return {
+        "id": str(uuid.uuid4()),
+        "content_block_id": block["id"],
+        "content_type": block["content_type"],
+        "slug": block["slug"],
+        "fields": deepcopy(block["fields"]),
+        "source_version_id": version_id,
+        "source_version": block["version"],
+        "activates_at": activates_at,
+        "retired_at": None,
+        "created_by": actor_id,
+        "created_at": block["updated_at"],
+        "updated_at": block["updated_at"],
+    }
+
+
 def project_block_for_public(block: dict) -> dict:
-    return {key: deepcopy(value) for key, value in block.items() if key in PUBLIC_BLOCK_FIELDS}
+    projected = {
+        key: deepcopy(value)
+        for key, value in block.items()
+        if key in PUBLIC_BLOCK_FIELDS
+    }
+    if block.get("content_block_id"):
+        projected["id"] = block["content_block_id"]
+    return projected
 
 
 # The publication lifecycle, matching the portfolio one: work is reviewed and

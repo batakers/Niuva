@@ -150,7 +150,7 @@ export default function PrivacyPolicyPage() {
             <SectionHeader
               eyebrow="Cookie & Penyimpanan Lokal"
               title="Niuva tidak menggunakan cookie pelacakan atau analitik pihak ketiga."
-              body="Website ini hanya menyimpan preferensi bahasa dan token sesi login di penyimpanan lokal browser (localStorage) untuk kebutuhan fungsional. Tidak ada cookie pelacakan iklan atau analitik pihak ketiga yang dipasang."
+              body="Website ini menyimpan preferensi bahasa di penyimpanan lokal dan sesi login dalam cookie aman HttpOnly. Tidak ada cookie pelacakan iklan atau analitik pihak ketiga yang dipasang."
               align="split"
             />
           </PageContainer>

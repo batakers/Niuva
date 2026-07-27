@@ -53,7 +53,7 @@ export default function AdminLogin() {
 
     try {
       const { data } = await api.post("/auth/admin/login", { email, password });
-      login(data.token, data.user);
+      login(data.user);
       navigate(destination, { replace: true });
     } catch (requestError) {
       setError(formatApiError(requestError.response?.data?.detail));

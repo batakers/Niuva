@@ -38,6 +38,8 @@ def is_allowlisted_reference(reference_type: str | None) -> bool:
 
 def deep_link_for(reference_type: str | None, reference_id: str | None) -> str | None:
     """Build the in-app path for a reference, or nothing if it is not allowed."""
+    if reference_type is None:
+        return None
     template = NOTIFICATION_REFERENCE_ROUTES.get(reference_type)
     if template is None:
         return None

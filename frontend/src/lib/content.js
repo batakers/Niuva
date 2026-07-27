@@ -7,16 +7,36 @@ export const contentApi = {
   list: (contentType) => unwrap(api.get("/admin/content", { params: contentType ? { content_type: contentType } : {} })),
   get: (id) => unwrap(api.get(`/admin/content/${id}`)),
   create: (payload) => unwrap(api.post("/admin/content", payload)),
-  update: (id, fields) => unwrap(api.put(`/admin/content/${id}`, { fields })),
+  update: (id, fields, expectedVersion, reason) =>
+    unwrap(api.put(`/admin/content/${id}`, {
+      fields,
+      expected_version: expectedVersion,
+      reason,
+    })),
   validate: (id) => unwrap(api.post(`/admin/content/${id}/validate`)),
-  publish: (id, reason, scheduledAt) => unwrap(api.post(`/admin/content/${id}/publish`, { reason, scheduled_at: scheduledAt || null })),
-  rollback: (id, versionId, reason) => unwrap(api.post(`/admin/content/${id}/rollback`, { version_id: versionId, reason })),
-  archive: (id, reason) => unwrap(api.post(`/admin/content/${id}/archive`, { reason })),
-  transition: (id, targetStatus, reason) =>
+  publish: (id, reason, expectedVersion, scheduledAt) =>
+    unwrap(api.post(`/admin/content/${id}/publish`, {
+      reason,
+      expected_version: expectedVersion,
+      scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+    })),
+  rollback: (id, versionId, reason, expectedVersion) =>
+    unwrap(api.post(`/admin/content/${id}/rollback`, {
+      version_id: versionId,
+      reason,
+      expected_version: expectedVersion,
+    })),
+  archive: (id, reason, expectedVersion) =>
+    unwrap(api.post(`/admin/content/${id}/archive`, {
+      reason,
+      expected_version: expectedVersion,
+    })),
+  transition: (id, targetStatus, reason, expectedVersion) =>
     unwrap(
       api.post(`/admin/content/${id}/transitions`, {
         target_status: targetStatus,
         reason,
+        expected_version: expectedVersion,
       })
     ),
   versions: (id) => unwrap(api.get(`/admin/content/${id}/versions`)),

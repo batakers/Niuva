@@ -42,8 +42,8 @@ export function Navbar() {
       50
     );
   };
-  const signOut = () => {
-    logout();
+  const signOut = async () => {
+    await logout();
     window.location.replace("/");
   };
   const isActive = (item) => loc.pathname === item.to || item.aliases?.includes(loc.pathname);
@@ -108,6 +108,11 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-2 sm:flex">
+          {!isOperationalRoute && (
+            <Link to="/retail" className={quietPillClass}>
+              Retail
+            </Link>
+          )}
           {isOperationalRoute && (
             <button
               data-testid="language-toggle"
@@ -187,6 +192,13 @@ export function Navbar() {
               {item.label}
             </Link>
           ))}
+          <Link
+            to="/retail"
+            aria-current={loc.pathname.startsWith("/retail") ? "page" : undefined}
+            className="mt-2 rounded-control border border-border-default bg-surface-muted px-4 py-4 text-lg font-semibold text-text-primary"
+          >
+            Retail · Explore
+          </Link>
           {/* 380px is retained only for the two compact operational actions. */}
           <div className={`mt-4 grid gap-3 border-t border-border-default pt-4 ${isOperationalRoute ? "min-[380px]:grid-cols-2" : ""}`}>
             {isOperationalRoute && (

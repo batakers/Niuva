@@ -25,6 +25,20 @@ module.exports = defineConfig({
   retries: 0,
   workers: 1,
   reporter: [["list"]],
+  webServer:
+    process.env.PLAYWRIGHT_START_SERVER === "true"
+      ? {
+          command: "npm start",
+          url: BASE_URL,
+          reuseExistingServer: false,
+          timeout: 120000,
+          env: {
+            ...process.env,
+            BROWSER: "none",
+            CI: "false",
+          },
+        }
+      : undefined,
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",

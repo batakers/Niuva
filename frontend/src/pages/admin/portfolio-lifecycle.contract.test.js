@@ -41,12 +41,12 @@ describe("Authoring and approving are different authorities", () => {
   test("only publishing and scheduling need publish authority", () => {
     expect(PORTFOLIO_ACTION_PERMISSIONS.publish).toBe("content.publish");
     expect(PORTFOLIO_ACTION_PERMISSIONS.schedule).toBe("content.publish");
+    expect(PORTFOLIO_ACTION_PERMISSIONS.archive).toBe("content.archive");
     for (const action of [
       "submit_review",
       "return_to_draft",
       "approve_preview",
       "return_to_review",
-      "archive",
       "restore",
     ]) {
       expect(PORTFOLIO_ACTION_PERMISSIONS[action]).toBe("content.write");

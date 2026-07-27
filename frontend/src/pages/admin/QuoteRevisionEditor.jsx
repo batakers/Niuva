@@ -243,9 +243,9 @@ export default function QuoteRevisionEditor() {
     );
   }
 
-  // The backend only accepts a revision from revision_requested. Saying so up
-  // front beats letting the operator fill a long form and lose it to a 409.
-  if (quote.status !== "revision_requested") {
+  // Initial authoring is a new immutable draft revision; later authoring opens
+  // again after a customer revision request.
+  if (!["draft", "revision_requested"].includes(quote.status)) {
     return (
       <AdminLayout title={t("b2b.revisionEditor")}>
         {backLink}

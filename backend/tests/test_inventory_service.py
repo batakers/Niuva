@@ -126,6 +126,7 @@ class FakeDatabase:
         self.inventory_balances = FakeCollection()
         self.stock_movements = FakeCollection()
         self.inventory_reservations = FakeCollection()
+        self.inventory_adjustment_requests = FakeCollection()
         self.restock_alerts = FakeCollection()
         self.notifications = FakeCollection()
         self.audit_events = FakeCollection()
@@ -306,6 +307,62 @@ async def run_operation_idempotency_and_rollback():
 
 def test_operation_idempotency_conflict_and_negative_rollback():
     asyncio.run(run_operation_idempotency_and_rollback())
+
+
+async def run_adjustment_requires_independent_approval():
+    service, db = build_service()
+    await service.apply_operation(
+        actor=WAREHOUSE,
+        payload=operation("12111111-1111-1111-1111-111111111111"),
+    )
+    request = await service.create_adjustment_request(
+        actor=WAREHOUSE,
+        payload={
+            "request_operation_id": "12222222-2222-2222-2222-222222222222",
+            "subject_type": "material",
+            "subject_id": "mat-1",
+            "on_hand_delta": "-2",
+            "reference_type": "cycle_count",
+            "reference_id": "count-1",
+            "expected_balance_version": 1,
+            "reason": "Cycle count found a discrepancy",
+        },
+    )
+    assert request["status"] == "pending"
+    with pytest.raises(InventoryError) as self_approval:
+        await service.approve_adjustment_request(
+            request["id"],
+            expected_version=1,
+            operation_id="12333333-3333-3333-3333-333333333333",
+            reason="Approve own request",
+            actor=WAREHOUSE,
+        )
+    assert self_approval.value.code == "self_approval_forbidden"
+
+    approved = await service.approve_adjustment_request(
+        request["id"],
+        expected_version=1,
+        operation_id="12444444-4444-4444-4444-444444444444",
+        reason="Manager verified cycle-count evidence",
+        actor=MANAGER,
+    )
+    assert approved["request"]["status"] == "approved"
+    assert approved["balance"]["on_hand"] == "8"
+    assert len(db.stock_movements.items) == 2
+
+    replayed = await service.approve_adjustment_request(
+        request["id"],
+        expected_version=1,
+        operation_id="12444444-4444-4444-4444-444444444444",
+        reason="Manager verified cycle-count evidence",
+        actor=MANAGER,
+    )
+    assert replayed["replayed"] is True
+    assert len(db.stock_movements.items) == 2
+
+
+def test_adjustment_is_atomic_single_use_and_cannot_be_self_approved():
+    asyncio.run(run_adjustment_requires_independent_approval())
 
 
 async def run_compare_and_set_retry():

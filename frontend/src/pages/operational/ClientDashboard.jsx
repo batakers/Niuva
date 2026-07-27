@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FileTerminal, Package, Plus } from "lucide-react";
+import { FileTerminal, Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { OperationalLayout } from "@/components/layout/Layout";
@@ -52,14 +52,10 @@ export default function ClientDashboard() {
                 {t("dash.welcomeBack")}, {user?.name}
               </p>
             </div>
-            <Link to="/order" data-testid="new-order-btn">
-              <Button
-                size="lg"
-                className="font-mono text-xs uppercase tracking-widest"
-              >
-                <Plus className="mr-2 h-4 w-4" /> {t("dash.newOrder")}
-              </Button>
-            </Link>
+            <div className="max-w-sm border border-status-warning/40 bg-status-warning/10 p-3 text-sm text-text-secondary">
+              Pembuatan pesanan legacy dinonaktifkan. Gunakan katalog Retail
+              untuk discovery atau ajukan kebutuhan melalui Contact.
+            </div>
           </div>
         </div>
 
@@ -90,12 +86,12 @@ export default function ClientDashboard() {
               <p className="text-sm text-text-secondary mb-6">
                 {t("dash.noOrders")}
               </p>
-              <Link to="/order">
+              <Link to="/retail">
                 <Button
                   variant="outline"
                   className="font-mono text-xs uppercase tracking-widest"
                 >
-                  <Plus className="mr-2 h-4 w-4" /> {t("dash.createFirstOrder")}
+                  Lihat katalog Retail
                 </Button>
               </Link>
             </div>

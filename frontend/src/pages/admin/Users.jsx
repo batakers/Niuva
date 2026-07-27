@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Users } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, ShieldCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
@@ -27,18 +27,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
-import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
 import { fmtDay } from "@/lib/format";
 import { accountStatusLabel } from "@/lib/identityAccess";
 import { hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
 
-/* ─────────────────────────────────────────────────────────────────────────────
- * Badge Components
- * ────────────────────────────────────────────────────────────────────────── */
+const STAFF_ROLES = [
+  "content_editor",
+  "catalog_manager",
+  "warehouse",
+  "order_admin",
+  "sales_estimator",
+  "designer_engineer",
+  "production",
+  "quality_control",
+  "finance",
+  "manager_approver",
+];
 
-function AccountStatusBadge({ status }) {
+function StatusBadge({ status }) {
   const active = status === "active";
   return (
     <span
@@ -53,69 +61,57 @@ function AccountStatusBadge({ status }) {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
- * Main Component
- * ────────────────────────────────────────────────────────────────────────── */
-
 export default function AdminUsers() {
-  const { t } = useI18n();
   const { user } = useAuth();
-
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [statusTarget, setStatusTarget] = useState(null);
+  const canManage = hasPermission(user, "roles.manage");
 
-  const canCreateUser = hasPermission(user, "customers.manage");
-
-  const loadUsers = () =>
-    api.get("/admin/users").then((usersResponse) => setItems(usersResponse.data));
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await api.get("/admin/users");
+      setItems(response.data);
+    } catch (requestError) {
+      setError(formatApiError(requestError.response?.data?.detail));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    api
-      .get("/admin/users")
-      .then((usersResponse) => {
-        if (!active) return;
-        setItems(usersResponse.data);
-      })
-      .catch((requestError) => {
-        if (!active) return;
-        setError(formatApiError(requestError.response?.data?.detail));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    loadUsers();
+  }, [loadUsers]);
 
   const filteredItems = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return items;
     return items.filter((item) =>
-      [item.name, item.email].some((field) =>
-        field?.toLowerCase().includes(term)
-      )
+      [item.name, item.email, ...(item.roles || [])].some((field) =>
+        field?.toLowerCase().includes(term),
+      ),
     );
   }, [items, search]);
 
   return (
     <AdminLayout
-      title={t("admin.users")}
-      subtitle={t("users.subtitle")}
+      title="Staff Governance"
+      subtitle="Undangan, role, dan status akun internal. Customer dikelola terpisah."
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between gap-3">
           <p className="type-label text-text-secondary">
-            {t("users.total")}: {items.length}
+            Total staff: {items.length}
           </p>
-          {canCreateUser && (
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
+          {canManage && (
+            <Button size="sm" onClick={() => setInviteOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              {t("users.addUser")}
+              Undang staff
             </Button>
           )}
         </SurfacePanelHeader>
@@ -124,48 +120,41 @@ export default function AdminUsers() {
           <div className="border-b border-border-default px-4 py-3">
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("users.searchPlaceholder")}
-              aria-label={t("common.search")}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cari nama, email, atau role…"
+              aria-label="Cari staff"
               className="max-w-sm"
             />
           </div>
         )}
 
         {loading ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("users.identity")}</TableHead>
-                  <TableHead>{t("common.status")}</TableHead>
-                  <TableHead>{t("common.created")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <SkeletonTableRow key={i} columns={3} />
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <Table>
+            <TableBody>
+              {[1, 2, 3].map((item) => (
+                <SkeletonTableRow key={item} columns={4} />
+              ))}
+            </TableBody>
+          </Table>
         ) : error ? (
           <ErrorState error={error} onRetry={loadUsers} />
         ) : items.length === 0 ? (
-          <EmptyState icon={Users} className="py-16">
-            {t("users.empty")}
+          <EmptyState icon={ShieldCheck} className="py-16">
+            Belum ada staff yang dapat ditampilkan.
           </EmptyState>
         ) : filteredItems.length === 0 ? (
           <EmptyState icon={Users} className="py-16">
-            {t("users.noMatch")}
+            Staff tidak ditemukan.
           </EmptyState>
         ) : (
           <Table data-testid="admin-users-table">
             <TableHeader>
               <TableRow>
-                <TableHead>{t("users.identity")}</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-                <TableHead>{t("common.created")}</TableHead>
+                <TableHead>Identitas</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Dibuat</TableHead>
+                {canManage && <TableHead>Aksi</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -173,18 +162,32 @@ export default function AdminUsers() {
                 <TableRow key={item.id}>
                   <TableCell>
                     <p className="font-semibold text-text-primary">
-                      {item.name || t("users.unnamed")}
+                      {item.name || "Staff tanpa nama"}
                     </p>
                     <p className="mt-1 font-mono text-xs text-action-primary">
                       {item.email}
                     </p>
                   </TableCell>
-                  <TableCell>
-                    <AccountStatusBadge status={item.status} />
+                  <TableCell className="max-w-xs text-sm text-text-secondary">
+                    {(item.roles || []).join(", ") || "—"}
                   </TableCell>
+                  <TableCell><StatusBadge status={item.status} /></TableCell>
                   <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
                     {fmtDay(item.created_at)}
                   </TableCell>
+                  {canManage && (
+                    <TableCell>
+                      {item.id !== user?.id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setStatusTarget(item)}
+                        >
+                          {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -192,61 +195,171 @@ export default function AdminUsers() {
         )}
       </SurfacePanel>
 
-      {/* Create User Dialog */}
-      {canCreateUser && (
-        <CreateUserDialog
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-          onCreated={() => {
-            setCreateOpen(false);
-            loadUsers();
-          }}
-        />
+      {canManage && (
+        <>
+          <InviteStaffDialog
+            open={inviteOpen}
+            onOpenChange={setInviteOpen}
+            onCreated={loadUsers}
+          />
+          <StatusDialog
+            target={statusTarget}
+            onOpenChange={(open) => !open && setStatusTarget(null)}
+            onUpdated={loadUsers}
+          />
+        </>
       )}
     </AdminLayout>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
- * Create User Dialog — provisions a retail client via POST /admin/users
- * ────────────────────────────────────────────────────────────────────────── */
-
-function CreateUserDialog({ open, onOpenChange, onCreated }) {
-  const { t } = useI18n();
+function InviteStaffDialog({ open, onOpenChange, onCreated }) {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
-    phone: "",
-    company: "",
+    roles: [],
+    reason: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  const update = (field) => (e) =>
-    setForm((current) => ({ ...current, [field]: e.target.value }));
-
-  // Mirrors backend ClientProvisionReq: name/email/password(min 6) required.
+  const [setupToken, setSetupToken] = useState("");
   const canSubmit =
-    form.name.trim() &&
+    form.name.trim().length >= 2 &&
     form.email.trim() &&
-    form.password.length >= 6 &&
+    form.roles.length > 0 &&
+    form.reason.trim().length >= 3 &&
     !busy;
+
+  const toggleRole = (role) => {
+    setForm((current) => ({
+      ...current,
+      roles: current.roles.includes(role)
+        ? current.roles.filter((item) => item !== role)
+        : [...current.roles, role],
+    }));
+  };
 
   const submit = async () => {
     setBusy(true);
     setError("");
     try {
-      await api.post("/admin/users", {
+      const response = await api.post("/admin/staff-invitations", {
+        ...form,
         name: form.name.trim(),
         email: form.email.trim(),
-        password: form.password,
-        phone: form.phone.trim() || null,
-        company: form.company.trim() || null,
+        reason: form.reason.trim(),
       });
-      toast.success(t("users.created"));
-      setForm({ name: "", email: "", password: "", phone: "", company: "" });
-      onCreated();
+      setSetupToken(response.data.setup_token || "");
+      toast.success("Undangan staff berhasil dibuat.");
+      await onCreated();
+    } catch (requestError) {
+      setError(formatApiError(requestError.response?.data?.detail));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const close = () => {
+    if (busy) return;
+    setForm({ name: "", email: "", roles: [], reason: "" });
+    setSetupToken("");
+    setError("");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && close()}>
+      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Undang staff</DialogTitle>
+          <DialogDescription>
+            Pilih role internal. Token setup hanya ditampilkan sekali dan harus
+            dibagikan melalui kanal yang disetujui.
+          </DialogDescription>
+        </DialogHeader>
+        {setupToken ? (
+          <div className="space-y-4">
+            <Alert>Simpan token setup ini sebelum menutup dialog.</Alert>
+            <Input readOnly value={setupToken} aria-label="Token setup staff" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <FormField label="Nama">
+              <Input
+                value={form.name}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+            </FormField>
+            <FormField label="Email">
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, email: event.target.value }))
+                }
+              />
+            </FormField>
+            <fieldset>
+              <legend className="mb-2 type-label text-text-primary">Role</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {STAFF_ROLES.map((role) => (
+                  <label key={role} className="flex min-h-11 items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={form.roles.includes(role)}
+                      onChange={() => toggleRole(role)}
+                    />
+                    <span className="text-sm">{role}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <FormField label="Alasan">
+              <Input
+                value={form.reason}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, reason: event.target.value }))
+                }
+              />
+            </FormField>
+            {error && <Alert>{error}</Alert>}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={close} disabled={busy}>
+            Tutup
+          </Button>
+          {!setupToken && (
+            <Button onClick={submit} disabled={!canSubmit} loading={busy}>
+              Buat undangan
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StatusDialog({ target, onOpenChange, onUpdated }) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const nextAction = target?.status === "active" ? "deactivate" : "reactivate";
+
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await api.post(`/admin/staff/${target.id}/${nextAction}`, {
+        expected_version: target.version,
+        reason: reason.trim(),
+      });
+      toast.success("Status staff diperbarui.");
+      setReason("");
+      onOpenChange(false);
+      await onUpdated();
     } catch (requestError) {
       setError(formatApiError(requestError.response?.data?.detail));
     } finally {
@@ -255,46 +368,28 @@ function CreateUserDialog({ open, onOpenChange, onCreated }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+    <Dialog open={Boolean(target)} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("users.addUser")}</DialogTitle>
-          <DialogDescription>{t("users.addUserDesc")}</DialogDescription>
+          <DialogTitle>
+            {nextAction === "deactivate" ? "Nonaktifkan" : "Aktifkan"} staff
+          </DialogTitle>
+          <DialogDescription>{target?.email}</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <FormField label={t("common.name")}>
-            <Input value={form.name} onChange={update("name")} />
-          </FormField>
-          <FormField label={t("common.email")}>
-            <Input type="email" value={form.email} onChange={update("email")} />
-          </FormField>
-          <FormField label={t("common.password")}>
-            <Input
-              type="password"
-              value={form.password}
-              onChange={update("password")}
-              placeholder={t("users.passwordHint")}
-            />
-          </FormField>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label={t("users.phone")}>
-              <Input value={form.phone} onChange={update("phone")} />
-            </FormField>
-            <FormField label={t("users.company")}>
-              <Input value={form.company} onChange={update("company")} />
-            </FormField>
-          </div>
-
-          {error && <Alert>{error}</Alert>}
-        </div>
-
+        <FormField label="Alasan perubahan">
+          <Input value={reason} onChange={(event) => setReason(event.target.value)} />
+        </FormField>
+        {error && <Alert>{error}</Alert>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            {t("common.cancel")}
+            Batal
           </Button>
-          <Button onClick={submit} disabled={!canSubmit} loading={busy}>
-            {t("users.createUser")}
+          <Button
+            onClick={submit}
+            disabled={reason.trim().length < 3 || busy}
+            loading={busy}
+          >
+            Konfirmasi
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,5 +1,6 @@
 import { api, unwrap } from "./api";
 
+
 export function emptyCategoryDraft() {
   return {
     name: "",
@@ -9,7 +10,6 @@ export function emptyCategoryDraft() {
     status: "active",
   };
 }
-
 
 export function categoryDraftFrom(category = {}) {
   return {
@@ -21,7 +21,6 @@ export function categoryDraftFrom(category = {}) {
   };
 }
 
-
 export function buildCategoryPayload(form) {
   return {
     name: String(form.name || "").trim(),
@@ -31,7 +30,6 @@ export function buildCategoryPayload(form) {
     status: form.status || "active",
   };
 }
-
 
 export function validCategoryDraft(form) {
   const payload = buildCategoryPayload(form);
@@ -87,3 +85,42 @@ export const catalogApi = {
   archiveProduct: (id, reason) => unwrap(api.post(`/admin/products/${id}/archive`, { reason })),
   bulkArchiveProducts: (productIds, reason) => unwrap(api.post("/admin/products/bulk-archive", { product_ids: productIds, reason })),
 };
+
+export const publicCatalogApi = {
+  categories: () => unwrap(api.get("/catalog/categories")),
+  products: ({ cursor = null, limit = 24 } = {}) =>
+    unwrap(
+      api.get("/catalog/products", {
+        params: {
+          limit,
+          ...(cursor ? { cursor } : {}),
+        },
+      }),
+    ),
+  product: (slug) => unwrap(api.get(`/catalog/products/${encodeURIComponent(slug)}`)),
+};
+
+export function formatCatalogPrice(product, variants = []) {
+  const currency = product?.currency || "IDR";
+  const values = variants
+    .map((variant) => Number(variant.fixed_price || 0))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const base = Number(product?.price_from || 0);
+  const amount = base > 0 ? base : values.length ? Math.min(...values) : 0;
+  if (product?.pricing_mode === "quote_required" || amount <= 0) {
+    return "Harga berdasarkan penawaran";
+  }
+  return `Mulai ${new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount)}`;
+}
+
+export function availabilityLabel(variants = []) {
+  const statuses = new Set(variants.map((variant) => variant.stock_status));
+  if (statuses.has("in_stock")) return "Tersedia";
+  if (statuses.has("low_stock")) return "Stok terbatas";
+  if (statuses.has("made_to_order")) return "Dibuat sesuai pesanan";
+  return "Belum tersedia";
+}

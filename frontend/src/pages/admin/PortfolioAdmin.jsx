@@ -38,12 +38,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
 
 import { StatusBadge } from "@/components/operational/StatusStepper";
+import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
+import { hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
 
 export default function AdminPortfolio() {
   const { t, lang } = useI18n();
+  const { user } = useAuth();
+  const canWrite = hasPermission(user, "content.write");
+  const canArchive = hasPermission(user, "content.archive");
   const [items, setItems] = useState([]);
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -75,6 +80,9 @@ export default function AdminPortfolio() {
       // partial order, so two people reordering at once cannot interleave.
       const { data } = await api.post("/admin/portfolio/reorder", {
         ordered_ids: ordered,
+        expected_versions: Object.fromEntries(
+          items.map((entry) => [entry.id, entry.version]),
+        ),
       });
       setItems(data);
     } catch (err) {
@@ -125,9 +133,11 @@ export default function AdminPortfolio() {
         <p className="type-label text-text-secondary">
           {t("portfolio.published")}: {items.length}
         </p>
-        <Button data-testid="add-project-btn" onClick={openNew}>
-          <Plus className="mr-2 h-4 w-4" /> {t("portfolio.addProject")}
-        </Button>
+        {canWrite && (
+          <Button data-testid="add-project-btn" onClick={openNew}>
+            <Plus className="mr-2 h-4 w-4" /> {t("portfolio.addProject")}
+          </Button>
+        )}
       </div>
 
       {/* Content */}
@@ -190,7 +200,7 @@ export default function AdminPortfolio() {
                     <span className="font-mono text-[11px] text-text-disabled">
                       #{index + 1}
                     </span>
-                    <div className="flex gap-1">
+                    {canWrite && <div className="flex gap-1">
                       <Button
                         size="icon"
                         variant="ghost"
@@ -213,7 +223,7 @@ export default function AdminPortfolio() {
                       >
                         <ArrowDown className="h-4 w-4" aria-hidden="true" />
                       </Button>
-                    </div>
+                    </div>}
                   </div>
                   <Link
                     to={`/admin/portfolio/${p.id}`}
@@ -223,7 +233,8 @@ export default function AdminPortfolio() {
                     {t("portfolio.openLifecycle")}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
-                <div className="flex gap-2">
+                {(canWrite || canArchive) && <div className="flex gap-2">
+                  {canWrite && ["draft", "review", "preview"].includes(p.status) && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -232,6 +243,8 @@ export default function AdminPortfolio() {
                   >
                     <Pencil className="h-3 w-3 mr-2" /> {t("common.edit")}
                   </Button>
+                  )}
+                  {canArchive && p.status !== "archived" && (
                   <Button
                     size="icon"
                     variant="ghost"
@@ -241,7 +254,8 @@ export default function AdminPortfolio() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                </div>
+                  )}
+                </div>}
                 </div>
               </div>
             </SurfacePanel>
@@ -262,7 +276,7 @@ export default function AdminPortfolio() {
       )}
 
       {/* Delete Confirmation */}
-      <AlertDialog
+      {canArchive && <AlertDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
@@ -291,7 +305,7 @@ export default function AdminPortfolio() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog>}
     </AdminLayout>
   );
 }

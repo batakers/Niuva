@@ -5,8 +5,8 @@ Audit date: 24 July 2026
 Last updated: 27 July 2026
 Repository baseline at last update: `origin/main` at `fd299cd`, reconciled into
 local branch by merge commit `2dbcd8b`
-Backend test baseline: local reconciled worktree after Slice B material
-transaction completion; 445 internal tests passed
+Backend test baseline: backend remediation working tree; final full regression
+is recorded in the 27 July 2026 remediation update below
 
 ## 1. Purpose and Authority
 
@@ -112,14 +112,17 @@ Backend tetap belum production-ready karena:
 
 1. insiden credential NIV-001 belum `Verified`;
 2. production account migration dan rollout granular RBAC belum dijalankan;
-3. legacy order create/status lifecycle masih memiliki integrity gap;
-4. file ownership, validation, retention, dan production storage belum
-   memenuhi ADR-002;
-5. transaction/audit boundary belum konsisten pada seluruh mutation baru dan
-   lama;
-6. login rate limit serta token/session/password policy masih terbuka;
-7. notification outbox belum memiliki delivery worker/operational
-   reconciliation lengkap dan readiness masih terbatas;
+3. migration 007 belum di-dry-run terhadap clone data nyata, belum memiliki
+   reviewed duplicate mapping, dan belum di-apply;
+4. provider, retention, malware ownership, backup, serta production storage
+   readiness pada ADR-002 masih terbuka;
+5. staging evidence untuk worker outage/recovery, readiness probes, backup
+   restore, dan auth cutover atomik belum tersedia;
+6. CRA/toolchain masih memiliki dependency debt; React Router menyisakan
+   advisory khusus RSC yang tidak reachable pada SPA BrowserRouter tetapi tetap
+   harus dipantau/migrasi;
+7. legacy order dan archived organization data dipertahankan read-only dan
+   masih memerlukan reviewed compatibility/reconciliation evidence;
 8. payment provider, shipping, tax, refund, storage, production-readiness, dan
    go-live decisions tetap terbuka.
 
@@ -648,38 +651,41 @@ Status vocabulary:
 ### BA-012 — Notification, background task, and readiness boundaries are weak
 
 - Severity: P2
-- Status: `partial`
+- Status: `resolved_in_source`
 - Evidence date: 27 July 2026
 - Notification:
   - notification feed sekarang memiliki allowlisted reference, deduplication,
     read state, unread count, dan reader isolation;
   - `notification_outbox` memiliki enqueue, pending claim, attempt count,
     delivered/exhausted state;
-  - outbox belum dihubungkan ke production delivery worker, leasing/claim
-    concurrency, schedule/backoff, atau operator reconciliation surface;
+  - outbox terhubung ke worker dengan atomic lease, retry/backoff, delivery key,
+    dan exhausted state;
   - beberapa legacy mutation masih mengirim email langsung setelah core write.
 - Background task:
-  - reservation expiry task disimpan dan dibatalkan saat shutdown;
-  - design-file auto-delete task dibuat tanpa disimpan/cancel saat shutdown;
-  - multi-instance coordination/leader ownership belum ada.
+  - FastAPI lifespan menyimpan dan membatalkan task saat shutdown;
+  - notification delivery memakai Mongo lease sehingga duplicate delivery
+    dapat dicegah lintas worker;
+  - worker dapat dipisah dari web process melalui capability configuration.
 - Readiness:
-  - `/health/ready` hanya memakai cached transaction capability;
-  - tidak menguji current DB reachability, storage, indexes, atau background-job
-    health.
+  - `/health/ready` mengembalikan 503 dan memeriksa live DB ping,
+    transaction capability, required schema/index version, storage/email
+    capability, dan required worker health.
 
 ### BA-013 — Static quality and test reporting are not reliable merge gates
 
 - Severity: P2
-- Status: `partial`
+- Status: `partial_toolchain_debt`
 - Evidence (27 July 2026):
-  - `.github/workflows/quality-gates.yml` sekarang menjalankan `pip check`,
-    compile, full backend tests, frontend tests, dan frontend build;
-  - reconciled internal backend suite lulus 445 tests dengan tujuh documented
+  - `.github/workflows/quality-gates.yml` menjalankan `pip check`, dependency
+    audit, compile, critical lint/type checks, hermetic backend tests, frontend
+    dependency policy, frontend tests/build, dan secret scan;
+  - reconciled internal backend suite terbaru lulus 457 tests dengan tujuh documented
     replica-set skips;
-  - workflow belum menjalankan mypy, configured critical lint, atau
-    `pip-audit`;
-  - external integration suite masih bergantung pada URL/credential environment
-    dan local `frontend/.env` dapat membuatnya mencoba server yang tidak aktif;
+  - external integration suite dipisahkan menjadi explicit manually triggered
+    job dengan URL environment sendiri;
+  - React Router menyisakan advisory high khusus RSC server-action yang tidak
+    reachable pada SPA BrowserRouter ini; downgrade 7.11 ditolak karena membuka
+    advisory lama dan mematahkan resolver Jest. CRA migration tetap debt aktif;
   - old generated report mengklaim 100% pass tetapi XML menyimpan failure;
 - Evidence 24 July 2026 (historis):
   - satu failure pada full backend suite;
@@ -703,13 +709,13 @@ baru dan bukan production-rollout approval.
 
 | Plan or scope | Audit status | Safe interpretation |
 |---|---|---|
-| Backend Framework Security Upgrade | `resolved` | Terimplementasi; `pip-audit` evidence masih kurang |
+| Backend Framework Security Upgrade | `resolved` | Terimplementasi; `pip check` dan `pip-audit` terbaru lulus tanpa known vulnerability |
 | Backend Auth Phase A Login Issuance | `completed execution record` | Terimplementasi dan merged; Phase B sampai D tetap terblokir keputusan |
-| Backend Authentication Hardening | `partial` | Phase A serta forgot/reset selesai; login limiter dan policy Phase B-D masih open/deferred |
+| Backend Authentication Hardening | `implemented_in_source` | Cookie sessions, rotation/replay revocation, CSRF, Mongo limiter, password/reset policy, customer/staff boundary, dan bearer cutover disetujui oleh `DEC-REMED-001`; rollout tetap belum dilakukan |
 | Forgot & Reset Password | `implemented` | Backend/frontend implementation dan focused tests tersedia; production rollout tidak dibuktikan |
 | Admin Content Editor and Module Audit | `implemented` | Structured CMS, review/preview/schedule/version/rollback/archive dan UI tersedia; atomic adoption gap dicatat pada BA-009 |
 | Reporting, Bulk, Notifications, Dashboard | `implemented` | CSV export, per-item bulk actions, admin notifications, dan role-aware dashboard tersedia |
-| Backend Transaction/Audit Boundary Adoption | `partial` | Original Slice A dan material portion dari Slice B selesai; content atomicity, new direct blocks, catalog revision conflict, dan cleanup tetap open |
+| Backend Transaction/Audit Boundary Adoption | `implemented_in_source` | Shared guard/CAS/publication adoption mencakup content, settings, portfolio, identity, Work Order, material/inventory, dan migration manifest; production migration tetap belum dijalankan |
 | Amend Identity Access Model | `context only` + superseded role direction | Three-role target superseded; granular replacement implementation exists under DEC-ACCESS-002, production migration/rollout remains open |
 | Foundation Transaction Capability | recorded complete | 120/120 checklist selesai; real local verification sudah direproduksi 26 July 2026 |
 | Catalog/Material/Inventory Foundation | `partial` | Real transaction verification sudah terpenuhi 26 July 2026; browser permission/workflow QA masih unchecked |
@@ -718,8 +724,8 @@ baru dan bukan production-rollout approval.
 | NIV-001 History Rewrite | `open` | Implemented, verification pending; destructive execution perlu explicit approval |
 | Auth experience remediation | context only | Pending separate approval; bukan backend implementation authority |
 | Admin Studio remediation | context only | Pending separate approval; tidak mengubah backend authorization |
-| Retail Catalog Discovery | candidate with source overlap | Candidate belum approved; public catalog foundation exists tetapi bukan evidence approval slice |
-| Retail Order & Checkout | candidate with partial source foundation | Admin Retail Order aggregate exists; guest checkout, reservation, payment, dan tracking belum |
+| Retail Catalog Discovery | `implemented_in_source` | Read-only listing/detail dan secondary Homepage/navigation entry disetujui `DEC-REMED-001`; no transaction endpoint dipanggil |
+| Retail Order & Checkout | `inactive` | Source aggregate historis tetap ada, tetapi create/legacy mutation/checkout/payment/reservation/fulfillment tidak aktif |
 
 Relevant register:
 
@@ -817,21 +823,24 @@ Exit criteria:
 
 - [x] Implement approved FastAPI/Starlette security upgrade. Selesai;
       lihat BA-004.
-- [ ] Jalankan `pip-audit` dan simpan redacted result. Memerlukan approval
-      penambahan dependency tooling.
+- [x] Jalankan `pip-audit` dan simpan redacted result. Verifikasi lokal
+      27 July 2026 lulus tanpa known vulnerability.
 - [x] Fix RBAC test/runtime setelah Phase 0 decision. Granular runtime matrix,
       identity governance, migration 006, dan tests tersedia; production
       account migration/rollout tetap terbuka pada BA-002.
 - [x] Tolak disabled login sebelum token issuance. Selesai melalui Phase A;
       lihat BA-010.
-- [ ] Tambahkan login rate limit yang sesuai deployment topology. Terblokir
+- [x] Tambahkan Mongo atomic login limiter 5/account dan 20/peer-IP per 15
+      menit. Disetujui `DEC-REMED-001`, yang secara terbatas supersede deferral
       `DEC-AUTH-002`.
-- [ ] Tetapkan password/session/token policy. Terblokir `AUTH-DEC-05` dan
-      `AUTH-DEC-06`.
+- [x] Tetapkan dan implementasikan password/session/token policy pada scope
+      aplikasi sesuai `DEC-REMED-001`.
 - [ ] Tetapkan reproducible dependency boundary.
-- [ ] Konfigurasikan critical lint dan type-check gate.
+- [x] Konfigurasikan critical lint dan focused type-check gate pada
+      `.github/workflows/quality-gates.yml`.
 - [x] Jalankan reconciled internal backend suite tanpa failure. Selesai
-      27 July 2026: 445 passed, 7 documented replica-set skips, 0 failed.
+      27 July 2026: 457 passed, 7 documented replica-set skips, 0 failed,
+      14 subtests passed.
       External URL/credential suite tetap environment gate terpisah.
 
 Exit criteria:
@@ -844,17 +853,18 @@ Exit criteria:
 
 ### Phase 2 — Foundation data integrity
 
-- [ ] Terapkan central transaction boundary pada mutation yang membutuhkannya.
+- [x] Terapkan central transaction boundary pada mutation yang membutuhkannya
+      dalam scope remediation.
 - [x] Jadikan material create/update/archive/price-version dan audit atomic.
       Selesai 27 July 2026 dengan shared guard dan injected-failure regression.
-- [ ] Jadikan catalog archive dan content create/update/archive atomic.
-- [ ] Tambahkan safe catalog revision conflict behavior.
+- [x] Jadikan catalog/content/portfolio/settings mutation terkait atomic dan
+      expected-version conflict-safe.
 - [ ] Ganti monetary float dengan Decimal/minor unit.
 - [ ] Buat order number concurrency-safe dan unique.
 - [ ] Definisikan legacy order transition graph.
 - [ ] Tambahkan version check dan idempotency key.
 - [ ] Tambahkan transactional audit untuk sensitive order/payment mutation.
-- [ ] Hubungkan notification outbox/retry primitives ke delivery worker,
+- [x] Hubungkan notification outbox/retry primitives ke delivery worker,
       backoff/claim coordination, dan operator reconciliation.
 - [x] Jalankan real MongoDB replica-set tests. Selesai 26 July 2026 memakai
       `docker-compose.transaction-test.yml`; seluruh real transaction test
@@ -870,11 +880,12 @@ Exit criteria:
 
 ### Phase 3 — File, CMS, and shared order/project foundation
 
-- [ ] Implement database-backed file ownership.
+- [x] Implement database-backed file ownership.
 - [ ] Implement MIME/signature validation.
 - [ ] Implement malware scanning/quarantine boundary.
 - [ ] Implement streaming and bounded memory behavior.
-- [ ] Implement actual object retention/deletion and reconciliation.
+- [x] Implement explicit deletion/quarantine state dan metadata/object
+      reconciliation untuk adapter development.
 - [x] Implement CMS draft/review/preview/publish/schedule/version/rollback/archive.
 - [x] Implement separate Retail Order dan B2B inquiry/quote/project/work-order
       source foundations. Customer journeys, payment, dan rollout tetap open.
@@ -890,11 +901,12 @@ Exit criteria:
 
 ### Phase 4 — First Retail vertical slice
 
-- [ ] Dapatkan written decision untuk first Retail vertical slice.
-- [ ] Dapatkan protected-scope implementation approval.
-- [ ] Reconcile candidate catalog-discovery spec.
-- [ ] Buat bounded implementation plan dengan file scope, acceptance, test,
-      migration, rollback, feature flag, dan commit boundary.
+- [x] Dapatkan written decision untuk first Retail vertical slice:
+      `DEC-REMED-001`, 27 July 2026.
+- [x] Dapatkan bounded protected-scope implementation approval.
+- [x] Reconcile candidate catalog-discovery spec.
+- [x] Implementasikan bounded read-only discovery dengan capability gates,
+      migration boundary, dan regression tests.
 
 Current documented candidate:
 
@@ -902,8 +914,8 @@ Current documented candidate:
 - kategori, produk, varian, safe price/ETA/availability;
 - tanpa cart, checkout, reservation, payment, atau upload.
 
-Candidate tetap **not approved for implementation** sampai ada keputusan
-tertulis.
+Slice ini **approved dan implemented in source**. Transaction capability tetap
+inactive dan production rollout belum disetujui.
 
 ### Phase 5 — Retail order, checkout, payment, and fulfillment
 
@@ -1011,21 +1023,23 @@ docs/decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md
 
 ### DEC-AUD-BE-004 — First Retail vertical slice
 
-Status: **Open**
+Status: **Resolved for bounded read-only discovery**
 
-Current documented candidate is read-only Retail catalog discovery. Approval of
-the candidate and protected scope remain separate requirements.
+Read-only Retail catalog discovery is the approved first slice. Transaction
+capabilities remain separate and inactive.
 
 Decision:
 
 ```text
-Pending user decision.
+Approved via `DEC-REMED-001`; listing/detail, safe projection, cursor
+pagination, and secondary discovery entry only.
 ```
 
 Approval source/date:
 
 ```text
-Pending.
+Explicit user approval of the NIUVA Backend Remediation dan Retail Discovery
+Plan, 27 July 2026.
 ```
 
 ## 10. Resume Procedure
@@ -1190,3 +1204,34 @@ Baseline: `origin/main` `fd299cd`, merged into
   dihapus.
 
 Tidak ada push, provider, production-readiness, atau go-live action.
+
+### 27 July 2026 — Backend remediation and Retail discovery implementation
+
+Authority: `DEC-REMED-001`, berdasarkan explicit user approval terhadap NIUVA
+Backend Remediation dan Retail Discovery Plan.
+
+- Secure cookie auth, customer/staff login split, refresh rotation/replay
+  revocation, CSRF, Mongo limiter, atomic reset, dan bootstrap containment
+  diimplementasikan.
+- Migration 007, schema/index readiness, immutable content/portfolio
+  publications, CAS, file metadata ownership, dan transaction adoption
+  diimplementasikan tanpa menjalankan production migration.
+- Read-only Retail listing/detail, secondary Homepage/navigation entry,
+  customer/staff management split, settings/portfolio integration, Quote
+  evidence acceptance, Work Order cap, inventory adjustment approval, dan
+  durable notification worker diimplementasikan.
+- Retail create, legacy create/mutation, checkout, payment, production upload,
+  Organization Portal, dan go-live tetap inactive.
+- Verification lokal:
+  - backend: 457 passed, 7 documented environment/topology skips, 14 subtests;
+  - frontend: 201 passed;
+  - Retail Playwright: 4 passed pada mobile dan desktop, termasuk controlled
+    empty/error state serta WCAG A/AA scan;
+  - optimized frontend build: passed;
+  - `pip-audit`: no known vulnerabilities;
+  - fatal flake8, focused mypy, black/isort, compile, dan `git diff --check`:
+    passed;
+  - production npm policy: hanya dua report entry dari satu advisory React
+    Router RSC-only yang tidak reachable; semua advisory lain ditolak gate.
+- NIV-001 destructive history rewrite, production migration, provider
+  selection, deployment, commit/push, dan go-live tidak dilakukan.

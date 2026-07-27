@@ -237,6 +237,29 @@ function WhyNiuvaSection() {
   );
 }
 
+function RetailDiscoverySection() {
+  return (
+    <MarketingSection id="retail-discovery" tone="muted" spacing="compact">
+      <PageContainer>
+        <div className="brand-reveal grid gap-6 rounded-feature border border-border-default bg-surface-default p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
+          <div>
+            <p className="type-label text-text-secondary">Jalur sekunder · Retail discovery</p>
+            <h2 className="mt-3 font-heading text-2xl font-bold text-text-primary md:text-3xl">
+              Jelajahi produk terpublikasi tanpa checkout.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-text-secondary md:text-base">
+              Katalog Retail menampilkan pilihan produk, harga yang disetujui, dan status ketersediaan aman. Transaksi dan pembayaran belum diaktifkan.
+            </p>
+          </div>
+          <BrandButton to="/retail" variant="secondary">
+            Jelajahi Retail
+          </BrandButton>
+        </div>
+      </PageContainer>
+    </MarketingSection>
+  );
+}
+
 export default function HomePage() {
   return (
     <MarketingLayout>
@@ -278,6 +301,7 @@ export default function HomePage() {
         <CoreCapabilitiesSection />
         <OperatingModelSection />
         <FeaturedProjectsSection />
+        <RetailDiscoverySection />
         <WhyNiuvaSection />
 
         <CTASection

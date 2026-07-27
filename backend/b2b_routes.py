@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -47,7 +48,6 @@ class QuoteTransitionPayload(BaseModel):
         "draft",
         "internal_review",
         "sent",
-        "accepted",
         "revision_requested",
         "expired",
         "rejected",
@@ -79,6 +79,25 @@ class QuoteRevisionPayload(BaseModel):
     # Only meaningful for a revision with no lines. With lines, the total is
     # derived from them so the version cannot contradict itself.
     total_minor: int | None = Field(default=None, ge=0)
+
+
+class QuoteAcceptancePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_version: int = Field(ge=1)
+    operation_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+    approver_name: str = Field(min_length=2, max_length=120)
+    approver_identity: str = Field(min_length=3, max_length=320)
+    accepted_at: datetime
+    channel: Literal[
+        "email",
+        "signed_document",
+        "meeting_minutes",
+        "messaging",
+        "other",
+    ]
+    evidence_reference: str = Field(min_length=3, max_length=500)
 
 
 class ProjectCommandPayload(BaseModel):
@@ -260,6 +279,29 @@ def build_b2b_router(
             )
         )
 
+    @router.post("/admin/b2b/quotes/{quote_id}/acceptance")
+    async def accept_quote(
+        quote_id: str,
+        payload: QuoteAcceptancePayload,
+        actor: dict = Depends(require_permission("quotes.write")),
+    ):
+        return await invoke(
+            service().accept_quote(
+                quote_id,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                approver={
+                    "name": payload.approver_name,
+                    "identity": payload.approver_identity,
+                },
+                accepted_at=payload.accepted_at,
+                channel=payload.channel,
+                evidence_reference=payload.evidence_reference,
+                actor=actor,
+            )
+        )
+
     @router.post("/admin/b2b/quotes/{quote_id}/project")
     async def create_project(
         quote_id: str,
@@ -410,6 +452,14 @@ def build_b2b_router(
                 operation_id=str(payload.operation_id),
                 reason=payload.reason,
                 actor=actor,
+                inventory_service=(
+                    get_inventory_service()
+                    if (
+                        payload.target_status == "cancelled"
+                        and get_inventory_service is not None
+                    )
+                    else None
+                ),
             )
         )
 

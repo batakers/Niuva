@@ -70,8 +70,18 @@ class FakeCollection:
         for item in self.items:
             if self._matches(item, query):
                 item.update(update.get("$set", {}))
+                for key, value in update.get("$inc", {}).items():
+                    item[key] = item.get(key, 0) + value
                 return types.SimpleNamespace(matched_count=1)
         return types.SimpleNamespace(matched_count=0)
+
+    async def update_many(self, query, update, **_options):
+        matched = 0
+        for item in self.items:
+            if self._matches(item, query):
+                item.update(update.get("$set", {}))
+                matched += 1
+        return types.SimpleNamespace(matched_count=matched)
 
 
 class FakeCursor:
@@ -93,12 +103,19 @@ class FakeCursor:
 class FakeDatabase:
     def __init__(self):
         self.portfolio = FakeCollection()
+        self.portfolio_revisions = FakeCollection()
+        self.portfolio_publications = FakeCollection()
         self.b2b_projects = FakeCollection()
+
+
+class EnabledGuard:
+    async def run(self, callback, **_options):
+        return await callback(object())
 
 
 def build_service():
     db = FakeDatabase()
-    return PortfolioService(db=db), db
+    return PortfolioService(db=db, transaction_guard=EnabledGuard()), db
 
 
 async def published_entry(service, *, actor=APPROVER):
@@ -110,7 +127,9 @@ async def published_entry(service, *, actor=APPROVER):
             expected_version=entry["version"],
             reason=f"Menuju {target}",
             actor=actor,
+            can_write=True,
             can_publish=True,
+            can_archive=True,
         )
     return entry
 
@@ -147,7 +166,9 @@ def test_publishing_requires_approval_authority():
                 expected_version=entry["version"],
                 reason=f"Menuju {target}",
                 actor=ACTOR,
+                can_write=True,
                 can_publish=False,
+                can_archive=False,
             )
 
         with pytest.raises(PortfolioDomainError) as refused:
@@ -157,7 +178,9 @@ def test_publishing_requires_approval_authority():
                 expected_version=entry["version"],
                 reason="Tayangkan",
                 actor=ACTOR,
+                can_write=True,
                 can_publish=False,
+                can_archive=False,
             )
         # Authoring and approving are different authorities.
         assert refused.value.status_code == 403
@@ -177,7 +200,9 @@ def test_scheduling_requires_an_activation_time():
                 expected_version=entry["version"],
                 reason=f"Menuju {target}",
                 actor=APPROVER,
+                can_write=True,
                 can_publish=True,
+                can_archive=True,
             )
 
         with pytest.raises(PortfolioDomainError) as refused:
@@ -187,7 +212,9 @@ def test_scheduling_requires_an_activation_time():
                 expected_version=entry["version"],
                 reason="Jadwalkan",
                 actor=APPROVER,
+                can_write=True,
                 can_publish=True,
+                can_archive=True,
             )
         assert refused.value.code == "portfolio_schedule_required"
 
@@ -220,7 +247,9 @@ def test_a_future_schedule_stays_private_until_its_time():
                 expected_version=entry["version"],
                 reason=f"Menuju {target}",
                 actor=APPROVER,
+                can_write=True,
                 can_publish=True,
+                can_archive=True,
             )
         await service.transition(
             entry["id"],
@@ -228,7 +257,9 @@ def test_a_future_schedule_stays_private_until_its_time():
             expected_version=entry["version"],
             reason="Jadwalkan",
             actor=APPROVER,
+            can_write=True,
             can_publish=True,
+            can_archive=True,
             scheduled_for="2099-01-01T00:00:00+00:00",
         )
 

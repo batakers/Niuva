@@ -22,6 +22,7 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+from tests.auth_support import AuthCollection  # noqa: E402
 
 
 class FakeCollection:
@@ -97,6 +98,8 @@ class FakeDatabase:
         self.admin_notification_log = FakeCollection()
         self.notifications = FakeCollection()
         self.audit_events = FakeCollection()
+        self.auth_sessions = AuthCollection()
+        self.login_rate_limits = AuthCollection()
 
 
 def bearer(token):
@@ -106,7 +109,7 @@ def bearer(token):
 async def login(api, email, password):
     response = await api.post("/api/auth/admin/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
-    return response.json()["token"]
+    return response.cookies["niuva_access"]
 
 
 def build_users():

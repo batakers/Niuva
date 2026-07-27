@@ -22,6 +22,12 @@ os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
 
 import server  # noqa: E402
 import storage  # noqa: E402
+from tests.auth_support import AuthCollection  # noqa: E402
+
+
+class FileDatabase:
+    def __init__(self, metadata):
+        self.file_objects = AuthCollection(metadata)
 
 
 @pytest.fixture
@@ -95,6 +101,26 @@ def test_disabled_storage_upload_returns_controlled_503(monkeypatch):
 def test_file_download_requires_authorization_header_and_safe_media_type(local_storage_root, monkeypatch):
     path = "niuva/orders/customer-1/model.stl"
     storage.put_object(path, b"solid part", "model/stl")
+    monkeypatch.setattr(
+        server,
+        "db",
+        FileDatabase(
+            [
+                {
+                    "id": "file-1",
+                    "storage_path": path,
+                    "owner_id": "customer-1",
+                    "state": "active",
+                },
+                {
+                    "id": "missing-file",
+                    "storage_path": "niuva/orders/customer-1/missing.stl",
+                    "owner_id": "customer-1",
+                    "state": "active",
+                },
+            ]
+        ),
+    )
 
     async def fake_user(token):
         users = {
@@ -134,13 +160,29 @@ def test_file_download_requires_authorization_header_and_safe_media_type(local_s
     assert other.status_code == 403
     assert staff.status_code == 200
     assert missing.status_code == 404
-    assert missing.json() == {"detail": "File not found"}
+    assert missing.json()["detail"] == "File not found"
+    assert missing.json()["error"]["code"] == "http_404"
+    assert missing.headers["x-request-id"] == missing.json()["request_id"]
 
 
 def test_disabled_storage_download_returns_controlled_503(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("STORAGE_BACKEND", "disabled")
     path = "niuva/orders/customer-1/model.stl"
+    monkeypatch.setattr(
+        server,
+        "db",
+        FileDatabase(
+            [
+                {
+                    "id": "file-1",
+                    "storage_path": path,
+                    "owner_id": "customer-1",
+                    "state": "active",
+                }
+            ]
+        ),
+    )
 
     async def fake_user(_token):
         return {"id": "customer-1", "email": "owner@example.com", "role": "client"}
@@ -157,12 +199,27 @@ def test_disabled_storage_download_returns_controlled_503(monkeypatch):
 
     response = asyncio.run(run())
     assert response.status_code == 503
-    assert response.json() == {"detail": "File storage unavailable"}
+    assert response.json()["detail"] == "File storage unavailable"
+    assert response.json()["error"]["code"] == "http_503"
 
 
 def test_file_download_forces_active_metadata_to_binary(local_storage_root, monkeypatch):
     path = "niuva/orders/customer-1/payload.html"
     storage.put_object(path, b"<script>alert(1)</script>", "text/html")
+    monkeypatch.setattr(
+        server,
+        "db",
+        FileDatabase(
+            [
+                {
+                    "id": "file-html",
+                    "storage_path": path,
+                    "owner_id": "customer-1",
+                    "state": "active",
+                }
+            ]
+        ),
+    )
 
     async def fake_user(_token):
         return {"id": "customer-1", "email": "owner@example.com", "role": "client"}
@@ -181,6 +238,62 @@ def test_file_download_forces_active_metadata_to_binary(local_storage_root, monk
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/octet-stream"
     assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_deleted_or_quarantined_metadata_is_never_downloadable(
+    local_storage_root,
+    monkeypatch,
+):
+    deleted_path = "niuva/orders/customer-1/deleted.stl"
+    quarantined_path = "niuva/orders/customer-1/quarantined.stl"
+    storage.put_object(deleted_path, b"deleted", "model/stl")
+    storage.put_object(quarantined_path, b"quarantined", "model/stl")
+    monkeypatch.setattr(
+        server,
+        "db",
+        FileDatabase(
+            [
+                {
+                    "id": "file-deleted",
+                    "storage_path": deleted_path,
+                    "owner_id": "customer-1",
+                    "state": "deleted",
+                },
+                {
+                    "id": "file-quarantined",
+                    "storage_path": quarantined_path,
+                    "owner_id": "customer-1",
+                    "state": "quarantined",
+                },
+            ]
+        ),
+    )
+
+    async def fake_user(_token):
+        return {"id": "customer-1", "email": "owner@example.com", "role": "client"}
+
+    monkeypatch.setattr(server, "get_user_from_token", fake_user)
+
+    async def run():
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            return (
+                await api.get(
+                    f"/api/files/{deleted_path}",
+                    headers={"Authorization": "Bearer owner"},
+                ),
+                await api.get(
+                    f"/api/files/{quarantined_path}",
+                    headers={"Authorization": "Bearer owner"},
+                ),
+            )
+
+    deleted, quarantined = asyncio.run(run())
+    assert deleted.status_code == 404
+    assert quarantined.status_code == 404
 
 
 def test_payment_proof_upload_is_disabled_without_storage_write(

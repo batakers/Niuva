@@ -1,6 +1,7 @@
 import os
 import sys
 import types
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -22,6 +23,7 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+from tests.auth_support import AuthCollection  # noqa: E402
 
 
 class FakeCollection:
@@ -118,6 +120,8 @@ class FakeDatabase:
         self.users = FakeCollection(users)
         self.password_reset_tokens = FakeCollection()
         self.notifications = FakeCollection()
+        self.auth_sessions = AuthCollection()
+        self.login_rate_limits = AuthCollection()
 
 
 def bearer(token):
@@ -171,7 +175,7 @@ async def run_reset_password_lifecycle_and_session_invalidation():
             "/api/auth/login", json={"email": customer["email"], "password": "OldPassword123"}
         )
         assert login_before.status_code == 200
-        old_token = login_before.json()["token"]
+        old_token = login_before.cookies["niuva_access"]
         assert (await api.get("/api/auth/me", headers=bearer(old_token))).status_code == 200
 
         await api.post("/api/auth/forgot-password", json={"email": customer["email"]})
@@ -206,7 +210,12 @@ async def run_reset_password_lifecycle_and_session_invalidation():
             "/api/auth/login", json={"email": customer["email"], "password": "NewPassword456"}
         )
         assert new_login.status_code == 200
-        assert (await api.get("/api/auth/me", headers=bearer(new_login.json()["token"]))).status_code == 200
+        assert (
+            await api.get(
+                "/api/auth/me",
+                headers=bearer(new_login.cookies["niuva_access"]),
+            )
+        ).status_code == 200
 
         # The token cannot be replayed a second time.
         reused = await api.post(
@@ -234,7 +243,7 @@ async def run_reset_password_rejects_unknown_or_expired_token():
         expired_record = {
             "id": "expired-1", "user_id": "customer-1",
             "token_hash": server._hash_reset_token("expired-raw-token"),
-            "expires_at": "2000-01-01T00:00:00+00:00",
+            "expires_at": datetime(2000, 1, 1, tzinfo=timezone.utc),
             "used_at": None, "created_at": "2000-01-01T00:00:00+00:00",
         }
         server.db.password_reset_tokens.items.append(expired_record)

@@ -14,6 +14,9 @@ def _matches(item: dict, query: dict) -> bool:
         if isinstance(condition, dict) and "$in" in condition:
             if value not in condition["$in"]:
                 return False
+        elif isinstance(condition, dict) and "$ne" in condition:
+            if value == condition["$ne"]:
+                return False
         elif value != condition:
             return False
     return True

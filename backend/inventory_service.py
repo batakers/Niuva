@@ -160,6 +160,12 @@ class InventoryService:
         return None
 
     async def apply_operation(self, *, actor: dict, payload: dict) -> dict:
+        if payload.get("movement_type") == "adjustment":
+            raise InventoryError(
+                409,
+                "adjustment_approval_required",
+                "Adjustment wajib melalui request dan approval manager.",
+            )
         if payload.get("movement_type") in {"reserve", "release"}:
             raise InventoryError(
                 409,
@@ -167,6 +173,311 @@ class InventoryService:
                 "Reserve dan release wajib melalui lifecycle reservation.",
             )
         return await self._apply_operation(actor=actor, payload=dict(payload))
+
+    async def create_adjustment_request(
+        self,
+        *,
+        actor: dict,
+        payload: dict,
+    ) -> dict:
+        self._require_transactions()
+        delta = _decimal(payload.get("on_hand_delta"))
+        if delta == 0:
+            raise InventoryError(
+                422,
+                "adjustment_delta_invalid",
+                "Adjustment memerlukan delta non-zero.",
+            )
+        await self._subject(payload["subject_type"], payload["subject_id"])
+        request_operation_id = payload["request_operation_id"]
+        existing = await self.db.inventory_adjustment_requests.find_one(
+            {"request_operation_id": request_operation_id},
+            {"_id": 0},
+        )
+        fingerprint_payload = {
+            "operation_id": request_operation_id,
+            "subject_type": payload["subject_type"],
+            "subject_id": payload["subject_id"],
+            "movement_type": "adjustment",
+            "on_hand_delta": _decimal_string(delta),
+            "reference_type": payload.get("reference_type", "manual"),
+            "reference_id": payload.get("reference_id", ""),
+            "expected_balance_version": payload.get("expected_balance_version"),
+            "reason": payload["reason"].strip(),
+        }
+        fingerprint = operation_fingerprint(fingerprint_payload)
+        if existing:
+            if existing.get("request_fingerprint") != fingerprint:
+                raise InventoryError(
+                    409,
+                    "operation_id_conflict",
+                    "Request operation ID sudah digunakan untuk data berbeda.",
+                )
+            return serialize_inventory(existing)
+        timestamp = now_iso()
+        request = {
+            "id": str(uuid.uuid4()),
+            "request_operation_id": request_operation_id,
+            "request_fingerprint": fingerprint,
+            "subject_type": payload["subject_type"],
+            "subject_id": payload["subject_id"],
+            "on_hand_delta": _decimal128(delta),
+            "reference_type": payload.get("reference_type", "manual"),
+            "reference_id": payload.get("reference_id", ""),
+            "expected_balance_version": payload.get("expected_balance_version"),
+            "reason": payload["reason"].strip(),
+            "status": "pending",
+            "version": 1,
+            "requested_by": actor.get("id"),
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+
+        async def mutation(session):
+            await self.db.inventory_adjustment_requests.insert_one(
+                request,
+                **_write_options(session),
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="inventory.adjustment_requested",
+                target_type="inventory_adjustment_request",
+                target_id=request["id"],
+                after=serialize_inventory(request),
+                reason=request["reason"],
+                session=session,
+            )
+            return serialize_inventory(request)
+
+        return await self.guard.run(
+            mutation,
+            operation_name="inventory.create_adjustment_request",
+        )
+
+    async def list_adjustment_requests(
+        self,
+        *,
+        status: str | None = None,
+        limit: int = 200,
+    ) -> list[dict]:
+        query = {"status": status} if status else {}
+        requests = await self.db.inventory_adjustment_requests.find(
+            query,
+            {"_id": 0},
+        ).sort("created_at", -1).limit(min(limit, 500)).to_list(min(limit, 500))
+        return serialize_inventory(requests)
+
+    async def approve_adjustment_request(
+        self,
+        request_id: str,
+        *,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        actor: dict,
+    ) -> dict:
+        self._require_transactions()
+        request = await self.db.inventory_adjustment_requests.find_one(
+            {"id": request_id},
+            {"_id": 0},
+        )
+        if not request:
+            raise InventoryError(
+                404,
+                "adjustment_request_not_found",
+                "Request adjustment tidak ditemukan.",
+            )
+        if request.get("status") == "approved":
+            if request.get("approval_operation_id") == operation_id:
+                movement = await self.db.stock_movements.find_one(
+                    {"operation_id": operation_id},
+                    {"_id": 0},
+                )
+                return {
+                    "request": serialize_inventory(request),
+                    "movement": serialize_inventory(movement),
+                    "replayed": True,
+                }
+            raise InventoryError(
+                409,
+                "adjustment_request_closed",
+                "Request adjustment sudah diproses.",
+            )
+        if request.get("status") != "pending":
+            raise InventoryError(
+                409,
+                "adjustment_request_closed",
+                "Request adjustment sudah diproses.",
+            )
+        if request.get("version") != expected_version:
+            raise InventoryError(
+                409,
+                "version_conflict",
+                "Request adjustment telah berubah.",
+            )
+        if request.get("requested_by") == actor.get("id"):
+            raise InventoryError(
+                409,
+                "self_approval_forbidden",
+                "Pembuat request tidak boleh menyetujui adjustment sendiri.",
+            )
+        movement_payload = {
+            "operation_id": operation_id,
+            "subject_type": request["subject_type"],
+            "subject_id": request["subject_id"],
+            "movement_type": "adjustment",
+            "on_hand_delta": _decimal_string(request["on_hand_delta"]),
+            "reference_type": "inventory_adjustment_request",
+            "reference_id": request_id,
+            "expected_balance_version": request.get("expected_balance_version"),
+            "reason": reason.strip(),
+        }
+        fingerprint = operation_fingerprint(movement_payload)
+        timestamp = now_iso()
+
+        async def mutation(session):
+            result, recipients = await self._apply_operation_in_transaction(
+                actor=actor,
+                payload=movement_payload,
+                fingerprint=fingerprint,
+                session=session,
+                reservation_create=None,
+                reservation_transition=None,
+            )
+            updated = await self.db.inventory_adjustment_requests.update_one(
+                {
+                    "id": request_id,
+                    "status": "pending",
+                    "version": expected_version,
+                },
+                {
+                    "$set": {
+                        "status": "approved",
+                        "version": expected_version + 1,
+                        "approval_operation_id": operation_id,
+                        "approved_by": actor.get("id"),
+                        "approval_reason": reason.strip(),
+                        "approved_at": timestamp,
+                        "updated_at": timestamp,
+                    }
+                },
+                **_write_options(session),
+            )
+            if not updated.matched_count:
+                raise InventoryError(
+                    409,
+                    "version_conflict",
+                    "Request adjustment berubah selama approval.",
+                )
+            approved = {
+                **request,
+                "status": "approved",
+                "version": expected_version + 1,
+                "approval_operation_id": operation_id,
+                "approved_by": actor.get("id"),
+                "approval_reason": reason.strip(),
+                "approved_at": timestamp,
+                "updated_at": timestamp,
+            }
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="inventory.adjustment_approved",
+                target_type="inventory_adjustment_request",
+                target_id=request_id,
+                before=serialize_inventory(request),
+                after=serialize_inventory(approved),
+                reason=reason,
+                session=session,
+            )
+            return {
+                "request": serialize_inventory(approved),
+                **result,
+            }, recipients
+
+        try:
+            result, recipients = await self.guard.run(
+                mutation,
+                operation_name="inventory.approve_adjustment_request",
+            )
+        except _StaleBalance as exc:
+            raise InventoryError(
+                409,
+                "balance_version_conflict",
+                "Saldo berubah sebelum adjustment disetujui.",
+            ) from exc
+        await self._send_restock_emails(recipients)
+        return result
+
+    async def reject_adjustment_request(
+        self,
+        request_id: str,
+        *,
+        expected_version: int,
+        reason: str,
+        actor: dict,
+    ) -> dict:
+        self._require_transactions()
+        request = await self.db.inventory_adjustment_requests.find_one(
+            {"id": request_id},
+            {"_id": 0},
+        )
+        if not request:
+            raise InventoryError(
+                404,
+                "adjustment_request_not_found",
+                "Request adjustment tidak ditemukan.",
+            )
+        if request.get("requested_by") == actor.get("id"):
+            raise InventoryError(
+                409,
+                "self_approval_forbidden",
+                "Pembuat request tidak boleh mereview request sendiri.",
+            )
+        timestamp = now_iso()
+        changes = {
+            "status": "rejected",
+            "version": expected_version + 1,
+            "rejected_by": actor.get("id"),
+            "rejection_reason": reason.strip(),
+            "rejected_at": timestamp,
+            "updated_at": timestamp,
+        }
+
+        async def mutation(session):
+            updated = await self.db.inventory_adjustment_requests.update_one(
+                {
+                    "id": request_id,
+                    "status": "pending",
+                    "version": expected_version,
+                },
+                {"$set": changes},
+                **_write_options(session),
+            )
+            if not updated.matched_count:
+                raise InventoryError(
+                    409,
+                    "version_conflict",
+                    "Request adjustment telah berubah.",
+                )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="inventory.adjustment_rejected",
+                target_type="inventory_adjustment_request",
+                target_id=request_id,
+                before=serialize_inventory(request),
+                after=serialize_inventory({**request, **changes}),
+                reason=reason,
+                session=session,
+            )
+            return serialize_inventory({**request, **changes})
+
+        return await self.guard.run(
+            mutation,
+            operation_name="inventory.reject_adjustment_request",
+        )
 
     async def _apply_operation(
         self,

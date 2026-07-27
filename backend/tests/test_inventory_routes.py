@@ -46,6 +46,27 @@ class StubInventoryService:
             "replayed": replayed,
         }
 
+    async def create_adjustment_request(self, *, actor, payload):
+        self.calls.append(("create_adjustment_request", actor, payload))
+        return {
+            "id": "adjustment-1",
+            "status": "pending",
+            "version": 1,
+            **payload,
+        }
+
+    async def list_adjustment_requests(self, **filters):
+        self.calls.append(("list_adjustment_requests", filters))
+        return [{"id": "adjustment-1", "status": "pending", "version": 1}]
+
+    async def approve_adjustment_request(self, request_id, **kwargs):
+        self.calls.append(("approve_adjustment_request", request_id, kwargs))
+        return {"request": {"id": request_id, "status": "approved"}}
+
+    async def reject_adjustment_request(self, request_id, **kwargs):
+        self.calls.append(("reject_adjustment_request", request_id, kwargs))
+        return {"id": request_id, "status": "rejected"}
+
     async def create_reservation(self, *, actor, payload):
         self.calls.append(("create_reservation", actor, payload))
         return {"reservation": {"id": "reservation-1", "status": "active"}}
@@ -179,9 +200,36 @@ async def run_permission_and_operation_routes():
             ),
             headers=headers("inventory.write", "inventory.adjust"),
         )
-        assert manager_adjustment.status_code == 200
-        call_payload = [call for call in service.calls if call[0] == "apply_operation"][-1][2]
-        assert call_payload["on_hand_delta"] == "-1.25"
+        assert manager_adjustment.status_code == 409
+        assert manager_adjustment.json()["detail"]["code"] == "adjustment_approval_required"
+
+        requested = await api.post(
+            "/api/admin/inventory/adjustment-requests",
+            json={
+                "request_operation_id": "33333333-3333-3333-3333-333333333333",
+                "subject_type": "material",
+                "subject_id": "mat-1",
+                "on_hand_delta": "-1.25",
+                "reference_type": "cycle_count",
+                "reference_id": "count-1",
+                "expected_balance_version": 3,
+                "reason": "Cycle count discrepancy",
+            },
+            headers=headers("inventory.write"),
+        )
+        assert requested.status_code == 201
+        assert requested.json()["status"] == "pending"
+
+        approved = await api.post(
+            "/api/admin/inventory/adjustment-requests/adjustment-1/approve",
+            json={
+                "expected_version": 1,
+                "operation_id": "34444444-4444-4444-4444-444444444444",
+                "reason": "Manager verified evidence",
+            },
+            headers=headers("inventory.adjust"),
+        )
+        assert approved.status_code == 200
 
         unavailable = await api.post(
             "/api/admin/inventory/movements",

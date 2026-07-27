@@ -8,6 +8,12 @@ conversation on 25 July 2026 (Asia/Jakarta)
 Scope: Login rate-limit topology decision state and the next permitted planning
 slice
 
+Supersession note (27 July 2026): `DEC-REMED-001` /
+`docs/decisions/architecture/ADR-005-backend-remediation-runtime-policy.md`
+later selected MongoDB atomic limiting and explicit thresholds for the bounded
+remediation implementation. This record remains authoritative evidence of the
+earlier deferral, but no longer blocks that implementation.
+
 ## Context
 
 The current backend has only a process-local in-memory rate-limit helper. It is

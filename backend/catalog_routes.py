@@ -333,8 +333,18 @@ def build_catalog_router(
         return await invoke(service().list_public_categories())
 
     @router.get("/catalog/products")
-    async def public_products():
-        return await invoke(service().list_public_products())
+    async def public_products(
+        limit: int = 24,
+        cursor: str | None = None,
+    ):
+        if limit < 1 or limit > 50:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "limit_out_of_range"},
+            )
+        return await invoke(
+            service().list_public_products(limit=limit, cursor=cursor)
+        )
 
     @router.get("/catalog/products/{slug}")
     async def public_product(slug: str):

@@ -1,7 +1,8 @@
 # Retail Catalog Discovery Slice — Design Spec
 
 Tanggal: 24 Juli 2026
-Status: **Technical Design Candidate — not approved for implementation**
+Status: **Superseded Candidate as of 27 July 2026** (original status:
+Technical Design Candidate — not approved for implementation)
 Scope kandidat: Read-only public Retail catalog discovery (browse, kategori, produk, varian, safe price/ETA display) sebagai first Retail vertical slice; bukan cart, bukan checkout, bukan payment, bukan implementation approval.
 Canonical authority:
 - `docs/NIUVA_MASTER_SPEC.md`
@@ -215,3 +216,10 @@ rollback procedure, feature flag, commit boundary, dan regression checks. Plan b
 dibuat dalam pass ini.
 
 Status remains **Technical Design Candidate — not approved for implementation**.
+# Supersession notice
+
+This candidate was superseded on 27 July 2026 by the approved, bounded
+implementation decision in
+`docs/decisions/architecture/ADR-005-backend-remediation-runtime-policy.md`.
+It remains provenance only. Cart, checkout, payment, fulfillment, reservation,
+and upload are still outside the approved slice.

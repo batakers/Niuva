@@ -75,6 +75,7 @@ export const ADMIN_MENU_GROUPS = Object.freeze([
     label: "admin.group.governance",
     items: [
       { path: "/admin/users", label: "admin.users", icon: Users },
+      { path: "/admin/customers", label: "admin.customers", icon: Users },
       { path: "/admin/settings", label: "admin.settings", icon: Settings },
       {
         path: "/admin/communication",
@@ -118,7 +119,7 @@ const ROLE_HOME = Object.freeze({
   },
   order_admin: {
     labelKey: "admin.roleHome.orderAdmin",
-    queuePaths: ["/admin/retail-orders", "/admin/orders"],
+    queuePaths: ["/admin/customers", "/admin/retail-orders", "/admin/orders"],
   },
   catalog_manager: {
     labelKey: "admin.roleHome.catalog",

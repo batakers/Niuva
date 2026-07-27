@@ -3,27 +3,63 @@ import axios from "axios";
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 export const HAS_CONFIGURED_BACKEND = Boolean(BACKEND_URL);
 export const API = `${BACKEND_URL}/api`;
-export const TOKEN_KEY = "niuva_token";
+const CSRF_COOKIE = "niuva_csrf";
+const CSRF_HEADER = "X-CSRF-Token";
 
-export const api = axios.create({ baseURL: API });
+export const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+});
 
-export function getStoredToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setStoredToken(token) {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearStoredToken() {
-  localStorage.removeItem(TOKEN_KEY);
+function readCookie(name) {
+  if (typeof document === "undefined") return "";
+  const prefix = `${encodeURIComponent(name)}=`;
+  const item = document.cookie
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(prefix));
+  return item ? decodeURIComponent(item.slice(prefix.length)) : "";
 }
 
 api.interceptors.request.use((config) => {
-  const token = getStoredToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const method = String(config.method || "get").toUpperCase();
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const csrf = readCookie(CSRF_COOKIE);
+    if (csrf) config.headers[CSRF_HEADER] = csrf;
+  }
   return config;
 });
+
+let refreshPromise = null;
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    const path = String(original?.url || "");
+    const isAuthOperation =
+      path.includes("/auth/login") ||
+      path.includes("/auth/admin/login") ||
+      path.includes("/auth/refresh") ||
+      path.includes("/auth/logout");
+    if (error.response?.status !== 401 || !original || original._retry || isAuthOperation) {
+      return Promise.reject(error);
+    }
+
+    original._retry = true;
+    if (!refreshPromise) {
+      refreshPromise = api.post("/auth/refresh").finally(() => {
+        refreshPromise = null;
+      });
+    }
+    try {
+      await refreshPromise;
+      return api(original);
+    } catch {
+      return Promise.reject(error);
+    }
+  },
+);
 
 export function unwrap(request) {
   return request.then((response) => response.data);
@@ -35,10 +71,8 @@ export function fileUrl(path) {
 }
 
 export async function fetchFile(path) {
-  const token = getStoredToken();
-  if (!token) throw new Error("Not authenticated");
   const response = await fetch(fileUrl(path), {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
   });
   if (!response.ok) throw new Error(`File request failed (${response.status})`);
   return response.blob();
@@ -62,10 +96,8 @@ export async function downloadFile(path, filename = "download") {
 }
 
 export async function downloadCsv(apiPath, filename = "export.csv") {
-  const token = getStoredToken();
-  if (!token) throw new Error("Not authenticated");
   const response = await fetch(`${API}${apiPath}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
   });
   if (!response.ok) throw new Error(`Export failed (${response.status})`);
   triggerBlobDownload(await response.blob(), filename);

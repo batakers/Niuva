@@ -14,19 +14,29 @@ import hashlib
 import secrets
 import html
 import re
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
-import jwt
 import bcrypt
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Header, Response
+from fastapi.exceptions import RequestValidationError
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 import storage
 import emailer
-from audit import append_audit_event
+from audit import append_audit_event, append_identity_governance_event
+from auth_rate_limit import LoginRateLimiter
+from auth_sessions import (
+    ACCESS_COOKIE,
+    CSRF_COOKIE,
+    CSRF_HEADER,
+    REFRESH_COOKIE,
+    AuthSessionService,
+)
 from b2b_routes import build_b2b_router
 from dashboard_domain import (
     DashboardRangeError,
@@ -38,6 +48,7 @@ from dashboard_domain import (
     withheld_revenue,
 )
 from notification_service import NotificationError, NotificationService
+from notification_worker import NotificationDeliveryWorker
 from retail_domain import classify_legacy_order
 from portfolio_routes import build_portfolio_router
 from settings_domain import (
@@ -48,21 +59,25 @@ from settings_domain import (
     project_public_settings,
 )
 from retail_routes import build_retail_router
-from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
 from content_routes import build_content_router
+from csv_safety import safe_csv_row
 from database_capabilities import DatabaseCapabilities, probe_database_capabilities
 from identity_routes import build_identity_router
 from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
+from password_policy import validate_password
 from permissions import (
+    CUSTOMER_ROLES,
     ROLE_LABELS,
     ROLE_POLICY_VERSION,
     canonical_roles,
     has_permission,
+    is_internal,
     permissions_for,
 )
+from schema_readiness import inspect_schema
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
@@ -104,9 +119,33 @@ CUSTOMER_QUERY = {
     ]
 }
 
-app = FastAPI(title="NIUVA API")
+@asynccontextmanager
+async def lifespan(_application: FastAPI):
+    await _startup_runtime()
+    try:
+        yield
+    finally:
+        await _shutdown_runtime()
+
+
+app = FastAPI(title="NIUVA API", lifespan=lifespan)
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
 app.state.reservation_expiry_task = None
+app.state.auto_delete_task = None
+app.state.notification_worker_task = None
+app.state.notification_worker_status = {
+    "enabled": False,
+    "running": False,
+    "last_heartbeat_at": None,
+    "last_result": None,
+}
+app.state.schema_status = {
+    "required_version": "unknown",
+    "applied": False,
+    "indexes_ready": False,
+    "missing_index_count": 0,
+    "ready": False,
+}
 app.state.transaction_executor = TransactionExecutor(
     client,
     lambda: app.state.database_capabilities,
@@ -123,6 +162,148 @@ app.add_exception_handler(
     transaction_unavailable_handler,
 )
 api = APIRouter(prefix="/api")
+
+
+def request_id_for(request: Request) -> str:
+    return getattr(request.state, "request_id", str(uuid.uuid4()))
+
+
+def error_payload(request: Request, detail, *, default_code: str) -> dict:
+    if isinstance(detail, dict):
+        code = str(detail.get("code") or default_code)
+        message = str(detail.get("message") or code)
+        details = detail.get("details")
+    else:
+        code = default_code
+        message = str(detail)
+        details = None
+    return {
+        # Kept during the contract cutover for existing clients.
+        "detail": detail,
+        "error": {
+            "code": code,
+            "message": message,
+            **({"details": details} if details is not None else {}),
+        },
+        "request_id": request_id_for(request),
+    }
+
+
+@app.exception_handler(HTTPException)
+async def http_error_envelope(request: Request, exc: HTTPException):
+    return JSONResponse(
+        error_payload(
+            request,
+            exc.detail,
+            default_code=f"http_{exc.status_code}",
+        ),
+        status_code=exc.status_code,
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_envelope(request: Request, exc: RequestValidationError):
+    issues = [
+        {
+            "location": list(issue.get("loc") or []),
+            "message": issue.get("msg"),
+            "type": issue.get("type"),
+        }
+        for issue in exc.errors()
+    ]
+    detail = {
+        "code": "request_validation_failed",
+        "message": "Request tidak memenuhi schema.",
+        "details": {"issues": issues},
+    }
+    return JSONResponse(
+        error_payload(
+            request,
+            detail,
+            default_code="request_validation_failed",
+        ),
+        status_code=422,
+    )
+
+
+@app.middleware("http")
+async def request_context(request: Request, call_next):
+    supplied = request.headers.get("X-Request-ID", "").strip()
+    request.state.request_id = (
+        supplied[:128]
+        if supplied and re.fullmatch(r"[A-Za-z0-9._:-]+", supplied)
+        else str(uuid.uuid4())
+    )
+    started = datetime.now(timezone.utc)
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception(
+            "request_failed request_id=%s method=%s path=%s",
+            request.state.request_id,
+            request.method,
+            request.url.path,
+        )
+        raise
+    elapsed_ms = int(
+        (datetime.now(timezone.utc) - started).total_seconds() * 1000
+    )
+    response.headers["X-Request-ID"] = request.state.request_id
+    logger.info(
+        "request_complete request_id=%s method=%s path=%s status=%s elapsed_ms=%s",
+        request.state.request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+    )
+    return response
+
+
+CSRF_EXEMPT_PATHS = frozenset(
+    {
+        "/api/auth/login",
+        "/api/auth/admin/login",
+        "/api/auth/forgot-password",
+        "/api/auth/reset-password",
+        "/api/auth/refresh",
+        "/api/auth/staff-invitations/accept",
+    }
+)
+
+
+@app.middleware("http")
+async def csrf_cookie_guard(request: Request, call_next):
+    if not hasattr(request.state, "request_id"):
+        request.state.request_id = str(uuid.uuid4())
+    if (
+        request.url.path.startswith("/api/")
+        and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}
+        and request.url.path not in CSRF_EXEMPT_PATHS
+        and not (
+            os.environ.get("NIUVA_TEST_BEARER_AUTH", "").lower() == "true"
+            and request.headers.get("Authorization", "").startswith("Bearer ")
+        )
+        and (
+            request.cookies.get(ACCESS_COOKIE)
+            or request.cookies.get(REFRESH_COOKIE)
+        )
+    ):
+        cookie = request.cookies.get(CSRF_COOKIE, "")
+        header = request.headers.get(CSRF_HEADER, "")
+        if not cookie or not header or not secrets.compare_digest(cookie, header):
+            response = JSONResponse(
+                error_payload(
+                    request,
+                    "CSRF validation failed",
+                    default_code="csrf_validation_failed",
+                ),
+                status_code=403,
+            )
+            response.headers["X-Request-ID"] = request.state.request_id
+            return response
+    return await call_next(request)
 
 
 # ----------------------------- Auth utils -----------------------------
@@ -154,55 +335,40 @@ def verify_password(p: str, h: str) -> bool:
 
 
 def create_token(user_id: str, email: str, role: str, token_version: int = 0) -> str:
-    payload = {
-        "sub": user_id,
-        "email": email,
-        "role": role,
-        "token_version": token_version,
-        "exp": datetime.now(timezone.utc) + timedelta(days=7),
-        "type": "access",
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
+    """Issue a current-policy bearer fixture only in the isolated test runtime."""
+    if os.environ.get("NIUVA_TEST_BEARER_AUTH", "").lower() != "true":
+        raise RuntimeError("Bearer credential issuance is disabled")
+    return AuthSessionService(
+        db=db,
+        jwt_secret=JWT_SECRET,
+        jwt_algorithm=JWT_ALGO,
+    ).encode_test_access(user_id, token_version)
 
 
 async def get_user_from_token(token: str) -> dict:
-    try:
-        payload = jwt.decode(
-            token,
-            JWT_SECRET,
-            algorithms=[JWT_ALGO],
-            options={"require": ["sub", "exp", "type"]},
-        )
-        if payload.get("type") != "access":
-            raise jwt.InvalidTokenError("Invalid token type")
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    user = await db.users.find_one(
-        {"id": payload["sub"]},
-        {"_id": 0, "password_hash": 0},
+    return await AuthSessionService(
+        db=db,
+        jwt_secret=JWT_SECRET,
+        jwt_algorithm=JWT_ALGO,
+    ).authenticate(
+        token,
+        allow_test_token=(
+            os.environ.get("NIUVA_TEST_BEARER_AUTH", "").lower() == "true"
+        ),
     )
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    if user.get("status", "active") == "disabled":
-        raise HTTPException(status_code=403, detail="User account is disabled")
-    # Sessions issued before a password reset (or before this field existed)
-    # carry a stale/absent token_version and must be rejected, even if the
-    # JWT itself has not expired yet.
-    if payload.get("token_version", 0) != user.get("token_version", 0):
-        raise HTTPException(status_code=401, detail="Session expired, please log in again")
-    return user
 
 
 async def get_current_user(request: Request) -> dict:
+    test_bearer_enabled = (
+        os.environ.get("NIUVA_TEST_BEARER_AUTH", "").lower() == "true"
+    )
     token = None
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
+    if test_bearer_enabled:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
     if not token:
-        token = request.cookies.get("access_token")
+        token = request.cookies.get(ACCESS_COOKIE)
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return await get_user_from_token(token)
@@ -227,14 +393,19 @@ require_admin = require_permission("admin.access")
 class ClientProvisionReq(BaseModel):
     name: str
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: str = Field(min_length=1, max_length=256)
     phone: Optional[str] = None
     company: Optional[str] = None
 
 
+class CustomerStatusReq(BaseModel):
+    expected_version: int = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=500)
+
+
 class LoginReq(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=256)
 
 
 class ForgotPasswordReq(BaseModel):
@@ -243,7 +414,7 @@ class ForgotPasswordReq(BaseModel):
 
 class ResetPasswordReq(BaseModel):
     token: str = Field(min_length=1)
-    new_password: str = Field(min_length=6)
+    new_password: str = Field(min_length=1, max_length=256)
 
 
 class EstimateReq(BaseModel):
@@ -286,6 +457,8 @@ class SettingsReq(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    expected_version: int = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=500)
     legal_name: str = Field(min_length=2, max_length=200)
     tagline: str = Field(default="", max_length=300)
     address: str = Field(default="", max_length=500)
@@ -322,14 +495,7 @@ def safe_user(user: dict) -> dict:
     }
 
 
-def auth_response(user: dict) -> dict:
-    roles = canonical_roles(user)
-    primary_role = roles[0] if roles else user.get("role", "")
-    token = create_token(user["id"], user["email"], primary_role, user.get("token_version", 0))
-    return {"token": token, "user": safe_user(user)}
-
-
-async def authenticate_credentials(req: LoginReq) -> dict:
+async def authenticate_credentials(req: LoginReq, *, surface: str) -> dict:
     user = await db.users.find_one({"email": req.email.lower()})
     stored_hash = user.get("password_hash") if user else None
     valid_stored_hash = is_valid_password_hash(stored_hash)
@@ -344,12 +510,20 @@ async def authenticate_credentials(req: LoginReq) -> dict:
         )
     )
     eligible_roles = canonical_roles(user) if user else ()
+    correct_surface = bool(
+        user
+        and (
+            (surface == "customer" and set(eligible_roles) <= CUSTOMER_ROLES)
+            or (surface == "staff" and is_internal(user))
+        )
+    )
     if (
         not user
         or not valid_stored_hash
         or not password_valid
         or explicitly_blocked
         or not eligible_roles
+        or not correct_surface
     ):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if (
@@ -361,6 +535,7 @@ async def authenticate_credentials(req: LoginReq) -> dict:
 
 
 async def provision_client(req: ClientProvisionReq) -> dict:
+    validate_password(req.password)
     email = req.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -376,6 +551,8 @@ async def provision_client(req: ClientProvisionReq) -> dict:
         "status": "active",
         "access_state": "approved",
         "role_policy_version": ROLE_POLICY_VERSION,
+        "token_version": 0,
+        "version": 1,
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
@@ -396,10 +573,7 @@ def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terla
 
 def client_ip(request: Request) -> str:
     """Resolve the caller address used to key public rate limits."""
-    host = request.client.host if request.client else "unknown"
-    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
-        host = request.headers.get("x-forwarded-for", host).split(",", 1)[0].strip()
-    return host
+    return request.client.host if request.client else "unknown"
 
 
 def safe_file_content_type(path: str) -> str:
@@ -444,21 +618,73 @@ async def register():
     )
 
 
+def _session_service() -> AuthSessionService:
+    return AuthSessionService(
+        db=db,
+        jwt_secret=JWT_SECRET,
+        jwt_algorithm=JWT_ALGO,
+    )
+
+
+def _login_limiter() -> LoginRateLimiter:
+    return LoginRateLimiter(
+        collection=db.login_rate_limits,
+        secret=JWT_SECRET,
+    )
+
+
+async def _perform_login(
+    req: LoginReq,
+    request: Request,
+    response: Response,
+    *,
+    surface: str,
+) -> dict:
+    account = req.email.lower()
+    peer_ip = client_ip(request)
+    limiter = _login_limiter()
+    await limiter.enforce(account=account, peer_ip=peer_ip)
+    try:
+        user = await authenticate_credentials(req, surface=surface)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            await limiter.record_failure(account=account, peer_ip=peer_ip)
+        raise
+    await limiter.clear_account(account=account)
+    await _session_service().issue(user, response)
+    return {"user": safe_user(user)}
+
+
 @api.post("/auth/login")
-async def login(req: LoginReq):
-    user = await authenticate_credentials(req)
-    return auth_response(user)
+async def login(req: LoginReq, request: Request, response: Response):
+    return await _perform_login(
+        req,
+        request,
+        response,
+        surface="customer",
+    )
 
 
 @api.post("/auth/admin/login")
-async def admin_login(req: LoginReq):
-    user = await authenticate_credentials(req)
-    if not has_permission(user, "admin.access"):
-        raise HTTPException(
-            status_code=403,
-            detail="Permission required: admin.access",
-        )
-    return auth_response(user)
+async def admin_login(req: LoginReq, request: Request, response: Response):
+    return await _perform_login(
+        req,
+        request,
+        response,
+        surface="staff",
+    )
+
+
+@api.post("/auth/refresh")
+async def refresh_session(request: Request, response: Response):
+    user = await _session_service().refresh(request, response)
+    return {"user": safe_user(user)}
+
+
+@api.post("/auth/logout")
+async def logout_session(request: Request, response: Response):
+    await _session_service().logout(request, response)
+    return {"ok": True}
 
 
 @api.get("/auth/me")
@@ -479,9 +705,7 @@ def _hash_reset_token(raw_token: str) -> str:
 
 @api.post("/auth/forgot-password")
 async def forgot_password(req: ForgotPasswordReq, request: Request):
-    client_host = request.client.host if request.client else "unknown"
-    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
-        client_host = request.headers.get("x-forwarded-for", client_host).split(",", 1)[0].strip()
+    client_host = client_ip(request)
     rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
     rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
 
@@ -494,7 +718,7 @@ async def forgot_password(req: ForgotPasswordReq, request: Request):
     # Invalidate any earlier unused tokens for this user before issuing a new one.
     await db.password_reset_tokens.update_many(
         {"user_id": user["id"], "used_at": None},
-        {"$set": {"used_at": now_iso()}},
+        {"$set": {"used_at": datetime.now(timezone.utc)}},
     )
     raw_token = secrets.token_urlsafe(32)
     created_at = datetime.now(timezone.utc)
@@ -502,20 +726,21 @@ async def forgot_password(req: ForgotPasswordReq, request: Request):
         "id": str(uuid.uuid4()),
         "user_id": user["id"],
         "token_hash": _hash_reset_token(raw_token),
-        "expires_at": (created_at + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)).isoformat(),
+        "expires_at": created_at + timedelta(minutes=RESET_TOKEN_TTL_MINUTES),
         "used_at": None,
-        "created_at": created_at.isoformat(),
+        "created_at": created_at,
     })
 
     site_url = (os.environ.get("REACT_APP_PUBLIC_SITE_URL") or "").rstrip("/")
     reset_link = f"{site_url}/reset-password?token={raw_token}"
+    safe_reset_link = html.escape(reset_link, quote=True)
     await emailer.send_email(
         user["email"],
         "Reset Password — NIUVA",
         "Permintaan reset password",
         f"<p>Kami menerima permintaan untuk mereset password akun Anda.</p>"
         f"<p>Link ini berlaku selama {RESET_TOKEN_TTL_MINUTES} menit: "
-        f"<a href=\"{reset_link}\">{reset_link}</a></p>"
+        f"<a href=\"{safe_reset_link}\">{safe_reset_link}</a></p>"
         f"<p>Jika Anda tidak meminta ini, abaikan email ini.</p>",
         db=db, user_id=user["id"],
     )
@@ -524,8 +749,9 @@ async def forgot_password(req: ForgotPasswordReq, request: Request):
 
 @api.post("/auth/reset-password")
 async def reset_password(req: ResetPasswordReq):
+    validate_password(req.new_password)
     token_hash = _hash_reset_token(req.token)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     record = await db.password_reset_tokens.find_one(
         {"token_hash": token_hash, "used_at": None, "expires_at": {"$gt": now}},
         {"_id": 0},
@@ -537,6 +763,20 @@ async def reset_password(req: ResetPasswordReq):
     if not user:
         raise HTTPException(status_code=400, detail="Link reset tidak valid atau sudah kedaluwarsa.")
 
+    claimed = await db.password_reset_tokens.update_one(
+        {
+            "id": record["id"],
+            "used_at": None,
+            "expires_at": {"$gt": now},
+        },
+        {"$set": {"used_at": now}},
+    )
+    if not getattr(claimed, "matched_count", 0):
+        raise HTTPException(
+            status_code=400,
+            detail="Link reset tidak valid atau sudah kedaluwarsa.",
+        )
+
     await db.users.update_one(
         {"id": user["id"]},
         {
@@ -547,6 +787,10 @@ async def reset_password(req: ResetPasswordReq):
     await db.password_reset_tokens.update_many(
         {"user_id": user["id"], "used_at": None},
         {"$set": {"used_at": now}},
+    )
+    await _session_service().revoke_user_sessions(
+        user["id"],
+        reason="password_reset",
     )
     return {"ok": True, "message": "Password berhasil diubah. Silakan login dengan password baru."}
 
@@ -564,49 +808,31 @@ async def get_settings():
 
 @api.post("/orders")
 async def create_order(
-    file: UploadFile = File(...),
-    material_id: str = Form(...),
-    notes: str = Form(""),
-    user: dict = Depends(get_current_user),
+    _user: dict = Depends(get_current_user),
 ):
-    rate_limit(f"order:{user['id']}", limit=10, window=60)
-    material = await db.materials.find_one({"id": material_id, "active": True}, {"_id": 0})
-    if not material:
-        raise HTTPException(status_code=400, detail="Invalid material selected")
-    file_meta = await store_upload(file, f"orders/{user['id']}", DESIGN_EXTS)
-
-    count = await db.orders.count_documents({})
-    order_number = f"NIV-{datetime.now(timezone.utc).strftime('%y%m')}-{count + 1:04d}"
-    ts = now_iso()
-    order = {
-        "id": str(uuid.uuid4()),
-        "order_number": order_number,
-        "user_id": user["id"],
-        "user_email": user["email"],
-        "user_name": user["name"],
-        "material_id": material_id,
-        "material_name": material["name"],
-        "file": file_meta,
-        "notes": notes,
-        "status": "pending_estimate",
-        "estimate": None,
-        "payment": None,
-        "status_history": [{"status": "pending_estimate", "at": ts, "note": "Order received"}],
-        "created_at": ts,
-        "updated_at": ts,
-    }
-    await db.orders.insert_one(order)
-    await emailer.send_email(
-        user["email"],
-        f"Pesanan {order_number} Diterima — NIUVA",
-        "Pesanan Anda telah diterima",
-        f"<p>Terima kasih! Pesanan <strong>{order_number}</strong> telah kami terima.</p>"
-        f"<p>File <strong>{file_meta['original_filename']}</strong> sedang ditinjau oleh Engineer kami. "
-        f"Estimasi harga akan dikirim dalam maksimal <strong>1x24 jam</strong>.</p>",
-        db=db, user_id=user["id"],
+    raise HTTPException(
+        status_code=503,
+        detail={
+            "code": "legacy_order_creation_inactive",
+            "message": (
+                "Pembuatan pesanan legacy dinonaktifkan. "
+                "Retail saat ini hanya mendukung discovery dan permintaan penawaran."
+            ),
+        },
     )
-    order.pop("_id", None)
-    return order
+
+
+@api.get("/capabilities")
+async def public_capabilities():
+    return {
+        "retail_discovery": "active",
+        "retail_create": "inactive",
+        "legacy_order_create": "inactive",
+        "checkout": "inactive",
+        "payment": "inactive",
+        "production_upload": "inactive",
+        "organization_portal": "inactive",
+    }
 
 
 @api.get("/orders")
@@ -658,7 +884,7 @@ def rows_to_csv_response(fieldnames: list, rows: list, filename: str) -> Respons
     writer = csv.DictWriter(buffer, fieldnames=fieldnames, extrasaction="ignore")
     writer.writeheader()
     for row in rows:
-        writer.writerow({key: row.get(key, "") for key in fieldnames})
+        writer.writerow(safe_csv_row(row, fieldnames))
     return Response(
         content=buffer.getvalue(),
         media_type="text/csv; charset=utf-8",
@@ -765,27 +991,14 @@ async def verify_payment(
 
 
 async def apply_order_status(oid: str, status: str, note: str) -> dict:
-    """Advance one order's status and append status history. Raises HTTPException on invalid input."""
-    if status not in ORDER_STATUSES:
-        raise HTTPException(status_code=400, detail="Invalid status")
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    await db.orders.update_one(
-        {"id": oid},
-        {"$set": {"status": status, "updated_at": now_iso()},
-         "$push": {"status_history": {"status": status, "at": now_iso(), "note": note}}},
+    """Historical compatibility surface: retained read-only."""
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_order_mutations_disabled",
+            "message": "Pesanan legacy dipertahankan sebagai data historis hanya-baca.",
+        },
     )
-    if status == "completed":
-        await emailer.send_email(
-            order["user_email"],
-            f"Pesanan Selesai — {order['order_number']}",
-            "Pesanan Anda telah selesai",
-            f"<p>Pesanan <strong>{order['order_number']}</strong> telah <strong>selesai</strong>. "
-            f"Tim kami akan menghubungi Anda untuk pengambilan/pengiriman.</p>",
-            db=db, user_id=order["user_id"],
-        )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
 
 
 @api.post("/admin/orders/{oid}/status")
@@ -802,28 +1015,28 @@ async def bulk_update_status(
     req: BulkStatusReq,
     user: dict = Depends(require_permission("orders.write")),
 ):
-    if req.status not in ORDER_STATUSES:
-        raise HTTPException(status_code=400, detail="Invalid status")
-    results = []
-    for oid in req.order_ids:
-        try:
-            await apply_order_status(oid, req.status, req.note)
-            results.append({"id": oid, "success": True, "error": None})
-        except HTTPException as exc:
-            results.append({"id": oid, "success": False, "error": exc.detail})
-    return {"results": results}
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_order_mutations_disabled",
+            "message": "Pesanan legacy dipertahankan sebagai data historis hanya-baca.",
+        },
+    )
 
 
 # ----------------------------- File download -----------------------------
 @api.get("/files/{path:path}")
-async def download_file(path: str, request: Request):
-    authorization = request.headers.get("Authorization", "")
-    token = authorization[7:] if authorization.startswith("Bearer ") else None
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    user = await get_user_from_token(token)
-    # Staff with file-read access can fetch shared files; customers remain path-scoped.
-    if not has_permission(user, "files.read") and f"/{user['id']}/" not in f"/{path}":
+async def download_file(path: str, user: dict = Depends(get_current_user)):
+    metadata = await db.file_objects.find_one(
+        {"storage_path": path},
+        {"_id": 0},
+    )
+    if not metadata or metadata.get("state") in {"deleted", "quarantined"}:
+        raise HTTPException(status_code=404, detail="File not found")
+    if (
+        not has_permission(user, "files.read")
+        and metadata.get("owner_id") != user["id"]
+    ):
         raise HTTPException(status_code=403, detail="Forbidden")
     try:
         data, _stored_content_type = storage.get_object(path)
@@ -838,7 +1051,7 @@ async def download_file(path: str, request: Request):
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     return Response(
         content=data,
-        media_type=safe_file_content_type(path),
+        media_type=safe_file_content_type(metadata["storage_path"]),
         headers={
             "X-Content-Type-Options": "nosniff",
             "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
@@ -916,25 +1129,63 @@ async def update_settings(
     actor: dict = Depends(require_permission("settings.write")),
 ):
     current = await get_settings()
+    if current.get("version", 1) != req.expected_version:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "version_conflict",
+                "current_version": current.get("version", 1),
+            },
+        )
     merged = merge_profile(current, req.model_dump())
-    await db.settings.update_one(
-        {"key": "site"},
-        {"$set": {field: merged[field] for field in PUBLIC_PROFILE_FIELDS}},
-        upsert=True,
+    result_document: dict = {}
+
+    async def mutation(session):
+        result = await db.settings.update_one(
+            {"key": "site", "version": req.expected_version},
+            {
+                "$set": {
+                    **{
+                        field: merged[field]
+                        for field in PUBLIC_PROFILE_FIELDS
+                    },
+                    "updated_at": datetime.now(timezone.utc),
+                    "updated_by": actor["id"],
+                },
+                "$inc": {"version": 1},
+            },
+            session=session,
+        )
+        if result.matched_count == 0:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "version_conflict"},
+            )
+        after = {
+            **merged,
+            "version": req.expected_version + 1,
+        }
+        await append_audit_event(
+            db,
+            actor=actor,
+            action="settings.profile_updated",
+            target_type="settings",
+            target_id="site",
+            before=project_public_settings(current),
+            after=project_public_settings(after),
+            reason=req.reason,
+            session=session,
+        )
+        result_document.update(after)
+
+    await app.state.transaction_guard.run(
+        mutation,
+        operation_name="settings.profile_update",
     )
-    await append_audit_event(
-        db,
-        actor=actor,
-        action="settings.profile_updated",
-        target_type="settings",
-        target_id="site",
-        before=project_public_settings(current),
-        after=project_public_settings(merged),
-    )
-    return project_admin_settings(await get_settings())
+    return project_admin_settings(result_document)
 
 
-@api.post("/admin/users", status_code=201)
+@api.post("/admin/customers", status_code=201)
 async def create_client_user(
     req: ClientProvisionReq,
     user: dict = Depends(require_permission("customers.manage")),
@@ -949,12 +1200,119 @@ async def list_customers(
     candidates = await db.users.find(
         CUSTOMER_QUERY, {"_id": 0, "password_hash": 0}
     ).to_list(500)
-    customer_roles = {("retail_customer",), ("organization_customer",)}
     return [
         safe_user(candidate)
         for candidate in candidates
-        if canonical_roles(candidate) in customer_roles
+        if candidate.get("role") == "client"
+        or bool(set(candidate.get("roles") or []) & CUSTOMER_ROLES)
     ]
+
+
+async def update_customer_status(
+    *,
+    customer_id: str,
+    payload: CustomerStatusReq,
+    actor: dict,
+    next_status: str,
+) -> dict:
+    updated: dict = {}
+    guard = app.state.transaction_guard
+
+    async def mutate(session):
+        current = await db.users.find_one({"id": customer_id}, session=session)
+        if not current:
+            raise HTTPException(status_code=404, detail="Customer not found")
+        is_customer = current.get("role") == "client" or bool(
+            set(current.get("roles") or []) & CUSTOMER_ROLES
+        )
+        if not is_customer:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "staff_account_boundary"},
+            )
+        if current.get("version", 1) != payload.expected_version:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "version_conflict",
+                    "current_version": current.get("version", 1),
+                    "current_status": current.get("status"),
+                },
+            )
+        timestamp = now_iso()
+        result = await db.users.update_one(
+            {"id": customer_id, "version": payload.expected_version},
+            {
+                "$set": {
+                    "status": next_status,
+                    "updated_at": timestamp,
+                },
+                "$inc": {"version": 1, "token_version": 1},
+            },
+            session=session,
+        )
+        if result.matched_count == 0:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "version_conflict"},
+            )
+        after = {
+            **current,
+            "status": next_status,
+            "updated_at": timestamp,
+            "version": payload.expected_version + 1,
+            "token_version": current.get("token_version", 0) + 1,
+        }
+        await append_identity_governance_event(
+            db,
+            actor=actor,
+            action=f"identity.customer_{next_status}",
+            target_type="user",
+            target_id=customer_id,
+            before=safe_user(current),
+            after=safe_user(after),
+            reason=payload.reason,
+            session=session,
+        )
+        updated.update(after)
+
+    await guard.run(
+        mutate,
+        operation_name=f"identity.customer_{next_status}",
+    )
+    await _session_service().revoke_user_sessions(
+        customer_id,
+        reason=f"customer_{next_status}",
+    )
+    return safe_user(updated)
+
+
+@api.post("/admin/customers/{customer_id}/deactivate")
+async def deactivate_customer(
+    customer_id: str,
+    payload: CustomerStatusReq,
+    actor: dict = Depends(require_permission("customers.manage")),
+):
+    return await update_customer_status(
+        customer_id=customer_id,
+        payload=payload,
+        actor=actor,
+        next_status="disabled",
+    )
+
+
+@api.post("/admin/customers/{customer_id}/reactivate")
+async def reactivate_customer(
+    customer_id: str,
+    payload: CustomerStatusReq,
+    actor: dict = Depends(require_permission("customers.manage")),
+):
+    return await update_customer_status(
+        customer_id=customer_id,
+        payload=payload,
+        actor=actor,
+        next_status="active",
+    )
 
 def _resolve_range(date_from: Optional[str], date_to: Optional[str]) -> dict:
     try:
@@ -1202,14 +1560,67 @@ async def health_live():
 @api.get("/health/ready")
 async def health_ready():
     capabilities = app.state.database_capabilities
-    transaction_mutations = "ready" if capabilities.transactions else "unavailable"
-    return {
-        "status": "ready" if capabilities.transactions else "degraded",
-        "transaction_mutations": transaction_mutations,
+    database_available = False
+    try:
+        await db.command("ping")
+        database_available = True
+    except Exception:
+        logger.warning("Readiness database ping failed")
+    schema_status = app.state.schema_status
+    worker_required = (
+        os.environ.get("NOTIFICATION_WORKER_REQUIRED", "false").lower()
+        == "true"
+    )
+    worker_status = app.state.notification_worker_status
+    worker_task = app.state.notification_worker_task
+    worker_ready = bool(
+        not worker_required
+        or (
+            worker_status.get("enabled")
+            and worker_status.get("running")
+            and worker_task is not None
+            and not worker_task.done()
+        )
+    )
+    email_required = (
+        os.environ.get("EMAIL_DELIVERY_REQUIRED", "false").lower() == "true"
+    )
+    email_ready = bool(not email_required or emailer.RESEND_API_KEY)
+    ready = bool(
+        database_available
+        and capabilities.transactions
+        and schema_status.get("ready")
+        and worker_ready
+        and email_ready
+    )
+    payload = {
+        "status": "ready" if ready else "not_ready",
+        "database": "ready" if database_available else "unavailable",
+        "transaction_mutations": (
+            "ready" if capabilities.transactions else "unavailable"
+        ),
+        "schema": schema_status,
         "capabilities": {
             "transactions": capabilities.transaction_diagnostic(),
+            "production_upload": {"status": "inactive", "required": False},
+            "payment": {"status": "inactive", "required": False},
+            "organization_portal": {"status": "inactive", "required": False},
+            "notification_worker": {
+                "status": "ready" if worker_ready else "unavailable",
+                "required": worker_required,
+                "enabled": bool(worker_status.get("enabled")),
+            },
+            "email_delivery": {
+                "status": (
+                    "ready"
+                    if emailer.RESEND_API_KEY
+                    else "inactive"
+                ),
+                "required": email_required,
+            },
         },
     }
+    return JSONResponse(payload, status_code=200 if ready else 503)
 
 
 @api.get("/")
@@ -1265,6 +1676,7 @@ api.include_router(
             db=db,
             client=client,
             capabilities=app.state.database_capabilities,
+            guard=app.state.transaction_guard,
             emailer=emailer,
         ),
     )
@@ -1273,6 +1685,7 @@ api.include_router(
 api.include_router(
     build_portfolio_router(
         get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         has_permission=has_permission,
     )
@@ -1348,92 +1761,32 @@ app.add_middleware(
 
 # ----------------------------- Startup -----------------------------
 async def seed():
-    await db.users.create_index("email", unique=True)
-    inquiries = getattr(db, "inquiries", None)
-    if inquiries is not None:
-        await inquiries.create_index("id", unique=True)
-        await inquiries.create_index([("status", 1), ("updated_at", -1)])
-    quotes = getattr(db, "b2b_quotes", None)
-    if quotes is not None:
-        await quotes.create_index("id", unique=True)
-        await quotes.create_index("inquiry_id", unique=True)
-    quote_versions = getattr(db, "b2b_quote_versions", None)
-    if quote_versions is not None:
-        await quote_versions.create_index("id", unique=True)
-        await quote_versions.create_index(
-            [("quote_id", 1), ("revision", 1)],
-            unique=True,
-        )
-    projects = getattr(db, "b2b_projects", None)
-    if projects is not None:
-        await projects.create_index("id", unique=True)
-        await projects.create_index("quote_id", unique=True)
-        await projects.create_index([("status", 1), ("updated_at", -1)])
-    work_orders = getattr(db, "work_orders", None)
-    if work_orders is not None:
-        await work_orders.create_index("id", unique=True)
-        await work_orders.create_index([("project_id", 1), ("updated_at", -1)])
-        await work_orders.create_index([("status", 1), ("updated_at", -1)])
-    portfolio = getattr(db, "portfolio", None)
-    if portfolio is not None:
-        await portfolio.create_index("id", unique=True)
-        await portfolio.create_index([("status", 1), ("display_order", 1)])
-        await portfolio.create_index("source_project_id")
-    notifications = getattr(db, "notifications", None)
-    if notifications is not None:
-        await notifications.create_index("id", unique=True)
-        # Partial: legacy rows predate the key, and several missing values
-        # would collide on a plain unique index.
-        await notifications.create_index(
-            "deduplication_key",
-            unique=True,
-            partialFilterExpression={"deduplication_key": {"$exists": True}},
-        )
-        await notifications.create_index([("user_id", 1), ("read_at", 1)])
-        await notifications.create_index([("user_id", 1), ("created_at", -1)])
-    outbox = getattr(db, "notification_outbox", None)
-    if outbox is not None:
-        await outbox.create_index("id", unique=True)
-        await outbox.create_index([("status", 1), ("created_at", 1)])
-    retail_orders = getattr(db, "retail_orders", None)
-    if retail_orders is not None:
-        await retail_orders.create_index("id", unique=True)
-        await retail_orders.create_index("order_number", unique=True)
-        await retail_orders.create_index("creation_operation_id", unique=True)
-        await retail_orders.create_index([("status", 1), ("updated_at", -1)])
-    shortages = getattr(db, "work_order_shortages", None)
-    if shortages is not None:
-        await shortages.create_index("id", unique=True)
-        await shortages.create_index([("status", 1), ("updated_at", -1)])
-        await shortages.create_index("work_order_id")
-    await db.users.create_index("id", unique=True)
-    await db.users.create_index([("roles", 1), ("status", 1)])
-    await db.audit_events.create_index("id", unique=True)
-    await db.audit_events.create_index("created_at")
-    await db.audit_events.create_index("actor_user_id")
-    await db.audit_events.create_index([("target_type", 1), ("target_id", 1)])
-    await db.organizations.create_index("id", unique=True)
-    await db.organizations.create_index("status")
-    await db.organization_memberships.create_index("id", unique=True)
-    await db.organization_memberships.create_index(
-        [("organization_id", 1), ("user_id", 1)], unique=True
-    )
-    await db.organization_memberships.create_index([("user_id", 1), ("status", 1)])
-    await db.orders.create_index("id", unique=True)
     admin_email = os.environ["ADMIN_EMAIL"].lower()
-    admin_password = os.environ["ADMIN_PASSWORD"]
     existing = await db.users.find_one({"email": admin_email})
     if not existing:
+        admin_password = os.environ.get("ADMIN_PASSWORD", "")
+        validate_password(admin_password)
         await db.users.insert_one({
             "id": str(uuid.uuid4()), "name": "NIUVA Admin", "email": admin_email,
             "password_hash": hash_password(admin_password), "phone": "", "company": "PT Niuva Inovasi Utama",
-            "roles": [], "status": "active",
-            "access_state": "access_review_required",
+            "roles": ["super_admin"], "status": "active",
+            "access_state": "approved",
             "role_policy_version": ROLE_POLICY_VERSION,
+            "token_version": 0,
+            "version": 1,
             "created_at": now_iso(),
         })
-    elif not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
+    elif (
+        canonical_roles(existing) != ("super_admin",)
+        or existing.get("status") != "active"
+        or existing.get("access_state") != "approved"
+        or not is_valid_password_hash(existing.get("password_hash"))
+    ):
+        raise RuntimeError(
+            "Configured bootstrap administrator already exists but is not a "
+            "valid active super_admin; startup will not mutate identity "
+            "credentials"
+        )
 
     if await db.materials.count_documents({}) == 0:
         defaults = [
@@ -1514,9 +1867,21 @@ async def auto_delete_loop():
             cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
             stale = await db.orders.find(
                 {"status": "awaiting_payment", "created_at": {"$lt": cutoff}, "file.deleted": {"$ne": True}},
-                {"_id": 0, "id": 1},
+                {"_id": 0, "id": 1, "file.storage_path": 1},
             ).to_list(500)
             for o in stale:
+                path = (o.get("file") or {}).get("storage_path")
+                if path:
+                    await db.file_objects.update_one(
+                        {"storage_path": path, "state": "active"},
+                        {
+                            "$set": {
+                                "state": "deleted",
+                                "deleted_at": datetime.now(timezone.utc),
+                                "updated_at": datetime.now(timezone.utc),
+                            }
+                        },
+                    )
                 await db.orders.update_one({"id": o["id"]}, {"$set": {"file.deleted": True}})
             if stale:
                 logger.info(f"Auto-deleted design files for {len(stale)} stale orders")
@@ -1546,8 +1911,48 @@ async def reservation_expiry_loop():
         await asyncio.sleep(60)
 
 
-@app.on_event("startup")
-async def startup():
+async def notification_outbox_loop():
+    worker_id = f"web-worker:{uuid.uuid4()}"
+
+    async def deliver_email(entry, *, idempotency_key):
+        payload = entry.get("payload") or {}
+        result = await emailer.send_email(
+            entry["recipient"],
+            str(payload.get("subject") or "Notifikasi NIUVA"),
+            str(payload.get("title") or payload.get("subject") or "Notifikasi"),
+            str(payload.get("body_html") or payload.get("body") or ""),
+            idempotency_key=idempotency_key,
+        )
+        if result.get("status") == "error":
+            raise RuntimeError("email_delivery_failed")
+        return True
+
+    worker = NotificationDeliveryWorker(
+        service=NotificationService(db=db),
+        worker_id=worker_id,
+        deliverers={"email": deliver_email},
+    )
+    while True:
+        try:
+            result = await worker.run_once(limit=50)
+            app.state.notification_worker_status = {
+                "enabled": True,
+                "running": True,
+                "last_heartbeat_at": datetime.now(timezone.utc),
+                "last_result": result,
+            }
+        except Exception:
+            logger.exception("notification_outbox_loop failed")
+            app.state.notification_worker_status = {
+                **app.state.notification_worker_status,
+                "enabled": True,
+                "running": False,
+                "last_heartbeat_at": datetime.now(timezone.utc),
+            }
+        await asyncio.sleep(5)
+
+
+async def _startup_runtime():
     storage.init_storage()
     await seed()
     app.state.database_capabilities = await probe_database_capabilities(
@@ -1559,18 +1964,45 @@ async def startup():
         app.state.database_capabilities.transactions,
         app.state.database_capabilities.transaction_reason.value,
     )
-    await ensure_catalog_inventory_indexes(db)
-    asyncio.create_task(auto_delete_loop())
+    try:
+        app.state.schema_status = await inspect_schema(db)
+    except Exception:
+        logger.exception("Unable to inspect required database schema")
+        app.state.schema_status = {
+            **app.state.schema_status,
+            "ready": False,
+        }
+    app.state.auto_delete_task = asyncio.create_task(auto_delete_loop())
     app.state.reservation_expiry_task = asyncio.create_task(reservation_expiry_loop())
+    worker_enabled = (
+        os.environ.get("NOTIFICATION_WORKER_ENABLED", "false").lower() == "true"
+    )
+    app.state.notification_worker_status = {
+        "enabled": worker_enabled,
+        "running": False,
+        "last_heartbeat_at": None,
+        "last_result": None,
+    }
+    if worker_enabled:
+        app.state.notification_worker_task = asyncio.create_task(
+            notification_outbox_loop(),
+        )
 
 
-@app.on_event("shutdown")
-async def shutdown():
-    expiry_task = app.state.reservation_expiry_task
-    if expiry_task is not None:
-        expiry_task.cancel()
+async def _shutdown_runtime():
+    tasks = [
+        app.state.auto_delete_task,
+        app.state.reservation_expiry_task,
+        app.state.notification_worker_task,
+    ]
+    for task in tasks:
+        if task is not None:
+            task.cancel()
+    for task in tasks:
+        if task is None:
+            continue
         try:
-            await expiry_task
+            await task
         except asyncio.CancelledError:
             pass
     client.close()

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,17 +17,22 @@ class ContentBlockPayload(BaseModel):
 
 
 class ContentFieldsPayload(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     fields: dict = Field(default_factory=dict)
-
-
-class ReasonPayload(BaseModel):
+    expected_version: int = Field(ge=1)
     reason: str = Field(min_length=3, max_length=500)
 
 
+class ReasonPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = Field(min_length=3, max_length=500)
+    expected_version: int = Field(ge=1)
+
+
 class PublishPayload(ReasonPayload):
-    scheduled_at: str | None = None
+    scheduled_at: datetime | None = None
 
 
 class RollbackPayload(ReasonPayload):
@@ -91,7 +97,15 @@ def build_content_router(
         payload: ContentFieldsPayload,
         actor: dict = Depends(require_permission("content.write")),
     ):
-        return await invoke(service().update_block(block_id, fields=payload.fields, actor=actor))
+        return await invoke(
+            service().update_block(
+                block_id,
+                fields=payload.fields,
+                expected_version=payload.expected_version,
+                actor=actor,
+                reason=payload.reason,
+            )
+        )
 
     @router.post("/admin/content/{block_id}/validate")
     async def validate_content(
@@ -112,6 +126,7 @@ def build_content_router(
                 target_status=payload.target_status,
                 actor=actor,
                 reason=payload.reason,
+                expected_version=payload.expected_version,
                 # Publishing is an approval, not an edit.
                 can_publish=has_permission(actor, "content.publish"),
             )
@@ -125,7 +140,11 @@ def build_content_router(
     ):
         return await invoke(
             service().publish_block(
-                block_id, actor=actor, reason=payload.reason, scheduled_at=payload.scheduled_at,
+                block_id,
+                actor=actor,
+                reason=payload.reason,
+                expected_version=payload.expected_version,
+                scheduled_at=payload.scheduled_at,
             )
         )
 
@@ -133,19 +152,32 @@ def build_content_router(
     async def rollback_content(
         block_id: str,
         payload: RollbackPayload,
-        actor: dict = Depends(require_permission("content.write")),
+        actor: dict = Depends(require_permission("content.publish")),
     ):
         return await invoke(
-            service().rollback_block(block_id, version_id=payload.version_id, actor=actor, reason=payload.reason)
+            service().rollback_block(
+                block_id,
+                version_id=payload.version_id,
+                actor=actor,
+                reason=payload.reason,
+                expected_version=payload.expected_version,
+            )
         )
 
     @router.post("/admin/content/{block_id}/archive")
     async def archive_content(
         block_id: str,
         payload: ReasonPayload,
-        actor: dict = Depends(require_permission("content.write")),
+        actor: dict = Depends(require_permission("content.archive")),
     ):
-        return await invoke(service().archive_block(block_id, actor=actor, reason=payload.reason))
+        return await invoke(
+            service().archive_block(
+                block_id,
+                actor=actor,
+                reason=payload.reason,
+                expected_version=payload.expected_version,
+            )
+        )
 
     @router.get("/admin/content/{block_id}/versions")
     async def list_content_versions(

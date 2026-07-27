@@ -148,6 +148,8 @@ def classify_legacy_order(document: dict) -> dict:
     status = value.get("status")
     value["record_class"] = "legacy_order"
     value["canonical_status_equivalent"] = LEGACY_STATUS_EQUIVALENT.get(status)
+    value["creation_enabled"] = False
+    value["mutations_enabled"] = False
     return value
 
 

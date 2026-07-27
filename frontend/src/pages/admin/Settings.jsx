@@ -32,7 +32,9 @@ export default function AdminSettings() {
   const save = async () => {
     setBusy(true);
     try {
-      await api.put("/admin/settings", {
+      const response = await api.put("/admin/settings", {
+        expected_version: form.version,
+        reason: "Memperbarui profil perusahaan dari Admin Settings",
         legal_name: form.legal_name || "",
         tagline: form.tagline || "",
         address: form.address || "",
@@ -43,6 +45,7 @@ export default function AdminSettings() {
         instagram_url: form.instagram_url || "",
         linkedin_url: form.linkedin_url || "",
       });
+      setForm(response.data);
       toast.success(t("settings.saved"));
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));

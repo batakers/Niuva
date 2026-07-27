@@ -24,6 +24,7 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+from tests.auth_support import AuthCollection  # noqa: E402
 
 REAL_TRANSACTION_GUARD = server.app.state.transaction_guard
 
@@ -167,8 +168,13 @@ class FakeDatabase:
         self.materials = FakeCollection()
         self.orders = FakeCollection()
         self.portfolio = FakeCollection()
+        self.portfolio_revisions = FakeCollection()
+        self.portfolio_publications = FakeCollection()
         self.contacts = FakeCollection()
         self.settings = FakeCollection()
+        self.file_objects = FakeCollection()
+        self.auth_sessions = AuthCollection()
+        self.login_rate_limits = AuthCollection()
 
 
 class FakeTransactionGuard:
@@ -334,8 +340,8 @@ async def run_staff_invitation_and_access_lifecycle():
             "/api/auth/admin/login",
             json={"email": warehouse["email"], "password": "WarehouseLifecycle123"},
         )
-        owner_headers = bearer(owner_login.json()["token"])
-        warehouse_headers = bearer(warehouse_login.json()["token"])
+        owner_headers = bearer(owner_login.cookies["niuva_access"])
+        warehouse_headers = bearer(warehouse_login.cookies["niuva_access"])
 
         directory = await api.get("/api/admin/users", headers=owner_headers)
         assert directory.status_code == 200
@@ -400,7 +406,7 @@ async def run_staff_invitation_and_access_lifecycle():
             "/api/auth/admin/login",
             json={"email": staff["email"], "password": "StaffBaruPassword123"},
         )
-        old_staff_token = staff_login.json()["token"]
+        old_staff_token = staff_login.cookies["niuva_access"]
 
         changed = await api.put(
             f"/api/admin/staff/{staff['id']}/roles",
@@ -507,7 +513,16 @@ async def run_legacy_admin_route_permission_matrix():
             "created_at": "2026-07-14T00:00:00+00:00",
         }
     )
+    db.file_objects.items.append(
+        {
+            "id": "file-permission-1",
+            "storage_path": "niuva/orders/customer-routes/private.stl",
+            "owner_id": customer["id"],
+            "state": "active",
+        }
+    )
     server.db = db
+    server.app.state.transaction_guard = FakeTransactionGuard(db)
 
     warehouse_token = server.create_token(
         warehouse["id"], warehouse["email"], "warehouse"
@@ -576,7 +591,10 @@ async def run_legacy_admin_route_permission_matrix():
 
 
 def test_legacy_admin_routes_use_exact_backend_permissions():
-    asyncio.run(run_legacy_admin_route_permission_matrix())
+    try:
+        asyncio.run(run_legacy_admin_route_permission_matrix())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
 
 
 async def run_canonical_account_creation_contract():
@@ -602,11 +620,35 @@ async def run_canonical_account_creation_contract():
         for account in database.users.items
         if account["email"] == os.environ["ADMIN_EMAIL"].lower()
     )
-    assert seeded_admin["roles"] == []
-    assert seeded_admin["access_state"] == "access_review_required"
+    assert seeded_admin["roles"] == ["super_admin"]
+    assert seeded_admin["access_state"] == "approved"
     assert seeded_admin["role_policy_version"] == server.ROLE_POLICY_VERSION
     assert "role" not in seeded_admin
 
 
 def test_runtime_account_creation_never_recreates_legacy_or_owner_authority():
     asyncio.run(run_canonical_account_creation_contract())
+
+
+def test_bootstrap_is_one_time_and_never_reasserts_the_environment_password():
+    async def scenario():
+        owner = make_user("bootstrap-once", os.environ["ADMIN_EMAIL"], ["super_admin"])
+        owner["password_hash"] = server.hash_password("RotatedOwnerPassword123")
+        database = FakeDatabase([owner])
+        server.db = database
+
+        original_hash = owner["password_hash"]
+        await server.seed()
+
+        stored = await database.users.find_one({"id": owner["id"]})
+        assert stored["password_hash"] == original_hash
+        assert server.verify_password(
+            "RotatedOwnerPassword123",
+            stored["password_hash"],
+        )
+        assert not server.verify_password(
+            os.environ["ADMIN_PASSWORD"],
+            stored["password_hash"],
+        )
+
+    asyncio.run(scenario())

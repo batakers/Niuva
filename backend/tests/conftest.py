@@ -4,6 +4,9 @@ import uuid
 
 import pytest
 
+os.environ.setdefault("NIUVA_TEST_BEARER_AUTH", "true")
+os.environ.setdefault("AUTH_COOKIE_SECURE", "false")
+
 # Bootstrap-style suites (test_auth_security, test_identity_foundation, ...)
 # register a stub motor module through sys.modules.setdefault so importing
 # server never opens a real client. setdefault only wins when motor is absent,
