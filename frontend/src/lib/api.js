@@ -5,7 +5,9 @@ export const HAS_CONFIGURED_BACKEND = Boolean(BACKEND_URL);
 export const API = `${BACKEND_URL}/api`;
 export const TOKEN_KEY = "niuva_token";
 
-export const api = axios.create({ baseURL: API });
+export const api = axios.create({ baseURL: API, withCredentials: true });
+let adminCsrfToken = null;
+const SAFE_METHODS = new Set(["get", "head", "options"]);
 
 export function getStoredToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -19,9 +21,22 @@ export function clearStoredToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+export function setAdminCsrfToken(token) {
+  adminCsrfToken = token || null;
+}
+
+export function clearAdminCsrfToken() {
+  adminCsrfToken = null;
+}
+
 api.interceptors.request.use((config) => {
   const token = getStoredToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const path = String(config.url || "");
+  const isAdminPath = path === "/admin" || path.startsWith("/admin/") || path.startsWith("/auth/admin/");
+  if (token && !isAdminPath) config.headers.Authorization = `Bearer ${token}`;
+  if (adminCsrfToken && !SAFE_METHODS.has((config.method || "get").toLowerCase())) {
+    config.headers["X-CSRF-Token"] = adminCsrfToken;
+  }
   return config;
 });
 
@@ -34,12 +49,23 @@ export function fileUrl(path) {
   return `${API}/files/${normalized}`;
 }
 
-export async function fetchFile(path) {
+async function authenticatedFetch(url, options = {}) {
   const token = getStoredToken();
-  if (!token) throw new Error("Not authenticated");
-  const response = await fetch(fileUrl(path), {
-    headers: { Authorization: `Bearer ${token}` },
+  const method = (options.method || "GET").toUpperCase();
+  const headers = new Headers(options.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (adminCsrfToken && !SAFE_METHODS.has(method.toLowerCase())) {
+    headers.set("X-CSRF-Token", adminCsrfToken);
+  }
+  return fetch(url, {
+    ...options,
+    credentials: "include",
+    headers,
   });
+}
+
+export async function fetchFile(path, options) {
+  const response = await authenticatedFetch(fileUrl(path), options);
   if (!response.ok) throw new Error(`File request failed (${response.status})`);
   return response.blob();
 }
@@ -62,11 +88,7 @@ export async function downloadFile(path, filename = "download") {
 }
 
 export async function downloadCsv(apiPath, filename = "export.csv") {
-  const token = getStoredToken();
-  if (!token) throw new Error("Not authenticated");
-  const response = await fetch(`${API}${apiPath}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const response = await authenticatedFetch(`${API}${apiPath}`);
   if (!response.ok) throw new Error(`Export failed (${response.status})`);
   triggerBlobDownload(await response.blob(), filename);
 }

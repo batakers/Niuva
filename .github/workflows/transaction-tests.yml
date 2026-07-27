@@ -53,6 +53,8 @@ jobs:
           backend/tests/test_identity_access_migration.py
           backend/tests/test_granular_role_migration.py
           backend/tests/test_auth_recovery_migration.py
+          backend/tests/test_auth_session_migration.py
+          backend/tests/test_auth_session_transaction_integration.py
           backend/tests/test_auth_recovery_transaction_integration.py
       - name: Stop isolated MongoDB replica set
         if: always()

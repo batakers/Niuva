@@ -9,7 +9,7 @@ import {
   SectionHeader,
 } from "../../components/brand/BrandSystem";
 
-const LAST_UPDATED = "24 Juli 2026";
+const LAST_UPDATED = "28 Juli 2026";
 
 const dataCollected = [
   {
@@ -150,7 +150,7 @@ export default function PrivacyPolicyPage() {
             <SectionHeader
               eyebrow="Cookie & Penyimpanan Lokal"
               title="Niuva tidak menggunakan cookie pelacakan atau analitik pihak ketiga."
-              body="Website ini hanya menyimpan preferensi bahasa dan token sesi login di penyimpanan lokal browser (localStorage) untuk kebutuhan fungsional. Tidak ada cookie pelacakan iklan atau analitik pihak ketiga yang dipasang."
+              body="Website ini menyimpan preferensi bahasa dan, untuk akun pelanggan yang didukung, token login di penyimpanan lokal browser (localStorage). Sesi Admin menggunakan cookie fungsional yang aman dan tidak dapat dibaca JavaScript (HttpOnly); pilihan 'Ingat saya' menentukan apakah sesi tersebut tetap tersimpan setelah browser ditutup. Tidak ada cookie pelacakan iklan atau analitik pihak ketiga yang dipasang."
               align="split"
             />
           </PageContainer>

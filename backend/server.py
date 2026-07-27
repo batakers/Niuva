@@ -12,8 +12,10 @@ import logging
 import asyncio
 import html
 import re
+import secrets
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
+from urllib.parse import urlsplit
 
 import jwt
 import bcrypt
@@ -36,6 +38,18 @@ from auth_recovery import (
     PublicSiteOrigin,
     PublicSiteOriginError,
     build_recovery_module,
+)
+from auth_session import (
+    ACCESS_COOKIE_NAME,
+    SESSION_COOKIE_NAME,
+    AdminSessionError,
+    AdminSessionModule,
+    MongoSessionStore,
+    RequestVerificationError,
+    SessionExpiredError,
+    access_cookie_options,
+    clear_cookie_options,
+    session_cookie_options,
 )
 from audit import append_audit_event
 from b2b_routes import build_b2b_router
@@ -68,6 +82,7 @@ from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
 from permissions import (
+    CUSTOMER_ROLES,
     ROLE_LABELS,
     ROLE_POLICY_VERSION,
     canonical_roles,
@@ -132,6 +147,7 @@ app.state.transaction_guard = TransactionMutationGuard(
 app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
     get_database=lambda: db,
 )
+app.state.admin_session_module = None
 app.add_exception_handler(
     TransactionUnavailableError,
     transaction_unavailable_handler,
@@ -161,6 +177,18 @@ app.add_exception_handler(
     PasswordWriteDisabledError,
     password_policy_unavailable_handler,
 )
+
+
+async def admin_session_error_handler(_request, exc):
+    status_code = 403 if isinstance(exc, RequestVerificationError) else 401
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": {"code": exc.code}},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+app.add_exception_handler(AdminSessionError, admin_session_error_handler)
 api = APIRouter(prefix="/api")
 
 
@@ -279,16 +307,93 @@ async def get_user_from_token(token: str) -> dict:
     return user
 
 
+def get_admin_session_module():
+    if app.state.admin_session_module is not None:
+        return app.state.admin_session_module
+    csrf_key = os.environ.get("AUTH_SESSION_CSRF_KEY", "").encode("utf-8")
+    if len(csrf_key) < 32:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "admin_session_unavailable"},
+        )
+
+    async def current_token_version(user_id, session):
+        user = await db.users.find_one(
+            {"id": user_id}, {"_id": 0, "token_version": 1}, session=session
+        )
+        return user.get("token_version", 0) if user else None
+
+    return AdminSessionModule(
+        store=MongoSessionStore(db),
+        transaction_guard=app.state.transaction_guard,
+        csrf_key=csrf_key,
+        user_version_provider=current_token_version,
+    )
+
+
+def _approved_request_origin() -> str:
+    origin = _public_site_origin()
+    if origin is None:
+        raise RequestVerificationError()
+    return origin.value
+
+
+def _request_origin(request: Request) -> str | None:
+    candidate = request.headers.get("origin")
+    if candidate:
+        return candidate.rstrip("/")
+    referer = request.headers.get("referer")
+    if not referer:
+        return None
+    parsed = urlsplit(referer)
+    if not parsed.scheme or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def verify_admin_origin(request: Request) -> None:
+    if not secrets.compare_digest(
+        _request_origin(request) or "invalid",
+        _approved_request_origin(),
+    ):
+        raise RequestVerificationError()
+
+
+async def get_admin_user(request: Request, *, verify_csrf: bool = True) -> dict:
+    access_secret = request.cookies.get(ACCESS_COOKIE_NAME)
+    if not access_secret:
+        raise SessionExpiredError()
+    context = {"access_secret": access_secret}
+    if verify_csrf and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+        verify_admin_origin(request)
+        context["csrf_token"] = request.headers.get("x-csrf-token")
+    session = await get_admin_session_module().authenticate_admin_session(
+        context
+    )
+    user = await db.users.find_one(
+        {"id": session.user_id}, {"_id": 0, "password_hash": 0}
+    )
+    if (
+        not user
+        or user.get("status", "active") == "disabled"
+        or user.get("access_state", "approved") != "approved"
+        or not has_permission(user, "admin.access")
+    ):
+        raise SessionExpiredError()
+    request.state.admin_session = session
+    return user
+
+
 async def get_current_user(request: Request) -> dict:
-    token = None
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-    if not token:
-        token = request.cookies.get("access_token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await get_user_from_token(token)
+        user = await get_user_from_token(auth_header[7:])
+        if has_permission(user, "admin.access"):
+            raise SessionExpiredError()
+        return user
+    if request.cookies.get(ACCESS_COOKIE_NAME):
+        return await get_admin_user(request)
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 def require_permission(permission: str):
@@ -318,6 +423,10 @@ class ClientProvisionReq(BaseModel):
 class LoginReq(BaseModel):
     email: EmailStr
     password: str
+
+
+class AdminLoginReq(LoginReq):
+    remember_me: bool = False
 
 
 class ForgotPasswordReq(BaseModel):
@@ -414,6 +523,40 @@ def auth_response(user: dict) -> dict:
     primary_role = roles[0] if roles else user.get("role", "")
     token = create_token(user["id"], user["email"], primary_role, user.get("token_version", 0))
     return {"token": token, "user": safe_user(user)}
+
+
+def _set_admin_cookies(response: Response, grant) -> None:
+    response.set_cookie(
+        ACCESS_COOKIE_NAME,
+        grant.access_secret,
+        **access_cookie_options(),
+    )
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        grant.session_secret,
+        **session_cookie_options(grant.remember_me),
+    )
+
+
+def _clear_admin_cookies(response: Response) -> None:
+    options = clear_cookie_options()
+    response.delete_cookie(ACCESS_COOKIE_NAME, **options)
+    response.delete_cookie(SESSION_COOKIE_NAME, **options)
+
+
+def _admin_session_response(user: dict, grant) -> JSONResponse:
+    response = JSONResponse(
+        {
+            "user": safe_user(user),
+            "csrf_token": grant.csrf_token,
+            "access_expires_at": grant.access_expires_at.isoformat(),
+            "idle_expires_at": grant.idle_expires_at.isoformat(),
+            "absolute_expires_at": grant.absolute_expires_at.isoformat(),
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+    _set_admin_cookies(response, grant)
+    return response
 
 
 async def authenticate_credentials(req: LoginReq) -> dict:
@@ -537,18 +680,68 @@ async def register():
 @api.post("/auth/login")
 async def login(req: LoginReq):
     user = await authenticate_credentials(req)
+    if not set(canonical_roles(user)) & CUSTOMER_ROLES:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     return auth_response(user)
 
 
 @api.post("/auth/admin/login")
-async def admin_login(req: LoginReq):
+async def admin_login(req: AdminLoginReq, request: Request):
+    verify_admin_origin(request)
     user = await authenticate_credentials(req)
     if not has_permission(user, "admin.access"):
         raise HTTPException(
             status_code=403,
             detail="Permission required: admin.access",
         )
-    return auth_response(user)
+    grant = await get_admin_session_module().create_admin_session(
+        user,
+        req.remember_me,
+        {},
+    )
+    return _admin_session_response(user, grant)
+
+
+@api.post("/auth/admin/session/refresh")
+async def refresh_admin_session(request: Request):
+    verify_admin_origin(request)
+    session_secret = request.cookies.get(SESSION_COOKIE_NAME)
+    if not session_secret:
+        raise SessionExpiredError()
+    grant = await get_admin_session_module().rotate_admin_session(
+        None,
+        {"session_secret": session_secret},
+    )
+    user = await db.users.find_one(
+        {"id": grant.user_id}, {"_id": 0, "password_hash": 0}
+    )
+    if not user or not has_permission(user, "admin.access"):
+        raise SessionExpiredError()
+    return _admin_session_response(user, grant)
+
+
+@api.get("/auth/admin/session")
+async def current_admin_session(request: Request):
+    user = await get_admin_user(request, verify_csrf=False)
+    return JSONResponse(
+        {"user": safe_user(user)},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@api.post("/auth/admin/logout")
+async def admin_logout(request: Request):
+    await get_admin_user(request)
+    await get_admin_session_module().revoke_admin_session(
+        request.state.admin_session,
+        "logout",
+    )
+    response = JSONResponse(
+        {"ok": True},
+        headers={"Cache-Control": "no-store"},
+    )
+    _clear_admin_cookies(response)
+    return response
 
 
 @api.get("/auth/me")
@@ -864,11 +1057,7 @@ async def bulk_update_status(
 # ----------------------------- File download -----------------------------
 @api.get("/files/{path:path}")
 async def download_file(path: str, request: Request):
-    authorization = request.headers.get("Authorization", "")
-    token = authorization[7:] if authorization.startswith("Bearer ") else None
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    user = await get_user_from_token(token)
+    user = await get_current_user(request)
     # Staff with file-read access can fetch shared files; customers remain path-scoped.
     if not has_permission(user, "files.read") and f"/{user['id']}/" not in f"/{path}":
         raise HTTPException(status_code=403, detail="Forbidden")

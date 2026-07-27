@@ -1,6 +1,6 @@
 # Admin Authentication Phase 2 — Session Safety Authorization Packet
 
-Status: **Approved Implementation Authorization — G0 Pending Checkpoint/Isolation — No Production Activation**
+Status: **Approved Implementation Authorization — G4 Passed Locally; G5 Not Started — No Production Activation**
 Date: 27 July 2026
 Decision owner: Project Owner
 Technical reviewer: Acting Technical Owner
@@ -160,6 +160,11 @@ change, and later successful step-up.
 - Backend compares a keyed digest against session state in constant time.
 - Every cookie-authenticated non-safe request requires the CSRF token and an
   exact approved `Origin`; absent `Origin` may use exact `Referer` origin only.
+- The refresh endpoint is the sole bootstrap exception because an in-memory
+  CSRF token is intentionally lost on reload. It requires the rotating HttpOnly
+  session cookie plus exact `Origin`/`Referer`, rotates all session material,
+  and returns a new CSRF token. It accepts no bearer credential and no
+  cross-origin request.
 - Requests with neither approved header fail closed.
 - Customer bearer-authenticated requests remain outside this CSRF contract.
 
@@ -417,12 +422,23 @@ Status: **Approved on 27 July 2026.**
 - new branch/worktree starts from the exact reviewed Phase 1 lineage; and
 - no unrelated changes exist.
 
+**Result: Passed locally on 27 July 2026.** Approval checkpoint `5c3999a` is
+committed. Branch `feat/admin-auth-phase-2-session-safety` and isolated worktree
+`.worktrees/admin-auth-phase-2-session-safety` start at that exact clean
+checkpoint. No push, shared-data mutation, deployment, or activation occurred.
+
 ### G1 — Session contract tests
 
 - controlled-clock tests cover access, idle, absolute, and remember-me bounds;
 - cookie serialization and no-store tests pass;
 - raw session/CSRF material is absent from storage/logs/responses/evidence; and
 - customer bearer compatibility remains green.
+
+**Result: Passed locally on 28 July 2026.** Controlled-clock tests cover both
+lifetime modes, each expiry boundary, hash-only storage, keyed CSRF validation,
+cookie attributes, account-generation checks, single/user revocation, and
+failure rollback. Admin credentials are absent from JSON and browser storage;
+customer bearer compatibility remains covered.
 
 ### G2 — CSRF and rotation safety
 
@@ -432,6 +448,13 @@ Status: **Approved on 27 July 2026.**
 - concurrent/replayed old secrets produce one success and family revocation;
 - transaction unavailability fails closed without partial rotation.
 
+**Result: Passed locally on 28 July 2026.** Route tests cover exact origin,
+missing/invalid CSRF, no-store responses, refresh bootstrap, logout, internal
+bearer rejection, and customer bearer preservation. Real replica-set evidence
+proved one concurrent rotation winner, explicit replay family revocation, and
+no raw session material in stored records. Rotation deliberately disables
+automatic transaction replay because the presented secret is single-use.
+
 ### G3 — Migration readiness
 
 - migration dry-run is read-only and redacted;
@@ -439,6 +462,12 @@ Status: **Approved on 27 July 2026.**
 - indexes are validated without TTL deletion;
 - restore exercise succeeds; and
 - no existing account/customer token is mutated.
+
+**Result: Passed locally on 28 July 2026.** Migration `008` dry-run, ambiguity
+stops, apply, second-run idempotency, 90-day bounded cleanup, and rollback passed
+against fake and disposable real replica-set data. Seven real integration tests
+passed across session rotation and migration/cleanup. No TTL index, shared data,
+retained volume, or account/customer-token mutation was used.
 
 ### G4 — Reviewable local implementation
 
@@ -449,6 +478,13 @@ Status: **Approved on 27 July 2026.**
 - responsive/accessibility checks cover remember-me and expiry states;
 - runbook covers disablement, cutover, rollback floor, and handoff; and
 - implementation remains uncommitted/unpushed unless separately approved.
+
+**Result: Passed locally on 28 July 2026.** The serial backend suite passed
+`509` tests with `12` skipped and `14` subtests. Frontend suites passed `49` JSX
+and `166` JavaScript tests; the focused lifecycle suite additionally passed the
+controlled auto-refresh timer. Production build, backend compilation,
+`pip check`, whitespace validation, secret scan, and Docker cleanup passed.
+Implementation remains uncommitted and unpushed.
 
 ### G5 — Production-readiness evidence
 
@@ -463,6 +499,10 @@ Status: **Approved on 27 July 2026.**
 - operator, independent reviewer, Project Owner, and Acting Technical Owner
   handoff is complete; and
 - production activation has its own explicit two-person approval and window.
+
+**Result: Not started.** Local implementation evidence does not prove
+production HTTPS/proxy behavior, monitoring destinations, staging-equivalent
+cutover, backup/restore, observation, or production activation readiness.
 
 Stop if any gate fails, exact origin cannot be validated, cookie and CSRF
 changes cannot ship together, customer compatibility regresses, transaction

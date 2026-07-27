@@ -97,6 +97,7 @@ class FakeDatabase:
     def __init__(self, users):
         self.users = FakeCollection(users)
         self.password_reset_tokens = FakeCollection()
+        self.admin_sessions = FakeCollection()
         self.notifications = FakeCollection()
 
 
@@ -117,6 +118,7 @@ class AtomicGuard:
                 {
                     "users": self.database.users.items,
                     "tokens": self.database.password_reset_tokens.items,
+                    "sessions": self.database.admin_sessions.items,
                     "notifications": self.database.notifications.items,
                 }
             )
@@ -125,6 +127,7 @@ class AtomicGuard:
             except BaseException:
                 self.database.users.items = snapshot["users"]
                 self.database.password_reset_tokens.items = snapshot["tokens"]
+                self.database.admin_sessions.items = snapshot["sessions"]
                 self.database.notifications.items = snapshot["notifications"]
                 raise
 

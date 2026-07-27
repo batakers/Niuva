@@ -253,6 +253,16 @@ def build_identity_router(
             if write.matched_count == 0:
                 latest = await database.users.find_one({"id": user_id}, session=session)
                 _conflict(latest or current)
+            await database.admin_sessions.update_many(
+                {"user_id": user_id, "revoked_at": None},
+                {
+                    "$set": {
+                        "revoked_at": datetime.now(timezone.utc),
+                        "revocation_reason": "identity_access_changed",
+                    }
+                },
+                session=session,
+            )
             await append_identity_governance_event(
                 database,
                 actor=actor,
