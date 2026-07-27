@@ -379,6 +379,10 @@ async def get_admin_user(request: Request, *, verify_csrf: bool = True) -> dict:
         or user.get("access_state", "approved") != "approved"
         or not has_permission(user, "admin.access")
     ):
+        await get_admin_session_module().revoke_admin_session(
+            session,
+            "user_ineligible",
+        )
         raise SessionExpiredError()
     request.state.admin_session = session
     return user
@@ -715,7 +719,16 @@ async def refresh_admin_session(request: Request):
     user = await db.users.find_one(
         {"id": grant.user_id}, {"_id": 0, "password_hash": 0}
     )
-    if not user or not has_permission(user, "admin.access"):
+    if (
+        not user
+        or user.get("status", "active") == "disabled"
+        or user.get("access_state", "approved") != "approved"
+        or not has_permission(user, "admin.access")
+    ):
+        await get_admin_session_module().revoke_admin_session(
+            grant,
+            "user_ineligible",
+        )
         raise SessionExpiredError()
     return _admin_session_response(user, grant)
 

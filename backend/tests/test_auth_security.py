@@ -607,6 +607,23 @@ async def run_security_matrix():
         for response in (missing_csrf, wrong_origin):
             assert response.json()["detail"]["code"] == "request_verification_failed"
 
+        stored_admin = next(
+            user for user in server.db.users.items if user["id"] == admin["id"]
+        )
+        blocked_session_id = next(
+            key
+            for key, record in session_module.sessions.items()
+            if record["grant"].session_secret
+            == admin_api.api.cookies.get(server.SESSION_COOKIE_NAME)
+        )
+        stored_admin["status"] = "disabled"
+        blocked_refresh = await admin_api.api.post(
+            "/api/auth/admin/session/refresh", headers=ORIGIN
+        )
+        assert blocked_refresh.status_code == 401
+        assert session_module.sessions[blocked_session_id]["revoked"] is True
+        stored_admin["status"] = "active"
+        assert (await admin_api.login(admin["email"], "AdminPassword123")).status_code == 200
         old_access = admin_api.api.cookies.get(server.ACCESS_COOKIE_NAME)
         old_session = admin_api.api.cookies.get(server.SESSION_COOKIE_NAME)
         refresh = await admin_api.api.post(
@@ -622,7 +639,8 @@ async def run_security_matrix():
         session_id = next(
             key
             for key, value in session_module.sessions.items()
-            if value["grant"].user_id == admin["id"] and not value["revoked"]
+            if value["grant"].access_secret
+            == admin_api.api.cookies.get(server.ACCESS_COOKIE_NAME)
         )
         session_module.sessions[session_id]["grant"].access_secret = (
             "expired-access-secret"
