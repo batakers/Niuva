@@ -173,12 +173,6 @@
   --info: var(--blue-dark);
 }
 
-.home-production {
-  --font-family-display: 'Poppins', system-ui, sans-serif;
-  --font-family-body: 'Inter', system-ui, sans-serif;
-  --font-family-technical: var(--font-family-body);
-}
-
 .admin-workbench {
   --font-family-display: 'Poppins', system-ui, sans-serif;
   --font-family-body: 'Inter', system-ui, sans-serif;
@@ -395,6 +389,19 @@ body {
   overflow-wrap: break-word;
 }
 
+/* Hierarchy was carried by size alone: display, page, and section headings all
+   sat at 800, so every heading shouted equally. Stepping the lower levels down
+   gives the scale three readable tiers. Scoped to the public surface so
+   operational and customer screens keep their current weights. */
+.brand-page .type-heading-section {
+  font-weight: 700;
+}
+
+.brand-page .type-heading-subsection,
+.brand-page .type-heading-card {
+  font-weight: 600;
+}
+
 .brand-u-motif {
   position: relative;
   pointer-events: none;
@@ -464,6 +471,11 @@ body {
     opacity: 0;
     transform: translateY(28px);
   }
+
+  .brand-motion-ready [data-hero-entry] {
+    opacity: 0;
+    transform: translateY(20px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -471,7 +483,7 @@ body {
     scroll-behavior: auto;
   }
 
-  .reveal, .snap-in, .fade-up, .niuva-marquee, .brand-reveal {
+  .reveal, .snap-in, .fade-up, .niuva-marquee, .brand-reveal, [data-hero-entry] {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -486,9 +498,17 @@ body {
   max-width: 65ch;
 }
 
+/* Public type stack per DEC-UX-002.1, authorized across every public route and
+   superseding the Home-only `.home-production` scope. `font-family` is
+   re-declared because `body` resolves the variable in `:root`, so descendants
+   would otherwise inherit the computed Poppins rather than re-resolving Inter. */
 .brand-page {
+  --font-family-display: 'Poppins', system-ui, sans-serif;
+  --font-family-body: 'Inter', system-ui, sans-serif;
+  --font-family-technical: var(--font-family-body);
   background: var(--color-surface-page);
   color: var(--color-text-primary);
+  font-family: var(--font-family-body);
 }
 
 .brand-page section[id] {

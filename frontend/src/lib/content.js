@@ -85,23 +85,45 @@ export function statusTone(status) {
 }
 
 /**
- * Fetch published CMS blocks for a content type. Returns [] on failure or when
- * no backend is configured — callers should fall back to hardcoded copy rather
- * than block rendering. ponytail: no cache/retry; add if content pages feel slow.
+ * Fetch published CMS blocks for a content type. Returns `{ blocks, status }`.
+ *
+ * `status` exists because callers cannot otherwise tell an in-flight request
+ * from a genuinely empty result: both used to surface as `[]`, so the FAQ page
+ * rendered its "no questions yet" empty state while the request was still
+ * running. `disabled` means no backend is configured, which is a settled state
+ * rather than a pending one.
+ *
+ * Blocks stay `[]` on failure so callers keep falling back to hardcoded copy
+ * rather than blocking the render. ponytail: no cache/retry; add if content
+ * pages feel slow.
  */
 export function usePublicContent(contentType) {
-  const [blocks, setBlocks] = useState([]);
+  const [state, setState] = useState(() => ({
+    blocks: [],
+    status: HAS_CONFIGURED_BACKEND ? "loading" : "disabled",
+  }));
 
   useEffect(() => {
-    if (!HAS_CONFIGURED_BACKEND) return undefined;
+    if (!HAS_CONFIGURED_BACKEND) {
+      setState({ blocks: [], status: "disabled" });
+      return undefined;
+    }
+
     let mounted = true;
-    contentApi.public(contentType).then((rows) => {
-      if (mounted) setBlocks(rows);
-    }).catch(() => {});
+    setState({ blocks: [], status: "loading" });
+
+    contentApi.public(contentType)
+      .then((rows) => {
+        if (mounted) setState({ blocks: rows, status: "ready" });
+      })
+      .catch(() => {
+        if (mounted) setState({ blocks: [], status: "error" });
+      });
+
     return () => { mounted = false; };
   }, [contentType]);
 
-  return blocks;
+  return state;
 }
 
 export function findBySlug(blocks, slug) {

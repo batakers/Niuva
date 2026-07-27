@@ -4,7 +4,6 @@ import {
   BrandButton,
   CapabilityPanel,
   ProcessTimeline,
-  RoundedVisualFrame,
   profileContent,
 } from "../../components/brand/CompanyProfileBlocks";
 import {
@@ -50,7 +49,7 @@ const engagementSteps = [
 ];
 
 export default function CapabilitiesPage() {
-  const cmsBlocks = usePublicContent("capability");
+  const { blocks: cmsBlocks } = usePublicContent("capability");
   const capabilities = useMemo(() => mergeCapabilities(cmsBlocks), [cmsBlocks]);
   const primaryCapabilities = capabilities.filter((service) => service.priority === "primary");
   const supportingCapabilities = capabilities.filter((service) => service.priority === "supporting");
@@ -58,19 +57,24 @@ export default function CapabilitiesPage() {
   return (
     <MarketingLayout>
       <BrandPage>
+        {/* The panel now carries the two primary capabilities and what each one
+            hands back, instead of a blue box repeating their names. */}
         <PageHero
           eyebrow="Capabilities"
           title="Dari ide menjadi produk yang dapat diuji."
           body="Research & Development serta Design & Prototyping menjadi kapabilitas utama Niuva. Konsultasi, workshop, apparel, dan merchandise mendukung ekosistem inovasi yang lebih luas."
+          variant="index"
           primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/projects" variant="secondary">Lihat Projects</BrandButton>}
           visual={
-            <RoundedVisualFrame title="Riset menuju prototipe yang dapat divalidasi." kicker="Kapabilitas inti">
-              <div className="grid gap-3 text-sm font-semibold text-text-inverse">
-                <span>Research & Development</span>
-                <span>Design & Prototyping</span>
-              </div>
-            </RoundedVisualFrame>
+            <div className="grid gap-6 rounded-card bg-surface-muted p-6 sm:p-8">
+              {primaryCapabilities.map((service) => (
+                <div key={service.title} className="border-t-2 border-[var(--color-brand-secondary)] pt-4">
+                  <p className="type-heading-card text-text-primary">{service.title}</p>
+                  <p className="type-body-small mt-2 max-w-[42ch] text-text-secondary">{service.output}</p>
+                </div>
+              ))}
+            </div>
           }
         />
 
@@ -80,7 +84,7 @@ export default function CapabilitiesPage() {
               eyebrow="Primary Capabilities"
               title="R&D serta Design & Prototyping menjadi pusat pengembangan produk."
               body="Dua kapabilitas utama ini membantu mitra memahami masalah, menentukan arah teknologi, memvalidasi konsep, dan menyiapkan hasil yang dapat diuji sebelum keputusan implementasi lebih besar."
-              align="split"
+              align="stacked"
             />
             <div className="grid gap-8 lg:gap-10">
               {primaryCapabilities.map((service, index) => (
@@ -93,31 +97,27 @@ export default function CapabilitiesPage() {
         <MarketingSection tone="default">
           <PageContainer>
             <SectionHeader
-              eyebrow="Supporting Capabilities"
               title="Konsultasi, workshop, apparel, dan merchandise sebagai penguat eksekusi."
               body="Tidak semua kebutuhan dimulai dari prototipe. Sebagian mitra membutuhkan penyelarasan strategi, pelatihan praktis, atau produk kreatif pendukung identitas program."
-              align="split"
+              align="stacked"
             />
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-              {supportingCapabilities.map((service, index) => (
-                <article key={service.title} className="brand-reveal overflow-hidden rounded-card border border-border-default bg-surface-default p-6 sm:p-8">
-                  <div className="flex items-start justify-between gap-6">
-                    <p className="text-sm font-semibold text-action-primary">Kapabilitas pendukung</p>
-                    <span className="font-heading text-xs font-semibold text-text-secondary">{String(index + 3).padStart(2, "0")}</span>
-                  </div>
-                  <h3 className="type-heading-subsection mt-5 text-text-primary">{service.title}</h3>
-                  <p className="mt-4 max-w-xl text-base leading-7 text-text-secondary">{service.body}</p>
-                  <dl className="mt-6 border-t border-border-default">
-                    <div className="grid gap-2 border-b border-border-default py-4 sm:grid-cols-[7rem_1fr] sm:gap-5">
-                      <dt className="text-sm font-semibold text-action-primary">Output</dt>
-                      <dd className="text-sm leading-6 text-text-primary">{service.output}</dd>
+            <div className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
+              {supportingCapabilities.map((service) => (
+                <article key={service.title} className="brand-reveal border-t border-border-default pt-6">
+                  <p className="type-label text-text-secondary">Kapabilitas pendukung</p>
+                  <h3 className="type-heading-subsection mt-4 text-text-primary">{service.title}</h3>
+                  <p className="type-body mt-4 max-w-[52ch] text-text-secondary">{service.body}</p>
+                  <dl className="mt-6 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                    <div>
+                      <dt className="type-label text-text-secondary">Output</dt>
+                      <dd className="type-body-small mt-2 text-text-primary">{service.output}</dd>
                     </div>
-                    <div className="grid gap-2 border-b border-border-default py-4 sm:grid-cols-[7rem_1fr] sm:gap-5">
-                      <dt className="text-sm font-semibold text-action-primary">Untuk</dt>
-                      <dd className="text-sm leading-6 text-text-primary">{service.targetUsers}</dd>
+                    <div>
+                      <dt className="type-label text-text-secondary">Untuk</dt>
+                      <dd className="type-body-small mt-2 text-text-primary">{service.targetUsers}</dd>
                     </div>
                   </dl>
-                  <BrandButton to="/contact" variant="secondary" className="mt-6" aria-label={`${service.cta} untuk ${service.title}`}>{service.cta}</BrandButton>
+                  <BrandButton to="/contact" variant="secondary" className="mt-7" aria-label={`${service.cta} untuk ${service.title}`}>{service.cta}</BrandButton>
                 </article>
               ))}
             </div>
@@ -126,12 +126,13 @@ export default function CapabilitiesPage() {
 
         <MarketingSection tone="page">
           <PageContainer>
-            <SectionHeader eyebrow="Model kolaborasi" title="Empat tahap dari brief menuju evaluasi hasil." body="Setiap tahap memperjelas titik masuk, bentuk output, dan keputusan berikutnya sejak awal kerja sama." align="split" />
+            <SectionHeader title="Empat tahap dari brief menuju evaluasi hasil." body="Setiap tahap memperjelas titik masuk, bentuk output, dan keputusan berikutnya sejak awal kerja sama." align="stacked" />
             <ProcessTimeline items={engagementSteps} className="lg:grid-cols-4" />
           </PageContainer>
         </MarketingSection>
 
         <CTASection
+          eyebrow={null}
           title="Tentukan titik mulai yang relevan untuk kebutuhan Anda."
           body="Tim Niuva dapat masuk dari riset awal, evaluasi konsep, desain dan prototyping, penyusunan workshop, atau kebutuhan produk kreatif yang sudah siap dieksekusi."
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
