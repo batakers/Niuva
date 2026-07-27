@@ -1,6 +1,6 @@
 # Admin Authentication Phase 1 — Implementation Authorization Packet
 
-Status: **Approved Implementation Authorization — Gated at G0 — No Commit, Push, Shared-Data Mutation, or Rollout Authorization**
+Status: **Approved Implementation Authorization — G1 Parameter Evidence Accepted; G2 Implementation Authorized — Argon2 Writes Disabled**
 Date: 27 July 2026
 Decision owner: Project Owner
 Technical reviewer: Acting Technical Owner
@@ -308,8 +308,9 @@ commit authorization, create an isolated worktree and branch named
 `feat/admin-auth-phase-1-recovery-safety` from that exact reviewed lineage.
 Do not use the stale local `main` branch as the base.
 
-**Status:** Approved on 27 July 2026; execution remains blocked until explicit
-Phase 0 documentation checkpoint commit authority is granted.
+**Status:** Approved and completed on 27 July 2026. Documentation checkpoint
+`c28684d` and isolated branch/worktree
+`feat/admin-auth-phase-1-recovery-safety` were verified clean before G1 work.
 
 ### AUTH-P1-03 — Argon2 dependency and baseline
 
@@ -331,8 +332,11 @@ be checked for later rehash:
 - `https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html`
 - `https://argon2-cffi.readthedocs.io/en/stable/api.html`
 
-**Status:** Approved on 27 July 2026 for dependency setup and benchmark evidence
-only; final parameters and Argon2 writes still require follow-up acceptance.
+**Status:** Approved on 27 July 2026. The owner accepted the redacted G1
+evidence and candidate parameters (`memory_cost=19456 KiB`, `time_cost=2`,
+`parallelism=1`) on 27 July 2026 for continued implementation. Argon2 writes
+remain disabled until the production-equivalent benchmark and all write-enable
+gates pass.
 
 ### AUTH-P1-04 — Password blocklist seam
 
@@ -400,8 +404,8 @@ shared-data mutation, deployment, and rollout remain unauthorized.
 | ID | Recommended selection | Owner response |
 |---|---|---|
 | `AUTH-P1-01` | Recovery Safety Baseline only | Approved |
-| `AUTH-P1-02` | Isolated worktree/branch after approved Phase 0 checkpoint | Approved; checkpoint commit authority still required |
-| `AUTH-P1-03` | `argon2-cffi` 25.x; Argon2id 19 MiB, t=2, p=1 minimum; benchmark then follow-up parameter acceptance | Approved for setup/benchmark; Argon2 writes gated |
+| `AUTH-P1-02` | Isolated worktree/branch after approved Phase 0 checkpoint | Completed at `c28684d` on the approved isolated worktree |
+| `AUTH-P1-03` | `argon2-cffi` 25.x; Argon2id 19 MiB, t=2, p=1 minimum; benchmark then follow-up parameter acceptance | Evidence and parameters accepted for implementation; writes remain gated |
 | `AUTH-P1-04` | Offline blocklist seam; test fixture only; production dataset deferred | Approved; production inputs remain open |
 | `AUTH-P1-05` | Backend origin, blocklist path, and staged Argon2-write config names | Approved; values remain operator-owned |
 | `AUTH-P1-06` | Migration code plus disposable local apply/rollback tests only | Approved for disposable local data only |
@@ -410,13 +414,17 @@ shared-data mutation, deployment, and rollout remain unauthorized.
 
 The owner explicitly approved all `AUTH-P1` recommendations on 27 July 2026.
 This activates the bounded implementation authorization described in Section
-1, subject to every sequential gate below. Gate G0 remains blocked until the
-documentation checkpoint commit receives separate explicit authorization.
-This approval is not commit, push, shared-data, release, or rollout authority.
+1, subject to every sequential gate below. Gate G0 and the G1 parameter
+checkpoint are complete. This approval is not commit, push, shared-data,
+release, or rollout authority.
 
 ## 8. Implementation Gates and Stop Conditions
 
 ### Gate G0 — Authorization and clean isolation
+
+**Result: Passed on 27 July 2026.** The reviewed base is checkpoint `c28684d`.
+The isolated worktree uses branch `feat/admin-auth-phase-1-recovery-safety`;
+the source marketing worktree remained clean.
 
 - all `AUTH-P1-*` items have an explicit owner response;
 - the Phase 0 decision records and registers are reviewed and safely
@@ -437,6 +445,19 @@ This approval is not commit, push, shared-data, release, or rollout authority.
 After recording this evidence, stop and obtain explicit owner acceptance of
 the final parameters and resource budget. Do not proceed to password-write or
 recovery-completion implementation before that follow-up approval.
+
+**Parameter-checkpoint result: Accepted on 27 July 2026.** Evidence used Python
+3.14.3 with `argon2-cffi` 25.1.0 on AMD64. Fifty samples after five warm-ups
+produced hash p50/p95 of 18.317/25.425 ms and verify p50/p95 of
+18.133/24.949 ms; the observed maximum was 27.341 ms. `pip check`, Black,
+isort, Flake8, redaction tests, Argon2 parameter/verify/mismatch tests, and
+legacy bcrypt compatibility passed (`4 passed`). The owner accepted the
+candidate parameters for continued implementation.
+
+The remaining blocklist fail-closed condition must be implemented and verified
+before any credential write can be enabled. A benchmark on the lowest
+production-equivalent instance is still required before
+`AUTH_ARGON2_WRITES_ENABLED` may become true.
 
 ### Gate G2 — Recovery behavior
 
