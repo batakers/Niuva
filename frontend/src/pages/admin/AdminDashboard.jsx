@@ -1,14 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  AlertCircle,
   ArrowRight,
   BarChart3,
+  CircleAlert,
+  CircleCheck,
   Clock,
-  CreditCard,
-  Package,
-  CheckCircle2,
-  Users,
 } from "lucide-react";
 import {
   Line,
@@ -24,11 +21,11 @@ import { ErrorState } from "@/components/ui/error-state";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
 import { SurfacePanel } from "@/components/ui/surface-panel";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
+import { ADMIN_MENU_GROUPS, getRoleHome } from "@/lib/adminWorkbench";
 import { hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
 
@@ -47,9 +44,9 @@ function defaultDateFrom() {
 }
 
 /**
- * Sum every numeric field on a row except "date" into a single total —
- * lets one <Line> render a combined trend without hardcoding field names
- * that vary by series (order statuses vs movement types).
+ * Sum the per-status counts on an order row. Safe only where every field
+ * carries the same unit: adding a signed quantity to a count of events would
+ * combine two different things into one meaningless number.
  */
 function totalForRow(row) {
   return Object.entries(row).reduce(
@@ -59,70 +56,106 @@ function totalForRow(row) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Action Card — links to page with "needs attention" count
+ * Operational Spine — role-scoped next work
  * ────────────────────────────────────────────────────────────────────────── */
 
-function ActionCard({ icon: Icon, label, count, colorClass, to, loading }) {
-  const navigate = useNavigate();
-
+function WorkQueueRow({ path, index, count, loading }) {
+  const { t } = useI18n();
+  const item = ADMIN_MENU_GROUPS.flatMap((group) => group.items).find(
+    (candidate) => candidate.path === path
+  );
+  if (!item) return null;
+  const Icon = item.icon;
   if (loading) {
     return (
-      <SurfacePanel className="p-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-control" />
-          <div className="flex-1 space-y-1.5">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-6 w-10" />
-          </div>
+      <div className="relative flex gap-4 pb-5 last:pb-0">
+        <Skeleton className="relative z-10 h-9 w-9 shrink-0 rounded-full" />
+        <div className="flex-1 border border-border-default bg-surface-default p-4">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="mt-3 h-3 w-52" />
         </div>
-      </SurfacePanel>
+      </div>
     );
   }
 
   const hasItems = count > 0;
 
   return (
-    <SurfacePanel
-      className={`p-4 transition-all duration-fast cursor-pointer hover:shadow-navigation hover:-translate-y-0.5 ${
-        hasItems ? "ring-1 ring-inset ring-" + colorClass.replace("text-", "") + "/20" : ""
-      }`}
-      onClick={() => navigate(to)}
-      role="link"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && navigate(to)}
-    >
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-control ${
-            hasItems ? "bg-" + colorClass.replace("text-", "") + "/10" : "bg-surface-muted"
-          }`}
-        >
-          <Icon className={`h-5 w-5 ${hasItems ? colorClass : "text-text-secondary"}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary truncate">
-            {label}
-          </p>
-          <p className={`text-2xl font-bold tabular-nums ${hasItems ? colorClass : "text-text-primary"}`}>
-            {count}
-          </p>
-        </div>
-        <ArrowRight className="h-4 w-4 text-text-secondary shrink-0" />
+    <div className="relative flex gap-4 pb-5 last:pb-0">
+      <div
+        aria-hidden="true"
+        className="absolute bottom-0 left-[17px] top-9 w-px bg-border-default last:hidden"
+      />
+      <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${hasItems ? "border-status-warning/50 bg-status-warning/10 text-status-warning" : "border-border-default bg-surface-muted text-text-secondary"}`}>
+        <Icon className="h-4 w-4" strokeWidth={1.75} />
       </div>
-    </SurfacePanel>
+      <Link
+        to={path}
+        className="group flex min-h-20 flex-1 items-center gap-4 border border-border-default bg-surface-default p-4 transition-colors duration-fast hover:border-action-primary/50 hover:bg-surface-muted/40 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="font-heading text-sm font-semibold text-text-primary">
+            {t(item.label)}
+          </p>
+          <p className="mt-1 text-sm text-text-secondary">
+            {hasItems
+              ? t("admin.queueNeedsAction").replace("{count}", count)
+              : t("admin.queueReady")}
+          </p>
+        </div>
+        <span className="text-[10px] font-semibold tabular-nums text-text-disabled">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-text-secondary transition-transform duration-fast group-hover:translate-x-1 motion-reduce:transition-none" />
+      </Link>
+    </div>
   );
+}
+
+function queueCount(path, stats) {
+  if (!stats) return 0;
+  if (path === "/admin/orders") {
+    return ["pending_estimate", "awaiting_payment", "in_process"].reduce(
+      (sum, key) => sum + (Number(stats[key]) || 0),
+      0
+    );
+  }
+  if (path === "/admin/inquiries") {
+    return Number(stats.inquiries ?? stats.contacts) || 0;
+  }
+  if (path === "/admin/inventory") return Number(stats.low_stock) || 0;
+  return 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Trend Chart Component — with accessible description
  * ────────────────────────────────────────────────────────────────────────── */
 
-function TrendChart({ title, rows, valueLabel, formatValue, loading, dateFrom, dateTo }) {
+function columnsOf(rows) {
+  const seen = [];
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      if (key !== "date" && !seen.includes(key)) seen.push(key);
+    }
+  }
+  return seen;
+}
+
+function TrendChart({
+  title,
+  rows,
+  value,
+  formatValue,
+  loading,
+  dateFrom,
+  dateTo,
+  emptyAction,
+}) {
   const { t } = useI18n();
-  const data = rows.map((row) => ({
-    date: row.date,
-    value: valueLabel === "revenue" ? row.amount : totalForRow(row),
-  }));
+  // The caller states which figure is plotted. Inferring it from the row shape
+  // silently changes meaning whenever a series gains a field.
+  const data = rows.map((row) => ({ date: row.date, value: value(row) }));
+  const columns = columnsOf(rows);
 
   const chartDescription = t("dashboard.chartDescription")
     .replace("{title}", title)
@@ -137,10 +170,22 @@ function TrendChart({ title, rows, valueLabel, formatValue, loading, dateFrom, d
           <Skeleton className="h-full w-full rounded-control" />
         </div>
       ) : data.length === 0 ? (
-        <div className="h-[200px] sm:h-[220px] flex items-center justify-center">
+        <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 sm:min-h-[220px]">
           <EmptyState icon={BarChart3}>
             {t("dashboard.noDataInRange")}
           </EmptyState>
+          {/* Actionable, and only where the reader can act: an empty chart
+              otherwise leaves them with nowhere to go. */}
+          {emptyAction && (
+            <Link
+              to={emptyAction.to}
+              className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-action-primary"
+              data-testid="chart-empty-action"
+            >
+              {t(emptyAction.labelKey)}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          )}
         </div>
       ) : (
         <div role="img" aria-label={chartDescription}>
@@ -203,6 +248,48 @@ function TrendChart({ title, rows, valueLabel, formatValue, loading, dateFrom, d
           </ResponsiveContainer>
         </div>
       )}
+      {!loading && data.length > 0 && (
+        <details className="mt-4" data-testid="chart-data-table">
+          <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-action-primary">
+            {t("dashboard.showDataTable")}
+          </summary>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <caption className="sr-only">{chartDescription}</caption>
+              <thead>
+                <tr className="border-b border-border-default">
+                  <th scope="col" className="py-2 pr-4 font-semibold text-text-secondary">
+                    {t("common.date")}
+                  </th>
+                  {columns.map((column) => (
+                    <th
+                      key={column}
+                      scope="col"
+                      className="py-2 pr-4 font-semibold text-text-secondary"
+                    >
+                      {t(`dashboard.column.${column}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.date} className="border-b border-border-default last:border-0">
+                    <th scope="row" className="py-2 pr-4 font-mono text-xs font-normal text-text-secondary">
+                      {row.date}
+                    </th>
+                    {columns.map((column) => (
+                      <td key={column} className="py-2 pr-4 font-mono text-xs tabular-nums text-text-primary">
+                        {row[column] ?? "-"}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
     </SurfacePanel>
   );
 }
@@ -252,14 +339,14 @@ export default function AdminDashboard() {
   }, [loadSeries]);
 
   const canSeeInventory = hasPermission(user, "inventory.read");
-  const canSeeRevenue = hasPermission(user, "payments.read");
   const statsLoading = !stats && !loadError;
+  const roleHome = getRoleHome(user);
 
   if (loadError) {
     return (
       <AdminLayout
-        title={t("admin.overview")}
-        subtitle={t("admin.overviewSubtitle")}
+        title={t("admin.workHome")}
+        subtitle={t(roleHome.labelKey)}
       >
         <ErrorState error={loadError} onRetry={fetchStats} />
       </AdminLayout>
@@ -268,81 +355,42 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout
-      title={t("admin.overview")}
-      subtitle={t("admin.overviewSubtitle")}
+      title={t("admin.workHome")}
+      subtitle={t(roleHome.labelKey)}
     >
-      {/* ─── Action Cards — status-driven "needs attention" row ─── */}
-      <section aria-label={t("dashboard.actionNeeded")}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <ActionCard
-            icon={Clock}
-            label={t("dashboard.pendingEstimates")}
-            count={stats?.pending_estimate ?? 0}
-            colorClass="text-status-warning"
-            to="/admin/orders?status=pending_estimate"
-            loading={statsLoading}
-          />
-          <ActionCard
-            icon={CreditCard}
-            label={t("dashboard.awaitingPayments")}
-            count={stats?.awaiting_payment ?? 0}
-            colorClass="text-action-primary"
-            to="/admin/orders?status=awaiting_payment"
-            loading={statsLoading}
-          />
-          <ActionCard
-            icon={Package}
-            label={t("dashboard.inProcess")}
-            count={stats?.in_process ?? 0}
-            colorClass="text-action-primary"
-            to="/admin/orders?status=in_process"
-            loading={statsLoading}
-          />
-          <ActionCard
-            icon={CheckCircle2}
-            label={t("dashboard.completedOrders")}
-            count={stats?.completed ?? 0}
-            colorClass="text-status-success"
-            to="/admin/orders?status=completed"
-            loading={statsLoading}
-          />
+      <section aria-labelledby="work-queue-title" className="max-w-3xl">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-border-default pb-4">
+          <div>
+            <p className="type-label uppercase tracking-widest text-action-primary">
+              {t("admin.operationalSpine")}
+            </p>
+            <h2 id="work-queue-title" className="mt-1 font-heading text-xl font-semibold text-text-primary">
+              {t("dashboard.actionNeeded")}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            {statsLoading ? <Clock className="h-4 w-4" /> : roleHome.queuePaths.some((path) => queueCount(path, stats) > 0) ? <CircleAlert className="h-4 w-4 text-status-warning" /> : <CircleCheck className="h-4 w-4 text-status-success" />}
+            {statsLoading ? t("common.loading") : t("admin.queueLive")}
+          </div>
+        </div>
+        <div data-testid="operational-spine">
+          {roleHome.queuePaths.map((path, index) => (
+            <WorkQueueRow
+              key={path}
+              path={path}
+              index={index}
+              count={queueCount(path, stats)}
+              loading={statsLoading}
+            />
+          ))}
+          {!statsLoading && roleHome.queuePaths.length === 0 && (
+            <EmptyState frame="solid">{t("admin.noAssignedQueue")}</EmptyState>
+          )}
         </div>
       </section>
 
-      {/* ─── Summary Stats ─── */}
-      <div
-        className="mt-6 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
-        data-testid="admin-overview"
-      >
-        {statsLoading ? (
-          <>
-            <StatCardSkeleton hero />
-            <StatCardSkeleton />
-          </>
-        ) : (
-          <>
-            <StatCard
-              label={t("admin.totalOrders")}
-              value={stats.total_orders}
-              colorClass="text-action-primary"
-              accentClass="border-l-action-primary"
-              hero
-              delay={0}
-            />
-            <StatCard
-              label={t("dashboard.totalClients")}
-              value={stats.clients}
-              colorClass="text-text-primary"
-              accentClass="border-l-border-strong"
-              delay={60}
-              className="flex items-center"
-            />
-          </>
-        )}
-      </div>
-
       {/* ─── Date Range Filter ─── */}
-      <SurfacePanel className="mt-8 p-4">
+      <SurfacePanel className="mt-10 p-4">
         <div className="flex flex-wrap items-end gap-4">
           <FormField label={t("dashboard.dateFrom")}>
             <Input
@@ -377,33 +425,47 @@ export default function AdminDashboard() {
         <TrendChart
           title={t("dashboard.ordersTrend")}
           rows={series?.orders_by_status || []}
+          value={totalForRow}
           loading={seriesLoading}
           dateFrom={dateFrom}
           dateTo={dateTo}
+          emptyAction={
+            hasPermission(user, "orders.read")
+              ? { to: "/admin/retail-orders", labelKey: "dashboard.openOrders" }
+              : null
+          }
         />
         {canSeeInventory && (
           <TrendChart
             title={t("dashboard.stockMovementsTrend")}
             rows={series?.stock_movements || []}
+            value={(row) => Number(row.signed_quantity) || 0}
             loading={seriesLoading}
             dateFrom={dateFrom}
             dateTo={dateTo}
-          />
-        )}
-        {canSeeRevenue && (
-          <TrendChart
-            title={t("dashboard.revenueTrend")}
-            rows={series?.revenue || []}
-            valueLabel="revenue"
-            formatValue={(value) =>
-              `Rp ${Number(value).toLocaleString("id-ID")}`
-            }
-            loading={seriesLoading}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
+            emptyAction={{
+              to: "/admin/stock-movements",
+              labelKey: "dashboard.openStockMovements",
+            }}
           />
         )}
       </div>
+
+      {series?.revenue?.available === false && (
+        <SurfacePanel
+          intent="dashed"
+          padding="md"
+          className="mt-4"
+          data-testid="revenue-withheld"
+        >
+          <p className="type-label text-text-secondary">
+            {t("dashboard.revenueWithheldTitle")}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">
+            {t("dashboard.revenueWithheldBody")}
+          </p>
+        </SurfacePanel>
+      )}
     </AdminLayout>
   );
 }

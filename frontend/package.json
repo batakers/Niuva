@@ -51,9 +51,11 @@
     ]
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@babel/plugin-proposal-private-property-in-object": "7.21.11",
     "@craco/craco": "7.1.0",
     "@eslint/js": "9.23.0",
+    "@playwright/test": "^1.62.0",
     "@testing-library/jest-dom": "7.0.0",
     "@testing-library/react": "16.3.2",
     "@types/lodash": "4.17.24",

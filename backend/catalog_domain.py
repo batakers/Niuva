@@ -171,6 +171,72 @@ def validate_catalog_aggregate(aggregate: dict) -> list[dict]:
     return errors
 
 
+def validate_bill_of_materials(
+    entries: list[dict],
+    materials_by_id: dict[str, dict],
+) -> list[dict]:
+    """Check a variant's material requirements against the material register.
+
+    The BOM holds references only — material_id and quantity per produced unit.
+    Names, units, and prices are deliberately not copied here: this record is
+    mutable, so a copy would drift. Snapshots belong on immutable documents,
+    which is where a quotation version captures them.
+    """
+    errors: list[dict] = []
+    seen: set[str] = set()
+
+    for index, entry in enumerate(entries or []):
+        field = f"bill_of_materials.{index}"
+        material_id = str((entry or {}).get("material_id", "")).strip()
+
+        if not material_id:
+            errors.append(
+                _error("required", f"{field}.material_id", "Material wajib dipilih.")
+            )
+        elif material_id in seen:
+            errors.append(
+                _error(
+                    "duplicate_material",
+                    f"{field}.material_id",
+                    "Material tidak boleh muncul lebih dari sekali dalam satu BOM.",
+                )
+            )
+        else:
+            seen.add(material_id)
+            material = materials_by_id.get(material_id)
+            if material is None:
+                errors.append(
+                    _error(
+                        "material_not_found",
+                        f"{field}.material_id",
+                        "Material tidak ditemukan.",
+                    )
+                )
+            elif material.get("status", "active") != "active":
+                errors.append(
+                    _error(
+                        "material_archived",
+                        f"{field}.material_id",
+                        "Material sudah diarsipkan dan tidak dapat dipakai.",
+                    )
+                )
+
+        try:
+            quantity = Decimal(str((entry or {}).get("quantity_per_unit", "")))
+        except (ArithmeticError, TypeError, ValueError):
+            quantity = None
+        if quantity is None or quantity <= 0:
+            errors.append(
+                _error(
+                    "quantity_invalid",
+                    f"{field}.quantity_per_unit",
+                    "Jumlah per unit harus lebih dari nol.",
+                )
+            )
+
+    return errors
+
+
 def build_publication_snapshot(
     aggregate: dict,
     *,

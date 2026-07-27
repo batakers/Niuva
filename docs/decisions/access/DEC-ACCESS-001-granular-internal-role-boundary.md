@@ -7,6 +7,10 @@ Approval source: Explicit user approval in the backend-audit conversation on
 24 July 2026
 Scope: Internal role direction, general identity metadata, and audit visibility
 
+Implementation amendment: `DEC-ACCESS-002`, approved 26 July 2026, resolves the
+stable role identifiers, multi-role policy, separation of duties, bounded
+Super Admin identity-governance surface, and domain-timeline boundary.
+
 ## Context
 
 The canonical Master Spec defines granular internal roles:

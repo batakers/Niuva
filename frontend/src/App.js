@@ -30,11 +30,46 @@ const AdminInventory = lazy(() => import("@/pages/admin/Inventory"));
 const AdminStockMovements = lazy(() => import("@/pages/admin/StockMovements"));
 const AdminRestockAlerts = lazy(() => import("@/pages/admin/RestockAlerts"));
 const AdminPortfolio = lazy(() => import("@/pages/admin/PortfolioAdmin"));
+const AdminPortfolioDetail = lazy(() => import("@/pages/admin/PortfolioDetail"));
 const AdminContent = lazy(() => import("@/pages/admin/ContentEditor"));
 const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 const AdminContacts = lazy(() => import("@/pages/admin/Contacts"));
+const AdminInquiryList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.InquiryList }))
+);
+const AdminQuoteList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.QuoteList }))
+);
+const AdminProjectList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.ProjectList }))
+);
+const AdminInquiryDetail = lazy(() =>
+  import("@/pages/admin/B2BDetail").then((m) => ({ default: m.InquiryDetail }))
+);
+const AdminQuoteDetail = lazy(() =>
+  import("@/pages/admin/B2BDetail").then((m) => ({ default: m.QuoteDetail }))
+);
+const AdminProjectDetail = lazy(() =>
+  import("@/pages/admin/B2BDetail").then((m) => ({ default: m.ProjectDetail }))
+);
+const AdminQuoteRevisionEditor = lazy(() =>
+  import("@/pages/admin/QuoteRevisionEditor")
+);
+const AdminWorkOrderList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.WorkOrderList }))
+);
+const AdminWorkOrderDetail = lazy(() =>
+  import("@/pages/admin/WorkOrderDetail")
+);
+const AdminRetailOrderList = lazy(() =>
+  import("@/pages/admin/B2BList").then((m) => ({ default: m.RetailOrderList }))
+);
+const AdminRetailOrderDetail = lazy(() =>
+  import("@/pages/admin/RetailOrderDetail")
+);
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
 const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
+const AdminNotificationFeed = lazy(() => import("@/pages/admin/NotificationFeed"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
 const EditorialHomepagePrototype = brandLabEnabled
   ? lazy(() => import("@/pages/brand-lab/EditorialHomepagePrototype"))
@@ -119,10 +154,23 @@ function App() {
                   <Route path="/admin/stock-movements" element={protectedPage("/admin/stock-movements", <AdminStockMovements />)} />
                   <Route path="/admin/restock-alerts" element={protectedPage("/admin/restock-alerts", <AdminRestockAlerts />)} />
                   <Route path="/admin/portfolio" element={protectedPage("/admin/portfolio", <AdminPortfolio />)} />
+                  <Route path="/admin/portfolio/:id" element={protectedPage("/admin/portfolio", <AdminPortfolioDetail />)} />
                   <Route path="/admin/content" element={protectedPage("/admin/content", <AdminContent />)} />
                   <Route path="/admin/contacts" element={protectedPage("/admin/contacts", <AdminContacts />)} />
+                  <Route path="/admin/inquiries" element={protectedPage("/admin/inquiries", <AdminInquiryList />)} />
+                  <Route path="/admin/inquiries/:id" element={protectedPage("/admin/inquiries", <AdminInquiryDetail />)} />
+                  <Route path="/admin/b2b/quotes" element={protectedPage("/admin/b2b/quotes", <AdminQuoteList />)} />
+                  <Route path="/admin/b2b/quotes/:id" element={protectedPage("/admin/b2b/quotes", <AdminQuoteDetail />)} />
+                  <Route path="/admin/b2b/quotes/:id/revision" element={protectedPage("/admin/b2b/quotes/revision", <AdminQuoteRevisionEditor />)} />
+                  <Route path="/admin/b2b/projects" element={protectedPage("/admin/b2b/projects", <AdminProjectList />)} />
+                  <Route path="/admin/b2b/projects/:id" element={protectedPage("/admin/b2b/projects", <AdminProjectDetail />)} />
+                  <Route path="/admin/b2b/work-orders" element={protectedPage("/admin/b2b/work-orders", <AdminWorkOrderList />)} />
+                  <Route path="/admin/b2b/work-orders/:id" element={protectedPage("/admin/b2b/work-orders", <AdminWorkOrderDetail />)} />
+                  <Route path="/admin/retail-orders" element={protectedPage("/admin/retail-orders", <AdminRetailOrderList />)} />
+                  <Route path="/admin/retail-orders/:id" element={protectedPage("/admin/retail-orders", <AdminRetailOrderDetail />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
-                  <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotifications />)} />
+                  <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotificationFeed />)} />
+                  <Route path="/admin/communication" element={protectedPage("/admin/communication", <AdminNotifications />)} />
                   <Route path="/admin/settings" element={protectedPage("/admin/settings", <AdminSettings />)} />
                   {brandLabEnabled && <><Route path="/__brand-lab/editorial" element={<EditorialHomepagePrototype />} /><Route path="/__brand-lab/experimental" element={<ExperimentalHomepagePrototype />} /></>}
                   <Route path="*" element={<NotFound />} />

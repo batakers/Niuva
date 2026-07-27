@@ -22,11 +22,32 @@ import bcrypt
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Header, Response
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 import storage
 import emailer
 from audit import append_audit_event
+from b2b_routes import build_b2b_router
+from dashboard_domain import (
+    DashboardRangeError,
+    created_within,
+    date_bucket,
+    distinct_count,
+    resolve_date_range,
+    summarize_movements,
+    withheld_revenue,
+)
+from notification_service import NotificationError, NotificationService
+from retail_domain import classify_legacy_order
+from portfolio_routes import build_portfolio_router
+from settings_domain import (
+    PUBLIC_PROFILE_FIELDS,
+    default_settings,
+    merge_profile,
+    project_admin_settings,
+    project_public_settings,
+)
+from retail_routes import build_retail_router
 from catalog_inventory_indexes import ensure_catalog_inventory_indexes
 from catalog_routes import build_catalog_router
 from content_routes import build_content_router
@@ -256,21 +277,24 @@ class AdminNotificationReq(BaseModel):
     message: str = Field(min_length=3, max_length=2000)
 
 
-class PortfolioReq(BaseModel):
-    title_id: str
-    title_en: str
-    client: Optional[str] = ""
-    category: Optional[str] = ""
-    description_id: Optional[str] = ""
-    description_en: Optional[str] = ""
-    images: List[str] = []
-    featured: bool = False
-
-
 class SettingsReq(BaseModel):
-    bank_name: str
-    account_number: str
-    account_holder: str
+    """Company profile only.
+
+    extra="forbid" keeps a caller from writing anything the public projection
+    does not name, including reintroducing bank details through this door.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    legal_name: str = Field(min_length=2, max_length=200)
+    tagline: str = Field(default="", max_length=300)
+    address: str = Field(default="", max_length=500)
+    email: str = Field(default="", max_length=200)
+    phone: str = Field(default="", max_length=50)
+    whatsapp: str = Field(default="", max_length=50)
+    maps_url: str = Field(default="", max_length=500)
+    instagram_url: str = Field(default="", max_length=500)
+    linkedin_url: str = Field(default="", max_length=500)
 
 
 # ----------------------------- Helpers -----------------------------
@@ -293,6 +317,7 @@ def safe_user(user: dict) -> dict:
         "roles": list(roles),
         "role_labels": [ROLE_LABELS[role] for role in roles],
         "permissions": sorted(permissions_for(user)),
+        "version": user.get("version", 1),
         "created_at": user.get("created_at"),
     }
 
@@ -325,6 +350,11 @@ async def authenticate_credentials(req: LoginReq) -> dict:
         or not password_valid
         or explicitly_blocked
         or not eligible_roles
+    ):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if (
+        user.get("status", "active") == "disabled"
+        or user.get("access_state", "approved") == "access_review_required"
     ):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return user
@@ -362,6 +392,14 @@ def rate_limit(key: str, limit: int = 10, window: int = 60, detail: str = "Terla
         raise HTTPException(status_code=429, detail=detail)
     bucket.append(now)
     _rate_buckets[key] = bucket
+
+
+def client_ip(request: Request) -> str:
+    """Resolve the caller address used to key public rate limits."""
+    host = request.client.host if request.client else "unknown"
+    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
+        host = request.headers.get("x-forwarded-for", host).split(",", 1)[0].strip()
+    return host
 
 
 def safe_file_content_type(path: str) -> str:
@@ -517,12 +555,9 @@ async def reset_password(req: ResetPasswordReq):
 async def get_settings():
     s = await db.settings.find_one({"key": "site"}, {"_id": 0})
     if not s:
-        s = {
-            "key": "site",
-            "bank_name": "Bank Mandiri (Placeholder)",
-            "account_number": "000-0000-0000",
-            "account_holder": "PT Niuva Inovasi Utama",
-        }
+        # No placeholder bank account: seeding one publishes a payment
+        # instruction for a flow that is disabled.
+        s = default_settings()
         await db.settings.insert_one(dict(s))
     return s
 
@@ -576,7 +611,10 @@ async def create_order(
 
 @api.get("/orders")
 async def my_orders(user: dict = Depends(get_current_user)):
-    return await db.orders.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    documents = await db.orders.find(
+        {"user_id": user["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    return [classify_legacy_order(document) for document in documents]
 
 
 @api.get("/orders/{oid}")
@@ -586,27 +624,31 @@ async def get_order(oid: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Order not found")
     if not has_permission(user, "orders.read") and order["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Forbidden")
-    return order
+    return classify_legacy_order(order)
 
 
 @api.post("/orders/{oid}/payment-proof")
 async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
-    rate_limit(f"proof:{user['id']}", limit=10, window=60)
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    if order["user_id"] != user["id"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    if order["status"] != "awaiting_payment":
-        raise HTTPException(status_code=400, detail="Order is not awaiting payment")
-    proof = await store_upload(file, f"payments/{user['id']}", IMAGE_EXTS)
-    payment = {"proof": proof, "uploaded_at": now_iso(), "verified": False, "verified_at": None}
-    await db.orders.update_one(
-        {"id": oid},
-        {"$set": {"payment": payment, "updated_at": now_iso()},
-         "$push": {"status_history": {"status": "awaiting_payment", "at": now_iso(), "note": "Payment proof uploaded"}}},
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_manual_transfer_disabled",
+            "message": "Mutasi pembayaran transfer manual baru dinonaktifkan.",
+        },
     )
-    return await db.orders.find_one({"id": oid}, {"_id": 0})
+
+
+@api.get("/admin/payment-capabilities")
+async def payment_capabilities(
+    _user: dict = Depends(require_permission("payments.read")),
+):
+    return {
+        "contract": "provider_neutral",
+        "provider_status": "inactive",
+        "manual_transfer_mutations": "disabled",
+        "checkout": "inactive",
+        "finance_activation": "not_approved",
+    }
 
 
 # ----------------------------- Admin orders -----------------------------
@@ -625,13 +667,18 @@ def rows_to_csv_response(fieldnames: list, rows: list, filename: str) -> Respons
 
 
 def serialize_admin_order_for(actor: dict, order: dict) -> dict:
-    """Return a role-safe order representation for internal readers."""
-    value = {key: item for key, item in order.items() if key != "_id"}
+    """Return a role-safe order representation for internal readers.
+
+    Classified as legacy on read: these records predate the separate retail
+    aggregate and follow a four-status flow, not the canonical lifecycle.
+    """
+    value = classify_legacy_order(order)
     if has_permission(actor, "payments.read"):
         return value
     operational_fields = {
         "id", "order_number", "user_id", "user_name", "user_email", "material_id",
         "material_name", "file", "notes", "status", "status_history", "created_at", "updated_at",
+        "record_class", "canonical_status_equivalent",
     }
     return {key: value[key] for key in operational_fields if key in value}
 
@@ -694,30 +741,13 @@ async def set_estimate(
     req: EstimateReq,
     user: dict = Depends(require_permission("quotes.write")),
 ):
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    settings = await get_settings()
-    estimate = {"amount": req.amount, "currency": "IDR", "note": req.note, "estimated_at": now_iso()}
-    await db.orders.update_one(
-        {"id": oid},
-        {"$set": {"estimate": estimate, "status": "awaiting_payment", "updated_at": now_iso()},
-         "$push": {"status_history": {"status": "awaiting_payment", "at": now_iso(), "note": f"Estimate set: Rp {req.amount:,.0f}"}}},
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_manual_transfer_disabled",
+            "message": "Mutasi pembayaran transfer manual baru dinonaktifkan.",
+        },
     )
-    await emailer.send_email(
-        order["user_email"],
-        f"Estimasi Biaya Pesanan {order['order_number']} — NIUVA",
-        "Estimasi biaya pesanan Anda sudah siap",
-        f"<p>Estimasi biaya untuk pesanan <strong>{order['order_number']}</strong> adalah "
-        f"<strong>Rp {req.amount:,.0f}</strong>.</p>"
-        f"<p>{req.note or ''}</p>"
-        f"<p>Silakan lakukan pembayaran ke:<br>"
-        f"<strong>{settings['bank_name']}</strong><br>No. Rek: <strong>{settings['account_number']}</strong><br>"
-        f"a.n. <strong>{settings['account_holder']}</strong></p>"
-        f"<p>Setelah transfer, unggah bukti pembayaran di dashboard Anda.</p>",
-        db=db, user_id=order["user_id"],
-    )
-    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 @api.post("/admin/orders/{oid}/verify-payment")
@@ -725,25 +755,13 @@ async def verify_payment(
     oid: str,
     user: dict = Depends(require_permission("payments.write")),
 ):
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    if not order.get("payment"):
-        raise HTTPException(status_code=400, detail="No payment proof uploaded")
-    await db.orders.update_one(
-        {"id": oid},
-        {"$set": {"payment.verified": True, "payment.verified_at": now_iso(), "status": "in_process", "updated_at": now_iso()},
-         "$push": {"status_history": {"status": "in_process", "at": now_iso(), "note": "Payment verified, production started"}}},
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_manual_transfer_disabled",
+            "message": "Mutasi pembayaran transfer manual baru dinonaktifkan.",
+        },
     )
-    await emailer.send_email(
-        order["user_email"],
-        f"Pembayaran Terverifikasi — {order['order_number']}",
-        "Pembayaran Anda telah terverifikasi",
-        f"<p>Pembayaran untuk pesanan <strong>{order['order_number']}</strong> telah kami verifikasi. "
-        f"Pesanan Anda kini <strong>sedang diproses</strong>.</p>",
-        db=db, user_id=order["user_id"],
-    )
-    return serialize_admin_order_for(user, await db.orders.find_one({"id": oid}, {"_id": 0}))
 
 
 async def apply_order_status(oid: str, status: str, note: str) -> dict:
@@ -831,10 +849,7 @@ async def download_file(path: str, request: Request):
 # ----------------------------- Contact -----------------------------
 @api.post("/contact")
 async def contact(req: ContactReq, request: Request):
-    client_host = request.client.host if request.client else "unknown"
-    if os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true":
-        client_host = request.headers.get("x-forwarded-for", client_host).split(",", 1)[0].strip()
-    rate_limit(f"contact:{client_host}", limit=5, window=600)
+    rate_limit(f"contact:{client_ip(request)}", limit=5, window=600)
 
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.contacts.insert_one(dict(doc))
@@ -858,61 +873,65 @@ async def contact(req: ContactReq, request: Request):
 async def list_contacts(
     user: dict = Depends(require_permission("inquiries.read")),
 ):
-    return await db.contacts.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    """Pre-migration contact submissions, classified on read.
+
+    Structured intake now lands on the canonical Inquiry aggregate. These rows
+    predate that and carry no company, status, or version, so they cannot be
+    triaged. Classification is applied on read and never written back: the
+    history stays exactly as it was captured.
+    """
+    documents = (
+        await db.contacts.find({}, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(500)
+    )
+    return [
+        {**document, "record_class": "legacy_contact", "read_only": True}
+        for document in documents
+    ]
 
 
 # ----------------------------- Portfolio -----------------------------
-@api.get("/portfolio")
-async def list_portfolio():
-    return await db.portfolio.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
-
-
-@api.post("/admin/portfolio")
-async def create_portfolio(
-    req: PortfolioReq,
-    user: dict = Depends(require_permission("content.write")),
-):
-    doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
-    await db.portfolio.insert_one(dict(doc))
-    return {k: v for k, v in doc.items() if k != "_id"}
-
-
-@api.put("/admin/portfolio/{pid}")
-async def update_portfolio(
-    pid: str,
-    req: PortfolioReq,
-    user: dict = Depends(require_permission("content.write")),
-):
-    res = await db.portfolio.update_one({"id": pid}, {"$set": req.model_dump()})
-    if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Not found")
-    return await db.portfolio.find_one({"id": pid}, {"_id": 0})
-
-
-@api.delete("/admin/portfolio/{pid}")
-async def delete_portfolio(
-    pid: str,
-    user: dict = Depends(require_permission("content.write")),
-):
-    await db.portfolio.delete_one({"id": pid})
-    return {"ok": True}
+# Portfolio is served by build_portfolio_router: it carries a publication
+# lifecycle, versions, and archiving, and its public read is published-only.
 
 
 # ----------------------------- Settings & Users -----------------------------
 @api.get("/settings")
 async def settings_public():
-    s = await get_settings()
-    return {k: v for k, v in s.items() if k != "key"}
+    """The company profile the public site and its footer read from."""
+    return project_public_settings(await get_settings())
+
+
+@api.get("/admin/settings")
+async def settings_admin(
+    _actor: dict = Depends(require_permission("settings.write")),
+):
+    return project_admin_settings(await get_settings())
 
 
 @api.put("/admin/settings")
 async def update_settings(
     req: SettingsReq,
-    user: dict = Depends(require_permission("settings.write")),
+    actor: dict = Depends(require_permission("settings.write")),
 ):
-    await db.settings.update_one({"key": "site"}, {"$set": req.model_dump()}, upsert=True)
-    s = await get_settings()
-    return {k: v for k, v in s.items() if k != "key"}
+    current = await get_settings()
+    merged = merge_profile(current, req.model_dump())
+    await db.settings.update_one(
+        {"key": "site"},
+        {"$set": {field: merged[field] for field in PUBLIC_PROFILE_FIELDS}},
+        upsert=True,
+    )
+    await append_audit_event(
+        db,
+        actor=actor,
+        action="settings.profile_updated",
+        target_type="settings",
+        target_id="site",
+        before=project_public_settings(current),
+        after=project_public_settings(merged),
+    )
+    return project_admin_settings(await get_settings())
 
 
 @api.post("/admin/users", status_code=201)
@@ -937,36 +956,70 @@ async def list_customers(
         if canonical_roles(candidate) in customer_roles
     ]
 
+def _resolve_range(date_from: Optional[str], date_to: Optional[str]) -> dict:
+    try:
+        return resolve_date_range(date_from, date_to)
+    except DashboardRangeError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+
+
 @api.get("/admin/stats")
 async def admin_stats(
+    *,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
     user: dict = Depends(require_permission("dashboard.read")),
 ):
-    total_orders = await db.orders.count_documents({})
-    pending = await db.orders.count_documents({"status": "pending_estimate"})
-    awaiting = await db.orders.count_documents({"status": "awaiting_payment"})
-    in_process = await db.orders.count_documents({"status": "in_process"})
-    completed = await db.orders.count_documents({"status": "completed"})
-    clients = await db.users.count_documents(CUSTOMER_QUERY)
+    """Counts for one applied date range, never for all of history.
+
+    Every figure below is scoped by the same range, so two panels on the same
+    dashboard always describe the same window.
+    """
+    applied = _resolve_range(date_from, date_to)
+    ranged = created_within(applied["query"])
+
+    orders = await db.orders.find(
+        ranged, {"_id": 0, "status": 1, "user_id": 1}
+    ).to_list(5000)
+    counts = {status: 0 for status in ORDER_STATUSES}
+    for order in orders:
+        if order.get("status") in counts:
+            counts[order["status"]] += 1
+
+    retail_orders = await db.retail_orders.count_documents(ranged)
+    inquiries = await db.inquiries.count_documents(ranged)
+    organizations = await db.inquiries.find(
+        ranged, {"_id": 0, "company": 1}
+    ).to_list(5000)
+
+    # Registered customers within the range, resolved through the canonical
+    # role query so a legacy marker and a canonical role both count once.
+    registered_customers = await db.users.count_documents(
+        {**CUSTOMER_QUERY, **ranged}
+    )
+
     return {
-        "total_orders": total_orders, "pending_estimate": pending, "awaiting_payment": awaiting,
-        "in_process": in_process, "completed": completed, "clients": clients,
+        "date_from": applied["date_from"],
+        "date_to": applied["date_to"],
+        "total_orders": len(orders),
+        "pending_estimate": counts["pending_estimate"],
+        "awaiting_payment": counts["awaiting_payment"],
+        "in_process": counts["in_process"],
+        "completed": counts["completed"],
+        "retail_orders": retail_orders,
+        "inquiries": inquiries,
+        # Distinct within the range, not lifetime registrations: a customer
+        # count that ignores the range cannot be read next to one that does not.
+        "clients": distinct_count(orders, "user_id"),
+        "registered_customers": registered_customers,
+        "organizations": distinct_count(organizations, "company"),
+        "revenue": withheld_revenue(),
     }
-
-
-def _validate_date(value: str, label: str) -> str:
-    try:
-        datetime.strptime(value, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"{label} must be YYYY-MM-DD")
-    return value
-
-
-def _date_bucket(timestamp: str) -> str:
-    return (timestamp or "")[:10]
 
 
 @api.get("/admin/stats/timeseries")
 async def admin_stats_timeseries(
+    *,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     user: dict = Depends(require_permission("dashboard.read")),
@@ -979,55 +1032,94 @@ async def admin_stats_timeseries(
     direct count or sum over existing transaction records, never a fabricated
     metric.
     """
-    now = datetime.now(timezone.utc)
-    start = _validate_date(date_from or (now - timedelta(days=30)).strftime("%Y-%m-%d"), "date_from")
-    end = _validate_date(date_to or now.strftime("%Y-%m-%d"), "date_to")
+    applied = _resolve_range(date_from, date_to)
+    ranged = created_within(applied["query"])
 
     orders = await db.orders.find(
-        {"created_at": {"$gte": start, "$lte": f"{end}T23:59:59"}},
-        {"_id": 0, "created_at": 1, "status": 1, "payment": 1, "estimate": 1},
+        ranged,
+        {"_id": 0, "created_at": 1, "status": 1},
     ).to_list(5000)
 
     orders_by_status: dict = {}
     for order in orders:
-        bucket = _date_bucket(order.get("created_at"))
-        row = orders_by_status.setdefault(bucket, {status: 0 for status in ORDER_STATUSES})
+        bucket = orders_by_status.setdefault(
+            date_bucket(order.get("created_at")),
+            {status: 0 for status in ORDER_STATUSES},
+        )
         status = order.get("status")
-        if status in row:
-            row[status] += 1
+        if status in bucket:
+            bucket[status] += 1
 
-    series = {"orders_by_status": [{"date": date, **counts} for date, counts in sorted(orders_by_status.items())]}
+    series = {
+        "orders_by_status": [
+            {"date": date, **counts} for date, counts in sorted(orders_by_status.items())
+        ]
+    }
 
     if has_permission(user, "inventory.read"):
         movements = await db.stock_movements.find(
-            {"created_at": {"$gte": start, "$lte": f"{end}T23:59:59"}},
-            {"_id": 0, "created_at": 1, "movement_type": 1},
+            ranged,
+            {"_id": 0, "created_at": 1, "movement_type": 1, "deltas": 1},
         ).to_list(5000)
-        movement_totals: dict = {}
-        for movement in movements:
-            bucket = _date_bucket(movement.get("created_at"))
-            row = movement_totals.setdefault(bucket, {})
-            movement_type = movement.get("movement_type", "unknown")
-            row[movement_type] = row.get(movement_type, 0) + 1
-        series["stock_movements"] = [{"date": date, **counts} for date, counts in sorted(movement_totals.items())]
+        # Signed, not counted: a receipt and a write-off are not the same event.
+        series["stock_movements"] = summarize_movements(movements)
 
-    if has_permission(user, "payments.read"):
-        revenue_totals: dict = {}
-        for order in orders:
-            payment = order.get("payment") or {}
-            if not payment.get("verified"):
-                continue
-            bucket = _date_bucket(payment.get("verified_at") or order.get("created_at"))
-            amount = (order.get("estimate") or {}).get("amount") or 0
-            revenue_totals[bucket] = revenue_totals.get(bucket, 0) + amount
-        series["revenue"] = [{"date": date, "amount": amount} for date, amount in sorted(revenue_totals.items())]
+    # Revenue is withheld for every reader, including payments.read. Serving it
+    # and hiding it in the client would still put it on the wire.
+    series["revenue"] = withheld_revenue()
 
-    return {"date_from": start, "date_to": end, "series": series}
+    return {
+        "date_from": applied["date_from"],
+        "date_to": applied["date_to"],
+        "series": series,
+    }
+
+
+def notification_service() -> NotificationService:
+    return NotificationService(db=db)
+
+
+async def _invoke_notifications(awaitable):
+    try:
+        return await awaitable
+    except NotificationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.payload()) from exc
 
 
 @api.get("/notifications")
-async def my_notifications(user: dict = Depends(get_current_user)):
-    return await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+async def my_notifications(
+    unread_only: bool = False,
+    limit: int = 50,
+    user: dict = Depends(get_current_user),
+):
+    """The bell feed: what the system did that this reader may need to act on."""
+    return await _invoke_notifications(
+        notification_service().list_for_user(
+            user["id"], unread_only=unread_only, limit=limit
+        )
+    )
+
+
+@api.get("/notifications/unread-count")
+async def my_unread_notification_count(user: dict = Depends(get_current_user)):
+    return {"unread": await notification_service().unread_count(user["id"])}
+
+
+@api.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    user: dict = Depends(get_current_user),
+):
+    return await _invoke_notifications(
+        notification_service().mark_read(notification_id, user_id=user["id"])
+    )
+
+
+@api.post("/notifications/read-all")
+async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
+    return await _invoke_notifications(
+        notification_service().mark_all_read(user["id"])
+    )
 
 
 async def resolve_notification_recipients(req: AdminNotificationReq) -> list:
@@ -1131,6 +1223,66 @@ api.include_router(
         get_transaction_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         safe_user=safe_user,
+        hash_password=hash_password,
+    )
+)
+
+
+def throttle_inquiry_intake(request: Request) -> None:
+    """Throttle anonymous project intake at parity with the legacy form."""
+    rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)
+
+
+async def notify_new_inquiry(inquiry: dict) -> None:
+    """Announce a captured lead. The router swallows failures so intake holds."""
+    result = await emailer.send_email(
+        HRD_EMAIL,
+        f"Inquiry Baru: {inquiry['company']}",
+        "Inquiry Proyek Baru",
+        f"<p><strong>{html.escape(inquiry['company'])}</strong></p>"
+        f"<p>PIC: {html.escape(inquiry['pic_name'])} "
+        f"({html.escape(inquiry['pic_email'])})</p>"
+        f"<p>Kebutuhan: {html.escape(inquiry['need'])}</p>"
+        f"<p>Timeline: {html.escape(inquiry['timeline'] or '-')}</p>"
+        f"<p>{html.escape(inquiry['brief']).replace(chr(10), '<br>')}</p>",
+        db=db,
+    )
+    if result.get("status") == "error":
+        logger.error(
+            "Inquiry stored, but notification email failed (inquiry_id=%s)",
+            inquiry["id"],
+        )
+
+
+api.include_router(
+    build_b2b_router(
+        get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
+        require_permission=require_permission,
+        throttle_intake=throttle_inquiry_intake,
+        notify_inquiry=notify_new_inquiry,
+        get_inventory_service=lambda: InventoryService(
+            db=db,
+            client=client,
+            capabilities=app.state.database_capabilities,
+            emailer=emailer,
+        ),
+    )
+)
+
+api.include_router(
+    build_portfolio_router(
+        get_db=lambda: db,
+        require_permission=require_permission,
+        has_permission=has_permission,
+    )
+)
+
+api.include_router(
+    build_retail_router(
+        get_db=lambda: db,
+        get_transaction_guard=lambda: app.state.transaction_guard,
+        require_permission=require_permission,
     )
 )
 
@@ -1170,6 +1322,7 @@ api.include_router(
         get_capabilities=lambda: app.state.database_capabilities,
         get_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
+        has_permission=has_permission,
     )
 )
 
@@ -1195,6 +1348,63 @@ app.add_middleware(
 # ----------------------------- Startup -----------------------------
 async def seed():
     await db.users.create_index("email", unique=True)
+    inquiries = getattr(db, "inquiries", None)
+    if inquiries is not None:
+        await inquiries.create_index("id", unique=True)
+        await inquiries.create_index([("status", 1), ("updated_at", -1)])
+    quotes = getattr(db, "b2b_quotes", None)
+    if quotes is not None:
+        await quotes.create_index("id", unique=True)
+        await quotes.create_index("inquiry_id", unique=True)
+    quote_versions = getattr(db, "b2b_quote_versions", None)
+    if quote_versions is not None:
+        await quote_versions.create_index("id", unique=True)
+        await quote_versions.create_index(
+            [("quote_id", 1), ("revision", 1)],
+            unique=True,
+        )
+    projects = getattr(db, "b2b_projects", None)
+    if projects is not None:
+        await projects.create_index("id", unique=True)
+        await projects.create_index("quote_id", unique=True)
+        await projects.create_index([("status", 1), ("updated_at", -1)])
+    work_orders = getattr(db, "work_orders", None)
+    if work_orders is not None:
+        await work_orders.create_index("id", unique=True)
+        await work_orders.create_index([("project_id", 1), ("updated_at", -1)])
+        await work_orders.create_index([("status", 1), ("updated_at", -1)])
+    portfolio = getattr(db, "portfolio", None)
+    if portfolio is not None:
+        await portfolio.create_index("id", unique=True)
+        await portfolio.create_index([("status", 1), ("display_order", 1)])
+        await portfolio.create_index("source_project_id")
+    notifications = getattr(db, "notifications", None)
+    if notifications is not None:
+        await notifications.create_index("id", unique=True)
+        # Partial: legacy rows predate the key, and several missing values
+        # would collide on a plain unique index.
+        await notifications.create_index(
+            "deduplication_key",
+            unique=True,
+            partialFilterExpression={"deduplication_key": {"$exists": True}},
+        )
+        await notifications.create_index([("user_id", 1), ("read_at", 1)])
+        await notifications.create_index([("user_id", 1), ("created_at", -1)])
+    outbox = getattr(db, "notification_outbox", None)
+    if outbox is not None:
+        await outbox.create_index("id", unique=True)
+        await outbox.create_index([("status", 1), ("created_at", 1)])
+    retail_orders = getattr(db, "retail_orders", None)
+    if retail_orders is not None:
+        await retail_orders.create_index("id", unique=True)
+        await retail_orders.create_index("order_number", unique=True)
+        await retail_orders.create_index("creation_operation_id", unique=True)
+        await retail_orders.create_index([("status", 1), ("updated_at", -1)])
+    shortages = getattr(db, "work_order_shortages", None)
+    if shortages is not None:
+        await shortages.create_index("id", unique=True)
+        await shortages.create_index([("status", 1), ("updated_at", -1)])
+        await shortages.create_index("work_order_id")
     await db.users.create_index("id", unique=True)
     await db.users.create_index([("roles", 1), ("status", 1)])
     await db.audit_events.create_index("id", unique=True)
@@ -1262,8 +1472,35 @@ async def seed():
                 "featured": False,
             },
         ]
-        for p in seeds:
-            await db.portfolio.insert_one({"id": str(uuid.uuid4()), **p, "created_at": now_iso()})
+        for index, entry in enumerate(seeds):
+            # Seeded entries start published: they exist to give a fresh
+            # install a public page. "client" is dropped rather than seeded,
+            # because customer identity has no place on a portfolio.
+            timestamp = now_iso()
+            entry.pop("client", None)
+            await db.portfolio.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    **entry,
+                    "status": "published",
+                    "version": 1,
+                    "display_order": index,
+                    "scheduled_for": None,
+                    "published_at": timestamp,
+                    "versions": [],
+                    "history": [
+                        {
+                            "from_status": None,
+                            "to_status": "published",
+                            "actor_user_id": None,
+                            "reason": "Seeded on first run",
+                            "timestamp": timestamp,
+                        }
+                    ],
+                    "created_at": timestamp,
+                    "updated_at": timestamp,
+                }
+            )
 
     await get_settings()
     logger.info("Seed complete")

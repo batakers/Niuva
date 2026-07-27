@@ -8,6 +8,7 @@ from catalog_domain import (
     build_publication_snapshot,
     normalize_slug,
     project_publication_for_public,
+    validate_bill_of_materials,
     validate_catalog_aggregate,
 )
 
@@ -155,6 +156,59 @@ class CatalogService:
             "updated_at", -1
         ).to_list(500)
 
+    async def list_quotable_variants(self) -> list[dict]:
+        """Active variants a quotation line may reference, across all products.
+
+        Flattened deliberately: a picker built from list_products plus a fetch
+        per product would issue one request per product to fill one dropdown.
+
+        Carries only what a quoted line needs to be chosen and understood. The
+        snapshot itself is still taken server-side when the revision is
+        written, so nothing here is the source of truth for what was quoted.
+        """
+        variants = await self.db.product_variants.find(
+            {"status": "active"}, {"_id": 0}
+        ).to_list(1000)
+        product_ids = sorted(
+            {variant["product_id"] for variant in variants if variant.get("product_id")}
+        )
+        products = (
+            await self.db.products.find(
+                {"id": {"$in": product_ids}}, {"_id": 0}
+            ).to_list(len(product_ids))
+            if product_ids
+            else []
+        )
+        products_by_id = {item["id"]: item for item in products}
+
+        quotable = []
+        for variant in variants:
+            product = products_by_id.get(variant.get("product_id"))
+            if not product:
+                continue
+            quotable.append(
+                {
+                    "variant_id": variant["id"],
+                    "product_id": product["id"],
+                    "product_name": product.get("name", ""),
+                    "sku": variant.get("sku", ""),
+                    "variant_name": variant.get("name", ""),
+                    "option_values": variant.get("option_values") or {},
+                    "production_type": variant.get("production_type", ""),
+                    "fixed_price": variant.get("fixed_price"),
+                    "currency": variant.get("currency", "IDR"),
+                    # Whether choosing this line will also freeze a bill of
+                    # materials, which is what later lets a work order be
+                    # opened against it.
+                    "bill_of_materials_lines": len(
+                        variant.get("bill_of_materials") or []
+                    ),
+                }
+            )
+        return sorted(
+            quotable, key=lambda item: (item["product_name"], item["sku"])
+        )
+
     async def _product_document(self, product_id: str) -> dict:
         product = clean_document(
             await self.db.products.find_one({"id": product_id}, {"_id": 0})
@@ -228,6 +282,41 @@ class CatalogService:
         )
         return after
 
+    async def _reject_invalid_bill_of_materials(
+        self, prepared: list[tuple[dict | None, dict]]
+    ) -> None:
+        """Validate every variant BOM before any variant is written."""
+        referenced = {
+            str(entry.get("material_id", "")).strip()
+            for _current, value in prepared
+            for entry in value.get("bill_of_materials") or []
+            if str(entry.get("material_id", "")).strip()
+        }
+        materials_by_id = {}
+        if referenced:
+            documents = await self.db.materials.find(
+                {"id": {"$in": sorted(referenced)}}, {"_id": 0}
+            ).to_list(len(referenced))
+            materials_by_id = {item["id"]: item for item in documents}
+
+        errors: list[dict] = []
+        for _current, value in prepared:
+            entries = value.get("bill_of_materials") or []
+            if not entries:
+                continue
+            errors.extend(
+                {**error, "field": f"variants.{value['sku']}.{error['field']}"}
+                for error in validate_bill_of_materials(entries, materials_by_id)
+            )
+
+        if errors:
+            raise CatalogError(
+                422,
+                "bom_invalid",
+                "Bill of materials varian tidak valid.",
+                errors=errors,
+            )
+
     async def replace_variants(
         self, product_id: str, variants: list[dict], actor: dict
     ) -> list[dict]:
@@ -292,6 +381,8 @@ class CatalogService:
                 value["created_at"] = timestamp
                 value["created_by"] = actor.get("id")
             prepared.append((current, value))
+
+        await self._reject_invalid_bill_of_materials(prepared)
 
         resolved_ids = [value["id"] for _current, value in prepared]
         if len(resolved_ids) != len(set(resolved_ids)):

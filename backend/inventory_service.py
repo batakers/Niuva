@@ -7,6 +7,7 @@ from bson.decimal128 import Decimal128
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from audit import append_audit_event
+from notification_service import NotificationService
 from inventory_domain import (
     InventoryConflict,
     apply_deltas,
@@ -420,6 +421,99 @@ class InventoryService:
             result["reservation"] = serialize_inventory(reservation)
         return result, email_recipients
 
+    async def apply_bulk_operations(
+        self,
+        *,
+        actor: dict,
+        operations: list[dict],
+        extra_mutation=None,
+    ) -> list[dict]:
+        """Apply several movements, and one aggregate change, in one transaction.
+
+        A production run touches every material on its bill at once. Reserving
+        them one call at a time would leave a run half allocated the moment any
+        material came up short, so the whole set commits or none of it does.
+        ``extra_mutation`` runs inside the same transaction, which is how the
+        owning aggregate is updated without a second, unprotected write.
+        """
+        self._require_transactions()
+        if not operations:
+            raise InventoryError(
+                422, "inventory_operations_empty", "Tidak ada operasi inventory."
+            )
+
+        prepared = [
+            {**operation, "fingerprint": operation_fingerprint(operation["payload"])}
+            for operation in operations
+        ]
+
+        replayed = [
+            await self._find_existing_operation(
+                operation["payload"]["operation_id"], operation["fingerprint"]
+            )
+            for operation in prepared
+        ]
+        if all(replayed):
+            return replayed
+
+        for attempt in range(3):
+            email_recipients: list = []
+            try:
+                session = await self.client.start_session()
+                async with session:
+                    async with session.start_transaction():
+                        results = []
+                        for operation in prepared:
+                            result, recipients = (
+                                await self._apply_operation_in_transaction(
+                                    actor=actor,
+                                    payload=operation["payload"],
+                                    fingerprint=operation["fingerprint"],
+                                    session=session,
+                                    reservation_create=operation.get(
+                                        "reservation_create"
+                                    ),
+                                    reservation_transition=operation.get(
+                                        "reservation_transition"
+                                    ),
+                                )
+                            )
+                            results.append(result)
+                            email_recipients.extend(recipients)
+                        if extra_mutation is not None:
+                            await extra_mutation(session, results)
+                await self._send_restock_emails(email_recipients)
+                return results
+            except _StaleBalance:
+                if attempt == 2:
+                    raise InventoryError(
+                        409,
+                        "balance_version_conflict",
+                        "Saldo inventory berubah bersamaan; silakan ulangi operasi.",
+                    )
+            except InventoryConflict as exc:
+                # A shortage lands here. The transaction is already aborted, so
+                # no material was reserved and no movement was recorded.
+                raise InventoryError(409, "inventory_conflict", str(exc)) from exc
+            except DuplicateKeyError:
+                if attempt == 2:
+                    raise InventoryError(
+                        409,
+                        "balance_version_conflict",
+                        "Saldo inventory berubah bersamaan; silakan ulangi operasi.",
+                    )
+            except PyMongoError as exc:
+                if not exc.has_error_label("TransientTransactionError"):
+                    raise
+                if attempt == 2:
+                    raise InventoryError(
+                        409,
+                        "balance_version_conflict",
+                        "Transaksi inventory terus berbenturan; silakan ulangi operasi.",
+                    ) from exc
+                continue
+        raise AssertionError("inventory bulk retry loop exited unexpectedly")
+
     async def create_reservation(self, *, actor: dict, payload: dict) -> dict:
         operation_payload = {
             **payload,
@@ -592,28 +686,30 @@ class InventoryService:
         for user in users:
             if not has_permission(user, "restock_alerts.read"):
                 continue
-            notification = {
-                "id": str(uuid.uuid4()),
-                "user_id": user["id"],
-                "type": "restock_alert",
-                "subject": f"Restock diperlukan: {alert['subject_name']}",
-                "title": "Peringatan stok",
-                "body_html": f"Trigger: {alert['trigger_type']}",
-                "alert_id": alert["id"],
-                "read": False,
-                "created_at": now_iso(),
-            }
-            await self.db.notifications.insert_one(
-                notification, **_write_options(session)
+            subject = f"Restock diperlukan: {alert['subject_name']}"
+            body = f"Trigger: {alert['trigger_type']}"
+            # Published through the notification service so the bell holds one
+            # shape, with a deduplication key and an allowlisted reference: a
+            # recurring shortage is one row that resurfaces, not a new row per
+            # observation.
+            notification = await NotificationService(db=self.db).publish(
+                user_id=user["id"],
+                event=f"inventory.restock_{alert['trigger_type']}",
+                title=subject,
+                body=body,
+                reference_type="restock_alert",
+                reference_id=alert["id"],
+                session=session,
             )
             if user.get("email"):
                 recipients.append(
                     {
                         "user_id": user["id"],
                         "email": user["email"],
-                        "subject": notification["subject"],
-                        "title": notification["title"],
-                        "body_html": notification["body_html"],
+                        "subject": subject,
+                        "title": "Peringatan stok",
+                        "body_html": body,
+                        "notification_id": notification["id"],
                     }
                 )
         return recipients
@@ -642,7 +738,65 @@ class InventoryService:
         values = await self.db.inventory_balances.find(query, {"_id": 0}).sort(
             "updated_at", -1
         ).limit(min(limit, 500)).to_list(min(limit, 500))
+        await self._enrich_balances(values)
         return serialize_inventory(values)
+
+    async def _enrich_balances(self, values: list[dict]) -> None:
+        """Give each balance its subject identity, derived figures, and status.
+
+        A stored balance is deliberately lean: on_hand, reserved, incoming,
+        planned_demand, and a version. Reading it, an operator needs the name
+        behind the subject id, the available figure, and a verdict. The status
+        is computed here, server-side, so the table, the CSV export, and any
+        later consumer state the same verdict for the same numbers.
+        """
+        subjects: dict[str, dict[str, dict]] = {}
+        for collection_name, type_name in (
+            ("materials", "material"),
+            ("product_variants", "product_variant"),
+        ):
+            wanted = sorted(
+                {
+                    value["subject_id"]
+                    for value in values
+                    if value["subject_type"] == type_name
+                }
+            )
+            if not wanted:
+                subjects[type_name] = {}
+                continue
+            documents = await getattr(self.db, collection_name).find(
+                {"id": {"$in": wanted}}, {"_id": 0}
+            ).to_list(len(wanted))
+            subjects[type_name] = {item["id"]: item for item in documents}
+
+        for value in values:
+            subject = subjects[value["subject_type"]].get(value["subject_id"]) or {}
+            available = _decimal(value.get("on_hand", 0)) - _decimal(
+                value.get("reserved", 0)
+            )
+            projected = (
+                available
+                + _decimal(value.get("incoming", 0))
+                - _decimal(value.get("planned_demand", 0))
+            )
+            reorder_point = _decimal(subject.get("reorder_point", 0) or 0)
+            if available <= 0:
+                stock_status = "habis"
+            elif reorder_point > 0 and available <= reorder_point:
+                stock_status = "rendah"
+            else:
+                stock_status = "normal"
+            value.update(
+                {
+                    "subject_name": subject.get("name", ""),
+                    "sku": subject.get("sku", ""),
+                    "available": available,
+                    "projected": projected,
+                    "reorder_point": reorder_point,
+                    "stock_status": stock_status,
+                }
+            )
 
     async def get_balance(self, subject_type: str, subject_id: str) -> dict:
         value = await self._balance_document(subject_type, subject_id)

@@ -131,11 +131,11 @@ class FakeDatabase:
         self.audit_events = FakeCollection()
         self.users = FakeCollection(
             [
-                {"id": "warehouse-1", "email": "warehouse@test", "roles": ["operations"], "status": "active", "access_state": "approved"},
-                {"id": "manager-1", "email": "manager@test", "roles": ["operations"], "status": "active", "access_state": "approved"},
+                {"id": "warehouse-1", "email": "warehouse@test", "roles": ["warehouse"], "status": "active", "access_state": "approved"},
+                {"id": "manager-1", "email": "manager@test", "roles": ["manager_approver"], "status": "active", "access_state": "approved"},
                 {"id": "admin-1", "email": "admin@test", "roles": ["super_admin"], "status": "active", "access_state": "approved"},
                 {"id": "customer-1", "email": "customer@test", "roles": ["retail_customer"], "status": "active", "access_state": "approved"},
-                {"id": "disabled-1", "email": "disabled@test", "roles": ["operations"], "status": "disabled", "access_state": "approved"},
+                {"id": "disabled-1", "email": "disabled@test", "roles": ["warehouse"], "status": "disabled", "access_state": "approved"},
             ]
         )
 
@@ -532,11 +532,11 @@ def test_transaction_capability_is_required():
 async def run_restock_recipients_follow_capability_and_access_state():
     service, db = build_service()
     db.users.items = [
-        {"id": "ops-approved", "email": "ops@test", "roles": ["operations"], "status": "active", "access_state": "approved"},
-        {"id": "ops-review", "email": "review@test", "roles": ["operations"], "status": "active", "access_state": "access_review_required"},
-        {"id": "ops-disabled", "email": "disabled@test", "roles": ["operations"], "status": "disabled", "access_state": "approved"},
+        {"id": "ops-approved", "email": "ops@test", "roles": ["warehouse"], "status": "active", "access_state": "approved"},
+        {"id": "ops-review", "email": "review@test", "roles": ["warehouse"], "status": "active", "access_state": "access_review_required"},
+        {"id": "ops-disabled", "email": "disabled@test", "roles": ["warehouse"], "status": "disabled", "access_state": "approved"},
     ]
-    actor = {"id": "ops-approved", "roles": ["operations"], "status": "active", "access_state": "approved"}
+    actor = {"id": "ops-approved", "roles": ["warehouse"], "status": "active", "access_state": "approved"}
     await service.apply_operation(actor=actor, payload=operation("71111111-1111-1111-1111-111111111111"))
     await service.apply_operation(actor=actor, payload=operation("72222222-2222-2222-2222-222222222222", movement_type="consume", quantity="6"))
     assert [item["user_id"] for item in db.notifications.items] == ["ops-approved"]
