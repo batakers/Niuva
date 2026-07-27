@@ -1298,6 +1298,7 @@ api.include_router(
 api.include_router(
     build_material_router(
         get_db=lambda: db,
+        get_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         has_permission=has_permission,
     )

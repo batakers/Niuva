@@ -1,12 +1,14 @@
 import asyncio
+from copy import deepcopy
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import httpx
+import pytest
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 
 from material_pricing import resolve_effective_price
-from material_routes import build_material_router
+from material_routes import MaterialService, build_material_router
 from permissions import has_permission
 
 
@@ -25,6 +27,7 @@ class FakeCursor:
 class FakeCollection:
     def __init__(self):
         self.items = []
+        self.fail_next_insert = False
 
     @staticmethod
     def matches(item, query):
@@ -60,6 +63,9 @@ class FakeCollection:
         )
 
     async def insert_one(self, item, **_options):
+        if self.fail_next_insert:
+            self.fail_next_insert = False
+            raise RuntimeError("injected insert failure")
         self.items.append(dict(item))
         return SimpleNamespace(inserted_id=item.get("id"))
 
@@ -78,6 +84,27 @@ class FakeDatabase:
         self.audit_events = FakeCollection()
 
 
+class FakeTransactionGuard:
+    def __init__(self, db):
+        self.db = db
+        self.calls = []
+        self.session = object()
+
+    async def run(self, callback, *, operation_name, **_options):
+        self.calls.append(operation_name)
+        snapshots = {
+            name: deepcopy(collection.items)
+            for name, collection in vars(self.db).items()
+            if isinstance(collection, FakeCollection)
+        }
+        try:
+            return await callback(self.session)
+        except Exception:
+            for name, items in snapshots.items():
+                getattr(self.db, name).items[:] = items
+            raise
+
+
 def require_permission(permission):
     async def dependency(
         x_permissions: str = Header(default=""),
@@ -93,11 +120,13 @@ def require_permission(permission):
 
 def build_test_context():
     db = FakeDatabase()
+    guard = FakeTransactionGuard(db)
     app = FastAPI()
     api = APIRouter(prefix="/api")
     api.include_router(
         build_material_router(
             get_db=lambda: db,
+            get_guard=lambda: guard,
             require_permission=require_permission,
             has_permission=lambda actor, permission: permission in actor.get("permissions", set()),
         )
@@ -342,9 +371,17 @@ def role_require_permission(permission):
 
 def build_role_test_context():
     db = FakeDatabase()
+    guard = FakeTransactionGuard(db)
     app = FastAPI()
     api = APIRouter(prefix="/api")
-    api.include_router(build_material_router(get_db=lambda: db, require_permission=role_require_permission, has_permission=has_permission))
+    api.include_router(
+        build_material_router(
+            get_db=lambda: db,
+            get_guard=lambda: guard,
+            require_permission=role_require_permission,
+            has_permission=has_permission,
+        )
+    )
     app.include_router(api)
     return app, db
 
@@ -411,3 +448,78 @@ async def run_supplier_reference_omission_preserves_stored_value():
 
 def test_supplier_reference_omission_does_not_clear_stored_value():
     asyncio.run(run_supplier_reference_omission_preserves_stored_value())
+
+
+async def run_material_audit_failure_rolls_back_every_mutation():
+    actor = {
+        "id": "staff-atomicity",
+        "email": "staff-atomicity@niuva.test",
+        "roles": ["warehouse"],
+    }
+    db = FakeDatabase()
+    guard = FakeTransactionGuard(db)
+    service = MaterialService(db, guard)
+
+    db.audit_events.fail_next_insert = True
+    with pytest.raises(RuntimeError, match="injected insert failure"):
+        await service.create_material({"name": "Atomic Create"}, actor)
+    assert db.materials.items == []
+
+    original = {
+        "id": "material-atomic",
+        "sku": "MAT-ATOMIC",
+        "name": "Atomic Material",
+        "status": "active",
+        "active": True,
+        "setup_status": "ready",
+        "base_unit": "kg",
+        "supplier_reference": "",
+        "waste_percentage": "0",
+        "reorder_point": "0",
+        "lead_time_days": 0,
+        "inventory_tracking_enabled": False,
+        "created_at": "2026-07-27T00:00:00+00:00",
+        "created_by": "seed",
+        "updated_at": "2026-07-27T00:00:00+00:00",
+        "updated_by": "seed",
+    }
+    db.materials.items.append(deepcopy(original))
+
+    db.audit_events.fail_next_insert = True
+    with pytest.raises(RuntimeError, match="injected insert failure"):
+        await service.update_material(
+            "material-atomic", {"description": "must roll back"}, actor
+        )
+    assert db.materials.items == [original]
+
+    db.audit_events.fail_next_insert = True
+    with pytest.raises(RuntimeError, match="injected insert failure"):
+        await service.archive_material(
+            "material-atomic", actor, "Atomic archive rollback"
+        )
+    assert db.materials.items == [original]
+
+    db.audit_events.fail_next_insert = True
+    with pytest.raises(RuntimeError, match="injected insert failure"):
+        await service.create_price_version(
+            "material-atomic",
+            {
+                "amount": 125000,
+                "currency": "IDR",
+                "price_unit": "kg",
+                "effective_from": "2026-07-27T00:00:00+00:00",
+                "reason": "Atomic price rollback",
+            },
+            actor,
+        )
+    assert db.material_price_versions.items == []
+    assert guard.calls == [
+        "material.create",
+        "material.update",
+        "material.archive",
+        "material.create_price_version",
+    ]
+
+
+def test_material_audit_failure_rolls_back_every_mutation():
+    asyncio.run(run_material_audit_failure_rolls_back_every_mutation())

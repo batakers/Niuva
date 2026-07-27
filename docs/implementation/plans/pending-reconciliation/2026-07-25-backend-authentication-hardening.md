@@ -1,9 +1,15 @@
 # Niuva Backend Authentication Hardening Plan
 
-Status: **Context Only — Two Decision Records Resolved; Remaining Security Decisions and Separate Implementation Approval Pending**
+Status: **Context Only — Partially Implemented — Phase A Complete; Remaining Security Decisions and Implementation Gates Open**
 Prepared: 25 July 2026 (Asia/Jakarta; 24 July 2026 UTC)
 Scope: Existing customer and internal login endpoints, access-token validation,
 password verification boundary, and login-abuse controls
+
+Implementation reconciliation: 27 July 2026. Phase A login issuance is
+implemented and merged. The related forgot/reset-password plan is also
+implemented. Login limiter topology, access-token/session policy, password
+migration policy, and authentication-event governance remain open; this plan
+still grants no production rollout authority.
 
 ## 1. Authority and Non-Authorization Gate
 

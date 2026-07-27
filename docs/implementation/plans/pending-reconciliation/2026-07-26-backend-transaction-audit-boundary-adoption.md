@@ -1,9 +1,18 @@
 # Niuva Backend Transaction and Audit Boundary Adoption Plan
 
-Status: **Context Only — Prepared for Review — Implementation Not Authorized**
+Status: **Context Only — Partially Implemented — Original Slice A and Material Slice B Complete; Remaining Work Open**
 Prepared: 26 July 2026
 Scope: BA-009 — central transaction boundary adoption, mutation/audit
 atomicity, and catalog revision conflict behavior
+
+Implementation reconciliation: 27 July 2026. The eight direct transaction
+blocks originally listed in Slice A use the shared guard. Material create,
+update, archive, and price-version from Slice B now place mutation and audit in
+one guard callback/session, with injected audit-failure rollback regression.
+CMS create/update/archive, the newer CMS transition and multi-material
+inventory direct blocks, catalog archive atomicity, catalog revision conflict,
+and Slice D cleanup remain open. This status grants no production rollout
+authority.
 
 ## 1. Authority and Gate
 
@@ -14,7 +23,7 @@ This bounded plan is governed by:
 3. `docs/decisions/DECISION_REGISTER.md`;
 4. `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
    (`DEC-DATA-01`);
-5. `docs/runbooks/TRANSACTION_CAPABILITY_RUNBOOK.md`;
+5. `doc/TRANSACTION_CAPABILITY_RUNBOOK.md`;
 6. current source and tests.
 
 This plan authorizes no source edit, commit, push, rollout, or production

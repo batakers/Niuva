@@ -1,7 +1,7 @@
 # Forgot & Reset Password — Implementation Plan
 
 Tanggal: 24 Juli 2026
-Status: **Context Only — Pending Separate Implementation Approval**
+Status: **Completed Execution Record — Implemented — Production Rollout Not Evidenced**
 Scope: Menambah alur "Lupa Password" dan "Reset Password" untuk akun admin dan customer. Tidak ada source code yang diubah oleh dokumen ini.
 Canonical authority:
 - `docs/implementation/plans/pending-reconciliation/2026-07-23-auth-experience-remediation.md` (Bounded Scope: "entry to sign-in or account-access flows... recovery states"; menyatakan implementasi belum diotorisasi)
@@ -158,8 +158,9 @@ nanti diimplementasi lalu perlu dibatalkan:
   mengikuti pola `i18n.js` yang sudah ada.
 - Konfirmasi threshold rate-limit final untuk `/auth/forgot-password` (draf: 3 permintaan / 15 menit per email dan per IP).
 
-Tidak ada item yang diselesaikan diam-diam oleh plan ini. Status tetap **Pending
-Separate Implementation Approval**.
+Catatan historis: pada saat bagian awal plan ditulis, belum ada item yang
+diimplementasikan dan statusnya masih **Pending Separate Implementation
+Approval**. Addendum berikut merekam approval serta implementasi sesudahnya.
 
 ## Addendum (25 Juli 2026) — Implementasi Diotorisasi dan Selesai
 

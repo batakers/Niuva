@@ -1,7 +1,7 @@
 # Reporting, Bulk Actions, Aggregate Dashboard & Admin Notifications — Implementation Plan
 
 Tanggal: 25 Juli 2026
-Status: **Context Only — Pending Separate Implementation Approval**
+Status: **Completed Execution Record — Implemented — Production Rollout Not Evidenced**
 Scope: Empat fitur backoffice yang diminta pemilik proyek dari hasil audit modul existing:
 (1) Export/laporan CSV untuk stok & order, (2) manajemen notifikasi dari sisi admin,
 (3) bulk action pada daftar order/produk, (4) dashboard agregat berbasis periode.
@@ -11,6 +11,12 @@ Canonical authority:
 - `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-direction.md` (Approved Decision — baris 75: "Admin Dashboard requires a dedicated audit and implementation plan before source changes are authorized")
 - `docs/implementation/plans/pending-reconciliation/2026-07-25-admin-content-editor-and-module-audit-plan.md` (audit asal temuan gap ini, §5)
 Sumber temuan: audit page-inventory read-only, 24-25 Juli 2026; permintaan eksplisit pemilik proyek, 25 Juli 2026.
+
+Implementation reconciliation: 27 July 2026. CSV export, per-item bulk order
+and catalog actions, admin-to-customer notifications, and role-aware aggregate
+dashboard endpoints/UI are present with focused tests. Statements below that
+say no source existed or approval was pending are retained as planning-time
+history.
 
 Dokumen ini adalah rencana. `NIUVA_MASTER_SPEC.md` baris 426 menegaskan persetujuan
 dokumen spec tidak otomatis mengotorisasi implementasi. Rencana ini disusun untuk
@@ -181,5 +187,6 @@ mengagregasi data yang sudah ada, kecuali koleksi baru untuk riwayat notifikasi 
 - Komposisi metrik dashboard per role (`operations` vs `commercial_finance`) perlu ditinjau pemilik `DEC-OPS-001` sebelum eksekusi, sesuai constraint "Do not give every role an identical dashboard."
 - Threshold rate-limit final untuk pengiriman notifikasi broadcast.
 
-Tidak ada item yang diselesaikan diam-diam oleh plan ini. Status tetap **Pending
-Separate Implementation Approval**.
+Catatan historis: bagian ini menggambarkan status sebelum implementation
+authorization dan source changes. Status faktual terbaru tercatat pada header
+dan reconciliation note di atas.
