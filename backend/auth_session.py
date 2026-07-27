@@ -285,6 +285,7 @@ class AdminSessionModule:
         outcome, record = await self.transaction_guard.run(
             rotate,
             operation_name="auth.admin_session.rotate",
+            retry_safe=True,
         )
         if outcome == "replay":
             await self.revoke_admin_session(

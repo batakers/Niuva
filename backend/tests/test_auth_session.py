@@ -298,7 +298,7 @@ def test_concurrent_rotation_has_one_success_then_replay_revokes_family():
     assert store.records[0]["revoked_at"] is not None
 
 
-def test_rotation_does_not_driver_retry_a_semantically_consumed_secret():
+def test_rotation_marks_driver_retry_safe_for_transient_write_conflicts():
     module, _store, _clock = subject()
     first = create(module)
     run(
@@ -309,7 +309,7 @@ def test_rotation_does_not_driver_retry_a_semantically_consumed_secret():
 
     assert module.transaction_guard.calls[-1] == (
         "auth.admin_session.rotate",
-        {},
+        {"retry_safe": True},
     )
 
 
