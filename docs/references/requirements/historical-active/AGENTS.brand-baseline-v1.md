@@ -22,17 +22,26 @@ Authority: Subordinate to approved v2.1 requirements
 
 ---
 
-## 2. Source of Truth Hierarchy
+## 2. Canonical and Public Brand Authority
 
-When requirements conflict, follow this order:
+This file is an active guardrail for public-page and brand work only. Read the
+repository-root `AGENTS.md` first, then resolve conflicts in this order:
 
-1. **BRD** — business goals, business requirements, KPI, risks, scope boundaries.
-2. **PRS** — product goals, target users, page structure, page scope, user flow, CTA logic.
-3. **PRODUCT.md** — product purpose, brand personality, anti-references, design principles, accessibility, implementation context.
-4. **Company Profile PDF** — visual identity, brand motifs, base content, services, projects, contact details.
-5. Current implementation — reuse what is useful, but refactor anything that conflicts with the documents above.
+1. `docs/NIUVA_MASTER_SPEC.md`
+2. `docs/context/DOCUMENT_REGISTER.md`, then
+   `docs/decisions/DECISION_REGISTER.md`
+3. The applicable approved decision or ADR
+4. The applicable runbook
+5. This public-brand guardrail, only where it does not conflict with the
+   sources above
+6. Historical BRD, PRS, `PRODUCT.md`, and Company Profile PDF as supporting
+   context, subject to their registered status
+7. Current implementation and tests as evidence of the present state
 
-Do not invent a new business direction, page structure, service hierarchy, or visual identity.
+Current implementation never overrides an approved requirement or decision.
+Do not use this file to invent a business direction, information architecture,
+service hierarchy, API or data contract, role, pricing promise, or visual
+identity.
 
 ---
 
@@ -546,6 +555,18 @@ Do not keyword-stuff.
 
 ## 16. Development Workflow for Agents
 
+For team-mediated work, follow
+[`docs/context/AI_AGENT_TEAM_WORKFLOW.md`](../../../context/AI_AGENT_TEAM_WORKFLOW.md)
+for task cards, worktree isolation, review, verification, and handover. It is
+process guidance only; it does not upgrade this file's authority or authorize
+changes outside an approved public-brand task.
+
+Before starting a public-brand task, the task card must identify the public
+route or component, applicable UX or brand authority, CTA or form contract,
+paths and behavior that must remain unchanged, and responsive/accessibility
+checks. Do not use this guardrail to authorize Auth, Admin, Retail, data,
+API-contract, provider, migration, or deployment work.
+
 Before editing code:
 
 1. Inspect the project structure.
@@ -570,7 +591,8 @@ After editing:
 
 - Run the available checks if commands exist.
 - If commands are unknown, inspect `package.json` or project scripts first.
-- Check responsive behavior.
+- Check responsive behavior at the task-relevant desktop, tablet, and mobile viewports.
+- Check keyboard navigation, visible focus, and reduced-motion behavior when the affected UI uses interaction or motion.
 - Check navigation links.
 - Check CTA links.
 - Check contact form behavior.

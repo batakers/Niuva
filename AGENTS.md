@@ -29,6 +29,36 @@
 - Do not add dependencies, change global configuration, or modify secrets without explicit approval.
 - Follow approved migration and execution gates; a documentation plan does not authorize application implementation.
 
+## Team AI-Agent Workflow
+
+For coordinated AI-assisted work, follow
+[`docs/context/AI_AGENT_TEAM_WORKFLOW.md`](docs/context/AI_AGENT_TEAM_WORKFLOW.md).
+It is **Context Only**: it defines the team's working process and does not
+authorize product decisions, source changes, migrations, provider selection,
+production-readiness, or go-live.
+
+- Create a task card before invoking an agent. It must state the objective,
+  scope and exclusions, applicable authority, affected files or areas,
+  acceptance criteria, minimum checks, authorization for commit/push/PR, and
+  unresolved risks or decisions.
+- Use one active Driver, branch, and worktree per task. Do not edit the same
+  worktree or file in parallel; parallel discovery and verification remain
+  read-only unless their file ownership and handoff are explicit.
+- For remediation work, use
+  `docs/context/production-readiness-audit/` as historical evidence and
+  `docs/implementation/production-readiness/` for traceability, dependencies,
+  and verification planning. Neither directory replaces canonical authority or
+  grants implementation approval.
+- Create task worktrees from a freshly fetched `origin/main`. Do not switch,
+  pull, reset, clean, stash, or force-checkout another contributor's worktree;
+  stage only the approved paths.
+- Handover must state changed and intentionally unchanged files, verification
+  passed or not run, remaining risks or rollback needs, open decisions, and
+  external actions still requiring authorization.
+- A merged PR proves only that the reviewed change entered the base branch. It
+  does not by itself resolve an audit finding or grant production-ready or
+  go-live status.
+
 ## Verification and Handover
 
 - Run proportional checks for the changed scope and report what was verified or could not run.
