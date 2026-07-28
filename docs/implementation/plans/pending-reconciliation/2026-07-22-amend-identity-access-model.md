@@ -6,9 +6,10 @@
 > historical evidence to audit and reconcile against the canonical granular
 > role model.
 >
-> **For implementation:** use `superpowers:executing-plans` and execute tasks in
-> order. Do not begin the Catalog CMS/Supplier plan until every required test and
-> rollout check in this plan is green.
+> **Historical execution note:** The task instructions below are retained only
+> as evidence. Do not execute them or treat their checks as current gates. For
+> new work, follow `AGENTS.md`, `docs/context/AI_AGENT_TEAM_WORKFLOW.md`,
+> `DEC-ACCESS-001`, and current explicit approval.
 
 **Goal:** Replace the legacy ten-role internal model with the approved three-role
 model, quarantine legacy elevated accounts until an Owner explicitly reviews

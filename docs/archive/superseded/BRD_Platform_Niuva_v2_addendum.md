@@ -14,6 +14,11 @@ Do not use for new planning. Historical content is preserved for traceability.
 Dokumen induk: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`
 Referensi desain: `docs/superpowers/specs/2026-07-14-integrated-operations-marketplace-design.md`
 
+Historical pointer note: the referenced legacy path is no longer present. Its
+preserved superseded design record is
+`docs/archive/superseded/2026-07-14-integrated-operations-marketplace-design.md`.
+Neither path is authority for new planning.
+
 ## 1. Tujuan Addendum
 
 Addendum ini memperluas BRD v1.0 setelah website publik dan platform order awal tersedia. BRD v1.0 tetap berlaku untuk positioning, brand, portfolio, lead generation, dan lima halaman publik utama.
