@@ -1,5 +1,11 @@
 # Browser Verification Runbook
 
+Status: Runbook — manual verification procedure; execution evidence requires a
+current environment, approved accounts, and captured results.
+
+Provenance: This document provides operational verification guidance. It does
+not independently authorize product, role, deployment, or go-live decisions.
+
 Role matrix and responsive verification for the Admin Studio, in a real
 browser at the four widths the plan names: 375, 768, 1024, and 1440.
 

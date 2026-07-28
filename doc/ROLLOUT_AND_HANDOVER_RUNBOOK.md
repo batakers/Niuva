@@ -1,5 +1,12 @@
 # Rollout and Handover Runbook
 
+Status: Runbook — staging and deployment procedure. Execution requires
+explicit approval, a named environment, accountable owners, and recorded
+evidence.
+
+Provenance: This document supplies a procedure only; it does not authorize
+deployment, provider selection, production readiness, or go-live.
+
 Staging smoke, canary, post-deploy checks, and handover for the Admin Studio.
 
 Nothing in this document has been executed. It needs staging access and an

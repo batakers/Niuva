@@ -1,5 +1,10 @@
 # Deleted branches — 2026-07-27
 
+Status: Context Only — historical branch-recovery record.
+
+Provenance: This file records former branch names and SHAs. It does not
+authorize restoring, deleting, publishing, or otherwise changing a branch.
+
 Every branch except main was deleted as abandoned work. This file is the
 only record of where they pointed: a branch without a pull request has no
 Restore button on GitHub, so these SHAs are the way back.
