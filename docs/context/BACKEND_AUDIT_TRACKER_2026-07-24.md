@@ -146,8 +146,10 @@ Current finding reconciliation:
 
 - `BA-004`: `resolved`; local `pip-audit` reports no known backend
   vulnerabilities.
-- `BA-005`: remains `open`; the corrected complete-history Gitleaks scan finds
-  six real NIV-001 historical findings. They are not ignored.
+- `BA-005`: remains `open`; the corrected GitHub Actions Gitleaks scan covers
+  all 234 reachable commits and reports three unresolved NIV-001 historical
+  findings after six exact-fingerprint synthetic/test false positives are
+  ignored. The real findings are not ignored.
 - `BA-007`: `resolved_for_active_scope`; all legacy order creation, estimate,
   payment verification, status, and bulk mutation paths are denied, while
   historical reads remain available.
