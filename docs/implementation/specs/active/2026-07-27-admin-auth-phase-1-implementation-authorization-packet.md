@@ -1,12 +1,24 @@
 # Admin Authentication Phase 1 — Implementation Authorization Packet
 
-Status: **Approved Implementation Authorization — G4 Passed Locally — Argon2 Writes Disabled**
+Status: **Implementation Merged — G4 Passed Locally — Argon2 Writes Disabled — No Production Activation**
 Date: 27 July 2026
 Decision owner: Project Owner
 Technical reviewer: Acting Technical Owner
 Approval source: Explicit owner approval of all `AUTH-P1` recommendations on
 27 July 2026.
 Proposed implementation slice: **Recovery Safety Baseline**
+
+## Execution Reconciliation
+
+Following separate commit, push, and pull-request authorization, the bounded
+Phase 1 implementation was merged in [PR #51](https://github.com/batakers/Niuva/pull/51)
+on 27 July 2026. This records the resulting source state; it does not broaden
+the original approval, enable Argon2 writes, or authorize rollout, production
+readiness, or go-live.
+
+Statements below that limit the packet to uncommitted local work describe the
+original authorization gate and remain provenance for that gate. They do not
+authorize further changes after the merged implementation.
 
 ## 1. Authority and Meaning of Approval
 
