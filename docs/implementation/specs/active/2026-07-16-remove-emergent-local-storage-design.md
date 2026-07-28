@@ -224,7 +224,7 @@ The `requests` Python dependency is not removed solely as part of this change be
 ## 10. Error Handling
 
 | Condition | Result |
-|---|---|
+| --- | --- |
 | Disallowed extension | Existing HTTP `400` behavior |
 | File exceeds 50 MB | Existing HTTP `400` behavior |
 | Unsafe storage path | HTTP `400` for invalid caller input or controlled server error for corrupted stored metadata |
