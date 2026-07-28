@@ -156,7 +156,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | Requests have bounded timeouts, normalized network/offline errors, cancellation, and safe idempotent retry semantics. |
 | Actual behavior | Axios has no timeout; direct `fetchFile`/`downloadCsv` calls have no timeout, retry, or cancellation; no offline policy was found. `content.js` explicitly documents no cache/retry. |
 | Evidence | `frontend/src/lib/api.js:3-8,22-72`; `frontend/src/lib/content.js:97-117` |
-| Reproduction or verification command | `rg -n "axios.create|fetch\\(|timeout|retry|AbortController|navigator.onLine" frontend/src` |
+| Reproduction or verification command | `rg -n -e "axios.create" -e "fetch\\(" -e "timeout" -e "retry" -e "AbortController" -e "navigator.onLine" frontend/src` |
 | Impact | Network stalls can leave critical journeys hanging or silently incomplete, with no bounded recovery path. |
 | Root cause or probable cause | Client transport responsibilities are split between Axios and raw `fetch` without a shared request policy. |
 | Recommendation | Define an approved transport policy with bounded timeout, cancellation, normalized error types, and retries only for safe/idempotent operations. |
@@ -178,7 +178,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | DEC-AUTH-005 target: secure HttpOnly same-origin `__Host-` cookies, server revocation/logout, CSRF/origin controls, and no web-storage bearer token. |
 | Actual behavior | `niuva_token` is stored/read/cleared in `localStorage`, attached as `Authorization: Bearer`, and logout only clears local state. |
 | Evidence | `frontend/src/lib/api.js:8-26`; `frontend/src/context/AuthContext.jsx:11-49`; DEC-AUTH-005 |
-| Reproduction or verification command | `rg -n "localStorage|sessionStorage|Authorization.*Bearer|logout" frontend/src` |
+| Reproduction or verification command | `rg -n -e "localStorage" -e "sessionStorage" -e "Authorization.*Bearer" -e "logout" frontend/src` |
 | Impact | Persistent XSS-readable credentials and no server-side revocation semantics conflict with the approved Admin session boundary. |
 | Root cause or probable cause | Legacy bearer-token client remains the active implementation while the approved cookie/session direction is not implemented. |
 | Recommendation | Plan a separately authorized bounded auth/session migration; do not infer rollout authorization from this audit. |
@@ -200,7 +200,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | DEC-AUTH-003 routes include check-email, success, and error states; the reset token is captured once, kept ephemeral, removed from visible URL/history, and validated through the approved contract. |
 | Actual behavior | Only `/forgot-password` and `/reset-password` are routed; `ResetPassword` reads the raw query token and posts it directly; no URL cleanup or validation step exists; `ForgotPassword` only toggles local sent state. |
 | Evidence | `frontend/src/App.js:145-147`; `frontend/src/pages/auth/ResetPassword.jsx:9-31,87-136`; `frontend/src/pages/auth/ForgotPassword.jsx:13-25`; DEC-AUTH-003 |
-| Reproduction or verification command | `rg -n "forgot-password/check-email|reset-password/success|reset-password/error|useSearchParams|history|replace" frontend/src` |
+| Reproduction or verification command | `rg -n -e "forgot-password/check-email" -e "reset-password/success" -e "reset-password/error" -e "useSearchParams" -e "history" -e "replace" frontend/src` |
 | Impact | Reset tokens can remain in URL/history and the UI cannot represent the approved recovery lifecycle or failure states. |
 | Root cause or probable cause | Legacy single-page recovery flow was not reconciled with the approved shared recovery contract. |
 | Recommendation | Specify and authorize the bounded recovery-route/token-handling migration. |
@@ -222,7 +222,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | Every Admin route has an explicit permission mapping; customer routes and Admin Studio have distinct surface guards and test matrices. |
 | Actual behavior | `/admin/notifications` is not in `ADMIN_ROUTE_PERMISSIONS`, so `ProtectedRoute` checks only authentication. `/dashboard` and `/order` also use only the generic auth gate. |
 | Evidence | `frontend/src/App.js:120,142-173`; `frontend/src/lib/permissions.js:1-19,79`; `frontend/src/components/auth/ProtectedRoute.jsx:7-27` |
-| Reproduction or verification command | `rg -n "admin/notifications|ADMIN_ROUTE_PERMISSIONS|permission &&|ProtectedRoute" frontend/src` |
+| Reproduction or verification command | `rg -n -e "admin/notifications" -e "ADMIN_ROUTE_PERMISSIONS" -e "permission &&" -e "ProtectedRoute" frontend/src` |
 | Impact | An authenticated customer token can mount an Admin notification shell, and route-boundary assumptions are not explicit in the frontend. |
 | Root cause or probable cause | Route protection is permission-aware only when a mapping entry is present; surface classification is implicit. |
 | Recommendation | Add a complete route/surface matrix, explicit permission entries, and negative tests for customer-to-Admin navigation. |
@@ -244,7 +244,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | Auth, content, order, and Admin responses are validated at the client boundary and produce a controlled invalid-data state. |
 | Actual behavior | `zod` is declared but no frontend `zod` import, `safeParse`, or equivalent runtime response validation was found; pages access `response.data` fields directly. |
 | Evidence | `frontend/package.json:20-33`; `frontend/src/lib/content.js:97-117`; `frontend/src/pages/marketing/ProjectsPage.jsx:33`; `frontend/src/pages/admin/Users.jsx:73` |
-| Reproduction or verification command | `rg -n "from [\"']zod|safeParse|response\\.data|\\.data\\." frontend/src` |
+| Reproduction or verification command | `rg -n -e "from [\"']zod" -e "safeParse" -e "response\\.data" -e "\\.data\\." frontend/src` |
 | Impact | Contract drift can produce malformed rendering, uncaught exceptions, or incorrect empty states. |
 | Root cause or probable cause | API type/shape assumptions are distributed across page code rather than enforced at a boundary. |
 | Recommendation | Introduce narrowly scoped schemas for critical response contracts and explicit invalid-data telemetry/state. |
@@ -266,7 +266,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | Customer data failures show an explicit error/offline state, preserve actionable retry, and distinguish empty from failed. |
 | Actual behavior | `ClientDashboard.jsx` and `NewOrder.jsx` use empty catches; failed loads only stop loading or leave missing data. Public portfolio/content failures are also inconsistent. |
 | Evidence | `frontend/src/pages/operational/ClientDashboard.jsx:23`; `frontend/src/pages/operational/NewOrder.jsx:23`; `frontend/src/pages/marketing/ProjectsPage.jsx` |
-| Reproduction or verification command | `rg -n "\\.catch\\(\\(\\) => \\{\\}\\)|catch \\(.*\\{\\s*\\}" frontend/src/pages frontend/src/lib` |
+| Reproduction or verification command | `rg -n -e "\\.catch\\(\\(\\) => \\{\\}\\)" -e "catch \\(.*\\{\\s*\\}" frontend/src/pages frontend/src/lib` |
 | Impact | Users can interpret a failed dashboard/material load as an empty account or cannot recover without a full refresh. |
 | Root cause or probable cause | Page-local fetch effects are not consistently wired to shared operational/error state. |
 | Recommendation | Replace silent catches with shared error/offline/retry states and tests for failure and recovery. |
@@ -288,7 +288,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | Runtime dependency and component graphs are intentional, documented, and free of unneeded update/security surface. |
 | Actual behavior | Static scans found probable unused `date-fns`, `dayjs`, `framer-motion`, `lodash`, and `zod`, plus components/exports with no runtime imports. |
 | Evidence | `frontend/package.json:20-33`; `frontend/src/components/ui/responsive-table.jsx`; `frontend/src/components/ui/stat-card.jsx`; `frontend/src/components/marketing/CompanyProfileBlocks.jsx` |
-| Reproduction or verification command | `rg -n "from ['\\\"](date-fns|dayjs|framer-motion|lodash|zod)" frontend/src; rg -n "responsive-table|stat-card|SectionShell|GoalItem|ProjectCard|ProjectGrid" frontend/src` |
+| Reproduction or verification command | `rg -n -e "date-fns" -e "dayjs" -e "framer-motion" -e "lodash" -e "zod" frontend/src; rg -n -e "responsive-table" -e "stat-card" -e "SectionShell" -e "GoalItem" -e "ProjectCard" -e "ProjectGrid" frontend/src` |
 | Impact | Larger maintenance/update surface and less reliable bundle/dependency reasoning. |
 | Root cause or probable cause | Historical components/dependencies remain after feature changes; static scan cannot prove semantic deadness. |
 | Recommendation | Confirm usage with owners, then remove or document only in separately approved cleanup work. |
@@ -310,7 +310,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | Production artifacts have an approved size budget and CI/regression check for initial and shared chunks. |
 | Actual behavior | Lazy route chunks exist, but the run emitted a 198.13 kB gzip main bundle and 102.27 kB largest shared chunk with no budget/reporting gate in scripts, config, or CI. |
 | Evidence | `frontend/src/App.js:11-79`; `frontend/package.json:scripts`; build output from `npm.cmd run build` |
-| Reproduction or verification command | `rg -n "budget|bundle|size-limit|webpack-bundle-analyzer" frontend package.json .github; npm build artifact size inspection` |
+| Reproduction or verification command | `rg -n -e "budget" -e "bundle" -e "size-limit" -e "webpack-bundle-analyzer" frontend package.json .github; npm build artifact size inspection` |
 | Impact | Future dependency or shared-module growth can regress first load without detection. |
 | Root cause or probable cause | Code splitting is implemented, but performance limits are not encoded as an acceptance gate. |
 | Recommendation | Define an approved budget/report and enforce it in CI after owner agreement on thresholds. |
@@ -332,7 +332,7 @@ monoliths and direct API calls appear in 20 page/component files.
 | Expected behavior | Shared query/error/loading abstractions and cohesive modules keep behavior consistent and testable. |
 | Actual behavior | Direct API calls appear in 20 page/component files with repeated loading/error/finally patterns; large modules include `i18n.js` (1370 lines), `Catalog.jsx` (868), and `Materials.jsx` (857). |
 | Evidence | Static API-call scan under `frontend/src`; file-size scan; representative Admin and customer pages |
-| Reproduction or verification command | `rg -l "api\\.(get|post|put|patch|delete)|fetch\\(" frontend/src | Measure-Object; rg --files frontend/src | % { ... line count ... }` |
+| Reproduction or verification command | `@(rg -l -e "api\\.(get\\(" -e "api\\.(post\\(" -e "api\\.(put\\(" -e "api\\.(patch\\(" -e "api\\.(delete\\(" -e "fetch\\(" frontend/src).Count; @(rg --files frontend/src).Count` |
 | Impact | Inconsistent state behavior, higher review cost, and harder isolated testing. |
 | Root cause or probable cause | Feature growth accumulated page-local orchestration without a shared data-fetching/query boundary. |
 | Recommendation | Plan a bounded maintainability refactor only after route/API behavior is covered by tests; do not redesign in this audit. |
