@@ -1,5 +1,12 @@
 # Niuva Homepage Production Implementation Plan
 
+Status: Context Only — historical plan dated 13 July 2026; it predates the
+v2.1 Retail-B2B baseline and `DEC-UX-001`, and is not an active implementation
+task.
+
+Provenance: See `docs/context/DOCUMENT_REGISTER.md` for its reconciliation
+status and the later Homepage planning record.
+
 - Phase: 3 - Homepage Production Implementation Plan
 - Status: Implementation-ready, pending Phase 4 authorization
 - Scope: Production Homepage route `/` only

@@ -1,11 +1,12 @@
 # MongoDB Transaction Capability Runbook
 
-Status: Development and CI foundation only.
+Status: Runbook — development and CI foundation only.
 
-This runbook implements the internal architecture direction in
-`doc/decisions/ADR-001-mongodb-transaction-capability.md`. It does not
-authorize production infrastructure, production mutation enablement, or
-production go-live.
+Provenance: This procedure implements the transaction boundary in
+`docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`.
+
+It does not authorize production infrastructure, production mutation
+enablement, or production go-live.
 
 Retail Checkout remains **Technical Design Candidate — not approved for implementation**.
 This runbook does not implement checkout, payment, shipping, tax, refunds, or

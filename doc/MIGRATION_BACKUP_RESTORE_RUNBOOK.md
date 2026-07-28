@@ -1,5 +1,11 @@
 # Migration Backup and Restore Runbook
 
+Status: Runbook — backup and restore procedure; the exercise is not complete
+until restore and comparison evidence are captured for the target environment.
+
+Provenance: This document is procedural guidance for an approved migration. It
+does not authorize a migration, environment, provider, or production change.
+
 Whole-database capture and restore around a migration.
 
 A per-migration `--rollback` undoes what that migration knew it changed. This
