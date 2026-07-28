@@ -1,5 +1,17 @@
 # Product
 
+> **Historical supporting reference — public-v1 snapshot.**
+>
+> Authority status: `Supporting Reference`; see
+> [`docs/context/DOCUMENT_REGISTER.md`](../../../context/DOCUMENT_REGISTER.md).
+> Use this file only to recover public positioning and surface-separation intent
+> where it does not conflict with the Master Spec, Document Register, Decision
+> Register, an approved decision or ADR, or an applicable runbook.
+>
+> Do not use it for current platform scope, role model, implementation
+> authorization, or product decisions. References to “current implementation”
+> below describe the historical snapshot, not present repository truth.
+
 ## Register
 
 brand
