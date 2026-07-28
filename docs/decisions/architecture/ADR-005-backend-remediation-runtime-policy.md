@@ -1,10 +1,17 @@
 # ADR-005 — Backend Remediation Runtime Policy
 
-Status: **Approved Implementation Decision**
+Status: **Approved Implementation Decision with Needs Clarification**
 Decision date: 27 July 2026
 Decision source: Explicit approval of the “NIUVA Backend Remediation dan
 Retail Discovery Plan”, 27 July 2026.
 Scope: Backend remediation and the read-only Retail discovery slice only.
+
+Clarification boundary: The bounded approval remains in force, but the
+password-rule wording must be reconciled with `DEC-AUTH-004`, the universal
+session/route/response wording with Admin-specific `DEC-AUTH-005`, and any
+cursor-pagination scope beyond public catalog reads before the affected scope
+is interpreted or extended. See `docs/decisions/DECISION_REGISTER.md` and
+`docs/context/DOCUMENT_REGISTER.md` for the recorded consequences.
 
 ## Context
 
