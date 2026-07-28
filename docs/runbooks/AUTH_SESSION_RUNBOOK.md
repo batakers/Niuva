@@ -91,7 +91,7 @@ python migrations\009_admin_session_safety.py `
 ```
 
 Rollback validates the redacted backup, removes only migration-owned indexes,
-and transactionally removes only migration `008`'s marker. Re-run dry-run and
+and transactionally removes only Migration 009's marker. Re-run dry-run and
 verify zero owned/TTL indexes. If interrupted into partial state, keep Admin
 issuance disabled and restore the verified full backup in a transaction-capable
 isolated environment; do not issue direct DB repairs.

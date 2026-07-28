@@ -20,9 +20,9 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
-from schema_manifest import INDEX_DECLARATIONS, REQUIRED_SCHEMA_VERSION
+from schema_manifest import INDEX_DECLARATIONS, MIGRATION_007_VERSION
 
-MIGRATION_ID = REQUIRED_SCHEMA_VERSION
+MIGRATION_ID = MIGRATION_007_VERSION
 BACKUP_EVIDENCE_FIELDS = frozenset(
     {
         "migration_id",

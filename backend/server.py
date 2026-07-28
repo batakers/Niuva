@@ -1,49 +1,36 @@
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-import os
-import csv
-import io
-import uuid
-import logging
 import asyncio
+import csv
 import html
+import io
+import logging
+import os
 import re
-from contextlib import asynccontextmanager
 import secrets
-from datetime import datetime, timezone, timedelta
+import tempfile
+import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from urllib.parse import urlsplit
 
 import bcrypt
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Header, Response
-from fastapi.exceptions import RequestValidationError
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
-from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
-
-import storage
 import emailer
+import storage
 from audit import append_audit_event, append_identity_governance_event
-from auth_rate_limit import LoginRateLimiter, PublicRateLimiter
-from auth_sessions import (
-    ACCESS_COOKIE,
-    CSRF_COOKIE,
-    CSRF_HEADER,
-    REFRESH_COOKIE,
-    AuthSessionService,
-    validate_cookie_configuration,
-)
 from auth_password import (
     PasswordPolicyError,
     PasswordPolicyUnavailableError,
     PasswordWriteDisabledError,
     build_password_module,
 )
+from auth_rate_limit import LoginRateLimiter, PublicRateLimiter
 from auth_recovery import (
     MongoRecoveryStore,
     PublicSiteOrigin,
@@ -62,7 +49,18 @@ from auth_session import (
     clear_cookie_options,
     session_cookie_options,
 )
+from auth_sessions import (
+    ACCESS_COOKIE,
+    CSRF_COOKIE,
+    CSRF_HEADER,
+    REFRESH_COOKIE,
+    AuthSessionService,
+    validate_cookie_configuration,
+)
 from b2b_routes import build_b2b_router
+from catalog_routes import build_catalog_router
+from content_routes import build_content_router
+from csv_safety import safe_csv_row
 from dashboard_domain import (
     DashboardRangeError,
     created_within,
@@ -72,26 +70,28 @@ from dashboard_domain import (
     summarize_movements,
     withheld_revenue,
 )
-from notification_service import NotificationError, NotificationService
-from notification_worker import NotificationDeliveryWorker
-from retail_domain import classify_legacy_order
-from portfolio_routes import build_portfolio_router
-from settings_domain import (
-    PUBLIC_PROFILE_FIELDS,
-    default_settings,
-    merge_profile,
-    project_admin_settings,
-    project_public_settings,
-)
-from retail_routes import build_retail_router
-from catalog_routes import build_catalog_router
-from content_routes import build_content_router
-from csv_safety import safe_csv_row
 from database_capabilities import DatabaseCapabilities, probe_database_capabilities
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
+from fastapi.exceptions import RequestValidationError
 from identity_routes import build_identity_router
 from inventory_routes import build_inventory_router
 from inventory_service import InventoryService
 from material_routes import build_material_router
+from motor.motor_asyncio import AsyncIOMotorClient
+from notification_service import NotificationError, NotificationService
+from notification_worker import NotificationDeliveryWorker
 from password_policy import validate_password
 from permissions import (
     CUSTOMER_ROLES,
@@ -102,13 +102,36 @@ from permissions import (
     is_internal,
     permissions_for,
 )
+from portfolio_routes import build_portfolio_router
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+)
+from retail_domain import classify_legacy_order
+from retail_routes import build_retail_router
 from schema_readiness import inspect_schema
+from settings_domain import (
+    PUBLIC_PROFILE_FIELDS,
+    default_settings,
+    merge_profile,
+    project_admin_settings,
+    project_public_settings,
+)
+from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse, StreamingResponse
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
 from transaction_observability import TransactionLogSink
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("niuva")
 
 mongo_url = os.environ["MONGO_URL"]
@@ -122,6 +145,7 @@ HRD_EMAIL = os.environ.get("HRD_EMAIL", "hrd@niuva.com")
 APP_NAME = os.environ.get("APP_NAME", "niuva")
 
 MAX_FILE_SIZE = 50 * 1024 * 1024
+MAX_MEDIA_FILE_SIZE = 10 * 1024 * 1024
 DESIGN_EXTS = {"stl", "obj"}
 IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "gif", "pdf"}
 SAFE_FILE_CONTENT_TYPES = {
@@ -135,7 +159,13 @@ SAFE_FILE_CONTENT_TYPES = {
     "pdf": "application/pdf",
 }
 
-ORDER_STATUSES = ["pending_estimate", "awaiting_payment", "in_process", "completed", "cancelled"]
+ORDER_STATUSES = [
+    "pending_estimate",
+    "awaiting_payment",
+    "in_process",
+    "completed",
+    "cancelled",
+]
 
 CUSTOMER_QUERY = {
     "$or": [
@@ -143,6 +173,7 @@ CUSTOMER_QUERY = {
         {"role": "client"},
     ]
 }
+
 
 @asynccontextmanager
 async def lifespan(_application: FastAPI):
@@ -156,7 +187,6 @@ async def lifespan(_application: FastAPI):
 app = FastAPI(title="NIUVA API", lifespan=lifespan)
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
 app.state.reservation_expiry_task = None
-app.state.auto_delete_task = None
 app.state.notification_worker_task = None
 app.state.notification_worker_status = {
     "enabled": False,
@@ -166,9 +196,12 @@ app.state.notification_worker_status = {
 }
 app.state.schema_status = {
     "required_version": "unknown",
+    "required_versions": [],
+    "migrations": {},
     "applied": False,
     "indexes_ready": False,
     "missing_index_count": 0,
+    "retired_index_count": 0,
     "ready": False,
 }
 app.state.transaction_executor = TransactionExecutor(
@@ -178,9 +211,8 @@ app.state.transaction_executor = TransactionExecutor(
 )
 app.state.transaction_guard = TransactionMutationGuard(
     app.state.transaction_executor,
-    lambda: os.environ.get(
-        "TRANSACTION_MUTATIONS_ENABLED", "false"
-    ).strip().lower() == "true",
+    lambda: os.environ.get("TRANSACTION_MUTATIONS_ENABLED", "false").strip().lower()
+    == "true",
 )
 app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
     get_database=lambda: db,
@@ -331,9 +363,7 @@ async def request_context(request: Request, call_next):
             request.url.path,
         )
         raise
-    elapsed_ms = int(
-        (datetime.now(timezone.utc) - started).total_seconds() * 1000
-    )
+    elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
     response.headers["X-Request-ID"] = request.state.request_id
     logger.info(
         "request_complete request_id=%s method=%s path=%s status=%s elapsed_ms=%s",
@@ -371,10 +401,7 @@ async def csrf_cookie_guard(request: Request, call_next):
             os.environ.get("NIUVA_TEST_BEARER_AUTH", "").lower() == "true"
             and request.headers.get("Authorization", "").startswith("Bearer ")
         )
-        and (
-            request.cookies.get(ACCESS_COOKIE)
-            or request.cookies.get(REFRESH_COOKIE)
-        )
+        and (request.cookies.get(ACCESS_COOKIE) or request.cookies.get(REFRESH_COOKIE))
     ):
         cookie = request.cookies.get(CSRF_COOKIE, "")
         header = request.headers.get(CSRF_HEADER, "")
@@ -398,9 +425,7 @@ BCRYPT_HASH_PATTERN = re.compile(
 )
 # This fixed bcrypt hash is non-secret and exists only to keep unknown or
 # unusable account records on the same password-verification work path.
-DUMMY_PASSWORD_HASH = (
-    "$2b$12$XkHg95jvl7fV2g.2rkFkx.kcZpo2c1C790fDECpag42ZG5NPcLCH2"
-)
+DUMMY_PASSWORD_HASH = "$2b$12$XkHg95jvl7fV2g.2rkFkx.kcZpo2c1C790fDECpag42ZG5NPcLCH2"
 
 
 def hash_password(p: str) -> str:
@@ -421,8 +446,18 @@ def _environment_flag(name: str) -> bool:
 
 
 def get_password_module():
+    configured_blocklist = os.environ.get("AUTH_PASSWORD_BLOCKLIST_PATH")
+    blocklist_path = (
+        str(
+            Path(configured_blocklist)
+            if Path(configured_blocklist).is_absolute()
+            else ROOT_DIR / configured_blocklist
+        )
+        if configured_blocklist
+        else None
+    )
     return build_password_module(
-        blocklist_path=os.environ.get("AUTH_PASSWORD_BLOCKLIST_PATH"),
+        blocklist_path=blocklist_path,
         argon2_writes_enabled=_environment_flag("AUTH_ARGON2_WRITES_ENABLED"),
     )
 
@@ -548,9 +583,7 @@ async def get_admin_user(request: Request, *, verify_csrf: bool = True) -> dict:
     if verify_csrf and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
         verify_admin_origin(request)
         context["csrf_token"] = request.headers.get("x-csrf-token")
-    session = await get_admin_session_module().authenticate_admin_session(
-        context
-    )
+    session = await get_admin_session_module().authenticate_admin_session(context)
     user = await db.users.find_one(
         {"id": session.user_id}, {"_id": 0, "password_hash": 0}
     )
@@ -570,9 +603,7 @@ async def get_admin_user(request: Request, *, verify_csrf: bool = True) -> dict:
 
 
 async def get_current_user(request: Request) -> dict:
-    test_bearer_enabled = (
-        os.environ.get("NIUVA_TEST_BEARER_AUTH", "").lower() == "true"
-    )
+    test_bearer_enabled = os.environ.get("NIUVA_TEST_BEARER_AUTH", "").lower() == "true"
     if test_bearer_enabled:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
@@ -694,6 +725,33 @@ class SettingsReq(StrictModel):
     maps_url: str = Field(default="", max_length=500)
     instagram_url: str = Field(default="", max_length=500)
     linkedin_url: str = Field(default="", max_length=500)
+
+    @field_validator("email")
+    @classmethod
+    def validate_optional_email(cls, value: str) -> str:
+        candidate = value.strip()
+        if not candidate:
+            return ""
+        try:
+            return str(TypeAdapter(EmailStr).validate_python(candidate))
+        except ValidationError as exc:
+            raise ValueError("email must be a valid address") from exc
+
+    @field_validator("maps_url", "instagram_url", "linkedin_url")
+    @classmethod
+    def validate_optional_public_url(cls, value: str) -> str:
+        candidate = value.strip()
+        if not candidate:
+            return ""
+        parsed = urlsplit(candidate)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+        ):
+            raise ValueError("public URL must be credential-free HTTPS")
+        return candidate
 
 
 # ----------------------------- Helpers -----------------------------
@@ -851,31 +909,86 @@ def safe_file_content_type(path: str) -> str:
     return SAFE_FILE_CONTENT_TYPES.get(ext, "application/octet-stream")
 
 
-async def store_upload(file: UploadFile, prefix: str, allowed_exts: set) -> dict:
-    ext = (file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin").lower()
+def safe_original_filename(value: str | None) -> str:
+    candidate = (value or "upload.bin").replace("\\", "/").rsplit("/", 1)[-1]
+    candidate = "".join(
+        character
+        for character in candidate
+        if ord(character) >= 32 and character != "\x7f"
+    ).strip()
+    return candidate[:255] or "upload.bin"
+
+
+def validate_image_signature(data: bytes, extension: str) -> bool:
+    signatures = {
+        "png": data.startswith(b"\x89PNG\r\n\x1a\n"),
+        "jpg": data.startswith(b"\xff\xd8\xff"),
+        "jpeg": data.startswith(b"\xff\xd8\xff"),
+        "webp": len(data) >= 12 and data.startswith(b"RIFF") and data[8:12] == b"WEBP",
+    }
+    return bool(signatures.get(extension, False))
+
+
+async def store_upload(
+    file: UploadFile,
+    prefix: str,
+    allowed_exts: set,
+    *,
+    max_size: int = MAX_FILE_SIZE,
+    require_image_signature: bool = False,
+) -> dict:
+    original_filename = safe_original_filename(file.filename)
+    ext = (
+        original_filename.rsplit(".", 1)[-1] if "." in original_filename else "bin"
+    ).lower()
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail=f"File type .{ext} not allowed")
-    data = await file.read()
-    if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File exceeds 50MB limit")
-    path = f"{APP_NAME}/{prefix}/{uuid.uuid4()}.{ext}"
-    content_type = safe_file_content_type(path)
+    spool = tempfile.SpooledTemporaryFile(max_size=min(max_size, 1024 * 1024))
     try:
-        result = storage.put_object(path, data, content_type)
+        size = 0
+        signature = b""
+        while True:
+            chunk = await file.read(64 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > max_size:
+                raise HTTPException(status_code=400, detail="File exceeds size limit")
+            if len(signature) < 16:
+                signature = (signature + chunk)[:16]
+            spool.write(chunk)
+        if size == 0:
+            raise HTTPException(status_code=400, detail="File is empty")
+        if require_image_signature and not validate_image_signature(signature, ext):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "media_signature_invalid",
+                    "message": "Isi file tidak sesuai dengan format gambar.",
+                },
+            )
+        path = f"{APP_NAME}/{prefix}/{uuid.uuid4()}.{ext}"
+        content_type = safe_file_content_type(path)
+        spool.seek(0)
+        result = storage.put_file_object(path, spool, size, content_type)
     except storage.InvalidStoragePathError as exc:
         logger.warning("Rejected generated storage path")
-        raise HTTPException(status_code=400, detail="Invalid file storage path") from exc
+        raise HTTPException(
+            status_code=400, detail="Invalid file storage path"
+        ) from exc
     except storage.StorageUnavailableError as exc:
         raise HTTPException(status_code=503, detail="File storage unavailable") from exc
     except storage.StorageError as exc:
         logger.exception("Unable to store uploaded file")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
+    finally:
+        spool.close()
     return {
         "id": str(uuid.uuid4()),
         "storage_path": result["path"],
-        "original_filename": file.filename,
+        "original_filename": original_filename,
         "content_type": content_type,
-        "size": result.get("size", len(data)),
+        "size": result.get("size", size),
     }
 
 
@@ -1117,9 +1230,11 @@ async def public_capabilities():
 
 @api.get("/orders")
 async def my_orders(user: dict = Depends(get_current_user)):
-    documents = await db.orders.find(
-        {"user_id": user["id"]}, {"_id": 0}
-    ).sort("created_at", -1).to_list(200)
+    documents = (
+        await db.orders.find({"user_id": user["id"]}, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(200)
+    )
     return [classify_legacy_order(document) for document in documents]
 
 
@@ -1134,7 +1249,9 @@ async def get_order(oid: str, user: dict = Depends(get_current_user)):
 
 
 @api.post("/orders/{oid}/payment-proof")
-async def upload_payment_proof(oid: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+async def upload_payment_proof(
+    oid: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)
+):
     raise HTTPException(
         status_code=410,
         detail={
@@ -1182,9 +1299,21 @@ def serialize_admin_order_for(actor: dict, order: dict) -> dict:
     if has_permission(actor, "payments.read"):
         return value
     operational_fields = {
-        "id", "order_number", "user_id", "user_name", "user_email", "material_id",
-        "material_name", "file", "notes", "status", "status_history", "created_at", "updated_at",
-        "record_class", "canonical_status_equivalent",
+        "id",
+        "order_number",
+        "user_id",
+        "user_name",
+        "user_email",
+        "material_id",
+        "material_name",
+        "file",
+        "notes",
+        "status",
+        "status_history",
+        "created_at",
+        "updated_at",
+        "record_class",
+        "canonical_status_equivalent",
     }
     return {key: value[key] for key in operational_fields if key in value}
 
@@ -1196,7 +1325,12 @@ async def admin_orders(
     user: dict = Depends(require_permission("orders.read")),
 ):
     q = {"status": status} if status else {}
-    return [serialize_admin_order_for(user, order) for order in await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)]
+    return [
+        serialize_admin_order_for(user, order)
+        for order in await db.orders.find(q, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(500)
+    ]
 
 
 @api.get("/admin/orders/export")
@@ -1219,16 +1353,27 @@ async def export_orders(
 
     include_payment = has_permission(user, "payments.read")
     fieldnames = [
-        "order_number", "user_name", "user_email", "material_name",
-        "status", "created_at", "updated_at",
+        "order_number",
+        "user_name",
+        "user_email",
+        "material_name",
+        "status",
+        "created_at",
+        "updated_at",
     ]
     if include_payment:
         fieldnames += ["estimate_amount", "estimate_currency", "payment_verified"]
 
     rows = []
-    for order in await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500):
+    for order in (
+        await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    ):
         safe = serialize_admin_order_for(user, order)
-        row = {key: safe.get(key, "") for key in fieldnames if not key.startswith(("estimate_", "payment_"))}
+        row = {
+            key: safe.get(key, "")
+            for key in fieldnames
+            if not key.startswith(("estimate_", "payment_"))
+        }
         if include_payment:
             estimate = order.get("estimate") or {}
             payment = order.get("payment") or {}
@@ -1287,7 +1432,9 @@ async def update_status(
     req: StatusReq,
     user: dict = Depends(require_permission("orders.write")),
 ):
-    return serialize_admin_order_for(user, await apply_order_status(oid, req.status, req.note))
+    return serialize_admin_order_for(
+        user, await apply_order_status(oid, req.status, req.note)
+    )
 
 
 @api.post("/admin/orders/bulk-status")
@@ -1304,6 +1451,149 @@ async def bulk_update_status(
     )
 
 
+# ----------------------------- Development media upload -----------------------------
+def development_media_upload_active() -> bool:
+    return (
+        os.environ.get("APP_ENV", "production").strip().lower()
+        in storage.LOCAL_ENVIRONMENTS
+        and os.environ.get("STORAGE_BACKEND", "disabled").strip().lower() == "local"
+    )
+
+
+@api.get("/admin/media/capabilities")
+async def admin_media_capabilities(
+    _user: dict = Depends(require_permission("media.read")),
+):
+    active = development_media_upload_active()
+    return {
+        "local_upload": "active" if active else "inactive",
+        "production_upload": "inactive",
+        "allowed_extensions": ["png", "jpg", "jpeg", "webp"] if active else [],
+        "max_size_bytes": MAX_MEDIA_FILE_SIZE if active else None,
+    }
+
+
+@api.post("/admin/media", status_code=status.HTTP_201_CREATED)
+async def upload_admin_media(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_permission("media.write")),
+):
+    if not development_media_upload_active():
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "development_media_upload_inactive",
+                "message": (
+                    "Upload media hanya tersedia pada adapter lokal "
+                    "development/demo/test."
+                ),
+            },
+        )
+
+    metadata = await store_upload(
+        file,
+        f"media/{uuid.uuid4()}",
+        {"png", "jpg", "jpeg", "webp"},
+        max_size=MAX_MEDIA_FILE_SIZE,
+        require_image_signature=True,
+    )
+    timestamp = now_iso()
+    document = {
+        **metadata,
+        "reference": f"media:{metadata['id']}",
+        "owner_id": user["id"],
+        "uploaded_by": user["id"],
+        "purpose": "admin_media",
+        "state": "active",
+        "created_at": timestamp,
+        "updated_at": timestamp,
+    }
+    try:
+        await db.file_objects.insert_one(dict(document))
+    except Exception:
+        try:
+            storage.delete_object(metadata["storage_path"])
+        except storage.StorageError:
+            logger.exception("Unable to compensate failed media metadata write")
+        raise
+    return document
+
+
+async def _public_media_is_published(reference: str) -> bool:
+    catalog_publications = (
+        await db.catalog_publications.find(
+            {"product.media.storage_path": reference},
+            {"_id": 0, "id": 1},
+        )
+        .limit(100)
+        .to_list(100)
+    )
+    publication_ids = [
+        publication["id"]
+        for publication in catalog_publications
+        if publication.get("id")
+    ]
+    if publication_ids and await db.products.find_one(
+        {"active_publication_id": {"$in": publication_ids}},
+        {"_id": 0, "id": 1},
+    ):
+        return True
+
+    return bool(
+        await db.portfolio_publications.find_one(
+            {
+                "snapshot.images": reference,
+                "retired_at": None,
+                "activates_at": {"$lte": datetime.now(timezone.utc)},
+            },
+            {"_id": 0, "id": 1},
+        )
+    )
+
+
+@api.get("/media/{file_id}")
+async def download_public_media(file_id: str):
+    metadata = await db.file_objects.find_one(
+        {
+            "id": file_id,
+            "purpose": "admin_media",
+            "state": "active",
+        },
+        {"_id": 0},
+    )
+    reference = f"media:{file_id}"
+    if not metadata or not await _public_media_is_published(reference):
+        raise HTTPException(status_code=404, detail="Media not found")
+    try:
+        chunks, content_type, size = storage.stream_object(metadata["storage_path"])
+    except (
+        storage.InvalidStoragePathError,
+        storage.StorageNotFoundError,
+    ) as exc:
+        raise HTTPException(status_code=404, detail="Media not found") from exc
+    except storage.StorageUnavailableError as exc:
+        raise HTTPException(
+            status_code=503, detail="Media storage unavailable"
+        ) from exc
+    except storage.StorageError as exc:
+        logger.exception("Unable to read public media object")
+        raise HTTPException(
+            status_code=500, detail="Media storage unavailable"
+        ) from exc
+    if content_type not in {"image/png", "image/jpeg", "image/webp"}:
+        raise HTTPException(status_code=404, detail="Media not found")
+    return StreamingResponse(
+        chunks,
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+            "Content-Length": str(size),
+        },
+    )
+
+
 # ----------------------------- File download -----------------------------
 @api.get("/files/{path:path}")
 async def download_file(path: str, user: dict = Depends(get_current_user)):
@@ -1315,11 +1605,12 @@ async def download_file(path: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="File not found")
     if (
         not has_permission(user, "files.read")
+        and not has_permission(user, "media.read")
         and metadata.get("owner_id") != user["id"]
     ):
         raise HTTPException(status_code=403, detail="Forbidden")
     try:
-        data, _stored_content_type = storage.get_object(path)
+        chunks, _stored_content_type, size = storage.stream_object(path)
     except storage.InvalidStoragePathError as exc:
         raise HTTPException(status_code=400, detail="Invalid file path") from exc
     except storage.StorageUnavailableError as exc:
@@ -1329,12 +1620,13 @@ async def download_file(path: str, user: dict = Depends(get_current_user)):
     except storage.StorageError as exc:
         logger.exception("Unable to read stored file")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
-    return Response(
-        content=data,
+    return StreamingResponse(
+        chunks,
         media_type=safe_file_content_type(metadata["storage_path"]),
         headers={
             "X-Content-Type-Options": "nosniff",
             "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+            "Content-Length": str(size),
         },
     )
 
@@ -1347,18 +1639,22 @@ async def contact(req: ContactReq, request: Request):
     doc = {"id": str(uuid.uuid4()), **req.model_dump(), "created_at": now_iso()}
     await db.contacts.insert_one(dict(doc))
     try:
-        email_result = await emailer.send_email(
-            HRD_EMAIL,
-            f"Inquiry Baru: {req.subject}",
-            "Pesan Kontak Baru",
-            f"<p>Dari <strong>{html.escape(req.name)}</strong> ({html.escape(str(req.email))})</p>"
-            f"<p>{html.escape(req.message).replace(chr(10), '<br>')}</p>",
-            db=db,
+        await queue_operational_email(
+            notification_id=f"legacy-contact:{doc['id']}",
+            recipient=HRD_EMAIL,
+            subject=f"Inquiry Baru: {req.subject}",
+            title="Pesan Kontak Baru",
+            body_html=(
+                f"<p>Dari <strong>{html.escape(req.name)}</strong> "
+                f"({html.escape(str(req.email))})</p>"
+                f"<p>{html.escape(req.message).replace(chr(10), '<br>')}</p>"
+            ),
         )
-        if email_result.get("status") == "error":
-            logger.error("Contact inquiry stored, but notification email failed (contact_id=%s)", doc["id"])
     except Exception:
-        logger.exception("Contact inquiry stored, but notification email failed (contact_id=%s)", doc["id"])
+        logger.exception(
+            "Contact inquiry stored, but notification enqueue failed (contact_id=%s)",
+            doc["id"],
+        )
     return {"ok": True, "message": "Pesan berhasil dikirim"}
 
 
@@ -1374,9 +1670,7 @@ async def list_contacts(
     history stays exactly as it was captured.
     """
     documents = (
-        await db.contacts.find({}, {"_id": 0})
-        .sort("created_at", -1)
-        .to_list(500)
+        await db.contacts.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
     )
     return [
         {**document, "record_class": "legacy_contact", "read_only": True}
@@ -1425,10 +1719,7 @@ async def update_settings(
             {"key": "site", "version": req.expected_version},
             {
                 "$set": {
-                    **{
-                        field: merged[field]
-                        for field in PUBLIC_PROFILE_FIELDS
-                    },
+                    **{field: merged[field] for field in PUBLIC_PROFILE_FIELDS},
                     "updated_at": datetime.now(timezone.utc),
                     "updated_by": actor["id"],
                 },
@@ -1594,6 +1885,7 @@ async def reactivate_customer(
         next_status="active",
     )
 
+
 def _resolve_range(date_from: Optional[str], date_to: Optional[str]) -> dict:
     try:
         return resolve_date_range(date_from, date_to)
@@ -1626,15 +1918,13 @@ async def admin_stats(
 
     retail_orders = await db.retail_orders.count_documents(ranged)
     inquiries = await db.inquiries.count_documents(ranged)
-    organizations = await db.inquiries.find(
-        ranged, {"_id": 0, "company": 1}
-    ).to_list(5000)
+    organizations = await db.inquiries.find(ranged, {"_id": 0, "company": 1}).to_list(
+        5000
+    )
 
     # Registered customers within the range, resolved through the canonical
     # role query so a legacy marker and a canonical role both count once.
-    registered_customers = await db.users.count_documents(
-        {**CUSTOMER_QUERY, **ranged}
-    )
+    registered_customers = await db.users.count_documents({**CUSTOMER_QUERY, **ranged})
 
     return {
         "date_from": applied["date_from"],
@@ -1690,7 +1980,8 @@ async def admin_stats_timeseries(
 
     series = {
         "orders_by_status": [
-            {"date": date, **counts} for date, counts in sorted(orders_by_status.items())
+            {"date": date, **counts}
+            for date, counts in sorted(orders_by_status.items())
         ]
     }
 
@@ -1715,6 +2006,27 @@ async def admin_stats_timeseries(
 
 def notification_service() -> NotificationService:
     return NotificationService(db=db)
+
+
+async def queue_operational_email(
+    *,
+    notification_id: str,
+    recipient: str,
+    subject: str,
+    title: str,
+    body_html: str,
+) -> dict:
+    """Persist provider-neutral email work for the leased delivery worker."""
+    return await notification_service().enqueue_delivery(
+        notification_id=notification_id,
+        channel="email",
+        recipient=recipient,
+        payload={
+            "subject": subject,
+            "title": title,
+            "body_html": body_html,
+        },
+    )
 
 
 async def _invoke_notifications(awaitable):
@@ -1755,17 +2067,19 @@ async def mark_notification_read(
 
 @api.post("/notifications/read-all")
 async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
-    return await _invoke_notifications(
-        notification_service().mark_all_read(user["id"])
-    )
+    return await _invoke_notifications(notification_service().mark_all_read(user["id"]))
 
 
 async def resolve_notification_recipients(req: AdminNotificationReq) -> list:
     """Return safe recipient projections ({id, email, name}) for the requested target."""
     if req.target == "user":
         if not req.user_id:
-            raise HTTPException(status_code=400, detail="user_id is required for target=user")
-        recipient = await db.users.find_one({"id": req.user_id}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+            raise HTTPException(
+                status_code=400, detail="user_id is required for target=user"
+            )
+        recipient = await db.users.find_one(
+            {"id": req.user_id}, {"_id": 0, "id": 1, "email": 1, "name": 1}
+        )
         if not recipient:
             raise HTTPException(status_code=404, detail="User not found")
         return [recipient]
@@ -1776,11 +2090,17 @@ async def resolve_notification_recipients(req: AdminNotificationReq) -> list:
                 "user_id", {"status": {"$in": ["awaiting_payment", "in_process"]}}
             )
             return await db.users.find(
-                {"id": {"$in": order_user_ids}}, {"_id": 0, "id": 1, "email": 1, "name": 1}
+                {"id": {"$in": order_user_ids}},
+                {"_id": 0, "id": 1, "email": 1, "name": 1},
             ).to_list(500)
-        raise HTTPException(status_code=400, detail="segment is required and must be a known segment for target=segment")
+        raise HTTPException(
+            status_code=400,
+            detail="segment is required and must be a known segment for target=segment",
+        )
 
-    return await db.users.find(CUSTOMER_QUERY, {"_id": 0, "id": 1, "email": 1, "name": 1}).to_list(500)
+    return await db.users.find(
+        CUSTOMER_QUERY, {"_id": 0, "id": 1, "email": 1, "name": 1}
+    ).to_list(500)
 
 
 @api.post("/admin/notifications")
@@ -1828,9 +2148,7 @@ async def send_admin_notification(
                 session=session,
             )
             queued_count += 1
-        await db.admin_notification_log.insert_one(
-            dict(log_entry), session=session
-        )
+        await db.admin_notification_log.insert_one(dict(log_entry), session=session)
         await append_audit_event(
             db,
             actor=actor,
@@ -1860,12 +2178,19 @@ async def list_sent_notifications(
     limit: int = 50,
     _actor: dict = Depends(require_permission("notifications.write")),
 ):
-    return await db.admin_notification_log.find({}, {"_id": 0}).sort("created_at", -1).to_list(min(limit, 200))
+    return (
+        await db.admin_notification_log.find({}, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(min(limit, 200))
+    )
 
 
 @api.get("/health")
 async def health():
-    return {"status": "ok", "transactions": app.state.database_capabilities.transactions}
+    return {
+        "status": "ok",
+        "transactions": app.state.database_capabilities.transactions,
+    }
 
 
 @api.get("/health/live")
@@ -1884,8 +2209,7 @@ async def health_ready():
         logger.warning("Readiness database ping failed")
     schema_status = app.state.schema_status
     worker_required = (
-        os.environ.get("NOTIFICATION_WORKER_REQUIRED", "false").lower()
-        == "true"
+        os.environ.get("NOTIFICATION_WORKER_REQUIRED", "false").lower() == "true"
     )
     worker_status = app.state.notification_worker_status
     worker_task = app.state.notification_worker_task
@@ -1934,11 +2258,7 @@ async def health_ready():
                 "heartbeat_fresh": heartbeat_fresh,
             },
             "email_delivery": {
-                "status": (
-                    "ready"
-                    if emailer.RESEND_API_KEY
-                    else "inactive"
-                ),
+                "status": ("ready" if emailer.RESEND_API_KEY else "inactive"),
                 "required": email_required,
             },
         },
@@ -1968,24 +2288,21 @@ async def throttle_inquiry_intake(request: Request) -> None:
 
 
 async def notify_new_inquiry(inquiry: dict) -> None:
-    """Announce a captured lead. The router swallows failures so intake holds."""
-    result = await emailer.send_email(
-        HRD_EMAIL,
-        f"Inquiry Baru: {inquiry['company']}",
-        "Inquiry Proyek Baru",
-        f"<p><strong>{html.escape(inquiry['company'])}</strong></p>"
-        f"<p>PIC: {html.escape(inquiry['pic_name'])} "
-        f"({html.escape(inquiry['pic_email'])})</p>"
-        f"<p>Kebutuhan: {html.escape(inquiry['need'])}</p>"
-        f"<p>Timeline: {html.escape(inquiry['timeline'] or '-')}</p>"
-        f"<p>{html.escape(inquiry['brief']).replace(chr(10), '<br>')}</p>",
-        db=db,
+    """Queue a captured lead; the router keeps the intake on enqueue failure."""
+    await queue_operational_email(
+        notification_id=f"inquiry:{inquiry['id']}",
+        recipient=HRD_EMAIL,
+        subject=f"Inquiry Baru: {inquiry['company']}",
+        title="Inquiry Proyek Baru",
+        body_html=(
+            f"<p><strong>{html.escape(inquiry['company'])}</strong></p>"
+            f"<p>PIC: {html.escape(inquiry['pic_name'])} "
+            f"({html.escape(inquiry['pic_email'])})</p>"
+            f"<p>Kebutuhan: {html.escape(inquiry['need'])}</p>"
+            f"<p>Timeline: {html.escape(inquiry['timeline'] or '-')}</p>"
+            f"<p>{html.escape(inquiry['brief']).replace(chr(10), '<br>')}</p>"
+        ),
     )
-    if result.get("status") == "error":
-        logger.error(
-            "Inquiry stored, but notification email failed (inquiry_id=%s)",
-            inquiry["id"],
-        )
 
 
 api.include_router(
@@ -2000,7 +2317,6 @@ api.include_router(
             client=client,
             capabilities=app.state.database_capabilities,
             guard=app.state.transaction_guard,
-            emailer=emailer,
         ),
     )
 )
@@ -2046,7 +2362,6 @@ api.include_router(
             client=client,
             capabilities=app.state.database_capabilities,
             guard=app.state.transaction_guard,
-            emailer=emailer,
         ),
         require_permission=require_permission,
         has_permission=has_permission,
@@ -2071,7 +2386,9 @@ cors_origins = [
     if origin.strip()
 ]
 if "*" in cors_origins:
-    raise RuntimeError("CORS_ORIGINS must contain exact trusted origins when credentials are enabled")
+    raise RuntimeError(
+        "CORS_ORIGINS must contain exact trusted origins when credentials are enabled"
+    )
 
 app.add_middleware(
     CORSMiddleware,
@@ -2084,24 +2401,38 @@ app.add_middleware(
 
 # ----------------------------- Startup -----------------------------
 async def seed():
-    admin_email = os.environ["ADMIN_EMAIL"].lower()
+    try:
+        admin_email = str(
+            TypeAdapter(EmailStr).validate_python(
+                os.environ.get("ADMIN_EMAIL", "").strip()
+            )
+        ).lower()
+    except ValidationError as exc:
+        raise RuntimeError("ADMIN_EMAIL must be a valid email address") from exc
     existing = await db.users.find_one({"email": admin_email})
     if not existing:
         admin_password = os.environ.get("ADMIN_PASSWORD", "")
         admin_name = "NIUVA Admin"
-        await db.users.insert_one({
-            "id": str(uuid.uuid4()), "name": admin_name, "email": admin_email,
-            "password_hash": hash_new_password(
-                admin_password,
-                context_terms=(admin_email, admin_name),
-            ), "phone": "", "company": "PT Niuva Inovasi Utama",
-            "roles": ["super_admin"], "status": "active",
-            "access_state": "approved",
-            "role_policy_version": ROLE_POLICY_VERSION,
-            "token_version": 0,
-            "version": 1,
-            "created_at": now_iso(),
-        })
+        await db.users.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "name": admin_name,
+                "email": admin_email,
+                "password_hash": hash_new_password(
+                    admin_password,
+                    context_terms=(admin_email, admin_name),
+                ),
+                "phone": "",
+                "company": "PT Niuva Inovasi Utama",
+                "roles": ["super_admin"],
+                "status": "active",
+                "access_state": "approved",
+                "role_policy_version": ROLE_POLICY_VERSION,
+                "token_version": 0,
+                "version": 1,
+                "created_at": now_iso(),
+            }
+        )
     elif (
         canonical_roles(existing) != ("super_admin",)
         or existing.get("status") != "active"
@@ -2115,106 +2446,8 @@ async def seed():
             "credentials"
         )
 
-    if await db.materials.count_documents({}) == 0:
-        defaults = [
-            {"name": "PLA", "description": "Polylactic Acid — serbaguna, ramah lingkungan", "color": "Multi"},
-            {"name": "ABS", "description": "Kuat & tahan panas, cocok untuk fungsional part", "color": "Black/White"},
-            {"name": "PETG", "description": "Tahan benturan & kimia, semi-fleksibel", "color": "Clear"},
-            {"name": "Resin (SLA)", "description": "Detail tinggi untuk prototipe presisi", "color": "Grey"},
-            {"name": "TPU", "description": "Fleksibel & elastis untuk part lentur", "color": "Black"},
-        ]
-        for m in defaults:
-            await db.materials.insert_one({"id": str(uuid.uuid4()), **m, "active": True, "created_at": now_iso()})
-
-    if await db.portfolio.count_documents({}) == 0:
-        seeds = [
-            {
-                "title_id": "MotoEV V3 x PT Pindad", "title_en": "MotoEV V3 x PT Pindad",
-                "client": "PT Pindad", "category": "EV Design",
-                "description_id": "Desain & prototipe motor listrik generasi ketiga hasil kolaborasi strategis dengan PT Pindad.",
-                "description_en": "Third-generation electric motorcycle design & prototype in strategic collaboration with PT Pindad.",
-                "images": ["https://images.unsplash.com/photo-1737982560500-e152da0e770e?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"],
-                "featured": True,
-            },
-            {
-                "title_id": "Casing Prototipe Industrial", "title_en": "Industrial Prototype Casing",
-                "client": "Bandung Techno Park", "category": "3D Printing",
-                "description_id": "Pencetakan 3D presisi untuk casing perangkat IoT industrial.",
-                "description_en": "Precision 3D printing for industrial IoT device casings.",
-                "images": ["https://images.unsplash.com/photo-1642969164999-979483e21601?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"],
-                "featured": True,
-            },
-            {
-                "title_id": "Rapid Prototyping Komponen", "title_en": "Rapid Component Prototyping",
-                "client": "TelU Makerspace", "category": "Prototyping",
-                "description_id": "Iterasi cepat komponen mekanik dari konsep ke prototipe fungsional.",
-                "description_en": "Rapid iteration of mechanical components from concept to functional prototype.",
-                "images": ["https://images.unsplash.com/photo-1555550252-fc3187f10240?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"],
-                "featured": False,
-            },
-        ]
-        for index, entry in enumerate(seeds):
-            # Seeded entries start published: they exist to give a fresh
-            # install a public page. "client" is dropped rather than seeded,
-            # because customer identity has no place on a portfolio.
-            timestamp = now_iso()
-            entry.pop("client", None)
-            await db.portfolio.insert_one(
-                {
-                    "id": str(uuid.uuid4()),
-                    **entry,
-                    "status": "published",
-                    "version": 1,
-                    "display_order": index,
-                    "scheduled_for": None,
-                    "published_at": timestamp,
-                    "versions": [],
-                    "history": [
-                        {
-                            "from_status": None,
-                            "to_status": "published",
-                            "actor_user_id": None,
-                            "reason": "Seeded on first run",
-                            "timestamp": timestamp,
-                        }
-                    ],
-                    "created_at": timestamp,
-                    "updated_at": timestamp,
-                }
-            )
-
     await get_settings()
     logger.info("Seed complete")
-
-
-async def auto_delete_loop():
-    """Soft-delete design files for awaiting_payment orders older than 14 days."""
-    while True:
-        try:
-            cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
-            stale = await db.orders.find(
-                {"status": "awaiting_payment", "created_at": {"$lt": cutoff}, "file.deleted": {"$ne": True}},
-                {"_id": 0, "id": 1, "file.storage_path": 1},
-            ).to_list(500)
-            for o in stale:
-                path = (o.get("file") or {}).get("storage_path")
-                if path:
-                    await db.file_objects.update_one(
-                        {"storage_path": path, "state": "active"},
-                        {
-                            "$set": {
-                                "state": "deleted",
-                                "deleted_at": datetime.now(timezone.utc),
-                                "updated_at": datetime.now(timezone.utc),
-                            }
-                        },
-                    )
-                await db.orders.update_one({"id": o["id"]}, {"$set": {"file.deleted": True}})
-            if stale:
-                logger.info(f"Auto-deleted design files for {len(stale)} stale orders")
-        except Exception as e:
-            logger.error(f"auto_delete_loop error: {e}")
-        await asyncio.sleep(6 * 3600)
 
 
 async def reservation_expiry_loop():
@@ -2230,9 +2463,13 @@ async def reservation_expiry_loop():
                 client=client,
                 capabilities=app.state.database_capabilities,
                 guard=app.state.transaction_guard,
-                emailer=emailer,
             )
-            await service.expire_due_reservations(actor=system_actor)
+            result = await service.expire_due_reservations(actor=system_actor)
+            if result.get("expired"):
+                logger.info(
+                    "reservation_expiry_batch",
+                    extra={"reservation_expiry": result},
+                )
         except Exception as exc:
             logger.error("reservation_expiry_loop error: %s", exc)
         await asyncio.sleep(60)
@@ -2268,6 +2505,11 @@ async def notification_outbox_loop():
                 "last_heartbeat_at": datetime.now(timezone.utc),
                 "last_result": result,
             }
+            if result.get("claimed"):
+                logger.info(
+                    "notification_outbox_batch",
+                    extra={"notification_outbox": result},
+                )
         except Exception:
             logger.exception("notification_outbox_loop failed")
             app.state.notification_worker_status = {
@@ -2300,7 +2542,6 @@ async def _startup_runtime():
             **app.state.schema_status,
             "ready": False,
         }
-    app.state.auto_delete_task = asyncio.create_task(auto_delete_loop())
     app.state.reservation_expiry_task = asyncio.create_task(reservation_expiry_loop())
     worker_enabled = (
         os.environ.get("NOTIFICATION_WORKER_ENABLED", "false").lower() == "true"
@@ -2319,7 +2560,6 @@ async def _startup_runtime():
 
 async def _shutdown_runtime():
     tasks = [
-        app.state.auto_delete_task,
         app.state.reservation_expiry_task,
         app.state.notification_worker_task,
     ]

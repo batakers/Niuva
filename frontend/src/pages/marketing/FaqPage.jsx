@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { MarketingLayout } from "@/components/layout/Layout";
-import { BrandButton, profileContent } from "../../components/brand/CompanyProfileBlocks";
+import { BrandButton } from "../../components/brand/CompanyProfileBlocks";
 import {
   BrandPage,
   CTASection,
@@ -10,6 +10,7 @@ import {
   SectionHeader,
 } from "../../components/brand/BrandSystem";
 import { usePublicContent } from "../../lib/content";
+import { usePublicSettings } from "../../lib/publicSettings";
 
 const FAQ_ROW = "grid gap-3 border-b border-border-default py-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10";
 
@@ -34,6 +35,7 @@ function FaqSkeleton() {
 }
 
 export default function FaqPage() {
+  const { contact } = usePublicSettings();
   const { blocks: cmsBlocks, status } = usePublicContent("faq");
   const faqs = useMemo(
     () => cmsBlocks
@@ -95,9 +97,9 @@ export default function FaqPage() {
           title="Masih ada pertanyaan lain?"
           body="Sampaikan langsung ke tim Niuva melalui WhatsApp, email, atau form konsultasi."
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton href={profileContent.contact.whatsappHref} variant="secondary">Hubungi Niuva</BrandButton>}
-          whatsappHref={profileContent.contact.whatsappHref}
-          email={profileContent.contact.email}
+          secondaryAction={<BrandButton href={contact.whatsappHref || "/contact"} variant="secondary">Hubungi Niuva</BrandButton>}
+          whatsappHref={contact.whatsappHref}
+          email={contact.email}
         />
       </BrandPage>
     </MarketingLayout>

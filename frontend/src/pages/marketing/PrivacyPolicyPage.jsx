@@ -1,6 +1,6 @@
 import React from "react";
 import { MarketingLayout } from "@/components/layout/Layout";
-import { BrandButton, profileContent } from "../../components/brand/CompanyProfileBlocks";
+import { BrandButton } from "../../components/brand/CompanyProfileBlocks";
 import {
   BrandPage,
   MarketingSection,
@@ -8,6 +8,7 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { usePublicSettings } from "../../lib/publicSettings";
 
 const LAST_UPDATED = "28 Juli 2026";
 
@@ -56,6 +57,7 @@ const userRights = [
 ];
 
 export default function PrivacyPolicyPage() {
+  const { contact } = usePublicSettings();
   return (
     <MarketingLayout>
       <BrandPage>
@@ -186,12 +188,12 @@ export default function PrivacyPolicyPage() {
               <p className="text-sm font-semibold text-action-primary">Kontak Privasi</p>
               <p className="mt-3 text-sm leading-7 text-text-secondary">
                 Pertanyaan mengenai kebijakan ini dapat disampaikan melalui email{" "}
-                <a href={`mailto:${profileContent.contact.email}`} className="font-semibold text-action-primary underline-offset-4 hover:underline">
-                  {profileContent.contact.email}
+                <a href={contact.email ? `mailto:${contact.email}` : "/contact"} className="font-semibold text-action-primary underline-offset-4 hover:underline">
+                  {contact.email || "halaman Contact"}
                 </a>{" "}
                 atau WhatsApp{" "}
-                <a href={profileContent.contact.whatsappHref} className="font-semibold text-action-primary underline-offset-4 hover:underline">
-                  {profileContent.contact.whatsapp}
+                <a href={contact.whatsappHref || "/contact"} className="font-semibold text-action-primary underline-offset-4 hover:underline">
+                  {contact.whatsapp || "melalui halaman Contact"}
                 </a>.
               </p>
             </div>

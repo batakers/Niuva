@@ -13,7 +13,7 @@ const publication = {
     slug: "desk-sign",
     short_description: "Penanda meja yang dipublikasikan.",
     description: "Penanda meja untuk kebutuhan identitas ruang.",
-    media: [{ alt: "Desk Sign" }],
+    media: [{ storage_path: "media:file-123", alt: "Desk Sign" }],
     pricing_mode: "fixed",
     price_from: 150000,
     currency: "IDR",
@@ -37,9 +37,19 @@ async function mockCatalog(page, { empty = false, fail = false } = {}) {
     route.fulfill({
       status: 200,
       json: {
-        company_name: "Niuva Inovasi Utama",
-        contact_email: "niuvamakerspace@gmail.com",
+        legal_name: "PT Niuva Inovasi Utama",
+        email: "niuvamakerspace@gmail.com",
       },
+    }),
+  );
+  await page.route("**/api/media/file-123", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "base64",
+      ),
     }),
   );
   await page.route("**/api/catalog/categories*", async (route) => {
@@ -76,6 +86,10 @@ test("published Retail discovery is usable and never presents checkout", async (
   await page.goto("/retail");
 
   await expect(page.getByRole("heading", { name: "Desk Sign" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Desk Sign" })).toHaveAttribute(
+    "src",
+    /\/api\/media\/file-123$/,
+  );
   await expect(page.getByText(/checkout, pembayaran/i)).toBeVisible();
   await page.getByRole("link", { name: /lihat detail/i }).click();
   await expect(page).toHaveURL(/\/retail\/products\/desk-sign$/);

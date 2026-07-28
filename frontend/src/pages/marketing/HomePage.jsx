@@ -15,6 +15,7 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { usePublicSettings } from "../../lib/publicSettings";
 
 // ponytail: Homepage stays fully hardcoded (no CMS). Homepage schema is out of
 // scope per NIUVA_MASTER_SPEC.md and requires separate DEC-UX authorization.
@@ -261,6 +262,7 @@ function RetailDiscoverySection() {
 }
 
 export default function HomePage() {
+  const { contact } = usePublicSettings();
   return (
     <MarketingLayout>
       <BrandPage>
@@ -309,10 +311,10 @@ export default function HomePage() {
           title="Diskusikan kebutuhan riset, desain, atau prototyping bersama Niuva."
           body="Sampaikan konteks proyek, target hasil, batasan teknis, dan bentuk output yang dibutuhkan. Tim Niuva akan membantu menentukan titik mulai yang paling relevan."
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton href={profileContent.contact.whatsappHref} variant="secondary">Hubungi Niuva</BrandButton>}
+          secondaryAction={<BrandButton href={contact.whatsappHref || "/contact"} variant="secondary">Hubungi Niuva</BrandButton>}
           contactEmphasis="Jalur cepat untuk kebutuhan proyek, proposal, atau kolaborasi teknis."
-          whatsappHref={profileContent.contact.whatsappHref}
-          email={profileContent.contact.email}
+          whatsappHref={contact.whatsappHref}
+          email={contact.email}
         />
       </BrandPage>
     </MarketingLayout>

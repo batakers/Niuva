@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { MarketingLayout } from "@/components/layout/Layout";
-import { HAS_CONFIGURED_BACKEND, api } from "../../lib/api";
+import { HAS_CONFIGURED_BACKEND, api, resolveMediaUrl } from "../../lib/api";
 import {
   BrandButton,
   ProjectCaseStudyCard,
@@ -17,12 +17,14 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePublicSettings } from "../../lib/publicSettings";
 
 // Second case rather than the first, so the hero is not immediately repeated by
 // the card directly beneath it. Left eager: it is the LCP element here.
 const heroProject = profileContent.projects[1];
 
 export default function ProjectsPage() {
+  const { contact } = usePublicSettings();
   const [portfolioState, setPortfolioState] = useState({
     status: HAS_CONFIGURED_BACKEND ? "loading" : "disabled",
     items: [],
@@ -51,7 +53,7 @@ export default function ProjectsPage() {
             title: item.title_id,
             body: item.description_id,
             category: item.category,
-            image: item.images?.[0],
+            image: resolveMediaUrl(item.images?.[0]),
             imageAlt: `Dokumentasi ${item.title_id}`,
             imageFit: "cover",
           }))
@@ -129,8 +131,8 @@ export default function ProjectsPage() {
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
           contactEmphasis="Pembahasan dimulai dari kebutuhan nyata, ruang lingkup teknis, dan bukti pekerjaan yang relevan."
-          whatsappHref={profileContent.contact.whatsappHref}
-          email={profileContent.contact.email}
+          whatsappHref={contact.whatsappHref}
+          email={contact.email}
         />
       </BrandPage>
     </MarketingLayout>

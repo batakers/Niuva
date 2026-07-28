@@ -15,7 +15,9 @@ MIGRATION_PATH = ROOT / "backend" / "migrations" / "008_auth_recovery_safety.py"
 
 
 def load_migration():
-    spec = importlib.util.spec_from_file_location("auth_recovery_migration", MIGRATION_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "auth_recovery_migration", MIGRATION_PATH
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -67,9 +69,37 @@ class Tokens:
         self.indexes.pop(name, None)
 
 
+class Markers:
+    def __init__(self):
+        self.items = []
+
+    async def find_one(self, query):
+        return next(
+            (copy.deepcopy(item) for item in self.items if item["_id"] == query["_id"]),
+            None,
+        )
+
+    async def insert_one(self, document, **_options):
+        if any(item["_id"] == document["_id"] for item in self.items):
+            raise RuntimeError("duplicate marker")
+        self.items.append(copy.deepcopy(document))
+        return types.SimpleNamespace(acknowledged=True)
+
+    async def delete_one(self, query, **_options):
+        for index, item in enumerate(self.items):
+            if item == query:
+                self.items.pop(index)
+                return types.SimpleNamespace(deleted_count=1)
+        return types.SimpleNamespace(deleted_count=0)
+
+
 class Database:
     def __init__(self, items):
         self.password_reset_tokens = Tokens(items)
+        self.migration_state = Markers()
+
+    def __getitem__(self, name):
+        return getattr(self, name)
 
 
 class Guard:
@@ -78,10 +108,12 @@ class Guard:
 
     async def run(self, callback, **_options):
         snapshot = copy.deepcopy(self.database.password_reset_tokens.items)
+        marker_snapshot = copy.deepcopy(self.database.migration_state.items)
         try:
             return await callback(object())
         except Exception:
             self.database.password_reset_tokens.items = snapshot
+            self.database.migration_state.items = marker_snapshot
             raise
 
 
@@ -110,30 +142,41 @@ def test_apply_requires_encrypted_unused_backup_then_is_idempotent(tmp_path):
     guard = Guard(database)
     backup = tmp_path / "recovery-backup.json"
     with pytest.raises(ValueError, match="encrypted backup"):
-        asyncio.run(migration.run(database, apply=True, backup_path=backup, guard=guard))
+        asyncio.run(
+            migration.run(database, apply=True, backup_path=backup, guard=guard)
+        )
 
-    report = asyncio.run(migration.run(
-        database,
-        apply=True,
-        backup_path=backup,
-        encrypted_backup_confirmed=True,
-        guard=guard,
-    ))
+    report = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            backup_path=backup,
+            encrypted_backup_confirmed=True,
+            guard=guard,
+        )
+    )
     assert report["updated"] == 2
-    assert all(token["active"] is False for token in database.password_reset_tokens.items)
+    assert all(
+        token["active"] is False for token in database.password_reset_tokens.items
+    )
     assert set(migration.OWNED_INDEXES) <= set(database.password_reset_tokens.indexes)
+    assert database.migration_state.items == [
+        {"_id": migration.MIGRATION_ID, "migration": migration.MIGRATION_ID}
+    ]
     backup_text = backup.read_text(encoding="utf-8")
     assert "hash-1" not in backup_text
     assert "user-1" not in backup_text
     assert "token_hash" not in backup_text
 
-    second = asyncio.run(migration.run(
-        database,
-        apply=True,
-        backup_path=backup,
-        encrypted_backup_confirmed=True,
-        guard=guard,
-    ))
+    second = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            backup_path=backup,
+            encrypted_backup_confirmed=True,
+            guard=guard,
+        )
+    )
     assert second["second_run_noop"] is True
 
 
@@ -143,11 +186,66 @@ def test_rollback_restores_owned_fields_and_indexes(tmp_path):
     database = Database(original)
     guard = Guard(database)
     backup = tmp_path / "recovery-backup.json"
-    asyncio.run(migration.run(database, apply=True, backup_path=backup, encrypted_backup_confirmed=True, guard=guard))
-    result = asyncio.run(migration.run(database, rollback=True, backup_path=backup, guard=guard))
+    asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            backup_path=backup,
+            encrypted_backup_confirmed=True,
+            guard=guard,
+        )
+    )
+    result = asyncio.run(
+        migration.run(database, rollback=True, backup_path=backup, guard=guard)
+    )
     assert result["restored"] == 2
     assert database.password_reset_tokens.items == original
-    assert set(migration.OWNED_INDEXES).isdisjoint(database.password_reset_tokens.indexes)
+    assert set(migration.OWNED_INDEXES).isdisjoint(
+        database.password_reset_tokens.indexes
+    )
+    assert database.migration_state.items == []
+
+
+def test_apply_replaces_migration_007_reset_indexes_and_rollback_restores_them(
+    tmp_path,
+):
+    migration = load_migration()
+    database = Database(tokens())
+    for name, spec in migration.LEGACY_INDEX_SPECS.items():
+        asyncio.run(
+            database.password_reset_tokens.create_index(
+                spec["keys"],
+                name=name,
+                **spec["options"],
+            )
+        )
+    backup = tmp_path / "recovery-index-transition.json"
+    asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            backup_path=backup,
+            encrypted_backup_confirmed=True,
+            guard=Guard(database),
+        )
+    )
+    assert set(migration.LEGACY_INDEXES).isdisjoint(
+        database.password_reset_tokens.indexes
+    )
+    assert set(migration.OWNED_INDEXES) <= set(database.password_reset_tokens.indexes)
+
+    asyncio.run(
+        migration.run(
+            database,
+            rollback=True,
+            backup_path=backup,
+            guard=Guard(database),
+        )
+    )
+    assert set(migration.LEGACY_INDEXES) <= set(database.password_reset_tokens.indexes)
+    assert set(migration.OWNED_INDEXES).isdisjoint(
+        database.password_reset_tokens.indexes
+    )
 
 
 def test_rollback_preserves_preexisting_datetime_type(tmp_path):
@@ -157,28 +255,47 @@ def test_rollback_preserves_preexisting_datetime_type(tmp_path):
     database = Database(original)
     backup = tmp_path / "typed-backup.json"
     guard = Guard(database)
-    asyncio.run(migration.run(database, apply=True, backup_path=backup, encrypted_backup_confirmed=True, guard=guard))
+    asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            backup_path=backup,
+            encrypted_backup_confirmed=True,
+            guard=guard,
+        )
+    )
     asyncio.run(migration.run(database, rollback=True, backup_path=backup, guard=guard))
     assert database.password_reset_tokens.items == original
 
 
-@pytest.mark.parametrize("bad_tokens", [
+@pytest.mark.parametrize(
+    "bad_tokens",
     [
-        {"id": "a", "user_id": "user", "token_hash": "same", "active": True},
-        {"id": "b", "user_id": "other", "token_hash": "same", "active": False},
+        [
+            {"id": "a", "user_id": "user", "token_hash": "same", "active": True},
+            {"id": "b", "user_id": "other", "token_hash": "same", "active": False},
+        ],
+        [
+            {"id": "a", "user_id": "user", "token_hash": "one", "active": True},
+            {"id": "b", "user_id": "user", "token_hash": "two", "active": True},
+        ],
     ],
-    [
-        {"id": "a", "user_id": "user", "token_hash": "one", "active": True},
-        {"id": "b", "user_id": "user", "token_hash": "two", "active": True},
-    ],
-])
+)
 def test_ambiguous_duplicates_stop_before_backup_or_mutation(tmp_path, bad_tokens):
     migration = load_migration()
     database = Database(bad_tokens)
     before = copy.deepcopy(database.password_reset_tokens.items)
     backup = tmp_path / "backup.json"
     with pytest.raises(ValueError, match="duplicate"):
-        asyncio.run(migration.run(database, apply=True, backup_path=backup, encrypted_backup_confirmed=True, guard=Guard(database)))
+        asyncio.run(
+            migration.run(
+                database,
+                apply=True,
+                backup_path=backup,
+                encrypted_backup_confirmed=True,
+                guard=Guard(database),
+            )
+        )
     assert database.password_reset_tokens.items == before
     assert not backup.exists()
 
@@ -188,7 +305,9 @@ def test_ambiguous_duplicates_stop_before_backup_or_mutation(tmp_path, bad_token
     or not os.environ.get("MONGO_TRANSACTION_TEST_URL"),
     reason="Explicit real transaction opt-in and URL are required",
 )
-def test_real_replica_set_apply_idempotency_and_rollback(tmp_path, transaction_database_name):
+def test_real_replica_set_apply_idempotency_and_rollback(
+    tmp_path, transaction_database_name
+):
     loaded_motor = sys.modules.get("motor.motor_asyncio")
     if loaded_motor is not None and getattr(loaded_motor, "__file__", None) is None:
         sys.modules.pop("motor.motor_asyncio", None)
@@ -220,7 +339,10 @@ def test_real_replica_set_apply_idempotency_and_rollback(tmp_path, transaction_d
                 guard=guard,
             )
             assert applied["updated"] == 2
-            assert await database.password_reset_tokens.count_documents({"active": True}) == 0
+            assert (
+                await database.password_reset_tokens.count_documents({"active": True})
+                == 0
+            )
 
             second = await migration.run(
                 database,
@@ -231,9 +353,13 @@ def test_real_replica_set_apply_idempotency_and_rollback(tmp_path, transaction_d
             )
             assert second["second_run_noop"] is True
 
-            rolled_back = await migration.run(database, rollback=True, backup_path=backup, guard=guard)
+            rolled_back = await migration.run(
+                database, rollback=True, backup_path=backup, guard=guard
+            )
             assert rolled_back["restored"] == 2
-            restored = await database.password_reset_tokens.find({}, {"_id": 0}).to_list(None)
+            restored = await database.password_reset_tokens.find(
+                {}, {"_id": 0}
+            ).to_list(None)
             assert sorted(restored, key=lambda item: item["id"]) == original
             indexes = await database.password_reset_tokens.index_information()
             assert set(migration.OWNED_INDEXES).isdisjoint(indexes)

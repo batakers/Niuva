@@ -1,6 +1,11 @@
-"""Read-only verification for the required migration and index manifest."""
+"""Read-only verification for the complete required migration/index chain."""
 
-from schema_manifest import INDEX_DECLARATIONS, REQUIRED_SCHEMA_VERSION
+from schema_manifest import (
+    READINESS_INDEX_DECLARATIONS,
+    REQUIRED_SCHEMA_VERSION,
+    REQUIRED_SCHEMA_VERSIONS,
+    RETIRED_INDEX_NAMES,
+)
 
 
 def _keys(declaration: dict) -> list[tuple[str, int]]:
@@ -20,23 +25,48 @@ def _compatible(spec: dict, declaration: dict) -> bool:
 
 
 async def inspect_schema(database) -> dict:
-    migration = await database.schema_migrations.find_one(
-        {"_id": REQUIRED_SCHEMA_VERSION},
-        {"_id": 1, "applied_at": 1},
-    )
+    migration_status = {}
+    for version in REQUIRED_SCHEMA_VERSIONS:
+        collection = (
+            database.schema_migrations
+            if version == REQUIRED_SCHEMA_VERSIONS[0]
+            else database.migration_state
+        )
+        migration_status[version] = bool(
+            await collection.find_one(
+                {"_id": version},
+                {"_id": 1},
+            )
+        )
+
+    applied = all(migration_status.values())
     missing_indexes = []
-    if migration:
-        for declaration in INDEX_DECLARATIONS:
-            indexes = await getattr(
-                database,
-                declaration["collection"],
-            ).index_information()
+    retired_indexes = []
+    indexes_by_collection = {}
+    if applied:
+        for declaration in READINESS_INDEX_DECLARATIONS:
+            collection_name = declaration["collection"]
+            if collection_name not in indexes_by_collection:
+                indexes_by_collection[collection_name] = await getattr(
+                    database,
+                    collection_name,
+                ).index_information()
+            indexes = indexes_by_collection[collection_name]
             if not any(_compatible(spec, declaration) for spec in indexes.values()):
                 missing_indexes.append(declaration["options"]["name"])
+        reset_indexes = indexes_by_collection.get("password_reset_tokens")
+        if reset_indexes is None:
+            reset_indexes = await database.password_reset_tokens.index_information()
+        retired_indexes = sorted(set(reset_indexes) & RETIRED_INDEX_NAMES)
+
+    indexes_ready = applied and not missing_indexes and not retired_indexes
     return {
         "required_version": REQUIRED_SCHEMA_VERSION,
-        "applied": bool(migration),
-        "indexes_ready": bool(migration) and not missing_indexes,
+        "required_versions": list(REQUIRED_SCHEMA_VERSIONS),
+        "migrations": migration_status,
+        "applied": applied,
+        "indexes_ready": indexes_ready,
         "missing_index_count": len(missing_indexes),
-        "ready": bool(migration) and not missing_indexes,
+        "retired_index_count": len(retired_indexes),
+        "ready": indexes_ready,
     }

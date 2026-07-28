@@ -43,6 +43,7 @@ import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
 import { hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
+import { DevelopmentMediaUpload } from "@/components/admin/DevelopmentMediaUpload";
 
 export default function AdminPortfolio() {
   const { t, lang } = useI18n();
@@ -316,6 +317,8 @@ export default function AdminPortfolio() {
 
 function PortfolioDialog({ item, onClose, onSaved }) {
   const { t } = useI18n();
+  const { user } = useAuth();
+  const canUploadMedia = hasPermission(user, "media.write");
   const [form, setForm] = useState({
     ...item,
     // One URL per line; preserves every image instead of dropping images[1..].
@@ -433,6 +436,21 @@ function PortfolioDialog({ item, onClose, onSaved }) {
               className="font-mono text-xs"
             />
           </FormField>
+          {canUploadMedia && (
+            <div className="flex justify-end">
+              <DevelopmentMediaUpload
+                disabled={busy}
+                onUploaded={(media) =>
+                  setForm((current) => ({
+                    ...current,
+                    imagesText: [current.imagesText, media.reference]
+                      .filter(Boolean)
+                      .join("\n"),
+                  }))
+                }
+              />
+            </div>
+          )}
 
           <div className="flex items-center gap-3 pt-2">
             <Switch

@@ -76,10 +76,17 @@ Apply creates:
 - partial unique index `one_active_password_reset_token_per_user` on `user_id`
   where `active: true`.
 
+It replaces Migration 007's transitional `uq_password_reset_hash` and
+`ttl_password_reset_expiry` indexes. The legacy index names are recorded in the
+redacted migration backup, removed before the new indexes are created, and
+restored only by rollback. This prevents expired-token history from being
+silently deleted by MongoDB TTL cleanup.
+
 It then transactionally marks every historical token with
 `auth_recovery_migration: 008_auth_recovery_safety`, sets `active: false`, and
-records migration invalidation fields. Index creation is compensated if either
-index or the guarded mutation fails. Historical documents remain intact.
+records migration invalidation fields together with the global Migration 008
+marker. Index replacement is compensated if either an index or the guarded
+mutation fails. Historical documents remain intact.
 
 Run the same apply command again. Expected: `second_run_noop: true`, no writes,
 no backup overwrite, and the same two indexes. Preserve the backup until the
@@ -103,8 +110,9 @@ documents to prove absence.
 
 ## Rollback
 
-Rollback restores only migration-owned token fields and removes only indexes
-that migration `007` introduced:
+Rollback restores only migration-owned token fields, removes the Migration 008
+marker and indexes, and recreates only the transitional Migration 007 indexes
+recorded in the reviewed backup:
 
 ```powershell
 $env:TRANSACTION_MUTATIONS_ENABLED = "true"

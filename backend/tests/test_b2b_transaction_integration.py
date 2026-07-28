@@ -129,7 +129,7 @@ async def accept_quote(service, quote_id):
             reason=f"Menuju {target}",
             actor=ACTOR,
         )
-    await service.accept_quote(
+    return await service.accept_quote(
         quote_id,
         expected_version=quote["version"],
         operation_id=operation_id(),
@@ -158,9 +158,7 @@ async def run_double_conversion(database_name):
                 actor=ACTOR,
             )
 
-        results = await asyncio.gather(
-            convert(), convert(), return_exceptions=True
-        )
+        results = await asyncio.gather(convert(), convert(), return_exceptions=True)
 
         succeeded = [item for item in results if not isinstance(item, Exception)]
         rejected = [item for item in results if isinstance(item, Exception)]
@@ -227,12 +225,12 @@ async def run_duplicate_project_creation(database_name):
             actor=ACTOR,
         )
         quote_id = converted["quote"]["id"]
-        await accept_quote(service, quote_id)
+        accepted = await accept_quote(service, quote_id)
 
         async def create():
             return await service.create_project_from_quote(
                 quote_id,
-                expected_version=4,
+                expected_version=accepted["version"],
                 operation_id=operation_id(),
                 reason="Mulai eksekusi proyek",
                 actor=ACTOR,

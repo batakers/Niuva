@@ -24,6 +24,7 @@ import {
   CONTENT_STAGE_ACTIONS,
   CONTENT_TYPES,
   CONTENT_TYPE_SCHEMAS,
+  coerceContentFieldValue,
   contentApi,
   emptyFieldsFor,
   statusTone,
@@ -230,7 +231,8 @@ function ScalarField({ field, value, onChange, disabled }) {
   const commonProps = {
     id: `content-field-${field.key}`,
     value: value ?? "",
-    onChange: (event) => onChange(event.target.value),
+    onChange: (event) =>
+      onChange(coerceContentFieldValue(field, event.target.value)),
     disabled,
   };
 

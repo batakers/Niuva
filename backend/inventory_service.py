@@ -1,13 +1,9 @@
-import logging
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from bson.decimal128 import Decimal128
-from pymongo.errors import DuplicateKeyError, PyMongoError
-
 from audit import append_audit_event
-from notification_service import NotificationService
+from bson.decimal128 import Decimal128
 from inventory_domain import (
     InventoryConflict,
     apply_deltas,
@@ -16,12 +12,19 @@ from inventory_domain import (
     operation_fingerprint,
     validate_subject_movement,
 )
-from restock import active_alert_key, shortage_triggers
+from notification_service import NotificationService
 from permissions import has_permission
+from pymongo.errors import DuplicateKeyError, PyMongoError
+from restock import active_alert_key, shortage_triggers
 
-
-logger = logging.getLogger(__name__)
-BALANCE_FIELDS = ("on_hand", "reserved", "incoming", "planned_demand", "available", "projected")
+BALANCE_FIELDS = (
+    "on_hand",
+    "reserved",
+    "incoming",
+    "planned_demand",
+    "available",
+    "projected",
+)
 EXPIRY_NAMESPACE = uuid.UUID("2680c649-5e19-4e45-9d8c-b230bd80aca4")
 
 
@@ -80,12 +83,11 @@ def serialize_inventory(value):
 
 
 class InventoryService:
-    def __init__(self, *, db, client, capabilities, guard, emailer=None):
+    def __init__(self, *, db, client, capabilities, guard):
         self.db = db
         self.client = client
         self.capabilities = capabilities
         self.guard = guard
-        self.emailer = emailer
 
     def _require_transactions(self):
         if not self.capabilities.transactions:
@@ -97,21 +99,41 @@ class InventoryService:
 
     async def _subject(self, subject_type: str, subject_id: str, session=None) -> dict:
         collection = (
-            self.db.materials if subject_type == "material" else self.db.product_variants
+            self.db.materials
+            if subject_type == "material"
+            else self.db.product_variants
         )
         subject = await collection.find_one(
             {"id": subject_id}, {"_id": 0}, **_write_options(session)
         )
         if not subject:
-            raise InventoryError(404, "inventory_subject_not_found", "Subjek inventory tidak ditemukan.")
-        if subject.get("status", "active") != "active" or subject.get("active", True) is False:
-            raise InventoryError(409, "inventory_subject_inactive", "Subjek inventory sudah diarsipkan.")
+            raise InventoryError(
+                404, "inventory_subject_not_found", "Subjek inventory tidak ditemukan."
+            )
+        if (
+            subject.get("status", "active") != "active"
+            or subject.get("active", True) is False
+        ):
+            raise InventoryError(
+                409, "inventory_subject_inactive", "Subjek inventory sudah diarsipkan."
+            )
         if subject_type == "material" and subject.get("setup_status") != "ready":
-            raise InventoryError(409, "material_setup_incomplete", "Setup bahan baku belum selesai.")
-        if subject_type == "product_variant" and subject.get("production_type") != "ready_stock":
-            raise InventoryError(409, "variant_not_ready_stock", "Varian bukan produk ready stock.")
+            raise InventoryError(
+                409, "material_setup_incomplete", "Setup bahan baku belum selesai."
+            )
+        if (
+            subject_type == "product_variant"
+            and subject.get("production_type") != "ready_stock"
+        ):
+            raise InventoryError(
+                409, "variant_not_ready_stock", "Varian bukan produk ready stock."
+            )
         if not subject.get("inventory_tracking_enabled", False):
-            raise InventoryError(409, "inventory_tracking_disabled", "Pelacakan inventory belum diaktifkan.")
+            raise InventoryError(
+                409,
+                "inventory_tracking_disabled",
+                "Pelacakan inventory belum diaktifkan.",
+            )
         return subject
 
     async def _balance_document(self, subject_type: str, subject_id: str, session=None):
@@ -262,10 +284,15 @@ class InventoryService:
         limit: int = 200,
     ) -> list[dict]:
         query = {"status": status} if status else {}
-        requests = await self.db.inventory_adjustment_requests.find(
-            query,
-            {"_id": 0},
-        ).sort("created_at", -1).limit(min(limit, 500)).to_list(min(limit, 500))
+        requests = (
+            await self.db.inventory_adjustment_requests.find(
+                query,
+                {"_id": 0},
+            )
+            .sort("created_at", -1)
+            .limit(min(limit, 500))
+            .to_list(min(limit, 500))
+        )
         return serialize_inventory(requests)
 
     async def approve_adjustment_request(
@@ -407,7 +434,6 @@ class InventoryService:
                 "balance_version_conflict",
                 "Saldo berubah sebelum adjustment disetujui.",
             ) from exc
-        await self._send_restock_emails(recipients)
         return result
 
     async def reject_adjustment_request(
@@ -489,7 +515,9 @@ class InventoryService:
     ) -> dict:
         self._require_transactions()
         fingerprint = operation_fingerprint(payload)
-        existing = await self._find_existing_operation(payload["operation_id"], fingerprint)
+        existing = await self._find_existing_operation(
+            payload["operation_id"], fingerprint
+        )
         if existing:
             return existing
 
@@ -521,7 +549,6 @@ class InventoryService:
                 result, email_recipients = await self.guard.run(
                     mutation, operation_name="inventory.apply_operation"
                 )
-                await self._send_restock_emails(email_recipients)
                 return result
             except _StaleBalance:
                 if attempt == 2:
@@ -592,21 +619,36 @@ class InventoryService:
         else:
             deltas = compute_deltas(movement_type, payload.get("quantity"))
 
-        reservation = None
+        reservation: dict | None = None
         if reservation_transition:
             reservation = await self.db.inventory_reservations.find_one(
                 {"id": reservation_transition["reservation_id"]},
                 {"_id": 0},
                 **_write_options(session),
             )
-            if not reservation:
-                raise InventoryError(404, "reservation_not_found", "Reservation tidak ditemukan.")
+            if reservation is None:
+                raise InventoryError(
+                    404, "reservation_not_found", "Reservation tidak ditemukan."
+                )
             if reservation.get("status") != "active":
-                raise InventoryError(409, "reservation_not_active", "Reservation sudah tidak aktif.")
-            if reservation["subject_type"] != subject_type or reservation["subject_id"] != subject_id:
-                raise InventoryError(409, "reservation_subject_conflict", "Subjek reservation tidak sesuai.")
+                raise InventoryError(
+                    409, "reservation_not_active", "Reservation sudah tidak aktif."
+                )
+            if (
+                reservation["subject_type"] != subject_type
+                or reservation["subject_id"] != subject_id
+            ):
+                raise InventoryError(
+                    409,
+                    "reservation_subject_conflict",
+                    "Subjek reservation tidak sesuai.",
+                )
             if _decimal(reservation["quantity"]) != _decimal(payload.get("quantity")):
-                raise InventoryError(409, "reservation_quantity_conflict", "Jumlah reservation tidak sesuai.")
+                raise InventoryError(
+                    409,
+                    "reservation_quantity_conflict",
+                    "Jumlah reservation tidak sesuai.",
+                )
             if reservation_transition["action"] == "consume":
                 deltas["reserved"] = -_decimal(payload["quantity"])
 
@@ -681,6 +723,7 @@ class InventoryService:
             )
             movement["reservation_id"] = reservation["id"]
         elif reservation_transition:
+            assert reservation is not None
             transition_status = reservation_transition["status"]
             await self.db.inventory_reservations.update_one(
                 {"id": reservation["id"], "status": "active"},
@@ -793,7 +836,6 @@ class InventoryService:
                             email_recipients.extend(recipients)
                         if extra_mutation is not None:
                             await extra_mutation(session, results)
-                await self._send_restock_emails(email_recipients)
                 return results
             except _StaleBalance:
                 if attempt == 2:
@@ -847,12 +889,16 @@ class InventoryService:
         final_status: str | None = None,
     ) -> dict:
         if action not in {"release", "consume"}:
-            raise InventoryError(400, "reservation_action_invalid", "Aksi reservation tidak valid.")
+            raise InventoryError(
+                400, "reservation_action_invalid", "Aksi reservation tidak valid."
+            )
         reservation = await self.db.inventory_reservations.find_one(
             {"id": reservation_id}, {"_id": 0}
         )
         if not reservation:
-            raise InventoryError(404, "reservation_not_found", "Reservation tidak ditemukan.")
+            raise InventoryError(
+                404, "reservation_not_found", "Reservation tidak ditemukan."
+            )
         movement_type = action
         if action == "consume" and reservation["subject_type"] == "product_variant":
             movement_type = "ship"
@@ -874,7 +920,8 @@ class InventoryService:
             reservation_transition={
                 "reservation_id": reservation_id,
                 "action": action,
-                "status": final_status or ("released" if action == "release" else "consumed"),
+                "status": final_status
+                or ("released" if action == "release" else "consumed"),
             },
         )
 
@@ -885,13 +932,20 @@ class InventoryService:
         at: datetime | None = None,
     ) -> dict:
         moment = (at or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
-        reservations = await self.db.inventory_reservations.find(
-            {"status": "active", "expires_at": {"$lte": moment}}, {"_id": 0}
-        ).sort("expires_at", 1).to_list(500)
+        reservations = (
+            await self.db.inventory_reservations.find(
+                {"status": "active", "expires_at": {"$lte": moment}}, {"_id": 0}
+            )
+            .sort("expires_at", 1)
+            .to_list(500)
+        )
         expired = 0
         for reservation in reservations:
             operation_id = str(
-                uuid.uuid5(EXPIRY_NAMESPACE, f"inventory-reservation-expiry:{reservation['id']}")
+                uuid.uuid5(
+                    EXPIRY_NAMESPACE,
+                    f"inventory-reservation-expiry:{reservation['id']}",
+                )
             )
             try:
                 result = await self.transition_reservation(
@@ -914,7 +968,11 @@ class InventoryService:
         subject_id = balance["subject_id"]
         current_triggers = shortage_triggers(balance, subject.get("reorder_point", 0))
         existing = await self.db.restock_alerts.find(
-            {"subject_type": subject_type, "subject_id": subject_id, "status": "active"},
+            {
+                "subject_type": subject_type,
+                "subject_id": subject_id,
+                "status": "active",
+            },
             {"_id": 0},
             **_write_options(session),
         ).to_list(100)
@@ -941,7 +999,9 @@ class InventoryService:
                 "subject_id": subject_id,
                 "subject_name": subject.get("name") or subject.get("sku") or subject_id,
                 "trigger_type": trigger_type,
-                "deduplication_key": active_alert_key(subject_type, subject_id, trigger_type),
+                "deduplication_key": active_alert_key(
+                    subject_type, subject_id, trigger_type
+                ),
                 "status": "active",
                 "last_balance": serialize_inventory(balance),
                 "created_at": timestamp,
@@ -993,7 +1053,7 @@ class InventoryService:
         users = await self.db.users.find(
             {"status": "active"}, {"_id": 0}, **_write_options(session)
         ).to_list(1000)
-        recipients = []
+        recipients: list[dict] = []
         notification_service = NotificationService(db=self.db)
         for user in users:
             if not has_permission(user, "restock_alerts.read"):
@@ -1027,30 +1087,14 @@ class InventoryService:
                 )
         return recipients
 
-    async def _send_restock_emails(self, recipients: list[dict]):
-        if not self.emailer:
-            return
-        for recipient in recipients:
-            try:
-                await self.emailer.send_email(
-                    recipient["email"],
-                    recipient["subject"],
-                    recipient["title"],
-                    recipient["body_html"],
-                    db=None,
-                    user_id=recipient["user_id"],
-                )
-            except Exception:
-                logger.exception(
-                    "Restock email failed after inventory commit (user_id=%s)",
-                    recipient["user_id"],
-                )
-
     async def list_balances(self, *, subject_type=None, limit=200) -> list[dict]:
         query = {"subject_type": subject_type} if subject_type else {}
-        values = await self.db.inventory_balances.find(query, {"_id": 0}).sort(
-            "updated_at", -1
-        ).limit(min(limit, 500)).to_list(min(limit, 500))
+        values = (
+            await self.db.inventory_balances.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .limit(min(limit, 500))
+            .to_list(min(limit, 500))
+        )
         await self._enrich_balances(values)
         return serialize_inventory(values)
 
@@ -1078,9 +1122,11 @@ class InventoryService:
             if not wanted:
                 subjects[type_name] = {}
                 continue
-            documents = await getattr(self.db, collection_name).find(
-                {"id": {"$in": wanted}}, {"_id": 0}
-            ).to_list(len(wanted))
+            documents = (
+                await getattr(self.db, collection_name)
+                .find({"id": {"$in": wanted}}, {"_id": 0})
+                .to_list(len(wanted))
+            )
             subjects[type_name] = {item["id"]: item for item in documents}
 
         for value in values:
@@ -1114,7 +1160,9 @@ class InventoryService:
     async def get_balance(self, subject_type: str, subject_id: str) -> dict:
         value = await self._balance_document(subject_type, subject_id)
         if not value:
-            raise InventoryError(404, "balance_not_found", "Saldo inventory tidak ditemukan.")
+            raise InventoryError(
+                404, "balance_not_found", "Saldo inventory tidak ditemukan."
+            )
         return serialize_inventory(value)
 
     async def list_movements(
@@ -1129,9 +1177,12 @@ class InventoryService:
             }.items()
             if value is not None
         }
-        values = await self.db.stock_movements.find(query, {"_id": 0}).sort(
-            "created_at", -1
-        ).limit(min(limit, 500)).to_list(min(limit, 500))
+        values = (
+            await self.db.stock_movements.find(query, {"_id": 0})
+            .sort("created_at", -1)
+            .limit(min(limit, 500))
+            .to_list(min(limit, 500))
+        )
         return serialize_inventory(values)
 
     async def list_reservations(
@@ -1147,16 +1198,22 @@ class InventoryService:
             if value is not None
         }
         bounded_limit = min(limit, 500)
-        values = await self.db.inventory_reservations.find(
-            query, {"_id": 0}
-        ).sort("updated_at", -1).limit(bounded_limit).to_list(bounded_limit)
+        values = (
+            await self.db.inventory_reservations.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .limit(bounded_limit)
+            .to_list(bounded_limit)
+        )
         return serialize_inventory(values)
 
     async def list_alerts(self, *, status=None, limit=200) -> list[dict]:
         query = {"status": status} if status else {}
-        values = await self.db.restock_alerts.find(query, {"_id": 0}).sort(
-            "updated_at", -1
-        ).limit(min(limit, 500)).to_list(min(limit, 500))
+        values = (
+            await self.db.restock_alerts.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .limit(min(limit, 500))
+            .to_list(min(limit, 500))
+        )
         return serialize_inventory(values)
 
     async def resolve_alert(self, *, alert_id: str, actor: dict, reason: str) -> dict:
@@ -1167,7 +1224,9 @@ class InventoryService:
                 {"id": alert_id}, {"_id": 0}, **_write_options(session)
             )
             if not before:
-                raise InventoryError(404, "restock_alert_not_found", "Alert restock tidak ditemukan.")
+                raise InventoryError(
+                    404, "restock_alert_not_found", "Alert restock tidak ditemukan."
+                )
             if before.get("status") == "resolved":
                 return before
             changes = {

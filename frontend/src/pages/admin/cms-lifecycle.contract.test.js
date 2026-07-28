@@ -5,6 +5,8 @@ const {
   CONTENT_ACTION_PERMISSIONS,
   CONTENT_ACTION_TARGETS,
   CONTENT_STAGE_ACTIONS,
+  coerceContentFieldValue,
+  emptyFieldsFor,
 } = require("@/lib/content");
 
 const read = (...segments) =>
@@ -65,6 +67,13 @@ describe("CMS lifecycle wiring", () => {
   test("the transition helper posts to the transitions endpoint", () => {
     expect(apiSource).toContain("/transitions`");
     expect(apiSource).toContain("target_status: targetStatus");
+  });
+
+  test("capability order remains an integer through the editor contract", () => {
+    const orderField = { type: "number" };
+    expect(emptyFieldsFor("capability").display_order).toBe(0);
+    expect(coerceContentFieldValue(orderField, "12")).toBe(12);
+    expect(coerceContentFieldValue(orderField, "")).toBe(0);
   });
 });
 

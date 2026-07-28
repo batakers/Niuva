@@ -32,12 +32,15 @@ jobs:
           python -m pip check
           python -m pip_audit -r backend/requirements.txt
       - name: Compile backend
-        run: python -m compileall -q backend
+        run: |
+          python -m compileall -q backend
+          python -m py_compile scripts/load_readonly_api.py
       - name: Critical Python lint
         run: >-
           python -m flake8 backend
+          --exclude backend/.venv
           --select E9,F63,F7,F82
-      - name: Type-check remediation security boundary
+      - name: Type-check remediation security and storage boundaries
         run: >-
           python -m mypy
           --follow-imports=skip
@@ -45,30 +48,64 @@ jobs:
           --check-untyped-defs
           backend/auth_sessions.py
           backend/auth_rate_limit.py
+          backend/auth_password.py
+          backend/auth_recovery.py
+          backend/auth_session.py
           backend/password_policy.py
+          backend/content_domain.py
+          backend/inventory_service.py
           backend/csv_safety.py
           backend/schema_manifest.py
           backend/schema_readiness.py
           backend/notification_worker.py
+          backend/storage.py
       - name: Check remediation formatting
         run: |
           python -m black --check \
             backend/auth_sessions.py \
             backend/auth_rate_limit.py \
+            backend/auth_password.py \
+            backend/auth_recovery.py \
+            backend/auth_session.py \
             backend/password_policy.py \
+            backend/content_domain.py \
+            backend/inventory_service.py \
             backend/csv_safety.py \
             backend/schema_manifest.py \
             backend/schema_readiness.py \
             backend/notification_worker.py \
-            backend/migrations/007_security_publication_schema.py
+            backend/storage.py \
+            backend/server.py \
+            backend/migrations/007_security_publication_schema.py \
+            backend/migrations/008_auth_recovery_safety.py \
+            backend/migrations/009_admin_session_safety.py \
+            backend/tests/test_admin_notifications.py \
+            backend/tests/test_readonly_load_probe.py \
+            backend/tests/test_inventory_service.py \
+            backend/tests/test_work_order_allocation_integration.py \
+            scripts/load_readonly_api.py
           python -m isort --profile black --check-only \
             backend/auth_sessions.py \
             backend/auth_rate_limit.py \
+            backend/auth_password.py \
+            backend/auth_recovery.py \
+            backend/auth_session.py \
             backend/password_policy.py \
+            backend/content_domain.py \
+            backend/inventory_service.py \
             backend/csv_safety.py \
             backend/schema_manifest.py \
             backend/schema_readiness.py \
-            backend/notification_worker.py
+            backend/notification_worker.py \
+            backend/storage.py \
+            backend/migrations/007_security_publication_schema.py \
+            backend/migrations/008_auth_recovery_safety.py \
+            backend/migrations/009_admin_session_safety.py \
+            backend/tests/test_admin_notifications.py \
+            backend/tests/test_readonly_load_probe.py \
+            backend/tests/test_inventory_service.py \
+            backend/tests/test_work_order_allocation_integration.py \
+            scripts/load_readonly_api.py
       - name: Run complete backend suite
         run: python -m pytest -q backend/tests
 
@@ -100,7 +137,7 @@ jobs:
         run: npm run build
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-      - name: Run Retail discovery browser contract
+      - name: Run hermetic Retail browser contract
         env:
           PLAYWRIGHT_START_SERVER: "true"
           PLAYWRIGHT_BASE_URL: "http://127.0.0.1:3000"
@@ -123,4 +160,4 @@ jobs:
           --user "$(id -u):$(id -g)"
           --volume "$GITHUB_WORKSPACE:/repo:ro"
           ghcr.io/gitleaks/gitleaks:v8.30.1
-          git --source=/repo --redact --no-banner
+          git /repo --redact --no-banner

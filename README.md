@@ -14,6 +14,7 @@ Current source capabilities:
 | Customer/staff cookie authentication | Active in source |
 | Staff governance and customer management | Active in source |
 | CMS/portfolio immutable publication | Active in source |
+| Local media upload for development/demo/test | Active when explicitly configured |
 | Legacy order history | Read-only compatibility |
 | Retail order creation, cart, checkout, payment, fulfillment | Inactive |
 | New manual transfer/payment proof | Inactive |
@@ -72,19 +73,41 @@ npm start
 
 Use strong, environment-specific values for `JWT_SECRET` and bootstrap
 credentials. Startup creates the configured bootstrap Super Admin only when it
-does not exist; it never resets an existing password.
+does not exist; it never resets an existing password. Startup does not create
+sample materials or directly-published portfolio records. Operational and
+public content enters through the audited authoring/publication flows.
 
-## Database migration
+The checked-in blocklist is a small development fixture only. The example
+enables Argon2 writes solely so a fresh local database can create its one
+bootstrap Admin. Production must replace the blocklist and complete the
+benchmark/migration gates; do not deploy the example values. Open the local
+frontend as `http://localhost:3000` (not a different host alias), because Admin
+Origin validation and the `__Host-` cookie contract use that exact origin.
+The example also enables transaction mutations for the local replica set;
+production must keep that gate closed until the reviewed migration chain and
+readiness checks pass.
 
-Migration 007 is dry-run by default and its report contains counts/index names,
-not duplicate values or personal data:
+With `APP_ENV=development` and `STORAGE_BACKEND=local`, authorized CMS staff
+can upload PNG/JPEG/WebP media from Product and Portfolio editors. The backend
+validates file signatures and size, stores DB-backed ownership/state metadata,
+and only exposes a `media:<id>` reference publicly after it appears in an
+active immutable catalog or portfolio publication. This adapter is never
+available in production and is not approval for a production storage provider.
+
+## Database migrations
+
+Migrations 007, 008, and 009 form one ordered readiness chain. Every migration
+is dry-run by default and reports aggregate/index state without credentials or
+personal data. Run the dry-runs in order:
 
 ```bash
 cd backend
 .venv/bin/python -m migrations.007_security_publication_schema
+.venv/bin/python -m migrations.008_auth_recovery_safety
+.venv/bin/python -m migrations.009_admin_session_safety
 ```
 
-Applying it requires reviewed backup evidence:
+Migration 007 apply requires the reviewed backup evidence manifest:
 
 ```bash
 .venv/bin/python -m migrations.007_security_publication_schema \
@@ -92,9 +115,15 @@ Applying it requires reviewed backup evidence:
   --backup-evidence /absolute/path/to/reviewed-backup-manifest.json
 ```
 
-Do not apply a migration with duplicate preflight failures. Review a redacted
-mapping, rehearse backup restoration on a clone, apply in non-production first,
-verify readiness, and confirm a second apply reports `already_applied`.
+Migrations 008 and 009 additionally require their encrypted migration-metadata
+backup gates. Follow `docs/runbooks/AUTH_RECOVERY_RUNBOOK.md` and
+`docs/runbooks/AUTH_SESSION_RUNBOOK.md`; do not infer their apply flags from
+the example above.
+
+Do not apply any migration with preflight failures. Review a redacted mapping,
+rehearse backup restoration on a clone, apply in non-production first, verify
+the complete 007→008→009 readiness chain, and confirm every second apply is a
+no-op.
 
 ## Verification
 
@@ -114,7 +143,15 @@ npm run audit:production
 Real transaction tests use `.github/workflows/transaction-tests.yml` and the
 isolated `docker-compose.transaction-test.yml` replica set. The historical
 live-server suite is excluded from hermetic tests and belongs only in the
-explicit external smoke job.
+explicit external smoke job. Admin role/accessibility/responsive browser
+contracts require approved staging origins and dedicated role accounts; run
+the manual `external-admin-e2e` workflow after configuring its documented
+`E2E_*` GitHub Actions secrets.
+
+The read-only load probe is `scripts/load_readonly_api.py`. It requires every
+load shape and acceptance threshold explicitly; follow
+`docs/runbooks/PERFORMANCE_READONLY_RUNBOOK.md`. The repository deliberately
+does not invent an SLA or run the probe against production.
 
 See `backend/README.md` for API/session, readiness, worker, migration, and
 backend test details.

@@ -1,7 +1,11 @@
 """Validation and snapshot rules for CMS content blocks, per content type."""
+
 import re
 import uuid
 from copy import deepcopy
+from urllib.parse import urlsplit
+
+from pydantic import EmailStr, TypeAdapter, ValidationError
 
 CONTENT_TYPES = frozenset({"about", "capability", "faq", "cta", "contact"})
 
@@ -27,7 +31,22 @@ def _require_text(fields: dict, field: str, errors: list) -> None:
 def _require_list(fields: dict, field: str, errors: list) -> None:
     value = fields.get(field)
     if not isinstance(value, list) or len(value) == 0:
-        errors.append(_error("required", field, f"{field} wajib memiliki minimal satu item."))
+        errors.append(
+            _error("required", field, f"{field} wajib memiliki minimal satu item.")
+        )
+
+
+def _valid_public_https_url(value: object) -> bool:
+    candidate = str(value or "").strip()
+    if not candidate:
+        return False
+    parsed = urlsplit(candidate)
+    return bool(
+        parsed.scheme == "https"
+        and parsed.hostname
+        and not parsed.username
+        and not parsed.password
+    )
 
 
 def validate_content_fields(content_type: str, fields: dict) -> list[dict]:
@@ -45,7 +64,13 @@ def validate_content_fields(content_type: str, fields: dict) -> list[dict]:
         for field in ("title", "body", "output", "targetUsers", "cta"):
             _require_text(fields, field, errors)
         if fields.get("priority") not in ("primary", "supporting"):
-            errors.append(_error("invalid_choice", "priority", "priority harus 'primary' atau 'supporting'."))
+            errors.append(
+                _error(
+                    "invalid_choice",
+                    "priority",
+                    "priority harus 'primary' atau 'supporting'.",
+                )
+            )
         display_order = fields.get("display_order", 0)
         if (
             isinstance(display_order, bool)
@@ -65,20 +90,57 @@ def validate_content_fields(content_type: str, fields: dict) -> list[dict]:
         _require_text(fields, "answer", errors)
 
     elif content_type == "cta":
-        for field in ("label", "title", "body", "primaryActionLabel", "primaryActionTarget"):
+        for field in (
+            "label",
+            "title",
+            "body",
+            "primaryActionLabel",
+            "primaryActionTarget",
+        ):
             _require_text(fields, field, errors)
+        target = str(fields.get("primaryActionTarget") or "").strip()
+        if target and (not target.startswith("/") or target.startswith("//")):
+            errors.append(
+                _error(
+                    "invalid_path",
+                    "primaryActionTarget",
+                    "primaryActionTarget wajib berupa path internal.",
+                )
+            )
 
     elif content_type == "contact":
         for field in ("location", "email", "whatsapp", "whatsappHref"):
             _require_text(fields, field, errors)
+        email = str(fields.get("email") or "").strip()
+        if email:
+            try:
+                TypeAdapter(EmailStr).validate_python(email)
+            except ValidationError:
+                errors.append(_error("invalid_email", "email", "email tidak valid."))
+        for field in ("whatsappHref", "mapsHref"):
+            value = fields.get(field)
+            if value and not _valid_public_https_url(value):
+                errors.append(
+                    _error(
+                        "invalid_url",
+                        field,
+                        f"{field} wajib berupa URL HTTPS tanpa credential.",
+                    )
+                )
 
     else:
-        errors.append(_error("unknown_content_type", "content_type", "Jenis konten tidak dikenal."))
+        errors.append(
+            _error(
+                "unknown_content_type", "content_type", "Jenis konten tidak dikenal."
+            )
+        )
 
     return errors
 
 
-def build_version_snapshot(block: dict, *, actor_id: str, reason: str, event: str) -> dict:
+def build_version_snapshot(
+    block: dict, *, actor_id: str, reason: str, event: str
+) -> dict:
     """A point-in-time copy of a content block's fields for the version history log."""
     return {
         "id": str(uuid.uuid4()),

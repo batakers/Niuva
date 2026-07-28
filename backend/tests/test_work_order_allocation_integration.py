@@ -11,6 +11,7 @@ Opt in with NIUVA_RUN_REAL_TRANSACTION_TESTS=1 and MONGO_TRANSACTION_TEST_URL.
 import asyncio
 import os
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -25,13 +26,12 @@ if (
         allow_module_level=True,
     )
 
-from bson.decimal128 import Decimal128  # noqa: E402
-from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
-
 from b2b_domain import B2BDomainError  # noqa: E402
 from b2b_service import B2BService  # noqa: E402
+from bson.decimal128 import Decimal128  # noqa: E402
 from database_capabilities import probe_database_capabilities  # noqa: E402
 from inventory_service import InventoryService  # noqa: E402
+from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 from transaction_execution import TransactionExecutor  # noqa: E402
 from transaction_guard import TransactionMutationGuard  # noqa: E402
 
@@ -101,7 +101,6 @@ class Context:
             client=client,
             capabilities=capabilities,
             guard=guard,
-            emailer=None,
         )
 
 
@@ -138,21 +137,12 @@ async def seed_planned_work_order(context, stock):
         actor=ACTOR,
     )
     quote = converted["quote"]
-    for target in ("internal_review", "sent", "revision_requested"):
-        quote = await b2b.transition_quote(
-            quote["id"],
-            target_status=target,
-            expected_version=quote["version"],
-            operation_id=operation_id(),
-            reason=f"Menuju {target}",
-            actor=ACTOR,
-        )
     quote = await b2b.create_quote_revision(
         quote["id"],
         expected_version=quote["version"],
         operation_id=operation_id(),
-        reason="Menambahkan item katalog",
-        scope_snapshot={"company": "PT Contoh Industri"},
+        reason="Initial commercial authoring",
+        scope_snapshot=dict(SUBMISSION),
         items=[
             {
                 "description": "Desk sign biru",
@@ -164,7 +154,7 @@ async def seed_planned_work_order(context, stock):
         total_minor=None,
         actor=ACTOR,
     )
-    for target in ("internal_review", "sent", "accepted"):
+    for target in ("internal_review", "sent"):
         quote = await b2b.transition_quote(
             quote["id"],
             target_status=target,
@@ -173,6 +163,17 @@ async def seed_planned_work_order(context, stock):
             reason=f"Menuju {target}",
             actor=ACTOR,
         )
+    quote = await b2b.accept_quote(
+        quote["id"],
+        expected_version=quote["version"],
+        operation_id=operation_id(),
+        reason="Customer approval recorded",
+        approver={"name": "Ayu", "identity": "ayu@example.com"},
+        accepted_at=datetime.now(timezone.utc),
+        channel="email",
+        evidence_reference="email-thread-allocation-integration",
+        actor=ACTOR,
+    )
     created = await b2b.create_project_from_quote(
         quote["id"],
         expected_version=quote["version"],
@@ -283,9 +284,7 @@ async def run_shortage_reserves_nothing(database_name):
         assert current["mat-ply"]["reserved"] == Decimal("0")
         assert await database.inventory_reservations.count_documents({}) == 0
         assert (
-            await database.stock_movements.count_documents(
-                {"movement_type": "reserve"}
-            )
+            await database.stock_movements.count_documents({"movement_type": "reserve"})
             == 0
         )
 

@@ -4,7 +4,15 @@ from typing import Any
 
 from catalog_inventory_indexes import INDEX_DECLARATIONS as CATALOG_INDEX_DECLARATIONS
 
-REQUIRED_SCHEMA_VERSION = "007_security_publication_schema"
+MIGRATION_007_VERSION = "007_security_publication_schema"
+AUTH_RECOVERY_MIGRATION_VERSION = "008_auth_recovery_safety"
+ADMIN_SESSION_MIGRATION_VERSION = "009_admin_session_safety"
+REQUIRED_SCHEMA_VERSIONS = (
+    MIGRATION_007_VERSION,
+    AUTH_RECOVERY_MIGRATION_VERSION,
+    ADMIN_SESSION_MIGRATION_VERSION,
+)
+REQUIRED_SCHEMA_VERSION = REQUIRED_SCHEMA_VERSIONS[-1]
 
 CORE_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
     {
@@ -369,4 +377,92 @@ CORE_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
 
 INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
     CORE_INDEX_DECLARATIONS + CATALOG_INDEX_DECLARATIONS
+)
+
+# Migration 008 replaces Migration 007's reset-token indexes. The original
+# declarations remain immutable evidence for Migration 007, while readiness
+# validates only the post-008 state.
+RETIRED_INDEX_NAMES = frozenset(
+    {
+        "uq_password_reset_hash",
+        "ttl_password_reset_expiry",
+    }
+)
+
+AUTH_RECOVERY_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
+    {
+        "collection": "password_reset_tokens",
+        "keys": "token_hash",
+        "options": {
+            "name": "unique_password_reset_token_hash",
+            "unique": True,
+        },
+    },
+    {
+        "collection": "password_reset_tokens",
+        "keys": "user_id",
+        "options": {
+            "name": "one_active_password_reset_token_per_user",
+            "unique": True,
+            "partialFilterExpression": {"active": True},
+        },
+    },
+)
+
+ADMIN_SESSION_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
+    {
+        "collection": "admin_sessions",
+        "keys": "access_hash",
+        "options": {
+            "name": "unique_admin_session_access_secret_hash",
+            "unique": True,
+        },
+    },
+    {
+        "collection": "admin_sessions",
+        "keys": "session_hash",
+        "options": {
+            "name": "unique_admin_session_session_secret_hash",
+            "unique": True,
+        },
+    },
+    {
+        "collection": "admin_sessions",
+        "keys": [
+            ("user_id", 1),
+            ("revoked_at", 1),
+            ("access_expires_at", 1),
+        ],
+        "options": {"name": "admin_session_user_active_expiry"},
+    },
+    {
+        "collection": "admin_sessions",
+        "keys": "rotated_session_hashes",
+        "options": {"name": "admin_session_rotated_secret_lookup"},
+    },
+    {
+        "collection": "admin_sessions",
+        "keys": "revoked_at",
+        "options": {"name": "admin_session_revoked_retention"},
+    },
+    {
+        "collection": "admin_sessions",
+        "keys": "idle_expires_at",
+        "options": {"name": "admin_session_idle_retention"},
+    },
+    {
+        "collection": "admin_sessions",
+        "keys": "absolute_expires_at",
+        "options": {"name": "admin_session_absolute_retention"},
+    },
+)
+
+READINESS_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
+    tuple(
+        declaration
+        for declaration in INDEX_DECLARATIONS
+        if declaration["options"]["name"] not in RETIRED_INDEX_NAMES
+    )
+    + AUTH_RECOVERY_INDEX_DECLARATIONS
+    + ADMIN_SESSION_INDEX_DECLARATIONS
 )

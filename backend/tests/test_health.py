@@ -8,7 +8,6 @@ from database_capabilities import (
 )
 from tests.test_identity_foundation import server
 
-
 CHECKED_AT = "2026-07-17T09:00:00+00:00"
 
 
@@ -27,10 +26,21 @@ async def get(path, capabilities):
         server.db = HealthDatabase()
         server.app.state.database_capabilities = capabilities
         server.app.state.schema_status = {
-            "required_version": "007_security_publication_schema",
+            "required_version": "009_admin_session_safety",
+            "required_versions": [
+                "007_security_publication_schema",
+                "008_auth_recovery_safety",
+                "009_admin_session_safety",
+            ],
+            "migrations": {
+                "007_security_publication_schema": True,
+                "008_auth_recovery_safety": True,
+                "009_admin_session_safety": True,
+            },
             "applied": True,
             "indexes_ready": True,
             "missing_index_count": 0,
+            "retired_index_count": 0,
             "ready": True,
         }
         async with httpx.AsyncClient(
@@ -79,10 +89,21 @@ def test_readiness_reports_transaction_capability_when_available():
         "database": "ready",
         "transaction_mutations": "ready",
         "schema": {
-            "required_version": "007_security_publication_schema",
+            "required_version": "009_admin_session_safety",
+            "required_versions": [
+                "007_security_publication_schema",
+                "008_auth_recovery_safety",
+                "009_admin_session_safety",
+            ],
+            "migrations": {
+                "007_security_publication_schema": True,
+                "008_auth_recovery_safety": True,
+                "009_admin_session_safety": True,
+            },
             "applied": True,
             "indexes_ready": True,
             "missing_index_count": 0,
+            "retired_index_count": 0,
             "ready": True,
         },
         "capabilities": {
@@ -116,10 +137,21 @@ def test_readiness_is_degraded_without_disabling_public_liveness():
         "database": "ready",
         "transaction_mutations": "unavailable",
         "schema": {
-            "required_version": "007_security_publication_schema",
+            "required_version": "009_admin_session_safety",
+            "required_versions": [
+                "007_security_publication_schema",
+                "008_auth_recovery_safety",
+                "009_admin_session_safety",
+            ],
+            "migrations": {
+                "007_security_publication_schema": True,
+                "008_auth_recovery_safety": True,
+                "009_admin_session_safety": True,
+            },
             "applied": True,
             "indexes_ready": True,
             "missing_index_count": 0,
+            "retired_index_count": 0,
             "ready": True,
         },
         "capabilities": {

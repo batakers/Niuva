@@ -21,6 +21,7 @@ import { formatApiError } from "../../lib/api";
 import { catalogApi, emptyProductDraft, normalizeValidationErrors } from "../../lib/catalog";
 import { hasPermission } from "../../lib/permissions";
 import { AdminLayout } from "./AdminLayout";
+import { DevelopmentMediaUpload } from "../../components/admin/DevelopmentMediaUpload";
 
 
 const emptyVariant = () => ({
@@ -58,6 +59,7 @@ export default function ProductEditor() {
   const canWrite = hasPermission(user, "catalog.write");
   const canPublish = hasPermission(user, "catalog.publish");
   const canArchive = hasPermission(user, "catalog.archive");
+  const canUploadMedia = hasPermission(user, "media.write");
   const isNew = productId === "new";
   const [draft, setDraft] = useState(emptyProductDraft);
   const [variants, setVariants] = useState([]);
@@ -235,7 +237,7 @@ export default function ProductEditor() {
           <Field label={t("catalog.description")} error={validation.description}><Textarea value={draft.description || ""} onChange={set("description")} disabled={!canWrite} rows={7} /></Field>
         </Section></TabsContent>
 
-        <TabsContent value="media"><Section title={t("catalog.media")} action={canWrite && <Button size="sm" variant="outline" onClick={() => setDraft((current) => ({ ...current, media: [...current.media, { storage_path: "", alt: "" }] }))}><Plus className="mr-2 h-4 w-4" />{t("common.add")}</Button>}>
+        <TabsContent value="media"><Section title={t("catalog.media")} action={canWrite && <div className="flex flex-wrap items-center justify-end gap-2">{canUploadMedia && <DevelopmentMediaUpload disabled={busy} onUploaded={(media) => setDraft((current) => ({ ...current, media: [...current.media, { storage_path: media.reference, alt: media.original_filename }] }))} />}<Button size="sm" variant="outline" onClick={() => setDraft((current) => ({ ...current, media: [...current.media, { storage_path: "", alt: "" }] }))}><Plus className="mr-2 h-4 w-4" />{t("common.add")}</Button></div>}>
           {draft.media.length === 0 && <EmptyState frame="dashed">{t("catalog.noMedia")}</EmptyState>}
           {draft.media.map((item, index) => <div key={`${index}-${item.storage_path}`} className="grid gap-3 border border-border-default p-3 md:grid-cols-[1fr_1fr_auto]">
             <Field label={t("catalog.storagePath")}><Input value={item.storage_path} onChange={(event) => updateMedia(index, "storage_path", event.target.value)} disabled={!canWrite} /></Field>

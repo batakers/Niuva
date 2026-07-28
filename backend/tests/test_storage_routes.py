@@ -10,7 +10,6 @@ import pytest
 from fastapi import HTTPException
 from starlette.datastructures import UploadFile
 
-
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
@@ -28,6 +27,18 @@ from tests.auth_support import AuthCollection  # noqa: E402
 class FileDatabase:
     def __init__(self, metadata):
         self.file_objects = AuthCollection(metadata)
+
+
+class MediaObjects:
+    def __init__(self, *, fail=False):
+        self.rows = []
+        self.fail = fail
+
+    async def insert_one(self, document):
+        if self.fail:
+            raise RuntimeError("injected metadata failure")
+        self.rows.append(dict(document))
+        return types.SimpleNamespace(inserted_id=document["id"])
 
 
 @pytest.fixture
@@ -67,11 +78,33 @@ def test_store_upload_does_not_trust_client_content_type(local_storage_root):
     assert storage.get_object(metadata["storage_path"])[1] == "image/png"
 
 
+def test_store_upload_enforces_size_while_reading_without_persisting_partial_data(
+    local_storage_root,
+):
+    async def run():
+        upload = UploadFile(
+            filename="oversized.stl",
+            file=io.BytesIO(b"x" * (64 * 1024 + 1)),
+        )
+        return await server.store_upload(
+            upload,
+            "orders/customer-1",
+            {"stl"},
+            max_size=64 * 1024,
+        )
+
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(run())
+    assert caught.value.status_code == 400
+    assert caught.value.detail == "File exceeds size limit"
+    assert [path for path in local_storage_root.rglob("*") if path.is_file()] == []
+
+
 def test_store_upload_maps_storage_failure_to_controlled_http_error(monkeypatch):
     def fail_store(*_args, **_kwargs):
         raise storage.StorageError("disk details must stay private")
 
-    monkeypatch.setattr(storage, "put_object", fail_store)
+    monkeypatch.setattr(storage, "put_file_object", fail_store)
 
     async def run():
         upload = UploadFile(filename="part.stl", file=io.BytesIO(b"solid part"))
@@ -98,7 +131,161 @@ def test_disabled_storage_upload_returns_controlled_503(monkeypatch):
     assert caught.value.detail == "File storage unavailable"
 
 
-def test_file_download_requires_authorization_header_and_safe_media_type(local_storage_root, monkeypatch):
+def test_development_media_upload_validates_signature_and_persists_ownership(
+    local_storage_root,
+    monkeypatch,
+):
+    objects = MediaObjects()
+    monkeypatch.setattr(server, "db", types.SimpleNamespace(file_objects=objects))
+
+    async def run():
+        upload = UploadFile(
+            filename="../../catalog-cover.png",
+            file=io.BytesIO(b"\x89PNG\r\n\x1a\nimage"),
+            headers={"content-type": "text/html"},
+        )
+        return await server.upload_admin_media(
+            upload,
+            {"id": "staff-content", "roles": ["content_editor"]},
+        )
+
+    result = asyncio.run(run())
+    assert result["owner_id"] == "staff-content"
+    assert result["reference"] == f"media:{result['id']}"
+    assert result["original_filename"] == "catalog-cover.png"
+    assert result["content_type"] == "image/png"
+    assert result["state"] == "active"
+    assert objects.rows == [result]
+    assert (
+        (local_storage_root / result["storage_path"])
+        .read_bytes()
+        .startswith(b"\x89PNG\r\n\x1a\n")
+    )
+
+
+def test_development_media_upload_rejects_extension_spoof_without_writing(
+    local_storage_root,
+    monkeypatch,
+):
+    objects = MediaObjects()
+    monkeypatch.setattr(server, "db", types.SimpleNamespace(file_objects=objects))
+
+    async def run():
+        upload = UploadFile(
+            filename="not-an-image.png",
+            file=io.BytesIO(b"<script>alert(1)</script>"),
+        )
+        return await server.upload_admin_media(
+            upload,
+            {"id": "staff-content", "roles": ["content_editor"]},
+        )
+
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(run())
+    assert caught.value.status_code == 400
+    assert caught.value.detail["code"] == "media_signature_invalid"
+    assert objects.rows == []
+    assert list(local_storage_root.rglob("*")) == []
+
+
+def test_public_media_requires_an_active_immutable_publication(
+    local_storage_root,
+    monkeypatch,
+):
+    path = "niuva/media/public/cover.png"
+    storage.put_object(path, b"\x89PNG\r\n\x1a\nimage", "image/png")
+    monkeypatch.setattr(
+        server,
+        "db",
+        FileDatabase(
+            [
+                {
+                    "id": "media-public",
+                    "storage_path": path,
+                    "purpose": "admin_media",
+                    "state": "active",
+                }
+            ]
+        ),
+    )
+
+    async def unpublished(_reference):
+        return False
+
+    monkeypatch.setattr(server, "_public_media_is_published", unpublished)
+    with pytest.raises(HTTPException) as hidden:
+        asyncio.run(server.download_public_media("media-public"))
+    assert hidden.value.status_code == 404
+
+    async def published(reference):
+        return reference == "media:media-public"
+
+    monkeypatch.setattr(server, "_public_media_is_published", published)
+
+    async def published_response():
+        response = await server.download_public_media("media-public")
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        return response, body
+
+    response, body = asyncio.run(published_response())
+    assert body == b"\x89PNG\r\n\x1a\nimage"
+    assert response.media_type == "image/png"
+    assert response.headers["content-length"] == str(len(body))
+    assert response.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_development_media_upload_compensates_failed_metadata_write(
+    local_storage_root,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        server,
+        "db",
+        types.SimpleNamespace(file_objects=MediaObjects(fail=True)),
+    )
+
+    async def run():
+        upload = UploadFile(
+            filename="cover.webp",
+            file=io.BytesIO(b"RIFF\x04\x00\x00\x00WEBPdata"),
+        )
+        return await server.upload_admin_media(
+            upload,
+            {"id": "staff-content", "roles": ["content_editor"]},
+        )
+
+    with pytest.raises(RuntimeError, match="metadata failure"):
+        asyncio.run(run())
+    assert [path for path in local_storage_root.rglob("*") if path.is_file()] == []
+
+
+def test_development_media_upload_stays_disabled_in_production(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    objects = MediaObjects()
+    monkeypatch.setattr(server, "db", types.SimpleNamespace(file_objects=objects))
+
+    async def run():
+        upload = UploadFile(
+            filename="cover.png",
+            file=io.BytesIO(b"\x89PNG\r\n\x1a\nimage"),
+        )
+        return await server.upload_admin_media(
+            upload,
+            {"id": "staff-content", "roles": ["content_editor"]},
+        )
+
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(run())
+    assert caught.value.status_code == 503
+    assert caught.value.detail["code"] == "development_media_upload_inactive"
+    assert objects.rows == []
+
+
+def test_file_download_requires_authorization_header_and_safe_media_type(
+    local_storage_root, monkeypatch
+):
     path = "niuva/orders/customer-1/model.stl"
     storage.put_object(path, b"solid part", "model/stl")
     monkeypatch.setattr(
@@ -124,8 +311,16 @@ def test_file_download_requires_authorization_header_and_safe_media_type(local_s
 
     async def fake_user(token):
         users = {
-            "owner": {"id": "customer-1", "email": "owner@example.com", "role": "client"},
-            "other": {"id": "customer-2", "email": "other@example.com", "role": "client"},
+            "owner": {
+                "id": "customer-1",
+                "email": "owner@example.com",
+                "role": "client",
+            },
+            "other": {
+                "id": "customer-2",
+                "email": "other@example.com",
+                "role": "client",
+            },
             "staff": {
                 "id": "staff-1",
                 "email": "staff@niuva.com",
@@ -177,11 +372,19 @@ def test_file_download_requires_authorization_header_and_safe_media_type(local_s
 
     async def run():
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="https://testserver") as api:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="https://testserver"
+        ) as api:
             owner = await api.get(f"/api/files/{path}", params={"auth": "owner"})
-            owner_header = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer owner"})
-            other = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer other"})
-            staff = await api.get(f"/api/files/{path}", headers={"Authorization": "Bearer staff"})
+            owner_header = await api.get(
+                f"/api/files/{path}", headers={"Authorization": "Bearer owner"}
+            )
+            other = await api.get(
+                f"/api/files/{path}", headers={"Authorization": "Bearer other"}
+            )
+            staff = await api.get(
+                f"/api/files/{path}", headers={"Authorization": "Bearer staff"}
+            )
             api.cookies.set(server.ACCESS_COOKIE_NAME, "admin-cookie")
             staff_cookie = await api.get(f"/api/files/{path}")
             missing = await api.get(
@@ -235,7 +438,9 @@ def test_disabled_storage_download_returns_controlled_503(monkeypatch):
 
     async def run():
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as api:
             return await api.get(
                 f"/api/files/{path}",
                 headers={"Authorization": "Bearer owner"},
@@ -247,7 +452,9 @@ def test_disabled_storage_download_returns_controlled_503(monkeypatch):
     assert response.json()["error"]["code"] == "http_503"
 
 
-def test_file_download_forces_active_metadata_to_binary(local_storage_root, monkeypatch):
+def test_file_download_forces_active_metadata_to_binary(
+    local_storage_root, monkeypatch
+):
     path = "niuva/orders/customer-1/payload.html"
     storage.put_object(path, b"<script>alert(1)</script>", "text/html")
     monkeypatch.setattr(
@@ -272,7 +479,9 @@ def test_file_download_forces_active_metadata_to_binary(local_storage_root, monk
 
     async def run():
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as api:
             return await api.get(
                 f"/api/files/{path}",
                 headers={"Authorization": "Bearer owner"},

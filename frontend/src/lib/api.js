@@ -91,6 +91,40 @@ export function fileUrl(path) {
   return `${API}/files/${normalized}`;
 }
 
+export function resolveMediaUrl(reference) {
+  const value = String(reference || "").trim();
+  const mediaMatch = /^media:([A-Za-z0-9-]+)$/.exec(value);
+  if (mediaMatch) return `${API}/media/${encodeURIComponent(mediaMatch[1])}`;
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const parsed = new URL(value);
+    return (
+      parsed.protocol === "https:" &&
+      !parsed.username &&
+      !parsed.password
+    ) ? value : "";
+  } catch {
+    return "";
+  }
+}
+
+export function safeExternalUrl(value) {
+  const candidate = String(value || "").trim();
+  try {
+    const parsed = new URL(candidate);
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password
+    ) {
+      return "";
+    }
+    return candidate;
+  } catch {
+    return "";
+  }
+}
+
 export async function fetchFile(path, options = {}) {
   const method = String(options.method || "GET").toUpperCase();
   const headers = new Headers(options.headers);

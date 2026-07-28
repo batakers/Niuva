@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HAS_CONFIGURED_BACKEND } from "@/lib/api";
+import { HAS_CONFIGURED_BACKEND, resolveMediaUrl } from "@/lib/api";
 import {
   availabilityLabel,
   formatCatalogPrice,
@@ -45,6 +45,10 @@ export default function RetailProductPage() {
       : "Produk Retail - Niuva";
   }, [state.value]);
 
+  const productImage = resolveMediaUrl(
+    state.value?.product?.media?.[0]?.storage_path,
+  );
+
   return (
     <MarketingLayout>
       <BrandPage>
@@ -79,17 +83,24 @@ export default function RetailProductPage() {
               <div className="mt-8 grid gap-10 lg:grid-cols-2 lg:items-start">
                 <div
                   className="grid aspect-[4/3] place-items-center rounded-feature bg-decoration-brand-soft p-8 text-center ring-1 ring-border-default"
-                  role="img"
-                  aria-label={state.value.product.media?.[0]?.alt || state.value.product.name}
+                  role={productImage ? undefined : "img"}
+                  aria-label={productImage ? undefined : (state.value.product.media?.[0]?.alt || state.value.product.name)}
                 >
-                  <div>
+                  {productImage ? (
+                    <img
+                      src={productImage}
+                      alt={state.value.product.media?.[0]?.alt || state.value.product.name}
+                      className="h-full w-full object-cover"
+                      decoding="async"
+                    />
+                  ) : <div>
                     <p className="font-mono-tech text-xs font-semibold uppercase tracking-widest text-text-primary">
                       Niuva Retail
                     </p>
                     <p className="mt-4 font-heading text-3xl font-bold text-text-primary">
                       {state.value.product.name}
                     </p>
-                  </div>
+                  </div>}
                 </div>
                 <div>
                   <p className="type-label text-text-secondary">{state.value.category.name}</p>

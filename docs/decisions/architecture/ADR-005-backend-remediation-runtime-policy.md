@@ -52,6 +52,34 @@ evidence of the prior decision state.
   quantities.
 - Growing public catalog reads use cursor pagination.
 
+### Owner clarification — 28 July 2026
+
+The owner approved the following reconciliation details after reviewing the
+initial implementation:
+
+- `catalog_manager` may create/edit draft prices and submit a publication
+  candidate. Only `manager_approver` may publish, roll back publication, or
+  perform a price override. Additive multi-role accounts retain both
+  permissions, and every sensitive action is audited. Older wording that lets
+  Catalog Manager publish directly is superseded.
+- A Quote version may contain the same `variant_id` on multiple rows. Every row
+  has a unique `quote_line_id`; a Work Order references both
+  `source_quote_version_id` and `quote_line_id`, and the cumulative cap is
+  enforced independently per exact line.
+- Authorized CMS staff may create, edit, archive/restore, and order capability
+  blocks. Delete means archive/soft delete. A slug is unique and stable when a
+  title changes. Public publication still requires `manager_approver`.
+- Migration 007 backup evidence must include environment, database, timezone-
+  aware backup time, checksum algorithm/value, credential-free location,
+  reviewer, passed restore test, and approval window, all explicitly bound to
+  Migration 007. A backup without a restore test is insufficient.
+- Historical portfolio version order is unknown. Migration preflight must stop
+  on empty, duplicate, non-sequential, or ambiguously active revision history;
+  it may not assume the last embedded element is authoritative.
+- NIV-001 remains `open` / verification pending. Historical credentials remain
+  at risk until reviewed rotation/revocation evidence exists, and history
+  rewrite still needs separate destructive-operation approval.
+
 ### Capability boundary
 
 - The first Retail slice is read-only catalog discovery with a secondary,

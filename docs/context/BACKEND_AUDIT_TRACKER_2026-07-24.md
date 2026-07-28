@@ -126,6 +126,56 @@ Backend tetap belum production-ready karena:
 8. payment provider, shipping, tax, refund, storage, production-readiness, dan
    go-live decisions tetap terbuka.
 
+### 3.1 Reconciliation update — 28 July 2026
+
+This dated subsection supersedes older status text for the named finding IDs
+below. The older entries remain as audit history and must not be used to infer
+the current source state.
+
+| Current remediation phase | Status | Remaining gate |
+|---|---|---|
+| Phase 0 — governance/containment | `partial` | NIV-001 rotation/revocation evidence and any history-rewrite rehearsal still require separate approval |
+| Phase 1 — security/auth/runtime | `implemented_with_needs_clarification` | `ADR-005` conflicts with `DEC-AUTH-004`/`DEC-AUTH-005` on password policy, Admin lifetime, route/response contract, and bootstrap prerequisites |
+| Phase 2 — schema/data integrity | `implemented_in_source` | 007→008→009 clone rehearsal, reviewed backup/restore evidence, non-production apply, and production rollout are not executed |
+| Phase 3 — Retail discovery | `implemented_in_source` | staging performance/accessibility evidence; every transaction capability remains inactive |
+| Phase 4 — active frontend/backend integration | `implemented_in_source` | manual Admin browser matrix requires approved HTTPS staging origins and dedicated role accounts |
+| Phase 5 — active-scope business logic | `implemented_in_source` | historical compatibility fixtures require migration preflight; excluded checkout/payment/production-storage policy remains unresolved |
+| Phase 6 — quality/operations | `partial` | NIV-001 keeps the real history secret-scan red; alert/metrics provider and numerical performance thresholds are unapproved; staging, outage/recovery, backup/restore, and documentation rehearsal remain operational work |
+
+Current finding reconciliation:
+
+- `BA-004`: `resolved`; local `pip-audit` reports no known backend
+  vulnerabilities.
+- `BA-005`: remains `open`; the corrected complete-history Gitleaks scan finds
+  six real NIV-001 historical findings. They are not ignored.
+- `BA-007`: `resolved_for_active_scope`; all legacy order creation, estimate,
+  payment verification, status, and bulk mutation paths are denied, while
+  historical reads remain available.
+- `BA-008`: `resolved_for_active_development_scope`; local media now uses
+  bounded streaming upload/download, signature validation, DB ownership/state,
+  compensation, and published-snapshot authorization. Malware scanning and a
+  production provider remain outside the active capability and keep production
+  upload inactive.
+- `BA-009`: `resolved_in_source`; the named content/catalog/portfolio/settings/
+  identity/material/inventory/B2B mutation groups use the shared transaction/
+  CAS boundary, including real replica-set regression.
+- `BA-010`: `implemented_with_needs_clarification`; Mongo login/public limiters,
+  reset single-use/revocation, cookie/CSRF boundaries, safe HTML, and
+  customer/staff separation are present. The governing password/Admin-session
+  conflict above prevents final closure.
+- `BA-013`: `partial_operational`; hermetic backend/frontend suites, Retail
+  Playwright, compile, fatal lint, focused mypy, formatting, dependency audits,
+  build, and manual external-Admin workflow exist. NIV-001 and unexecuted
+  staging jobs prevent a green production-readiness claim.
+- Durable notification delivery is now used by Admin messages, inventory
+  alerts, canonical inquiries, and retained legacy contact intake. Provider
+  delivery remains worker-owned with atomic lease, retry/backoff, and exhausted
+  state; local verification does not replace an approved staging outage/recovery
+  exercise.
+
+Latest verified evidence is maintained in
+[`docs/implementation/history/2026-07-27-backend-remediation-retail-discovery.md`](../implementation/history/2026-07-27-backend-remediation-retail-discovery.md).
+
 ## 4. Verification Evidence
 
 ### 4.1 Reconciled internal backend suite — 27 July 2026

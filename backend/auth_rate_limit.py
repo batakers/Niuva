@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
@@ -12,6 +13,7 @@ WINDOW_SECONDS = 15 * 60
 ACCOUNT_FAILURE_LIMIT = 5
 PEER_FAILURE_LIMIT = 20
 GENERIC_LIMIT_MESSAGE = "Terlalu banyak percobaan login. Coba lagi nanti."
+logger = logging.getLogger("niuva.auth_rate_limit")
 
 
 class LoginRateLimiter:
@@ -44,6 +46,15 @@ class LoginRateLimiter:
 
     @staticmethod
     def _raise_limited(retry_after: int) -> None:
+        logger.warning(
+            "auth_rate_limit_blocked",
+            extra={
+                "auth_rate_limit": {
+                    "event": "blocked",
+                    "retry_after_seconds": retry_after,
+                }
+            },
+        )
         raise HTTPException(
             status_code=429,
             detail=GENERIC_LIMIT_MESSAGE,
@@ -143,6 +154,16 @@ class PublicRateLimiter:
         record = await self.collection.find_one({"_id": key}, {"count": 1})
         if record and int(record.get("count", 0)) > limit:
             retry_after = max(1, int((expires_at - now).total_seconds()))
+            logger.warning(
+                "public_rate_limit_blocked",
+                extra={
+                    "public_rate_limit": {
+                        "event": "blocked",
+                        "scope": scope,
+                        "retry_after_seconds": retry_after,
+                    }
+                },
+            )
             raise HTTPException(
                 status_code=429,
                 detail=detail,

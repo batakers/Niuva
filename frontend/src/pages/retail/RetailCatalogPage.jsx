@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HAS_CONFIGURED_BACKEND } from "@/lib/api";
+import { HAS_CONFIGURED_BACKEND, resolveMediaUrl } from "@/lib/api";
 import {
   availabilityLabel,
   formatCatalogPrice,
@@ -22,18 +22,27 @@ import {
 
 
 function ProductVisual({ product }) {
+  const image = resolveMediaUrl(product.media?.[0]?.storage_path);
   return (
     <div
       className="grid aspect-[4/3] place-items-center rounded-card bg-decoration-brand-soft p-6 text-center ring-1 ring-border-default"
-      role="img"
-      aria-label={(product.media?.[0]?.alt || `Visual ${product.name}`)}
+      role={image ? undefined : "img"}
+      aria-label={image ? undefined : (product.media?.[0]?.alt || `Visual ${product.name}`)}
     >
-      <div>
+      {image ? (
+        <img
+          src={image}
+          alt={product.media?.[0]?.alt || `Visual ${product.name}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+      ) : <div>
         <span className="font-mono-tech text-xs font-semibold uppercase tracking-widest text-text-primary">
           Niuva Retail
         </span>
         <p className="mt-3 font-heading text-xl font-bold text-text-primary">{product.name}</p>
-      </div>
+      </div>}
     </div>
   );
 }

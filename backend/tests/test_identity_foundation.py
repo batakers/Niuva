@@ -20,7 +20,9 @@ os.environ.setdefault("JWT_SECRET", "identity-test-secret-at-least-32-characters
 os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
 os.environ.setdefault("PUBLIC_SITE_URL", "https://testserver")
-os.environ.setdefault("AUTH_SESSION_CSRF_KEY", "identity-test-csrf-key-at-least-32-bytes")
+os.environ.setdefault(
+    "AUTH_SESSION_CSRF_KEY", "identity-test-csrf-key-at-least-32-bytes"
+)
 
 
 resend_module = types.ModuleType("resend")
@@ -40,6 +42,44 @@ def configure_password_writes(monkeypatch, tmp_path, *, enabled):
     blocklist.write_text("known compromised phrase\n", encoding="utf-8")
     monkeypatch.setenv("AUTH_PASSWORD_BLOCKLIST_PATH", str(blocklist))
     monkeypatch.setenv("AUTH_ARGON2_WRITES_ENABLED", "true" if enabled else "false")
+
+
+def test_development_password_blocklist_resolves_from_backend_root(monkeypatch):
+    monkeypatch.setenv(
+        "AUTH_PASSWORD_BLOCKLIST_PATH",
+        "config/password-blocklist.development.txt",
+    )
+
+    passwords = server.get_password_module()
+
+    assert passwords.blocklist.contains("adminpassword") is True
+
+
+def test_bootstrap_rejects_an_unusable_admin_email_before_writing(monkeypatch):
+    database = FakeDatabase([])
+    original_database = server.db
+    server.db = database
+    monkeypatch.setenv("ADMIN_EMAIL", "admin@example.test")
+    try:
+        with pytest.raises(RuntimeError, match="ADMIN_EMAIL must be a valid email"):
+            asyncio.run(server.seed())
+    finally:
+        server.db = original_database
+
+    assert database.users.items == []
+
+
+def test_settings_schema_rejects_unsafe_public_links_and_invalid_email():
+    payload = {
+        "expected_version": 1,
+        "reason": "Update public contact profile",
+        "legal_name": "PT Niuva Inovasi Utama",
+        "email": "hello@example.com",
+    }
+    with pytest.raises(server.ValidationError):
+        server.SettingsReq(**{**payload, "maps_url": "javascript:alert(1)"})
+    with pytest.raises(server.ValidationError):
+        server.SettingsReq(**{**payload, "email": "not-an-email"})
 
 
 class FakeCursor:
@@ -170,7 +210,9 @@ class FakeCollection:
                 for key in update.get("$unset", {}):
                     item.pop(key, None)
                 modified_count += 1
-        return types.SimpleNamespace(matched_count=modified_count, modified_count=modified_count)
+        return types.SimpleNamespace(
+            matched_count=modified_count, modified_count=modified_count
+        )
 
     async def count_documents(self, query, **options):
         self.operations.append(("count_documents", dict(options)))
@@ -438,9 +480,13 @@ def test_identity_migration_is_dry_run_safe_and_idempotent():
 async def run_staff_invitation_and_access_lifecycle():
     owner = make_user("owner-lifecycle", "owner-lifecycle@niuva.com", ["super_admin"])
     owner["password_hash"] = server.hash_password("OwnerLifecycle123")
-    warehouse = make_user("warehouse-lifecycle", "warehouse-lifecycle@niuva.com", ["warehouse"])
+    warehouse = make_user(
+        "warehouse-lifecycle", "warehouse-lifecycle@niuva.com", ["warehouse"]
+    )
     warehouse["password_hash"] = server.hash_password("WarehouseLifecycle123")
-    customer = make_user("customer-lifecycle", "customer-lifecycle@example.com", ["retail_customer"])
+    customer = make_user(
+        "customer-lifecycle", "customer-lifecycle@example.com", ["retail_customer"]
+    )
     database = FakeDatabase([owner, warehouse, customer])
     server.db = database
     guard = FakeTransactionGuard(database)
@@ -471,7 +517,9 @@ async def run_staff_invitation_and_access_lifecycle():
             },
         )
         assert customer_conversion.status_code == 409
-        assert customer_conversion.json()["detail"]["code"] == "customer_account_boundary"
+        assert (
+            customer_conversion.json()["detail"]["code"] == "customer_account_boundary"
+        )
 
         invite_payload = {
             "name": "Staff Baru",
@@ -533,9 +581,14 @@ async def run_staff_invitation_and_access_lifecycle():
         assert changed.json()["version"] == 2
         stored_staff = await database.users.find_one({"id": staff["id"]})
         assert stored_staff["token_version"] == 1
-        assert next(
-            item for item in database.admin_sessions.items if item["id"] == role_session.session_id
-        )["revocation_reason"] == "identity_access_changed"
+        assert (
+            next(
+                item
+                for item in database.admin_sessions.items
+                if item["id"] == role_session.session_id
+            )["revocation_reason"]
+            == "identity_access_changed"
+        )
         assert (await staff_api.request("GET", "/api/auth/me")).status_code == 401
 
         stale = await owner_api.request(
@@ -558,9 +611,14 @@ async def run_staff_invitation_and_access_lifecycle():
         assert deactivated.json()["version"] == 3
         stored_staff = await database.users.find_one({"id": staff["id"]})
         assert stored_staff["token_version"] == 2
-        assert next(
-            item for item in database.admin_sessions.items if item["id"] == status_session.session_id
-        )["revocation_reason"] == "identity_access_changed"
+        assert (
+            next(
+                item
+                for item in database.admin_sessions.items
+                if item["id"] == status_session.session_id
+            )["revocation_reason"]
+            == "identity_access_changed"
+        )
         blocked_login = await api.post(
             "/api/auth/admin/login",
             json={"email": staff["email"], "password": "StaffBaruPassword123"},
@@ -571,12 +629,17 @@ async def run_staff_invitation_and_access_lifecycle():
         reactivated = await owner_api.request(
             "POST",
             f"/api/admin/staff/{staff['id']}/reactivate",
-            json={"expected_version": 3, "reason": "Akses operasional dibutuhkan kembali"},
+            json={
+                "expected_version": 3,
+                "reason": "Akses operasional dibutuhkan kembali",
+            },
         )
         assert reactivated.status_code == 200
         assert reactivated.json()["status"] == "active"
         assert reactivated.json()["version"] == 4
-        assert (await database.users.find_one({"id": staff["id"]}))["token_version"] == 3
+        assert (await database.users.find_one({"id": staff["id"]}))[
+            "token_version"
+        ] == 3
 
     session_updates = [
         options
@@ -606,7 +669,6 @@ def test_staff_invitation_and_access_lifecycle_is_audited_and_versioned(
         asyncio.run(run_staff_invitation_and_access_lifecycle())
     finally:
         server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
-
 
 
 async def run_legacy_admin_route_permission_matrix():
@@ -744,6 +806,9 @@ async def run_canonical_account_creation_contract():
     assert seeded_admin["access_state"] == "approved"
     assert seeded_admin["role_policy_version"] == server.ROLE_POLICY_VERSION
     assert "role" not in seeded_admin
+    assert database.materials.items == []
+    assert database.portfolio.items == []
+    assert database.portfolio_revisions.items == []
 
     original_hash = seeded_admin["password_hash"]
     assert original_hash.startswith("$argon2id$")
@@ -788,7 +853,9 @@ async def run_password_write_gate_contract():
         }
     )
     transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         response = await api.post(
             "/api/auth/staff-invitations/accept",
             json={

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import httpx
 
-
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
@@ -16,7 +15,9 @@ os.environ.setdefault("JWT_SECRET", "notifications-test-secret-at-least-32-chara
 os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
 os.environ.setdefault("PUBLIC_SITE_URL", "https://testserver")
-os.environ.setdefault("AUTH_SESSION_CSRF_KEY", "notifications-test-csrf-key-at-least-32-bytes")
+os.environ.setdefault(
+    "AUTH_SESSION_CSRF_KEY", "notifications-test-csrf-key-at-least-32-bytes"
+)
 
 
 resend_module = types.ModuleType("resend")
@@ -25,8 +26,8 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
-from tests.auth_support import AuthCollection  # noqa: E402
 
+from tests.auth_support import AuthCollection  # noqa: E402
 
 ORIGIN = {"Origin": "https://testserver"}
 
@@ -104,7 +105,9 @@ class FakeCollection:
     def _matches(item, query):
         for key, expected in query.items():
             if key == "$or":
-                if not any(FakeCollection._matches(item, clause) for clause in expected):
+                if not any(
+                    FakeCollection._matches(item, clause) for clause in expected
+                ):
                     return False
                 continue
             actual = item.get(key)
@@ -139,7 +142,11 @@ class FakeCollection:
         return types.SimpleNamespace(inserted_id=item.get("id"))
 
     def find(self, query, projection=None):
-        matched = [self._project(item, projection) for item in self.items if self._matches(item, query)]
+        matched = [
+            self._project(item, projection)
+            for item in self.items
+            if self._matches(item, query)
+        ]
 
         class _Cursor:
             def __init__(self, values):
@@ -185,26 +192,48 @@ class PassthroughGuard:
 
 def build_users():
     admin = {
-        "id": "admin-1", "name": "Notify Admin", "email": "admin@niuva.com",
+        "id": "admin-1",
+        "name": "Notify Admin",
+        "email": "admin@niuva.com",
         "password_hash": server.hash_password("AdminPassword123"),
-        "phone": "", "company": "Niuva", "roles": ["order_admin"],
-        "status": "active", "access_state": "approved", "created_at": server.now_iso(),
+        "phone": "",
+        "company": "Niuva",
+        "roles": ["order_admin"],
+        "status": "active",
+        "access_state": "approved",
+        "created_at": server.now_iso(),
     }
     warehouse = {
-        "id": "warehouse-1", "name": "Warehouse Staff", "email": "warehouse@niuva.com",
+        "id": "warehouse-1",
+        "name": "Warehouse Staff",
+        "email": "warehouse@niuva.com",
         "password_hash": server.hash_password("WarehousePassword123"),
-        "phone": "", "company": "Niuva", "roles": ["warehouse"],
-        "status": "active", "access_state": "approved", "created_at": server.now_iso(),
+        "phone": "",
+        "company": "Niuva",
+        "roles": ["warehouse"],
+        "status": "active",
+        "access_state": "approved",
+        "created_at": server.now_iso(),
     }
     customer_a = {
-        "id": "customer-a", "name": "Customer A", "email": "customer-a@example.com",
+        "id": "customer-a",
+        "name": "Customer A",
+        "email": "customer-a@example.com",
         "password_hash": server.hash_password("CustomerAPassword123"),
-        "phone": "", "company": "", "role": "client", "created_at": server.now_iso(),
+        "phone": "",
+        "company": "",
+        "role": "client",
+        "created_at": server.now_iso(),
     }
     customer_b = {
-        "id": "customer-b", "name": "Customer B", "email": "customer-b@example.com",
+        "id": "customer-b",
+        "name": "Customer B",
+        "email": "customer-b@example.com",
         "password_hash": server.hash_password("CustomerBPassword123"),
-        "phone": "", "company": "", "role": "client", "created_at": server.now_iso(),
+        "phone": "",
+        "company": "",
+        "role": "client",
+        "created_at": server.now_iso(),
     }
     return admin, warehouse, customer_a, customer_b
 
@@ -232,14 +261,24 @@ async def run_admin_notifications_matrix():
         forbidden = await warehouse_api.request(
             "POST",
             "/api/admin/notifications",
-            json={"target": "user", "user_id": customer_a["id"], "subject": "Hi", "message": "Hello there"},
+            json={
+                "target": "user",
+                "user_id": customer_a["id"],
+                "subject": "Hi",
+                "message": "Hello there",
+            },
         )
         assert forbidden.status_code == 403
 
         to_user = await admin_api.request(
             "POST",
             "/api/admin/notifications",
-            json={"target": "user", "user_id": customer_a["id"], "subject": "Update pesanan", "message": "Pesanan Anda diperbarui."},
+            json={
+                "target": "user",
+                "user_id": customer_a["id"],
+                "subject": "Update pesanan",
+                "message": "Pesanan Anda diperbarui.",
+            },
         )
         assert to_user.status_code == 200
         assert to_user.json()["recipient_count"] == 1
@@ -247,22 +286,38 @@ async def run_admin_notifications_matrix():
         missing_user = await admin_api.request(
             "POST",
             "/api/admin/notifications",
-            json={"target": "user", "user_id": "no-such-user", "subject": "Halo", "message": "Pesan uji"},
+            json={
+                "target": "user",
+                "user_id": "no-such-user",
+                "subject": "Halo",
+                "message": "Pesan uji",
+            },
         )
         assert missing_user.status_code == 404
 
         to_segment = await admin_api.request(
             "POST",
             "/api/admin/notifications",
-            json={"target": "segment", "segment": "active_orders", "subject": "Info produksi", "message": "Produksi berjalan normal."},
+            json={
+                "target": "segment",
+                "segment": "active_orders",
+                "subject": "Info produksi",
+                "message": "Produksi berjalan normal.",
+            },
         )
         assert to_segment.status_code == 200
-        assert to_segment.json()["recipient_count"] == 1  # only customer_a has an active-status order
+        assert (
+            to_segment.json()["recipient_count"] == 1
+        )  # only customer_a has an active-status order
 
         to_broadcast = await admin_api.request(
             "POST",
             "/api/admin/notifications",
-            json={"target": "broadcast", "subject": "Pengumuman", "message": "Libur produksi minggu ini."},
+            json={
+                "target": "broadcast",
+                "subject": "Pengumuman",
+                "message": "Libur produksi minggu ini.",
+            },
         )
         assert to_broadcast.status_code == 200
         assert to_broadcast.json()["recipient_count"] == 2
@@ -271,7 +326,9 @@ async def run_admin_notifications_matrix():
         assert history.status_code == 200
         assert len(history.json()) == 3
 
-        history_forbidden = await warehouse_api.request("GET", "/api/admin/notifications/sent")
+        history_forbidden = await warehouse_api.request(
+            "GET", "/api/admin/notifications/sent"
+        )
         assert history_forbidden.status_code == 403
 
         # Every successful enqueue lands in the outbox and shared audit log.
@@ -288,4 +345,29 @@ async def run_admin_notifications_matrix():
 
 def test_admin_notifications_permission_targets_and_history():
     import asyncio
+
     asyncio.run(run_admin_notifications_matrix())
+
+
+def test_operational_email_is_persisted_for_the_delivery_worker():
+    async def scenario():
+        server.db = FakeDatabase([])
+
+        queued = await server.queue_operational_email(
+            notification_id="inquiry:inquiry-1",
+            recipient="operations@example.com",
+            subject="Inquiry baru",
+            title="Inquiry Proyek Baru",
+            body_html="<p>Brief aman</p>",
+        )
+
+        assert queued["status"] == "pending"
+        assert queued["attempts"] == 0
+        assert queued["notification_id"] == "inquiry:inquiry-1"
+        assert queued["recipient"] == "operations@example.com"
+        assert queued["payload"]["body_html"] == "<p>Brief aman</p>"
+        assert len(server.db.notification_outbox.items) == 1
+
+    import asyncio
+
+    asyncio.run(scenario())

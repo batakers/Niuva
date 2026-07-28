@@ -1,4 +1,9 @@
-import { downloadFile, fileUrl } from "./api";
+import {
+  downloadFile,
+  fileUrl,
+  resolveMediaUrl,
+  safeExternalUrl,
+} from "./api";
 
 test("file URLs never contain bearer tokens", () => {
   const url = fileUrl("niuva/orders/customer-1/part.stl");
@@ -22,4 +27,25 @@ test("downloadFile uses the HttpOnly cookie session", async () => {
     expect.objectContaining({ credentials: "include" }),
   );
   expect(fetch.mock.calls[0][0]).not.toContain("auth=");
+});
+
+test("media references resolve through the controlled public endpoint", () => {
+  expect(resolveMediaUrl("media:file-123")).toContain("/api/media/file-123");
+  expect(resolveMediaUrl("https://images.example/cover.webp")).toBe(
+    "https://images.example/cover.webp",
+  );
+  expect(resolveMediaUrl("/assets/cover.webp")).toBe("/assets/cover.webp");
+  expect(resolveMediaUrl("//tracker.example/cover.webp")).toBe("");
+  expect(resolveMediaUrl("http://images.example/cover.webp")).toBe("");
+  expect(resolveMediaUrl("https://user:secret@images.example/cover.webp")).toBe("");
+  expect(resolveMediaUrl("javascript:alert(1)")).toBe("");
+});
+
+test("accepts only credential-free HTTPS public links", () => {
+  expect(safeExternalUrl("https://maps.example/location")).toBe(
+    "https://maps.example/location",
+  );
+  expect(safeExternalUrl("javascript:alert(1)")).toBe("");
+  expect(safeExternalUrl("https://user:secret@example.com/path")).toBe("");
+  expect(safeExternalUrl("http://example.com/path")).toBe("");
 });

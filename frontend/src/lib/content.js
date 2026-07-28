@@ -86,8 +86,15 @@ export const CONTENT_TYPE_SCHEMAS = {
 
 function emptyValueFor(field) {
   if (field.type === "itemList" || field.type === "stringList") return [];
-  if (field.type === "number") return "";
+  if (field.type === "number") return 0;
   return "";
+}
+
+export function coerceContentFieldValue(field, value) {
+  if (field.type !== "number") return value;
+  if (value === "") return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function emptyFieldsFor(contentType) {
