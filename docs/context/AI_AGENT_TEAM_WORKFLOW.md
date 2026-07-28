@@ -14,7 +14,7 @@ Gunakan tiga peran berikut untuk setiap task. Satu orang boleh berganti peran
 di task berikutnya, tetapi tiap task hanya memiliki satu **Driver**.
 
 | Peran | Tanggung jawab manusia | Batas AI agent |
-|---|---|---|
+| --- | --- | --- |
 | Driver | Menentukan scope, membuat branch/worktree, menjalankan agent, dan menyiapkan PR. | Boleh mengubah hanya scope yang disetujui. |
 | Reviewer aturan | Memeriksa authority, keputusan terbuka, data/privacy, dan scope creep. | Tidak mengubah aturan bisnis tanpa approval. |
 | Verifier | Menjalankan atau meninjau test, diff, aksesibilitas, dan bukti handover. | Tidak menyatakan selesai bila bukti belum ada. |
@@ -29,7 +29,7 @@ Rotasi peran tidak menghilangkan kejelasan keahlian. Untuk tim ini, gunakan
 pembagian default berikut; Project Lead tetap dapat meminta review lintas-area.
 
 | Anggota | Fokus utama | Tanggung jawab integrasi |
-|---|---|---|
+| --- | --- | --- |
 | Faiz - Project Lead dan Integrator | pemilihan phase/slice, dependency, kontrak lintas layer, urutan merge, dan review akhir | integration/E2E, keputusan yang perlu dieskalasi, serta status roadmap setelah ada evidence yang cukup |
 | Dimas - Backend, Data, dan Security | route/service, business logic, auth, authorization, MongoDB, transaksi, dan backend test | menjaga contract backend serta bukti negative-path dan data-safety |
 | Dirga - Frontend, UI/UX, dan Accessibility | React, API client, state, route protection, form/state, responsive, a11y, dan browser test | menjaga consumer contract, keyboard/focus, state kegagalan, dan browser evidence |
@@ -45,7 +45,7 @@ AI. Rotasikan peran per task atau per minggu agar semua orang memahami produk,
 risiko, dan cara memverifikasi hasil. Contoh satu siklus:
 
 | Task | Driver | Reviewer aturan | Verifier |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | A: bug frontend terbatas | Dirga | Dimas | Faiz |
 | B: endpoint atau data backend | Dimas | Dirga | Faiz |
 | C: dokumentasi atau audit | Faiz | Dimas | Dirga |
@@ -97,7 +97,7 @@ perubahan lokal dan melaporkan hasilnya.
 Untuk pekerjaan remediation, catat tiga tingkat identitas ini pada task card:
 
 | Tingkat | Arti | Contoh |
-|---|---|---|
+| --- | --- | --- |
 | Finding ID | masalah audit yang dibuktikan pada baseline tertentu | `BE-011`, `SEC-003`, `FE-008` |
 | Phase ID | kelompok kerja yang bergantung pada decision dan dependency tertentu | `PHASE-01B` |
 | Task ID | slice kecil yang dapat diverifikasi dan direview sendiri | `TASK-01B-02` |
@@ -121,7 +121,7 @@ docs/implementation/production-readiness/
 Gunakan keduanya bersama-sama, dengan fungsi yang berbeda:
 
 | Tujuan | File yang dibaca | Hasil yang dicatat di task card |
-|---|---|---|
+| --- | --- | --- |
 | Memahami baseline dan batas audit | `AUDIT_INDEX.md`, `AUDIT_BASELINE.md`, `AUDIT_METHODOLOGY.md` | SHA audit, freshness note, dan batas evidence |
 | Membuktikan finding asal | `layers/01-...md` sampai `layers/11-...md` yang relevan | Finding ID, severity, evidence path, dan status historis |
 | Menentukan apakah finding masih berlaku dan terkelompok | `FINDING_TRACEABILITY.md` | status revalidation, dependencies, decision, dan finding duplikat/tergabung |
@@ -207,7 +207,7 @@ Paralelkan **penemuan dan verifikasi**, bukan edit pada file atau worktree yang
 sama. Gunakan matriks ini sebelum menjalankan beberapa agent:
 
 | Kondisi | Boleh paralel? | Cara aman |
-|---|---|---|
+| --- | --- | --- |
 | Dua orang mengubah file yang sama atau satu kontrak API | Tidak | Satu Driver menyelesaikan slice lebih dulu. |
 | Backend dan frontend bergantung pada kontrak yang belum final | Tidak | Selesaikan decision/kontrak, lalu pecah task. |
 | Audit source, audit dokumen, dan penyusunan test matrix | Ya | Read-only di worktree atau clone terpisah; satu catatan temuan. |
@@ -248,7 +248,7 @@ jelas, minta agent mendiagnosis dulu, bukan langsung memperbaiki.
 Gunakan prompt berbeda agar agent tidak mencampur discovery, perubahan, dan
 penilaian hasil.
 
-**Discovery oleh Reviewer aturan**
+#### Discovery oleh Reviewer aturan
 
 ```text
 Audit read-only untuk Task <ID>. Baca authority yang disebutkan, lalu petakan:
@@ -257,7 +257,7 @@ dan acceptance criteria. Jangan mengubah file dan jangan memilih business rule
 yang belum disetujui. Laporkan evidence dengan path dan line bila tersedia.
 ```
 
-**Implementasi oleh Driver**
+#### Implementasi oleh Driver
 
 ```text
 Implementasikan Task <ID> hanya pada scope yang disetujui. Pertahankan semua
@@ -266,7 +266,7 @@ commit/push/PR. Bila authority, kontrak, atau test bertentangan, berhenti dan
 laporkan blocker. Sesudah perubahan, jalankan verifikasi yang ditentukan.
 ```
 
-**Verifikasi oleh Verifier**
+#### Verifikasi oleh Verifier
 
 ```text
 Review Task <ID> secara independen. Jangan mempercayai ringkasan sebelumnya
@@ -293,7 +293,7 @@ Tambahkan guardrail sesuai layer pada prompt implementasi:
 Driver membagi task besar menjadi slice yang dapat dihentikan, misalnya:
 
 | Slice | Contoh keluaran |
-|---|---|
+| --- | --- |
 | Penemuan | authority, file map, risiko, dan acceptance matrix |
 | Implementasi | perubahan terbatas pada file yang disetujui |
 | Verifikasi | test, lint/build, manual check, dan known limitations |
@@ -306,7 +306,7 @@ catat sebagai follow-up task.
 ### Pilih mode kerja sesuai jenis task
 
 | Jenis task | Urutan kerja | Batas penting |
-|---|---|---|
+| --- | --- | --- |
 | Perbaikan kecil yang jelas | Driver -> Verifier -> PR review | Satu branch; jangan menambah refactor. |
 | Bug belum jelas | Reviewer discovery -> Driver diagnosis -> Verifier | Jangan melakukan fix sebelum penyebab dan scope dibuktikan. |
 | Fitur lintas frontend/backend | Authority/kontrak -> backend atau contract slice -> frontend -> integrasi | Pisahkan PR bila dependency belum bisa di-merge bersama. |
@@ -367,7 +367,7 @@ gunakan status seperti `implemented_pending_verification` atau
 ## Ritme kerja tim bertiga
 
 | Waktu | Driver | Reviewer aturan | Verifier |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Mulai task | Membuat task card dan worktree | Mengonfirmasi authority/scope | Mengonfirmasi acceptance dan check |
 | Saat implementasi | Menjalankan agent dan menjaga scope | Menjawab/eskalasi keputusan | Menyiapkan test/manual matrix |
 | Sebelum PR | Menyiapkan diff dan handover | Review aturan, privacy, dan scope | Menjalankan/meninjau verifikasi |
