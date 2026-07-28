@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, clearAdminCsrfToken, setAdminCsrfToken } from "../lib/api";
 
 const AuthContext = createContext(null);
@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessExpiresAt, setAccessExpiresAt] = useState(null);
+  const adminBootstrapRefreshRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -15,9 +16,28 @@ export function AuthProvider({ children }) {
     setUser(null);
     setAccessExpiresAt(null);
     if (!adminSurface) clearAdminCsrfToken();
-    const bootstrap = adminSurface
-      ? api.post("/auth/admin/session/refresh")
-      : api.get("/auth/me");
+    let bootstrap;
+    if (adminSurface) {
+      if (!adminBootstrapRefreshRef.current) {
+        const request = api.post("/auth/admin/session/refresh");
+        adminBootstrapRefreshRef.current = request;
+        request.then(
+          () => {
+            if (adminBootstrapRefreshRef.current === request) {
+              adminBootstrapRefreshRef.current = null;
+            }
+          },
+          () => {
+            if (adminBootstrapRefreshRef.current === request) {
+              adminBootstrapRefreshRef.current = null;
+            }
+          },
+        );
+      }
+      bootstrap = adminBootstrapRefreshRef.current;
+    } else {
+      bootstrap = api.get("/auth/me");
+    }
     bootstrap
       .then(({ data }) => {
         if (!active) return;

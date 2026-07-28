@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { api } from "../lib/api";
@@ -39,6 +39,7 @@ function renderProbe() {
 }
 
 afterEach(() => {
+  window.history.pushState({}, "", "/");
   jest.resetAllMocks();
   api.interceptors.response.use.mockReturnValue("interceptor-id");
 });
@@ -63,6 +64,30 @@ test("bootstraps the current user from the cookie session", async () => {
   await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
   expect(api.get).toHaveBeenCalledWith("/auth/me");
   expect(screen.getByTestId("user")).toHaveTextContent("Existing User");
+});
+
+test("deduplicates the Admin bootstrap refresh under StrictMode", async () => {
+  window.history.pushState({}, "", "/admin");
+  api.post.mockResolvedValue({
+    data: {
+      csrf_token: "csrf-token",
+      access_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      user: { id: "admin-1", name: "Admin User" },
+    },
+  });
+
+  render(
+    <StrictMode>
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    </StrictMode>,
+  );
+
+  await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+  expect(api.post).toHaveBeenCalledTimes(1);
+  expect(api.post).toHaveBeenCalledWith("/auth/admin/session/refresh");
+  expect(screen.getByTestId("user")).toHaveTextContent("Admin User");
 });
 
 test("login sets the user without writing a browser token", async () => {

@@ -6,6 +6,40 @@ Audit source baseline: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
 Normalization source: Layer 01-11 audit registers, especially
 `layers/11-production-readiness-summary.md`.
 
+## PHASE-00A selected-candidate revalidation map
+
+**Decision record:** Faiz selected
+`d04e3f009d6c815c0a4d99dfa5c93553da3cef43` as the local release-candidate
+baseline under `DR-001` on 29 July 2026 (Asia/Jakarta). This is an immutable
+Git object, and audit baseline `c28684d34c03505ea2f862f32c6edc24b1d7bfba` is
+its ancestor. At selection time it equals local `origin/main`; remote freshness
+was not checked by a fetch and is therefore unverified.
+
+**Change evidence:** `git diff --name-only
+c28684d34c03505ea2f862f32c6edc24b1d7bfba...d04e3f009d6c815c0a4d99dfa5c93553da3cef43`
+returns 240 committed paths (88 `backend/`, 65 `frontend/`, 71 `docs/`, 7
+`doc/`, 4 CI workflows, and 5 other repository-control paths). The local
+`frontend/jsconfig.json` modification is outside that committed comparison and
+is preserved as user work. This is a changed-path map, not a re-audit and not
+closure evidence.
+
+Every canonical finding below remains open, blocked, partial, or
+`requires_revalidation` as already recorded. The selected SHA's scope requires
+the following grouped revalidation; no row is promoted to `resolved` by this
+matrix, commit history, or test presence alone.
+
+| Candidate changed scope | Canonical findings requiring current treatment | Required PHASE-00A treatment |
+| --- | --- | --- |
+| Candidate ancestry, audit/planning records, and repository controls | Freshness and release-candidate baseline; Governance, compatibility, and evidence provenance | Record the selected SHA and compare all later evidence against it; retain `SUM-FRESH-001` / `GOV-017` until current evidence is reviewed. |
+| `.gitleaksignore`, credential-history records, and security governance documents | NIV-001 credential incident | Retain P0/open status. Require the existing runbook, secret-safe independent verification, and an approved closure or time-bound accepted risk; no scan or commit proves closure. |
+| `auth_*`, password policy, identity routes, sessions, and their backend/frontend tests | Admin session, MFA, and access-review boundary; Recovery, password, bootstrap, and secret atomicity; Distributed abuse protection; Admin identity, permission, and selector parity | Revalidate on the selected SHA with the approved auth/access decisions, browser/session evidence, and real replica-set negative paths where required. Open topology, MFA, and rollout decisions remain blocked. |
+| Storage, legacy-order/Retail, catalog, inventory, and customer-facing route/test changes | File ownership, content validation, and storage boundary; Legacy order integrity and customer-note privacy; Retail payment and fulfilment capability enforcement; Provider activation boundary | Revalidate object/field/capability boundaries and safe customer projections. Do not infer a storage or payment provider, Finance policy, or production activation. |
+| Transaction, B2B Quote/Work Order, schema, and migration changes | Transaction guard and idempotency consistency; Quote-line identity, references, uniqueness, and retention; Migration, live schema, backup, and restore safety | Revalidate fail-closed transaction and line-identity behavior. Retain migration and historic-data stop conditions pending DR-006, DR-012, approved runbooks, and isolated evidence. |
+| Notification, CMS, portfolio, and readiness changes | Notification schema, delivery, recipient projection, and audit privacy; CMS/Portfolio permission, concurrency, and orphan promotion; API transport, validation, failure, and envelope | Revalidate the contract and customer-safe/auditable lifecycle behavior. Retain notification, Portfolio, compatibility, and CMS consumer decisions where open. |
+| Public, Retail, B2B, Admin, and customer frontend/API changes | Unified Homepage, customer account, and Retail journey parity; B2B organization/customer portal parity; Objective accessibility and factual-state defects; Surface direction and typography conflicts | Revalidate only approved journeys and objective UI facts. Retail/B2B navigation, portal, content, and deferred visual decisions remain blocked unless separately approved. |
+| CI workflows, browser/E2E configuration, health/readiness, worker, and release artifacts | Release artifact, readiness, deployment, and network evidence; Observability, background lifecycle, timeout, and capacity; QA and release gates | Revalidate against a controlled environment. Local/static evidence cannot replace the missing CI, browser, staging, telemetry, topology, or operational-drill evidence. |
+| Package manifests/locks, dependency audit script, and broad backend/frontend maintenance changes | Package/runtime reproducibility; Dependency vulnerability and lifecycle risk; Maintainability, query, and frontend performance debt | Revalidate with the eventually approved runtime/lock/gate policy, compatibility evidence, and performance/quality thresholds. Do not treat changed manifests or passing local checks as a release disposition. |
+
 ## Normalization rules
 
 - Every source finding remains retained in this register; 120 source IDs map to

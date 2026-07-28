@@ -2,13 +2,13 @@
 
 Status: Planning and Assignment Context — Not Implementation Authority
 
-Last updated: 2026-07-28 (Asia/Jakarta)
+Last updated: 2026-07-29 (Asia/Jakarta)
 Planning baseline: c28684d34c03505ea2f862f32c6edc24b1d7bfba
 Authority: this coordination register is subordinate to the Master Spec, Document Register, Decision Register, applicable decision/ADR, and runbook.
 
 ## Purpose, boundary, and assignment vocabulary
 
-This register decomposes the remediation roadmap into stoppable units with one primary owner. It preserves finding traceability and does not turn an audit recommendation, branch name, worktree name, task ID, or passing test into implementation authority. The selected release-candidate SHA remains open in DR-001 and NIV-001 disposition remains open in DR-002. All proposed branches/worktrees are reserved names only; none was created while preparing this document.
+This register decomposes the remediation roadmap into stoppable units with one primary owner. It preserves finding traceability and does not turn an audit recommendation, branch name, worktree name, task ID, or passing test into implementation authority. Faiz selected `d04e3f009d6c815c0a4d99dfa5c93553da3cef43` under DR-001 on 29 July 2026; the selected-SHA map passed the recorded team review. NIV-001 disposition remains open in DR-002. All proposed branches/worktrees are reserved names only; none was created while preparing this document.
 
 Team labels: Lead = Project Lead and Integrator; Backend = Backend, Database, and Security Engineer; Frontend = Frontend, UI/UX, and Accessibility Engineer.
 
@@ -31,11 +31,11 @@ Planning phases may update only named readiness documents after review. They do 
 
 | Phase ID | Phase | Findings | Owner | Reviewer | Verifier | Dependency | Branch | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| PHASE-00A | RC baseline selection | SUM-FRESH-001; GOV-017 | Lead | Backend | Frontend | DR-001 | plan/phase-00a-rc-baseline | planning_ready |
+| PHASE-00A | RC baseline selection | SUM-FRESH-001; GOV-017 | Lead | Backend | Frontend | DR-001 | plan/phase-00a-rc-baseline | review_passed; revalidation remains required |
 | PHASE-00B | NIV-001 disposition | SEC-001; OPS-010 | Lead | Backend | Independent verifier | DR-002; NIV-001 runbook | evidence/phase-00b-niv-disposition | human_decision_blocked |
 | PHASE-00C | Migration stop conditions | DB-005 to DB-012; DB-014; OPS-005/006; QA-004; GOV-013 | Backend | Lead | Lead | 00A; DR-012 | plan/phase-00c-migration-stops | pending_decision |
-| PHASE-00D | Authority/provenance reconciliation | GOV-011/014/015/017; OPS-011/012 | Lead | Backend | Frontend | 00A | plan/phase-00d-authority-reconciliation | planning_only |
-| PHASE-01A | Auth/session/recovery revalidation | FE-002/003; BE-008; DB-002; INT-004; SEC-002/004/005/007/013 | Backend | Lead | Frontend | 00A; DR-003; DEC-AUTH-003 to 005 | remediate/phase-01a-auth-revalidation | requires_revalidation |
+| PHASE-00D | Authority/provenance reconciliation | GOV-011/014/015/017; OPS-011/012 | Lead | Backend | Frontend | 00A | plan/phase-00d-authority-reconciliation | ready_for_independent_review; planning-only |
+| PHASE-01A | Auth/session/recovery revalidation | FE-002/003; BE-008; DB-002; INT-004; SEC-002/004/005/007/013 | Backend | Lead | Frontend | 00A; DR-003; DEC-AUTH-003 to 005 | remediate/phase-01a-auth-revalidation | bounded_local_evidence_passed; AI_re-review_passed; human_independent_review_unavailable; browser_refresh_retest_passed |
 | PHASE-01B | Runtime authorization and privacy | FE-004; BE-005/007; INT-005/006/010; SEC-008/009 | Backend | Lead | Frontend | 01A; DEC-ACCESS-002; DR-007 | remediate/phase-01b-authz-privacy | decision_blocked |
 | PHASE-01C | Transaction, quote, and payment integrity | BE-002/003/004; DB-003/004/013; INT-003/009 | Backend | Lead | Frontend | 01B; DR-006; ADR-001/003; DEC-PAY-02 | remediate/phase-01c-transaction-commercial | decision_blocked |
 | PHASE-01D | Abuse/MFA decision package | SEC-003/006/007; DEC-AUTH-006/007 gaps | Lead | Backend | Frontend | 01A; DR-004/005 | plan/phase-01d-abuse-mfa | human_decision_blocked |
