@@ -1,5 +1,12 @@
 # Niuva Cross-Surface Implementation Design System
 
+Status: **Active Guardrail — transitional/current-state implementation
+guidance.**
+
+Provenance: This guardrail is subordinate to the Master Specification, approved
+requirements, applicable decisions and ADRs, runbooks, and current source/test
+evidence. It does not independently authorize implementation.
+
 ## Authority and Scope
 
 This is the active implementation design guardrail for one Niuva website and one
@@ -137,7 +144,7 @@ simulated terminal.
 Preserve the current shared-component contracts: `SurfacePanel`,
 `SurfacePanelHeader`, `TechnicalLabel`, `EmptyState`, and the existing button
 variants (`default`, `secondary`, `outline`, `ghost`, `destructive`, `success`,
-`technical`, `technicalOutline`, and `link`). Preserve their semantic token
+and `link`). Preserve their semantic token
 dependencies while later implementation work aligns their presentation with this
 guidance.
 
