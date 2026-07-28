@@ -1,5 +1,13 @@
 # Niuva Auth Experience Remediation Plan — Pending Reconciliation
 
+Status: **Context Only — Pending Separate Implementation Approval**
+Status recorded: 26 July 2026
+Basis: gate non-otorisasi pada dokumen ini dan
+`docs/context/BACKEND_AUDIT_TRACKER_2026-07-24.md` Section 6
+
+Plan ini bukan backend implementation authority. Perilaku login backend diatur
+oleh `DEC-AUTH-001` dan `DEC-AUTH-002`.
+
 ## Authority and Non-Authorization Gate
 
 This plan is a bounded customer-access planning document. It is subordinate to

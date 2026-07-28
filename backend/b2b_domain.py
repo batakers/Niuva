@@ -1,5 +1,6 @@
 from copy import deepcopy
 from decimal import Decimal
+import uuid
 
 INQUIRY_TRANSITIONS = {
     "new": {"reviewed", "rejected"},
@@ -18,7 +19,7 @@ INQUIRY_ACTIONS = {
 }
 
 QUOTE_ACTIONS = {
-    "draft": ["submit_internal_review"],
+    "draft": ["create_revision", "submit_internal_review"],
     "internal_review": ["send", "return_to_draft"],
     "sent": ["accept", "request_revision", "expire", "reject"],
     "accepted": ["create_project"],
@@ -71,6 +72,7 @@ def build_quote_item_snapshot(
     quantity = int(item["quantity"])
     unit_price_minor = int(item["unit_price_minor"])
     snapshot = {
+        "quote_line_id": str(uuid.uuid4()),
         "description": str(item.get("description", "")).strip(),
         "quantity": quantity,
         # Derived, never taken from the caller: an immutable document must not
@@ -329,6 +331,49 @@ def validate_quote_transition(
         )
     if not reason.strip():
         raise B2BDomainError(422, "reason_required", "Alasan perubahan Quote wajib diisi.")
+
+
+def validate_quote_readiness(version: dict) -> None:
+    """Fail closed before a commercial revision can leave the draft stage."""
+    scope = version.get("scope_snapshot") or {}
+    missing_scope = [
+        field
+        for field in ("company", "pic_name", "pic_email", "need")
+        if not str(scope.get(field) or "").strip()
+    ]
+    items = version.get("items") or []
+    invalid_items = [
+        index
+        for index, item in enumerate(items)
+        if (
+            not str(item.get("description") or "").strip()
+            or not isinstance(item.get("quantity"), int)
+            or item["quantity"] < 1
+            or not isinstance(item.get("unit_price_minor"), int)
+            or item["unit_price_minor"] < 0
+        )
+    ]
+    total_minor = version.get("total_minor")
+    if (
+        missing_scope
+        or not items
+        or invalid_items
+        or not isinstance(total_minor, int)
+        or total_minor <= 0
+    ):
+        raise B2BDomainError(
+            409,
+            "quote_not_ready",
+            "Quote belum memiliki scope dan harga yang siap ditinjau.",
+            details={
+                "missing_scope_fields": missing_scope,
+                "items_required": not items,
+                "invalid_item_indexes": invalid_items,
+                "positive_total_required": (
+                    not isinstance(total_minor, int) or total_minor <= 0
+                ),
+            },
+        )
 
 
 def project_quote(document: dict, current_version: dict | None = None) -> dict:

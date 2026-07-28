@@ -6,14 +6,21 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 
 from catalog_routes import build_catalog_router
 from permissions import has_permission
+from transaction_execution import TransactionExecutor
+from transaction_guard import TransactionMutationGuard
 
 
 class FakeCursor:
     def __init__(self, items):
         self.items = [dict(item) for item in items]
 
-    def sort(self, key, direction):
-        self.items.sort(key=lambda item: item.get(key, 0), reverse=direction < 0)
+    def sort(self, key, direction=None):
+        declarations = key if isinstance(key, list) else [(key, direction)]
+        for field, field_direction in reversed(declarations):
+            self.items.sort(
+                key=lambda item: item.get(field, 0),
+                reverse=field_direction < 0,
+            )
         return self
 
     def limit(self, value):
@@ -31,6 +38,10 @@ class FakeCollection:
     @classmethod
     def matches(cls, item, query):
         for key, expected in query.items():
+            if key == "$or":
+                if not any(cls.matches(item, branch) for branch in expected):
+                    return False
+                continue
             actual = item.get(key)
             if isinstance(expected, dict):
                 if "$ne" in expected and actual == expected["$ne"]:
@@ -38,6 +49,10 @@ class FakeCollection:
                 if "$in" in expected and actual not in expected["$in"]:
                     return False
                 if "$exists" in expected and (key in item) != expected["$exists"]:
+                    return False
+                if "$lt" in expected and not (
+                    actual is not None and actual < expected["$lt"]
+                ):
                     return False
                 continue
             if actual != expected:
@@ -104,6 +119,14 @@ class FakeTransaction:
 
 
 class FakeSession:
+    """Mirrors the driver surface TransactionExecutor drives."""
+
+    def __init__(self):
+        self.in_transaction = False
+        self.committed = 0
+        self.aborted = 0
+        self.ended = False
+
     async def __aenter__(self):
         return self
 
@@ -111,12 +134,37 @@ class FakeSession:
         return False
 
     def start_transaction(self):
+        self.in_transaction = True
         return FakeTransaction()
+
+    async def commit_transaction(self):
+        self.in_transaction = False
+        self.committed += 1
+
+    async def abort_transaction(self):
+        self.in_transaction = False
+        self.aborted += 1
+
+    async def end_session(self):
+        self.ended = True
 
 
 class FakeClient:
+    def __init__(self):
+        self.sessions = []
+
     async def start_session(self):
-        return FakeSession()
+        session = FakeSession()
+        self.sessions.append(session)
+        return session
+
+
+class RecordingSink:
+    def __init__(self):
+        self.events = []
+
+    def __call__(self, event, fields):
+        self.events.append((event, fields["operation_name"]))
 
 
 def permission_dependency(permission):
@@ -139,13 +187,19 @@ def build_test_context():
     db = FakeDatabase()
     client = FakeClient()
     capabilities = types.SimpleNamespace(transactions=True)
+    sink = RecordingSink()
+    guard = TransactionMutationGuard(
+        TransactionExecutor(client, lambda: capabilities, event_sink=sink)
+    )
     app = FastAPI()
+    app.state.transaction_guard = guard
     api = APIRouter(prefix="/api")
     api.include_router(
         build_catalog_router(
             get_db=lambda: db,
             get_client=lambda: client,
             get_capabilities=lambda: capabilities,
+            get_guard=lambda: guard,
             require_permission=permission_dependency,
         )
     )
@@ -212,6 +266,13 @@ async def create_publishable_product(api):
         headers=headers(),
     )
     assert variants.status_code == 200
+    candidate = await api.post(
+        f"/api/admin/products/{product.json()['id']}/validate",
+        json={"reason": "Submit reviewed publication candidate"},
+        headers=headers(),
+    )
+    assert candidate.status_code == 200
+    assert candidate.json()["workflow_status"] == "validated"
     return category.json(), product.json()
 
 
@@ -230,11 +291,22 @@ async def run_publish_and_public_boundary():
         assert published.status_code == 200
         assert published.json()["revision"] == 1
 
+        # The mutation must reach MongoDB through the shared central boundary,
+        # not through a session the service opened for itself.
+        events = app.state.transaction_guard.executor.event_sink.events
+        assert ("transaction_start", "catalog.publish_product") in events
+        assert ("transaction_commit", "catalog.publish_product") in events
+
         public = await api.get("/api/catalog/products/desk-sign")
         assert public.status_code == 200
         body = public.json()
         assert body["product"]["slug"] == "desk-sign"
         assert body["variants"][0]["stock_status"] == "out_of_stock"
+        assert body["cta_state"] == "discovery_only"
+        listing = await api.get("/api/catalog/products?limit=24")
+        assert listing.status_code == 200
+        assert listing.json()["next_cursor"] is None
+        assert listing.json()["items"][0]["product"]["slug"] == "desk-sign"
         serialized = str(body)
         for internal in (
             "supplier_reference",
@@ -336,6 +408,19 @@ async def run_draft_isolation_and_rollback():
         assert changed.status_code == 200
         public_before = await api.get("/api/catalog/products/desk-sign")
         assert public_before.json()["product"]["name"] == "Desk Sign"
+        stale_candidate = await api.post(
+            f"/api/admin/products/{product['id']}/publish",
+            json={"reason": "Must not publish an edited draft"},
+            headers=headers(),
+        )
+        assert stale_candidate.status_code == 409
+        assert stale_candidate.json()["detail"]["code"] == "catalog_candidate_required"
+        candidate = await api.post(
+            f"/api/admin/products/{product['id']}/validate",
+            json={"reason": "Submit revised publication candidate"},
+            headers=headers(),
+        )
+        assert candidate.status_code == 200
 
         second = await api.post(
             f"/api/admin/products/{product['id']}/publish",
@@ -513,10 +598,9 @@ async def run_operations_catalog_field_boundary():
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
         category = await api.post("/api/admin/categories", json={"name": "Operations Drafts", "slug": "operations-drafts"}, headers=headers("catalog_manager"))
         assert category.status_code == 201
-        forbidden_product = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Operations Product", "short_description": "Draft copy", "description": "Draft description", "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}], "pricing_mode": "fixed", "price_from": 50000, "currency": "IDR", "pricing_rule_reference": "rule-private"}, headers=headers("catalog_manager"))
-        assert forbidden_product.status_code == 403
-        assert forbidden_product.json()["detail"]["code"] == "catalog_field_forbidden"
-        assert forbidden_product.json()["detail"]["field"] == "pricing_mode"
+        priced_draft = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Operations Product", "short_description": "Draft copy", "description": "Draft description", "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}], "pricing_mode": "fixed", "price_from": 50000, "currency": "IDR", "pricing_rule_reference": "rule-private"}, headers=headers("catalog_manager"))
+        assert priced_draft.status_code == 201
+        assert priced_draft.json()["price_from"] == 50000
         draft = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Operations Draft", "short_description": "Draft copy", "description": "Draft description", "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}]}, headers=headers("catalog_manager"))
         assert draft.status_code == 201, draft.text
         priced = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Owner Priced Product", "short_description": "Original", "description": "Original description", "pricing_mode": "fixed", "price_from": 75000, "currency": "IDR"}, headers=headers("super_admin"))
@@ -525,14 +609,27 @@ async def run_operations_catalog_field_boundary():
         assert operations_update.status_code == 200, operations_update.text
         assert operations_update.json()["pricing_mode"] == "fixed"
         assert operations_update.json()["price_from"] == 75000
-        forbidden_variant = await api.put(f"/api/admin/products/{draft.json()['id']}/variants", json={"variants": [{"sku": "OPS-DRAFT", "name": "Draft", "fixed_price": 50000, "currency": "IDR", "production_type": "made_to_order"}]}, headers=headers("catalog_manager"))
-        assert forbidden_variant.status_code == 403
-        assert forbidden_variant.json()["detail"]["code"] == "catalog_field_forbidden"
+        priced_variant = await api.put(f"/api/admin/products/{draft.json()['id']}/variants", json={"variants": [{"sku": "OPS-DRAFT", "name": "Draft", "fixed_price": 50000, "currency": "IDR", "production_type": "made_to_order"}]}, headers=headers("catalog_manager"))
+        assert priced_variant.status_code == 200
+        assert priced_variant.json()[0]["fixed_price"] == 50000
+        candidate = await api.post(
+            f"/api/admin/products/{draft.json()['id']}/validate",
+            json={"reason": "Catalog manager submits reviewed candidate"},
+            headers=headers("catalog_manager"),
+        )
+        assert candidate.status_code == 200
+        assert candidate.json()["workflow_status"] == "validated"
         assert (await api.post(f"/api/admin/products/{draft.json()['id']}/publish", json={"reason": "Operations cannot publish"}, headers=headers("catalog_manager"))).status_code == 403
+        approved = await api.post(
+            f"/api/admin/products/{draft.json()['id']}/publish",
+            json={"reason": "Manager approves catalog candidate"},
+            headers=headers("manager_approver"),
+        )
+        assert approved.status_code == 200
         assert (await api.post(f"/api/admin/products/{draft.json()['id']}/archive", json={"reason": "Operations cannot archive"}, headers=headers("catalog_manager"))).status_code == 403
 
 
-def test_operations_can_edit_catalog_drafts_without_pricing_or_publish_authority():
+def test_catalog_manager_can_edit_draft_pricing_but_cannot_publish():
     asyncio.run(run_operations_catalog_field_boundary())
 
 
@@ -647,9 +744,9 @@ async def run_operations_cannot_set_variant_status_without_publish_permission():
         )
         assert blocked.status_code == 403
         assert blocked.json()["detail"] == {
-            "code": "catalog_field_forbidden",
+            "code": "catalog_lifecycle_forbidden",
             "field": "status",
-            "message": "Operations cannot write status.",
+            "message": "Only an approver can change variant lifecycle.",
         }
 
         allowed = await api.put(

@@ -29,6 +29,7 @@ sys.modules.setdefault("resend", resend_module)
 
 import emailer  # noqa: E402
 import server  # noqa: E402
+from tests.auth_support import AuthCollection  # noqa: E402
 
 
 class FakeCollection:
@@ -95,9 +96,15 @@ class FakeCollection:
 
 class FakeDatabase:
     def __init__(self, users):
+        for user in users:
+            user.setdefault("role_policy_version", server.ROLE_POLICY_VERSION)
+            user.setdefault("token_version", 0)
         self.users = FakeCollection(users)
         self.password_reset_tokens = FakeCollection()
         self.admin_sessions = FakeCollection()
+        self.auth_sessions = FakeCollection()
+        self.public_rate_limits = AuthCollection()
+        self.login_rate_limits = AuthCollection()
         self.notifications = FakeCollection()
 
 
@@ -210,7 +217,6 @@ def configured_runtime(monkeypatch, tmp_path, users, *, writes_enabled=True):
         get_database=lambda: server.db,
         provider_sender=provider,
     )
-    server._rate_buckets.clear()
     try:
         yield database, provider
     finally:
@@ -220,7 +226,6 @@ def configured_runtime(monkeypatch, tmp_path, users, *, writes_enabled=True):
             delattr(server.app.state, "password_recovery_delivery")
         else:
             server.app.state.password_recovery_delivery = original_delivery
-        server._rate_buckets.clear()
 
 
 def test_recovery_request_contract_origin_and_policy_routes(monkeypatch, tmp_path):
@@ -313,10 +318,8 @@ def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_to
                     json={"email": customer["email"], "password": "OldPassword123"},
                 )
                 assert login_before.status_code == 200
-                old_session = login_before.json()["token"]
-                assert (
-                    await api.get("/api/auth/me", headers=bearer(old_session))
-                ).status_code == 200
+                assert "token" not in login_before.json()
+                assert (await api.get("/api/auth/me")).status_code == 200
 
                 request = await api.post(
                     "/api/auth/forgot-password", json={"email": customer["email"]}
@@ -337,9 +340,7 @@ def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_to
                 assert not any(
                     token["active"] for token in database.password_reset_tokens.items
                 )
-                assert (
-                    await api.get("/api/auth/me", headers=bearer(old_session))
-                ).status_code == 401
+                assert (await api.get("/api/auth/me")).status_code == 401
 
                 old_login = await api.post(
                     "/api/auth/login",
@@ -351,11 +352,8 @@ def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_to
                 )
                 assert old_login.status_code == 401
                 assert new_login.status_code == 200
-                assert (
-                    await api.get(
-                        "/api/auth/me", headers=bearer(new_login.json()["token"])
-                    )
-                ).status_code == 200
+                assert "token" not in new_login.json()
+                assert (await api.get("/api/auth/me")).status_code == 200
 
                 replay = await api.post(
                     "/api/auth/reset-password",

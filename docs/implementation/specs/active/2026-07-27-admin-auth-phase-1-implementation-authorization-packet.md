@@ -236,7 +236,7 @@ No Admin login visual redesign or session transport change is included.
 
 ### 5.7 Non-destructive migration and indexes
 
-Add `backend/migrations/007_auth_recovery_safety.py` with mutually exclusive
+Add `backend/migrations/008_auth_recovery_safety.py` with mutually exclusive
 dry-run, apply, and rollback modes. Dry-run is the default and read-only.
 
 The migration must:
@@ -265,7 +265,7 @@ Proposed new files:
 
 - `backend/auth_password.py`
 - `backend/auth_recovery.py`
-- `backend/migrations/007_auth_recovery_safety.py`
+- `backend/migrations/008_auth_recovery_safety.py`
 - `backend/tests/test_auth_password.py`
 - `backend/tests/test_auth_recovery.py`
 - `backend/tests/test_auth_recovery_migration.py`

@@ -6,6 +6,7 @@ an allowlisted reference, never stored by whoever wrote the notification.
 
 import asyncio
 import types
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -21,6 +22,7 @@ from notification_service import (
     NotificationError,
     NotificationService,
 )
+from notification_worker import NotificationDeliveryWorker
 
 
 class FakeCollection:
@@ -29,7 +31,18 @@ class FakeCollection:
 
     @staticmethod
     def _matches(item, query):
-        return all(item.get(key) == value for key, value in query.items())
+        for key, value in query.items():
+            if key == "$or":
+                if not any(FakeCollection._matches(item, branch) for branch in value):
+                    return False
+                continue
+            actual = item.get(key)
+            if isinstance(value, dict) and "$lte" in value:
+                if actual is None or actual > value["$lte"]:
+                    return False
+            elif actual != value:
+                return False
+        return True
 
     async def insert_one(self, document, **_options):
         self.items.append(dict(document))
@@ -55,6 +68,31 @@ class FakeCollection:
                     item[key] = item.get(key, 0) + amount
                 return types.SimpleNamespace(matched_count=1, modified_count=1)
         return types.SimpleNamespace(matched_count=0, modified_count=0)
+
+    async def find_one_and_update(
+        self,
+        query,
+        update,
+        *,
+        sort=None,
+        projection=None,
+        return_document=None,
+    ):
+        candidates = [item for item in self.items if self._matches(item, query)]
+        for key, direction in reversed(sort or []):
+            candidates.sort(
+                key=lambda item: item.get(key) or datetime.min.replace(tzinfo=timezone.utc),
+                reverse=direction < 0,
+            )
+        if not candidates:
+            return None
+        target = candidates[0]
+        target.update(update.get("$set", {}))
+        return {
+            key: value
+            for key, value in target.items()
+            if not projection or projection.get(key, 1)
+        }
 
     async def update_many(self, query, update, **_options):
         modified = 0
@@ -307,9 +345,10 @@ def test_delivery_is_queued_separately_from_recording():
             payload={"subject": "Material kurang"},
         )
 
-        pending = await service.claim_pending()
+        pending = await service.claim_pending(worker_id="worker-a")
         assert len(pending) == 1
-        assert pending[0]["status"] == "pending"
+        assert pending[0]["status"] == "processing"
+        assert await service.claim_pending(worker_id="worker-b") == []
         # The notification exists whether or not the email ever goes out.
         assert len(db.notifications.items) == 1
 
@@ -327,20 +366,35 @@ def test_a_failed_delivery_is_retried_then_marked_exhausted():
             payload={},
         )
 
+        moment = datetime.now(timezone.utc)
         for attempt in range(1, MAX_DELIVERY_ATTEMPTS):
+            claimed = await service.claim_pending(
+                worker_id="worker-a",
+                at=moment,
+            )
             result = await service.record_delivery_result(
-                entry["id"], delivered=False, error="smtp unavailable"
+                entry["id"],
+                lease_token=claimed[0]["lease_token"],
+                delivered=False,
+                error="smtp unavailable",
+                at=moment,
             )
             assert result["status"] == "pending", attempt
             assert result["attempts"] == attempt
+            moment += timedelta(minutes=10)
 
+        claimed = await service.claim_pending(worker_id="worker-a", at=moment)
         final = await service.record_delivery_result(
-            entry["id"], delivered=False, error="smtp unavailable"
+            entry["id"],
+            lease_token=claimed[0]["lease_token"],
+            delivered=False,
+            error="smtp unavailable",
+            at=moment,
         )
         # Exhausted, not deleted: what never went out stays visible.
         assert final["status"] == "exhausted"
         assert final["last_error"] == "smtp unavailable"
-        assert await service.claim_pending() == []
+        assert await service.claim_pending(worker_id="worker-a", at=moment) == []
 
     asyncio.run(scenario())
 
@@ -355,14 +409,60 @@ def test_a_successful_delivery_clears_the_error():
             recipient="ops@niuva.test",
             payload={},
         )
+        moment = datetime.now(timezone.utc)
+        claimed = await service.claim_pending(worker_id="worker-a", at=moment)
         await service.record_delivery_result(
-            entry["id"], delivered=False, error="temporary"
+            entry["id"],
+            lease_token=claimed[0]["lease_token"],
+            delivered=False,
+            error="temporary",
+            at=moment,
         )
 
-        delivered = await service.record_delivery_result(entry["id"], delivered=True)
+        moment += timedelta(minutes=10)
+        claimed = await service.claim_pending(worker_id="worker-a", at=moment)
+        delivered = await service.record_delivery_result(
+            entry["id"],
+            lease_token=claimed[0]["lease_token"],
+            delivered=True,
+            at=moment,
+        )
 
         assert delivered["status"] == "delivered"
         assert delivered["last_error"] is None
         assert delivered["attempts"] == 2
+
+    asyncio.run(scenario())
+
+
+def test_worker_claim_and_delivery_are_not_duplicated():
+    async def scenario():
+        service, _db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={"subject": "Material kurang"},
+        )
+        calls = []
+
+        async def deliver(entry, *, idempotency_key):
+            calls.append((entry["id"], idempotency_key))
+            return True
+
+        first = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        )
+        second = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-b",
+            deliverers={"email": deliver},
+        )
+        assert (await first.run_once())["delivered"] == 1
+        assert (await second.run_once())["claimed"] == 0
+        assert len(calls) == 1
 
     asyncio.run(scenario())

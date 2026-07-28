@@ -15,13 +15,17 @@ export function ProtectedRoute({ children, permission }) {
     );
   }
   if (!user) {
+    const loginPath = location.pathname.startsWith("/admin") ? "/admin/login" : "/login";
     return (
       <Navigate
-        to="/admin/login"
+        to={loginPath}
         replace
         state={{ from: `${location.pathname}${location.search}${location.hash}` }}
       />
     );
+  }
+  if (!permission && hasPermission(user, "admin.access")) {
+    return <Navigate to="/admin" replace />;
   }
   if (permission && !hasPermission(user, permission)) {
     return <ForbiddenPage />;

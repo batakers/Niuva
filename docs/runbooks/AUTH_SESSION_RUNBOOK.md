@@ -2,7 +2,7 @@
 
 ## Scope
 
-This runbook governs migration `008_admin_session_safety.py`, controlled 90-day
+This runbook governs migration `009_admin_session_safety.py`, controlled 90-day
 session cleanup, Admin cutover/disablement, rollback, monitoring, and handoff. It
 does not authorize shared, staging, or production mutation; deployment;
 production activation; or go-live. Those require separate environment approval,
@@ -43,7 +43,7 @@ From `backend/` against an explicitly approved target (disposable local only
 under the Phase 2 packet):
 
 ```powershell
-python migrations\008_admin_session_safety.py
+python migrations\009_admin_session_safety.py
 ```
 
 Dry-run is default and read-only. It reports only applied state, owned-index
@@ -54,7 +54,7 @@ backup, or session mutation.
 
 ```powershell
 $env:TRANSACTION_MUTATIONS_ENABLED = "true"
-python migrations\008_admin_session_safety.py `
+python migrations\009_admin_session_safety.py `
   --apply `
   --backup "<unused-encrypted-metadata-backup.json>" `
   --encrypted-backup-confirmed
@@ -85,13 +85,13 @@ storage or JavaScript-readable credentials.
 
 ```powershell
 $env:TRANSACTION_MUTATIONS_ENABLED = "true"
-python migrations\008_admin_session_safety.py `
+python migrations\009_admin_session_safety.py `
   --rollback `
   --backup "<verified-encrypted-metadata-backup.json>"
 ```
 
 Rollback validates the redacted backup, removes only migration-owned indexes,
-and transactionally removes only migration `008`'s marker. Re-run dry-run and
+and transactionally removes only Migration 009's marker. Re-run dry-run and
 verify zero owned/TTL indexes. If interrupted into partial state, keep Admin
 issuance disabled and restore the verified full backup in a transaction-capable
 isolated environment; do not issue direct DB repairs.
@@ -107,7 +107,7 @@ for interruption-safe retry.
 Read-only preview:
 
 ```powershell
-python migrations\008_admin_session_safety.py --cleanup --batch-size 250
+python migrations\009_admin_session_safety.py --cleanup --batch-size 250
 ```
 
 Output is aggregate-only: eligible, selected, deleted, and estimated remaining
@@ -116,7 +116,7 @@ restore-tested backup, then use both explicit confirmations:
 
 ```powershell
 $env:TRANSACTION_MUTATIONS_ENABLED = "true"
-python migrations\008_admin_session_safety.py `
+python migrations\009_admin_session_safety.py `
   --apply-cleanup `
   --cleanup-confirmed `
   --encrypted-restore-backup-confirmed `

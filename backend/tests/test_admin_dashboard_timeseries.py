@@ -25,6 +25,7 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+from tests.auth_support import AuthCollection  # noqa: E402
 
 
 ORIGIN = {"Origin": "https://testserver"}
@@ -163,7 +164,11 @@ class FakeCollection:
 
 class FakeDatabase:
     def __init__(self, users, orders=None, stock_movements=None):
+        for user in users:
+            user.setdefault("role_policy_version", server.ROLE_POLICY_VERSION)
+            user.setdefault("token_version", 0)
         self.users = FakeCollection(users)
+        self.login_rate_limits = AuthCollection()
         self.orders = FakeCollection(orders or [])
         self.stock_movements = FakeCollection(stock_movements or [])
         self.notifications = FakeCollection()

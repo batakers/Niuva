@@ -228,4 +228,4 @@ def test_server_wires_the_public_intake_guards():
 
     assert "throttle_intake=throttle_inquiry_intake" in build_call
     assert "notify_inquiry=notify_new_inquiry" in build_call
-    assert 'rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)' in source
+    assert 'await rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)' in source

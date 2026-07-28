@@ -8,10 +8,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from database_capabilities import probe_database_capabilities
+from schema_manifest import ADMIN_SESSION_MIGRATION_VERSION
 from transaction_execution import TransactionExecutor
 from transaction_guard import TransactionMutationGuard
 
-MIGRATION_ID = "008_admin_session_safety"
+MIGRATION_ID = ADMIN_SESSION_MIGRATION_VERSION
 MARKER_COLLECTION = "migration_state"
 MARKER_ID = MIGRATION_ID
 RETENTION_DAYS = 90
@@ -115,7 +116,9 @@ def _write_backup(path, indexes, marker):
     if path.exists():
         raise ValueError("backup_path already exists; refusing to overwrite")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(_backup_document(indexes, marker), indent=2), encoding="utf-8")
+    path.write_text(
+        json.dumps(_backup_document(indexes, marker), indent=2), encoding="utf-8"
+    )
 
 
 def _load_backup(path):
@@ -127,7 +130,7 @@ def _load_backup(path):
         or backup.get("owned_indexes_present") != []
         or backup.get("marker_present") is not False
     ):
-        raise ValueError("invalid or ambiguous migration 008 backup")
+        raise ValueError("invalid or ambiguous migration 009 backup")
     return backup
 
 
@@ -270,8 +273,10 @@ async def cleanup(
     query = _cleanup_filter(cutoff)
     collection = database.admin_sessions
     eligible = await collection.count_documents(query)
-    candidates = await collection.find(query, {"_id": 1}).limit(batch_size).to_list(
-        length=batch_size
+    candidates = (
+        await collection.find(query, {"_id": 1})
+        .limit(batch_size)
+        .to_list(length=batch_size)
     )
     report = {
         "dry_run": not apply,
@@ -341,11 +346,13 @@ async def run_cli(args):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description="Admin session safety migration 008")
+    parser = argparse.ArgumentParser(description="Admin session safety migration 009")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--rollback", action="store_true")
-    mode.add_argument("--cleanup", action="store_true", help="Read-only cleanup preview")
+    mode.add_argument(
+        "--cleanup", action="store_true", help="Read-only cleanup preview"
+    )
     mode.add_argument("--apply-cleanup", action="store_true")
     parser.add_argument("--backup", metavar="UNUSED_ENCRYPTED_BACKUP_PATH")
     parser.add_argument("--encrypted-backup-confirmed", action="store_true")

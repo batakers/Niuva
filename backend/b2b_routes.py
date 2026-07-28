@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+import inspect
 from typing import Literal
 from uuid import UUID
 
@@ -47,7 +49,6 @@ class QuoteTransitionPayload(BaseModel):
         "draft",
         "internal_review",
         "sent",
-        "accepted",
         "revision_requested",
         "expired",
         "rejected",
@@ -81,6 +82,25 @@ class QuoteRevisionPayload(BaseModel):
     total_minor: int | None = Field(default=None, ge=0)
 
 
+class QuoteAcceptancePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_version: int = Field(ge=1)
+    operation_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+    approver_name: str = Field(min_length=2, max_length=120)
+    approver_identity: str = Field(min_length=3, max_length=320)
+    accepted_at: datetime
+    channel: Literal[
+        "email",
+        "signed_document",
+        "meeting_minutes",
+        "messaging",
+        "other",
+    ]
+    evidence_reference: str = Field(min_length=3, max_length=500)
+
+
 class ProjectCommandPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -94,7 +114,7 @@ class ProjectTransitionPayload(ProjectCommandPayload):
 
 
 class WorkOrderCreatePayload(ProjectCommandPayload):
-    variant_id: str = Field(min_length=1, max_length=100)
+    quote_line_id: str = Field(min_length=1, max_length=100)
     quantity: int = Field(gt=0)
 
 
@@ -147,7 +167,9 @@ def build_b2b_router(
     @router.post("/inquiries", status_code=status.HTTP_201_CREATED)
     async def create_inquiry(payload: InquiryPayload, request: Request):
         if throttle_intake is not None:
-            throttle_intake(request)
+            throttle_result = throttle_intake(request)
+            if inspect.isawaitable(throttle_result):
+                await throttle_result
         inquiry = await invoke(service().create_inquiry(payload.model_dump()))
         # A lead is captured the moment it is persisted. Announcing it is a
         # best-effort side effect: a broken mailer must never cost us the lead.
@@ -260,6 +282,29 @@ def build_b2b_router(
             )
         )
 
+    @router.post("/admin/b2b/quotes/{quote_id}/acceptance")
+    async def accept_quote(
+        quote_id: str,
+        payload: QuoteAcceptancePayload,
+        actor: dict = Depends(require_permission("quotes.write")),
+    ):
+        return await invoke(
+            service().accept_quote(
+                quote_id,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                approver={
+                    "name": payload.approver_name,
+                    "identity": payload.approver_identity,
+                },
+                accepted_at=payload.accepted_at,
+                channel=payload.channel,
+                evidence_reference=payload.evidence_reference,
+                actor=actor,
+            )
+        )
+
     @router.post("/admin/b2b/quotes/{quote_id}/project")
     async def create_project(
         quote_id: str,
@@ -319,7 +364,7 @@ def build_b2b_router(
                 expected_version=payload.expected_version,
                 operation_id=str(payload.operation_id),
                 reason=payload.reason,
-                variant_id=payload.variant_id,
+                quote_line_id=payload.quote_line_id,
                 quantity=payload.quantity,
                 actor=actor,
             )
@@ -410,6 +455,14 @@ def build_b2b_router(
                 operation_id=str(payload.operation_id),
                 reason=payload.reason,
                 actor=actor,
+                inventory_service=(
+                    get_inventory_service()
+                    if (
+                        payload.target_status == "cancelled"
+                        and get_inventory_service is not None
+                    )
+                    else None
+                ),
             )
         )
 

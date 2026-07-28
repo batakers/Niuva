@@ -17,6 +17,8 @@ from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 
 from database_capabilities import DatabaseCapabilities  # noqa: E402
 from inventory_service import InventoryError, InventoryService  # noqa: E402
+from transaction_execution import TransactionExecutor  # noqa: E402
+from transaction_guard import TransactionMutationGuard  # noqa: E402
 
 
 ACTOR = {"id": "warehouse-real", "email": "warehouse@test", "roles": ["warehouse"]}
@@ -61,10 +63,14 @@ async def run_transaction_evidence(database_name):
                 "reorder_point": "0",
             }
         )
+        capabilities = DatabaseCapabilities(transactions=True)
         service = InventoryService(
             db=db,
             client=client,
-            capabilities=DatabaseCapabilities(transactions=True),
+            capabilities=capabilities,
+            guard=TransactionMutationGuard(
+                TransactionExecutor(client, lambda: capabilities)
+            ),
         )
 
         first_payload = operation("71111111-1111-1111-1111-111111111111", 10)

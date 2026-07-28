@@ -288,9 +288,7 @@ class AdminSessionModule:
             retry_safe=True,
         )
         if outcome == "replay":
-            await self.revoke_admin_session(
-                record["id"], "session_secret_replay"
-            )
+            await self.revoke_admin_session(record["id"], "session_secret_replay")
             raise SessionReplayError()
         if outcome != "rotated" or record is None:
             raise SessionExpiredError()
@@ -345,9 +343,7 @@ class AdminSessionModule:
             session=session,
         )
 
-    def verify_csrf(
-        self, session: AuthenticatedSession, candidate: object
-    ) -> None:
+    def verify_csrf(self, session: AuthenticatedSession, candidate: object) -> None:
         candidate_digest = (
             self._csrf_digest(candidate)
             if isinstance(candidate, str) and 1 <= len(candidate) <= 1024
@@ -372,7 +368,10 @@ class AdminSessionModule:
         session=None,
     ) -> None:
         if self.user_version_provider is not None:
-            current = await self.user_version_provider(record["user_id"], session)
+            user_id = record.get("user_id")
+            if not isinstance(user_id, str) or not user_id:
+                raise SessionExpiredError()
+            current = await self.user_version_provider(user_id, session)
             if current != record["token_version"]:
                 raise SessionExpiredError()
             return
@@ -415,7 +414,12 @@ class MongoSessionStore:
     ) -> bool:
         result = await self.collection.update_one(
             {"id": session_id, "access_hash": access_hash, "revoked_at": None},
-            {"$set": {"last_seen_at": last_seen_at, "idle_expires_at": idle_expires_at}},
+            {
+                "$set": {
+                    "last_seen_at": last_seen_at,
+                    "idle_expires_at": idle_expires_at,
+                }
+            },
         )
         return result.matched_count == 1
 
@@ -564,10 +568,14 @@ def _record_time(record: Mapping[str, object], field_name: str) -> datetime:
 
 
 def _session_id(session) -> str:
-    value = session if isinstance(session, str) else (
-        session.session_id
-        if isinstance(session, AuthenticatedSession)
-        else session.get("id")
+    value = (
+        session
+        if isinstance(session, str)
+        else (
+            session.session_id
+            if isinstance(session, AuthenticatedSession)
+            else session.get("id")
+        )
     )
     if not isinstance(value, str) or not value:
         raise SessionInputError("session_id_required")

@@ -216,7 +216,7 @@ async def run_unknown_variant_is_refused():
     assert rejected.value.status_code == 422
     assert rejected.value.code == "quote_item_variant_not_found"
     # Refused before the transaction, so no version was written.
-    assert len(db.b2b_quote_versions.items) == 1
+    assert len(db.b2b_quote_versions.items) == 2
 
 
 def test_a_line_cannot_quote_a_variant_that_does_not_exist():

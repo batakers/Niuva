@@ -4,10 +4,11 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
-
 from database_capabilities import DatabaseCapabilities
 from inventory_service import InventoryError, InventoryService
 from restock import shortage_triggers
+from transaction_execution import TransactionExecutor
+from transaction_guard import TransactionMutationGuard
 
 
 class FakeCursor:
@@ -124,21 +125,55 @@ class FakeDatabase:
         self.inventory_balances = FakeCollection()
         self.stock_movements = FakeCollection()
         self.inventory_reservations = FakeCollection()
+        self.inventory_adjustment_requests = FakeCollection()
         self.restock_alerts = FakeCollection()
         self.notifications = FakeCollection()
+        self.notification_outbox = FakeCollection()
         self.audit_events = FakeCollection()
         self.users = FakeCollection(
             [
-                {"id": "warehouse-1", "email": "warehouse@test", "roles": ["warehouse"], "status": "active", "access_state": "approved"},
-                {"id": "manager-1", "email": "manager@test", "roles": ["manager_approver"], "status": "active", "access_state": "approved"},
-                {"id": "admin-1", "email": "admin@test", "roles": ["super_admin"], "status": "active", "access_state": "approved"},
-                {"id": "customer-1", "email": "customer@test", "roles": ["retail_customer"], "status": "active", "access_state": "approved"},
-                {"id": "disabled-1", "email": "disabled@test", "roles": ["warehouse"], "status": "disabled", "access_state": "approved"},
+                {
+                    "id": "warehouse-1",
+                    "email": "warehouse@test",
+                    "roles": ["warehouse"],
+                    "status": "active",
+                    "access_state": "approved",
+                },
+                {
+                    "id": "manager-1",
+                    "email": "manager@test",
+                    "roles": ["manager_approver"],
+                    "status": "active",
+                    "access_state": "approved",
+                },
+                {
+                    "id": "admin-1",
+                    "email": "admin@test",
+                    "roles": ["super_admin"],
+                    "status": "active",
+                    "access_state": "approved",
+                },
+                {
+                    "id": "customer-1",
+                    "email": "customer@test",
+                    "roles": ["retail_customer"],
+                    "status": "active",
+                    "access_state": "approved",
+                },
+                {
+                    "id": "disabled-1",
+                    "email": "disabled@test",
+                    "roles": ["warehouse"],
+                    "status": "disabled",
+                    "access_state": "approved",
+                },
             ]
         )
 
     def collections(self):
-        return [value for value in vars(self).values() if isinstance(value, FakeCollection)]
+        return [
+            value for value in vars(self).values() if isinstance(value, FakeCollection)
+        ]
 
 
 class FakeTransaction:
@@ -147,7 +182,10 @@ class FakeTransaction:
         self.snapshots = None
 
     async def __aenter__(self):
-        self.snapshots = {id(collection): deepcopy(collection.items) for collection in self.db.collections()}
+        self.snapshots = {
+            id(collection): deepcopy(collection.items)
+            for collection in self.db.collections()
+        }
         return self
 
     async def __aexit__(self, exc_type, _exc, _tb):
@@ -158,8 +196,17 @@ class FakeTransaction:
 
 
 class FakeSession:
+    """Mirrors the driver surface TransactionExecutor drives.
+
+    Snapshot and restore live here rather than in FakeTransaction because the
+    executor calls start_transaction/commit_transaction/abort_transaction
+    directly instead of using the transaction as a context manager.
+    """
+
     def __init__(self, db):
         self.db = db
+        self.snapshots = None
+        self.in_transaction = False
 
     async def __aenter__(self):
         return self
@@ -168,7 +215,26 @@ class FakeSession:
         return False
 
     def start_transaction(self):
+        self.snapshots = {
+            id(collection): deepcopy(collection.items)
+            for collection in self.db.collections()
+        }
+        self.in_transaction = True
         return FakeTransaction(self.db)
+
+    async def commit_transaction(self):
+        self.in_transaction = False
+        self.snapshots = None
+
+    async def abort_transaction(self):
+        if self.snapshots is not None:
+            for collection in self.db.collections():
+                collection.items = self.snapshots[id(collection)]
+        self.in_transaction = False
+        self.snapshots = None
+
+    async def end_session(self):
+        return None
 
 
 class FakeClient:
@@ -177,15 +243,6 @@ class FakeClient:
 
     async def start_session(self):
         return FakeSession(self.db)
-
-
-class FailingEmailer:
-    def __init__(self):
-        self.calls = []
-
-    async def send_email(self, to_email, subject, title, body_html, **_kwargs):
-        self.calls.append((to_email, subject, title, body_html))
-        raise RuntimeError("email provider unavailable")
 
 
 WAREHOUSE = {"id": "warehouse-1", "email": "warehouse@test", "roles": ["warehouse"]}
@@ -206,20 +263,38 @@ def operation(operation_id, movement_type="receive", quantity="10", **extra):
     }
 
 
-def build_service(*, transactions=True, emailer=None):
+class RecordingSink:
+    def __init__(self):
+        self.events = []
+
+    def __call__(self, event, fields):
+        self.events.append((event, fields["operation_name"]))
+
+
+def build_service(*, transactions=True):
     db = FakeDatabase()
+    client = FakeClient(db)
+    capabilities = DatabaseCapabilities(transactions=transactions)
     service = InventoryService(
         db=db,
-        client=FakeClient(db),
-        capabilities=DatabaseCapabilities(transactions=transactions),
-        emailer=emailer,
+        client=client,
+        capabilities=capabilities,
+        guard=TransactionMutationGuard(
+            TransactionExecutor(
+                client, lambda: capabilities, event_sink=RecordingSink()
+            )
+        ),
     )
     return service, db
 
 
 def test_shortage_trigger_rules():
-    assert shortage_triggers({"available": "5", "projected": "5"}, "5") == {"reorder_point"}
-    assert shortage_triggers({"available": "10", "projected": "-1"}, "5") == {"projected_shortage"}
+    assert shortage_triggers({"available": "5", "projected": "5"}, "5") == {
+        "reorder_point"
+    }
+    assert shortage_triggers({"available": "10", "projected": "-1"}, "5") == {
+        "projected_shortage"
+    }
     assert shortage_triggers({"available": "4", "projected": "-1"}, "5") == {
         "reorder_point",
         "projected_shortage",
@@ -239,7 +314,9 @@ async def run_operation_idempotency_and_rollback():
     assert len(db.stock_movements.items) == 1
 
     with pytest.raises(InventoryError) as mismatch:
-        await service.apply_operation(actor=WAREHOUSE, payload={**payload, "quantity": "11"})
+        await service.apply_operation(
+            actor=WAREHOUSE, payload={**payload, "quantity": "11"}
+        )
     assert mismatch.value.status_code == 409
     assert mismatch.value.code == "operation_id_conflict"
 
@@ -261,6 +338,62 @@ async def run_operation_idempotency_and_rollback():
 
 def test_operation_idempotency_conflict_and_negative_rollback():
     asyncio.run(run_operation_idempotency_and_rollback())
+
+
+async def run_adjustment_requires_independent_approval():
+    service, db = build_service()
+    await service.apply_operation(
+        actor=WAREHOUSE,
+        payload=operation("12111111-1111-1111-1111-111111111111"),
+    )
+    request = await service.create_adjustment_request(
+        actor=WAREHOUSE,
+        payload={
+            "request_operation_id": "12222222-2222-2222-2222-222222222222",
+            "subject_type": "material",
+            "subject_id": "mat-1",
+            "on_hand_delta": "-2",
+            "reference_type": "cycle_count",
+            "reference_id": "count-1",
+            "expected_balance_version": 1,
+            "reason": "Cycle count found a discrepancy",
+        },
+    )
+    assert request["status"] == "pending"
+    with pytest.raises(InventoryError) as self_approval:
+        await service.approve_adjustment_request(
+            request["id"],
+            expected_version=1,
+            operation_id="12333333-3333-3333-3333-333333333333",
+            reason="Approve own request",
+            actor=WAREHOUSE,
+        )
+    assert self_approval.value.code == "self_approval_forbidden"
+
+    approved = await service.approve_adjustment_request(
+        request["id"],
+        expected_version=1,
+        operation_id="12444444-4444-4444-4444-444444444444",
+        reason="Manager verified cycle-count evidence",
+        actor=MANAGER,
+    )
+    assert approved["request"]["status"] == "approved"
+    assert approved["balance"]["on_hand"] == "8"
+    assert len(db.stock_movements.items) == 2
+
+    replayed = await service.approve_adjustment_request(
+        request["id"],
+        expected_version=1,
+        operation_id="12444444-4444-4444-4444-444444444444",
+        reason="Manager verified cycle-count evidence",
+        actor=MANAGER,
+    )
+    assert replayed["replayed"] is True
+    assert len(db.stock_movements.items) == 2
+
+
+def test_adjustment_is_atomic_single_use_and_cannot_be_self_approved():
+    asyncio.run(run_adjustment_requires_independent_approval())
 
 
 async def run_compare_and_set_retry():
@@ -299,8 +432,12 @@ async def run_reservation_lifecycle_and_expiry():
         "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
         "reason": "Reserve material for confirmed order",
     }
-    reserved = await service.create_reservation(actor=WAREHOUSE, payload=reservation_payload)
-    replayed = await service.create_reservation(actor=WAREHOUSE, payload=dict(reservation_payload))
+    reserved = await service.create_reservation(
+        actor=WAREHOUSE, payload=reservation_payload
+    )
+    replayed = await service.create_reservation(
+        actor=WAREHOUSE, payload=dict(reservation_payload)
+    )
     assert replayed["reservation"]["id"] == reserved["reservation"]["id"]
     assert reserved["balance"]["reserved"] == "4"
 
@@ -340,14 +477,18 @@ async def run_reservation_lifecycle_and_expiry():
             "operation_id": "45555555-5555-5555-5555-555555555555",
             "reference_id": "order-2",
             "quantity": "2",
-            "expires_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
+            "expires_at": (
+                datetime.now(timezone.utc) - timedelta(minutes=1)
+            ).isoformat(),
         },
     )
     first_expiry = await service.expire_due_reservations(actor=MANAGER)
     second_expiry = await service.expire_due_reservations(actor=MANAGER)
     assert first_expiry["expired"] == 1
     assert second_expiry["expired"] == 0
-    stored = await db.inventory_reservations.find_one({"id": expiring["reservation"]["id"]})
+    stored = await db.inventory_reservations.find_one(
+        {"id": expiring["reservation"]["id"]}
+    )
     assert stored["status"] == "expired"
 
 
@@ -403,8 +544,7 @@ def test_generic_reservation_movements_are_rejected_and_active_rows_are_listed()
 
 
 async def run_restock_dedup_resolution_and_email_isolation():
-    emailer = FailingEmailer()
-    service, db = build_service(emailer=emailer)
+    service, db = build_service()
     await service.apply_operation(
         actor=WAREHOUSE,
         payload=operation("51111111-1111-1111-1111-111111111111"),
@@ -418,7 +558,10 @@ async def run_restock_dedup_resolution_and_email_isolation():
         ),
     )
     assert low["balance"]["available"] == "4"
-    assert len([item for item in db.restock_alerts.items if item["status"] == "active"]) == 1
+    assert (
+        len([item for item in db.restock_alerts.items if item["status"] == "active"])
+        == 1
+    )
     assert len(db.notifications.items) == 3
 
     await service.apply_operation(
@@ -429,7 +572,10 @@ async def run_restock_dedup_resolution_and_email_isolation():
             quantity="10",
         ),
     )
-    assert len([item for item in db.restock_alerts.items if item["status"] == "active"]) == 2
+    assert (
+        len([item for item in db.restock_alerts.items if item["status"] == "active"])
+        == 2
+    )
     assert len(db.notifications.items) == 6
 
     await service.apply_operation(
@@ -437,11 +583,14 @@ async def run_restock_dedup_resolution_and_email_isolation():
         payload=operation("54444444-4444-4444-4444-444444444444", quantity="20"),
     )
     assert all(item["status"] == "resolved" for item in db.restock_alerts.items)
-    assert emailer.calls
+    assert len(db.notification_outbox.items) == 6
+    assert all(item["status"] == "pending" for item in db.notification_outbox.items)
     assert db.inventory_balances.items[0]["version"] == 4
 
     manually_active = deepcopy(db.restock_alerts.items[0])
-    manually_active.update({"id": "manual-alert", "status": "active", "deduplication_key": "manual"})
+    manually_active.update(
+        {"id": "manual-alert", "status": "active", "deduplication_key": "manual"}
+    )
     db.restock_alerts.items.append(manually_active)
     resolved = await service.resolve_alert(
         alert_id="manual-alert",
@@ -454,6 +603,20 @@ async def run_restock_dedup_resolution_and_email_isolation():
 
 def test_restock_dedup_resolution_and_email_failure_after_commit():
     asyncio.run(run_restock_dedup_resolution_and_email_isolation())
+
+
+def test_stock_movements_run_through_the_central_transaction_boundary():
+    async def run():
+        service, _db = build_service()
+        await service.apply_operation(
+            actor=WAREHOUSE,
+            payload=operation("62222222-2222-2222-2222-222222222222"),
+        )
+        events = service.guard.executor.event_sink.events
+        assert ("transaction_start", "inventory.apply_operation") in events
+        assert ("transaction_commit", "inventory.apply_operation") in events
+
+    asyncio.run(run())
 
 
 def test_transaction_capability_is_required():
@@ -473,13 +636,45 @@ def test_transaction_capability_is_required():
 async def run_restock_recipients_follow_capability_and_access_state():
     service, db = build_service()
     db.users.items = [
-        {"id": "ops-approved", "email": "ops@test", "roles": ["warehouse"], "status": "active", "access_state": "approved"},
-        {"id": "ops-review", "email": "review@test", "roles": ["warehouse"], "status": "active", "access_state": "access_review_required"},
-        {"id": "ops-disabled", "email": "disabled@test", "roles": ["warehouse"], "status": "disabled", "access_state": "approved"},
+        {
+            "id": "ops-approved",
+            "email": "ops@test",
+            "roles": ["warehouse"],
+            "status": "active",
+            "access_state": "approved",
+        },
+        {
+            "id": "ops-review",
+            "email": "review@test",
+            "roles": ["warehouse"],
+            "status": "active",
+            "access_state": "access_review_required",
+        },
+        {
+            "id": "ops-disabled",
+            "email": "disabled@test",
+            "roles": ["warehouse"],
+            "status": "disabled",
+            "access_state": "approved",
+        },
     ]
-    actor = {"id": "ops-approved", "roles": ["warehouse"], "status": "active", "access_state": "approved"}
-    await service.apply_operation(actor=actor, payload=operation("71111111-1111-1111-1111-111111111111"))
-    await service.apply_operation(actor=actor, payload=operation("72222222-2222-2222-2222-222222222222", movement_type="consume", quantity="6"))
+    actor = {
+        "id": "ops-approved",
+        "roles": ["warehouse"],
+        "status": "active",
+        "access_state": "approved",
+    }
+    await service.apply_operation(
+        actor=actor, payload=operation("71111111-1111-1111-1111-111111111111")
+    )
+    await service.apply_operation(
+        actor=actor,
+        payload=operation(
+            "72222222-2222-2222-2222-222222222222",
+            movement_type="consume",
+            quantity="6",
+        ),
+    )
     assert [item["user_id"] for item in db.notifications.items] == ["ops-approved"]
 
 

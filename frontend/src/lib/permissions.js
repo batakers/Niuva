@@ -18,6 +18,7 @@ export const ADMIN_ROUTE_PERMISSIONS = Object.freeze({
   "/admin/b2b/work-orders": "production.read",
   "/admin/retail-orders": "orders.read",
   "/admin/users": "users.read",
+  "/admin/customers": "customers.read",
   "/admin/communication": "notifications.write",
   "/admin/settings": "settings.write",
 });
@@ -70,7 +71,7 @@ export const PORTFOLIO_ACTION_PERMISSIONS = Object.freeze({
   return_to_draft: "content.write",
   approve_preview: "content.write",
   return_to_review: "content.write",
-  archive: "content.write",
+  archive: "content.archive",
   restore: "content.write",
   schedule: "content.publish",
   publish: "content.publish",

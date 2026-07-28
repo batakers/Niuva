@@ -1,18 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
-import {
-  api,
-  clearAdminCsrfToken,
-  clearStoredToken,
-  setAdminCsrfToken,
-  getStoredToken,
-} from "../lib/api";
+import { api, clearAdminCsrfToken, setAdminCsrfToken } from "../lib/api";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const { pathname } = useLocation();
-  const adminSurface = pathname.startsWith("/admin");
+  const adminSurface = window.location.pathname.startsWith("/admin");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessExpiresAt, setAccessExpiresAt] = useState(null);
@@ -22,22 +14,20 @@ export function AuthProvider({ children }) {
     setLoading(true);
     setUser(null);
     setAccessExpiresAt(null);
-    if (adminSurface) clearStoredToken();
-    else clearAdminCsrfToken();
-    const customerToken = getStoredToken();
-    if (!adminSurface && !customerToken) {
-      setLoading(false);
-      return () => { active = false; };
-    }
+    if (!adminSurface) clearAdminCsrfToken();
     const bootstrap = adminSurface
       ? api.post("/auth/admin/session/refresh")
       : api.get("/auth/me");
     bootstrap
       .then(({ data }) => {
         if (!active) return;
-        if (adminSurface) setAdminCsrfToken(data.csrf_token);
-        setUser(adminSurface ? data.user : data);
-        if (adminSurface) setAccessExpiresAt(data.access_expires_at);
+        if (adminSurface) {
+          setAdminCsrfToken(data.csrf_token);
+          setAccessExpiresAt(data.access_expires_at);
+          setUser(data.user);
+        } else {
+          setUser(data);
+        }
       })
       .catch(() => {
         if (!active) return;
@@ -52,10 +42,7 @@ export function AuthProvider({ children }) {
     const interceptor = api.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (
-          error.response?.status === 401 &&
-          error.response?.data?.detail?.code === "admin_session_expired"
-        ) {
+        if (error.response?.status === 401) {
           clearAdminCsrfToken();
           setUser(null);
           setAccessExpiresAt(null);
@@ -68,9 +55,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback((userData, csrfToken, expiresAt) => {
-    setAdminCsrfToken(csrfToken);
+    if (csrfToken) setAdminCsrfToken(csrfToken);
     setUser(userData);
-    setAccessExpiresAt(expiresAt);
+    setAccessExpiresAt(expiresAt || null);
   }, []);
 
   const refreshSession = useCallback(async () => {
@@ -83,9 +70,8 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      if (adminSurface) await api.post("/auth/admin/logout");
+      await api.post(adminSurface ? "/auth/admin/logout" : "/auth/logout");
     } finally {
-      clearStoredToken();
       clearAdminCsrfToken();
       setUser(null);
       setAccessExpiresAt(null);
@@ -93,9 +79,7 @@ export function AuthProvider({ children }) {
   }, [adminSurface]);
 
   useEffect(() => {
-    if (!user || !accessExpiresAt || !adminSurface) {
-      return undefined;
-    }
+    if (!adminSurface || !user || !accessExpiresAt) return undefined;
     const delay = Math.max(Date.parse(accessExpiresAt) - Date.now() - 60_000, 0);
     const timer = window.setTimeout(() => {
       refreshSession().catch(() => {

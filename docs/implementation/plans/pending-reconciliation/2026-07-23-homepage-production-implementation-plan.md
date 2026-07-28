@@ -1,5 +1,12 @@
 # Niuva Homepage Production Implementation Plan — Pending Reconciliation
 
+Status: **Context Only — Pending Separate Implementation Approval**
+Status recorded: 26 July 2026
+Basis: gate non-otorisasi pada dokumen ini
+
+Plan ini diatur oleh `DEC-UX-001` dan `DEC-UX-002`, tidak memutuskan detail
+navigasi Retail/B2B, dan bukan backend scope.
+
 ## Authority and Non-Authorization Gate
 
 This plan is governed by DEC-UX-001 and DEC-UX-002. It specifies one Unified

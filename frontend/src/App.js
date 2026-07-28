@@ -15,7 +15,11 @@ const Contact = lazy(() => import("@/pages/marketing/ContactPage"));
 const NotFound = lazy(() => import("@/pages/marketing/NotFoundPage"));
 const PrivacyPolicy = lazy(() => import("@/pages/marketing/PrivacyPolicyPage"));
 const Faq = lazy(() => import("@/pages/marketing/FaqPage"));
+const RetailCatalog = lazy(() => import("@/pages/retail/RetailCatalogPage"));
+const RetailProduct = lazy(() => import("@/pages/retail/RetailProductPage"));
 const AdminLogin = lazy(() => import("@/pages/admin/AdminLogin"));
+const StaffInvitationAccept = lazy(() => import("@/pages/auth/StaffInvitationAccept"));
+const CustomerLogin = lazy(() => import("@/pages/auth/CustomerLogin"));
 const ForgotPassword = lazy(() => import("@/pages/auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/auth/ResetPassword"));
 const ResetPasswordState = lazy(() => import("@/pages/auth/ResetPasswordState"));
@@ -69,6 +73,7 @@ const AdminRetailOrderDetail = lazy(() =>
   import("@/pages/admin/RetailOrderDetail")
 );
 const AdminUsers = lazy(() => import("@/pages/admin/Users"));
+const AdminCustomers = lazy(() => import("@/pages/admin/Customers"));
 const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const AdminNotificationFeed = lazy(() => import("@/pages/admin/NotificationFeed"));
 const brandLabEnabled = process.env.REACT_APP_ENABLE_BRAND_LAB === "true";
@@ -140,10 +145,14 @@ function App() {
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/faq" element={<Faq />} />
+                  <Route path="/retail" element={<RetailCatalog />} />
+                  <Route path="/retail/products/:slug" element={<RetailProduct />} />
                   <Route path="/dashboard" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
                   <Route path="/order" element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
                   <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+                  <Route path="/login" element={<CustomerLogin />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/staff-invitation" element={<StaffInvitationAccept />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/forgot-password/check-email" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
@@ -173,6 +182,7 @@ function App() {
                   <Route path="/admin/retail-orders" element={protectedPage("/admin/retail-orders", <AdminRetailOrderList />)} />
                   <Route path="/admin/retail-orders/:id" element={protectedPage("/admin/retail-orders", <AdminRetailOrderDetail />)} />
                   <Route path="/admin/users" element={protectedPage("/admin/users", <AdminUsers />)} />
+                  <Route path="/admin/customers" element={protectedPage("/admin/customers", <AdminCustomers />)} />
                   <Route path="/admin/notifications" element={protectedPage("/admin/notifications", <AdminNotificationFeed />)} />
                   <Route path="/admin/communication" element={protectedPage("/admin/communication", <AdminNotifications />)} />
                   <Route path="/admin/settings" element={protectedPage("/admin/settings", <AdminSettings />)} />

@@ -238,7 +238,7 @@ do not restore Admin `localStorage` bearer persistence.
 Proposed new files:
 
 - `backend/auth_session.py`
-- `backend/migrations/008_admin_session_safety.py`
+- `backend/migrations/009_admin_session_safety.py`
 - `backend/tests/test_auth_session.py`
 - `backend/tests/test_auth_session_migration.py`
 - `backend/tests/test_auth_session_transaction_integration.py`

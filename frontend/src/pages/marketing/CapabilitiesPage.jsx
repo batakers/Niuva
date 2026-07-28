@@ -14,15 +14,28 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { usePublicContent } from "../../lib/content";
+import { usePublicSettings } from "../../lib/publicSettings";
 
-// CMS blocks (content_type=capability) override matching fallback services by
-// title. Unmatched or unpublished capabilities keep the hardcoded copy.
-function mergeCapabilities(cmsBlocks) {
-  return profileContent.services.map((service) => {
-    const match = cmsBlocks.find((block) => block.fields?.title === service.title);
-    return match ? { ...service, ...match.fields } : service;
-  });
+function mergeCapabilities(cmsBlocks, status) {
+  if (status === "disabled") return profileContent.services;
+  if (status !== "ready") return [];
+  const fallbackBySlug = new Map(
+    profileContent.services.map((service) => [service.slug, service])
+  );
+  return cmsBlocks
+    .map((block) => ({
+      ...(fallbackBySlug.get(block.slug) || {}),
+      ...block.fields,
+      slug: block.slug,
+    }))
+    .sort(
+      (left, right) =>
+        Number(left.display_order || 0) - Number(right.display_order || 0) ||
+        left.slug.localeCompare(right.slug)
+    );
 }
 
 const engagementSteps = [
@@ -49,8 +62,12 @@ const engagementSteps = [
 ];
 
 export default function CapabilitiesPage() {
-  const { blocks: cmsBlocks } = usePublicContent("capability");
-  const capabilities = useMemo(() => mergeCapabilities(cmsBlocks), [cmsBlocks]);
+  const { contact } = usePublicSettings();
+  const { blocks: cmsBlocks, status } = usePublicContent("capability");
+  const capabilities = useMemo(
+    () => mergeCapabilities(cmsBlocks, status),
+    [cmsBlocks, status]
+  );
   const primaryCapabilities = capabilities.filter((service) => service.priority === "primary");
   const supportingCapabilities = capabilities.filter((service) => service.priority === "supporting");
 
@@ -68,12 +85,18 @@ export default function CapabilitiesPage() {
           secondaryAction={<BrandButton to="/projects" variant="secondary">Lihat Projects</BrandButton>}
           visual={
             <div className="grid gap-6 rounded-card bg-surface-muted p-6 sm:p-8">
-              {primaryCapabilities.map((service) => (
-                <div key={service.title} className="border-t-2 border-[var(--color-brand-secondary)] pt-4">
+              {primaryCapabilities.length > 0 ? primaryCapabilities.map((service) => (
+                <div key={service.slug} className="border-t-2 border-[var(--color-brand-secondary)] pt-4">
                   <p className="type-heading-card text-text-primary">{service.title}</p>
                   <p className="type-body-small mt-2 max-w-[42ch] text-text-secondary">{service.output}</p>
                 </div>
-              ))}
+              )) : (
+                <p className="type-body-small text-text-secondary" role="status">
+                  {status === "loading"
+                    ? "Memuat kapabilitas yang dipublikasikan."
+                    : "Kapabilitas publik belum tersedia."}
+                </p>
+              )}
             </div>
           }
         />
@@ -86,9 +109,18 @@ export default function CapabilitiesPage() {
               body="Dua kapabilitas utama ini membantu mitra memahami masalah, menentukan arah teknologi, memvalidasi konsep, dan menyiapkan hasil yang dapat diuji sebelum keputusan implementasi lebih besar."
               align="stacked"
             />
+            {status === "loading" && (
+              <EmptyState loading>Memuat kapabilitas yang dipublikasikan.</EmptyState>
+            )}
+            {status === "error" && (
+              <ErrorState error="Kapabilitas belum berhasil dimuat." />
+            )}
+            {status === "ready" && capabilities.length === 0 && (
+              <EmptyState>Belum ada kapabilitas yang dipublikasikan.</EmptyState>
+            )}
             <div className="grid gap-8 lg:gap-10">
               {primaryCapabilities.map((service, index) => (
-                <CapabilityPanel key={service.title} service={service} index={index} />
+                <CapabilityPanel key={service.slug} service={service} index={index} />
               ))}
             </div>
           </PageContainer>
@@ -103,7 +135,7 @@ export default function CapabilitiesPage() {
             />
             <div className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
               {supportingCapabilities.map((service) => (
-                <article key={service.title} className="brand-reveal border-t border-border-default pt-6">
+                <article key={service.slug} className="brand-reveal border-t border-border-default pt-6">
                   <p className="type-label text-text-secondary">Kapabilitas pendukung</p>
                   <h3 className="type-heading-subsection mt-4 text-text-primary">{service.title}</h3>
                   <p className="type-body mt-4 max-w-[52ch] text-text-secondary">{service.body}</p>
@@ -136,10 +168,10 @@ export default function CapabilitiesPage() {
           title="Tentukan titik mulai yang relevan untuk kebutuhan Anda."
           body="Tim Niuva dapat masuk dari riset awal, evaluasi konsep, desain dan prototyping, penyusunan workshop, atau kebutuhan produk kreatif yang sudah siap dieksekusi."
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton href={`mailto:${profileContent.contact.email}`} variant="secondary">Kirim Brief</BrandButton>}
+          secondaryAction={<BrandButton href={contact.email ? `mailto:${contact.email}` : "/contact"} variant="secondary">Kirim Brief</BrandButton>}
           contactEmphasis="Sampaikan jenis kebutuhan, target hasil, dan perkiraan timeline agar respons awal lebih tepat."
-          whatsappHref={profileContent.contact.whatsappHref}
-          email={profileContent.contact.email}
+          whatsappHref={contact.whatsappHref}
+          email={contact.email}
         />
       </BrandPage>
     </MarketingLayout>

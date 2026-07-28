@@ -14,6 +14,7 @@ import {
   SectionHeader,
 } from "../../components/brand/BrandSystem";
 import { findBySlug, usePublicContent } from "../../lib/content";
+import { usePublicSettings } from "../../lib/publicSettings";
 
 const fallbackDossierItems = [
   {
@@ -78,6 +79,7 @@ const backgroundPoints = [
 ];
 
 export default function AboutPage() {
+  const { contact } = usePublicSettings();
   const { blocks: cmsBlocks } = usePublicContent("about");
   const cmsFields = useMemo(() => findBySlug(cmsBlocks, "company-profile"), [cmsBlocks]);
   const dossierItems = cmsFields?.dossierItems || fallbackDossierItems;
@@ -242,8 +244,8 @@ export default function AboutPage() {
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/projects" variant="secondary">Lihat Projects</BrandButton>}
           contactEmphasis="Respons awal akan fokus pada konteks kebutuhan, ruang lingkup, dan output yang perlu dicapai."
-          whatsappHref={profileContent.contact.whatsappHref}
-          email={profileContent.contact.email}
+          whatsappHref={contact.whatsappHref}
+          email={contact.email}
         />
       </BrandPage>
     </MarketingLayout>

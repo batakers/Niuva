@@ -104,9 +104,14 @@ def generated_material_sku(material_id: str, *, legacy: bool = False) -> str:
     return f"{'LEGACY-MAT' if legacy else 'MAT'}-{normalized}"
 
 
+def _write_options(session=None) -> dict:
+    return {"session": session} if session is not None else {}
+
+
 class MaterialService:
-    def __init__(self, db):
+    def __init__(self, db, guard):
         self.db = db
+        self.guard = guard
 
     async def _get_material(self, material_id: str) -> dict:
         material = clean_document(
@@ -170,15 +175,22 @@ class MaterialService:
             }
         )
         await self._ensure_unique_sku(material["sku"])
-        await self.db.materials.insert_one(material)
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="material.created",
-            target_type="material",
-            target_id=material_id,
-            after=material,
-        )
+
+        async def mutation(session):
+            await self.db.materials.insert_one(
+                material, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="material.created",
+                target_type="material",
+                target_id=material_id,
+                after=material,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="material.create")
         return clean_document(material)
 
     async def update_material(self, material_id: str, payload: dict, actor: dict) -> dict:
@@ -198,17 +210,24 @@ class MaterialService:
             if key not in {"id", "created_at", "created_by", "_id"}
         }
         changes.update({"updated_at": now_iso(), "updated_by": actor.get("id")})
-        await self.db.materials.update_one({"id": material_id}, {"$set": changes})
         after = {**before, **changes}
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="material.updated",
-            target_type="material",
-            target_id=material_id,
-            before=before,
-            after=after,
-        )
+
+        async def mutation(session):
+            await self.db.materials.update_one(
+                {"id": material_id}, {"$set": changes}, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="material.updated",
+                target_type="material",
+                target_id=material_id,
+                before=before,
+                after=after,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="material.update")
         return after
 
     async def archive_material(self, material_id: str, actor: dict, reason: str) -> dict:
@@ -219,18 +238,27 @@ class MaterialService:
             "updated_at": now_iso(),
             "updated_by": actor.get("id"),
         }
-        await self.db.materials.update_one({"id": material_id}, {"$set": changes})
         after = {**before, **changes}
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="material.archived",
-            target_type="material",
-            target_id=material_id,
-            before=before,
-            after=after,
-            reason=reason,
-        )
+
+        async def mutation(session):
+            await self.db.materials.update_one(
+                {"id": material_id},
+                {"$set": changes},
+                **_write_options(session),
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="material.archived",
+                target_type="material",
+                target_id=material_id,
+                before=before,
+                after=after,
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(mutation, operation_name="material.archive")
         return after
 
     async def list_price_versions(self, material_id: str) -> list[dict]:
@@ -268,15 +296,25 @@ class MaterialService:
             "created_at": now_iso(),
             "created_by": actor.get("id"),
         }
-        await self.db.material_price_versions.insert_one(version)
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="material.price_version_created",
-            target_type="material_price_version",
-            target_id=version["id"],
-            after=version,
-            reason=version["reason"],
+
+        async def mutation(session):
+            await self.db.material_price_versions.insert_one(
+                version, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="material.price_version_created",
+                target_type="material_price_version",
+                target_id=version["id"],
+                after=version,
+                reason=version["reason"],
+                session=session,
+            )
+
+        await self.guard.run(
+            mutation,
+            operation_name="material.create_price_version",
         )
         return clean_document(version)
 
@@ -288,7 +326,9 @@ class MaterialService:
         }
 
 
-def build_material_router(*, get_db, require_permission, has_permission) -> APIRouter:
+def build_material_router(
+    *, get_db, get_guard, require_permission, has_permission
+) -> APIRouter:
     router = APIRouter(tags=["materials"])
 
     def serialize_material_for(actor: dict, material: dict) -> dict:
@@ -305,7 +345,7 @@ def build_material_router(*, get_db, require_permission, has_permission) -> APIR
             })
 
     def service() -> MaterialService:
-        return MaterialService(get_db())
+        return MaterialService(get_db(), get_guard())
 
     async def invoke(awaitable):
         try:

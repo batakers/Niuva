@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 import pytest
 
 from b2b_domain import B2BDomainError, validate_quote_transition
@@ -39,7 +40,25 @@ async def converted_quote(service):
         reason="Scope qualified",
         actor=actor,
     )
-    return result["quote"], actor
+    quote = result["quote"]
+    authored = await service.create_quote_revision(
+        quote["id"],
+        expected_version=quote["version"],
+        operation_id="op-initial-authoring",
+        reason="Initial commercial authoring",
+        scope_snapshot=quote["current_version"]["scope_snapshot"],
+        items=[
+            {
+                "description": "Engineering service",
+                "quantity": 1,
+                "unit_price_minor": 1000000,
+                "variant_id": None,
+            }
+        ],
+        total_minor=None,
+        actor=actor,
+    )
+    return authored, actor
 
 
 def test_quote_acceptance_locks_the_accepted_version():
@@ -47,7 +66,7 @@ def test_quote_acceptance_locks_the_accepted_version():
         service = B2BService(db=FakeDatabase(), transaction_guard=EnabledGuard())
         quote, actor = await converted_quote(service)
 
-        for target in ["internal_review", "sent", "accepted"]:
+        for target in ["internal_review", "sent"]:
             quote = await service.transition_quote(
                 quote["id"],
                 target_status=target,
@@ -56,17 +75,31 @@ def test_quote_acceptance_locks_the_accepted_version():
                 reason=f"Move to {target}",
                 actor=actor,
             )
+        quote = await service.accept_quote(
+            quote["id"],
+            expected_version=quote["version"],
+            operation_id="op-accepted",
+            reason="Customer approval recorded",
+            approver={"name": "Ayu", "identity": "ayu@example.com"},
+            accepted_at=datetime.now(timezone.utc),
+            channel="email",
+            evidence_reference="email-thread-001",
+            actor=actor,
+        )
 
         assert quote["status"] == "accepted"
         assert quote["accepted_version_id"] == quote["current_version_id"]
         assert quote["permitted_next_actions"] == ["create_project"]
 
-        replay = await service.transition_quote(
+        replay = await service.accept_quote(
             quote["id"],
-            target_status="accepted",
-            expected_version=2,
+            expected_version=quote["version"] - 1,
             operation_id="op-accepted",
-            reason="Move to accepted",
+            reason="Customer approval recorded",
+            approver={"name": "Ayu", "identity": "ayu@example.com"},
+            accepted_at=datetime.now(timezone.utc),
+            channel="email",
+            evidence_reference="email-thread-001",
             actor=actor,
         )
         assert replay["version"] == quote["version"]
@@ -91,7 +124,7 @@ def test_scope_change_creates_new_immutable_revision():
                 actor=actor,
             )
 
-        original = dict(db.b2b_quote_versions.items[0])
+        original = dict(db.b2b_quote_versions.items[-1])
         revised = await service.create_quote_revision(
             quote["id"],
             expected_version=quote["version"],
@@ -114,8 +147,8 @@ def test_scope_change_creates_new_immutable_revision():
         )
 
         assert revised["status"] == "draft"
-        assert revised["current_revision"] == 2
-        assert revised["current_version"]["revision"] == 2
+        assert revised["current_revision"] == 3
+        assert revised["current_version"]["revision"] == 3
         # Derived from the line, not taken from the caller.
         assert revised["current_version"]["total_minor"] == 25000000
         line = revised["current_version"]["items"][0]
@@ -123,8 +156,8 @@ def test_scope_change_creates_new_immutable_revision():
         # No catalog reference, so there is nothing authoritative to snapshot.
         assert line["variant_id"] is None
         assert line["product_snapshot"] is None
-        assert len(db.b2b_quote_versions.items) == 2
-        assert db.b2b_quote_versions.items[0] == original
+        assert len(db.b2b_quote_versions.items) == 3
+        assert db.b2b_quote_versions.items[1] == original
         assert guard.calls[-1]["operation_name"] == "b2b.create_quote_revision"
 
     asyncio.run(scenario())

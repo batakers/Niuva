@@ -1,7 +1,7 @@
 # Admin Studio Content Editor & Existing-Module Audit — Implementation Plan
 
 Tanggal: 25 Juli 2026
-Status: **Context Only — Pending Separate Implementation Approval**
+Status: **Completed Execution Record — Implemented — Browser/Production Rollout Not Evidenced**
 Scope: (1) Audit modul Admin Studio yang sudah ada (Inventory, Stock Movements, Orders,
 Audit Log) untuk gap fungsional; (2) rencana desain content editor untuk konten marketing
 yang saat ini hardcoded (About/Capabilities/FAQ/CTA/Contact). Tidak ada source code yang
@@ -11,6 +11,12 @@ Canonical authority:
 - `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-direction.md` (Approved Decision)
 - `docs/implementation/plans/pending-reconciliation/2026-07-23-admin-studio-operational-remediation.md` (Bounded Scope, belum authorize implementasi)
 Sumber temuan: audit page-inventory read-only, 24-25 Juli 2026.
+
+Implementation reconciliation: 27 July 2026. Structured CMS source and tests
+now cover draft/review/preview/scheduled/published/archived transitions,
+permission-aware publishing, validation, public projection, versions, rollback,
+and archive. Statements below that describe missing code or pending approval
+are retained as planning-time history.
 
 Dokumen ini adalah rencana. `NIUVA_MASTER_SPEC.md` baris 426 menegaskan "Approval of
 this Master Specification does not automatically authorize implementation." Dokumen ini
@@ -237,5 +243,6 @@ selama transisi.
 - Urutan migrasi content type: About dulu, Capabilities dulu, atau paralel — mempengaruhi
   urutan kerja bertahap di §B.6.
 
-Tidak ada item yang diselesaikan diam-diam oleh plan ini. Status tetap **Pending
-Separate Implementation Approval**.
+Catatan historis: bagian ini menggambarkan status sebelum implementation
+authorization dan source changes. Status faktual terbaru tercatat pada header
+dan reconciliation note di atas.

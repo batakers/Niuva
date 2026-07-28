@@ -15,6 +15,7 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { usePublicSettings } from "../../lib/publicSettings";
 
 // ponytail: Homepage stays fully hardcoded (no CMS). Homepage schema is out of
 // scope per NIUVA_MASTER_SPEC.md and requires separate DEC-UX authorization.
@@ -237,7 +238,31 @@ function WhyNiuvaSection() {
   );
 }
 
+function RetailDiscoverySection() {
+  return (
+    <MarketingSection id="retail-discovery" tone="muted" spacing="compact">
+      <PageContainer>
+        <div className="brand-reveal grid gap-6 rounded-feature border border-border-default bg-surface-default p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
+          <div>
+            <p className="type-label text-text-secondary">Jalur sekunder · Retail discovery</p>
+            <h2 className="mt-3 font-heading text-2xl font-bold text-text-primary md:text-3xl">
+              Jelajahi produk terpublikasi tanpa checkout.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-text-secondary md:text-base">
+              Katalog Retail menampilkan pilihan produk, harga yang disetujui, dan status ketersediaan aman. Transaksi dan pembayaran belum diaktifkan.
+            </p>
+          </div>
+          <BrandButton to="/retail" variant="secondary">
+            Jelajahi Retail
+          </BrandButton>
+        </div>
+      </PageContainer>
+    </MarketingSection>
+  );
+}
+
 export default function HomePage() {
+  const { contact } = usePublicSettings();
   return (
     <MarketingLayout>
       <BrandPage>
@@ -278,6 +303,7 @@ export default function HomePage() {
         <CoreCapabilitiesSection />
         <OperatingModelSection />
         <FeaturedProjectsSection />
+        <RetailDiscoverySection />
         <WhyNiuvaSection />
 
         <CTASection
@@ -285,10 +311,10 @@ export default function HomePage() {
           title="Diskusikan kebutuhan riset, desain, atau prototyping bersama Niuva."
           body="Sampaikan konteks proyek, target hasil, batasan teknis, dan bentuk output yang dibutuhkan. Tim Niuva akan membantu menentukan titik mulai yang paling relevan."
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton href={profileContent.contact.whatsappHref} variant="secondary">Hubungi Niuva</BrandButton>}
+          secondaryAction={<BrandButton href={contact.whatsappHref || "/contact"} variant="secondary">Hubungi Niuva</BrandButton>}
           contactEmphasis="Jalur cepat untuk kebutuhan proyek, proposal, atau kolaborasi teknis."
-          whatsappHref={profileContent.contact.whatsappHref}
-          email={profileContent.contact.email}
+          whatsappHref={contact.whatsappHref}
+          email={contact.email}
         />
       </BrandPage>
     </MarketingLayout>

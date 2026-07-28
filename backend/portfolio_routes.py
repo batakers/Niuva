@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -32,7 +33,7 @@ class PortfolioTransitionPayload(BaseModel):
     ]
     expected_version: int = Field(ge=1)
     reason: str = Field(min_length=3, max_length=500)
-    scheduled_for: str | None = None
+    scheduled_for: datetime | None = None
 
 
 class PortfolioRollbackPayload(BaseModel):
@@ -47,18 +48,23 @@ class PortfolioReorderPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ordered_ids: list[str] = Field(min_length=1)
+    expected_versions: dict[str, int]
 
 
 def build_portfolio_router(
     *,
     get_db,
+    get_transaction_guard,
     require_permission,
     has_permission,
 ) -> APIRouter:
     router = APIRouter(tags=["portfolio"])
 
     def service() -> PortfolioService:
-        return PortfolioService(db=get_db())
+        return PortfolioService(
+            db=get_db(),
+            transaction_guard=get_transaction_guard(),
+        )
 
     async def invoke(awaitable):
         try:
@@ -143,7 +149,7 @@ def build_portfolio_router(
     async def transition_portfolio(
         entry_id: str,
         payload: PortfolioTransitionPayload,
-        actor: dict = Depends(require_permission("content.write")),
+        actor: dict = Depends(require_permission("content.read")),
     ):
         return await invoke(
             service().transition(
@@ -152,8 +158,9 @@ def build_portfolio_router(
                 expected_version=payload.expected_version,
                 reason=payload.reason,
                 actor=actor,
-                # Publishing is an approval, not an edit.
+                can_write=has_permission(actor, "content.write"),
                 can_publish=has_permission(actor, "content.publish"),
+                can_archive=has_permission(actor, "content.archive"),
                 scheduled_for=payload.scheduled_for,
             )
         )
@@ -163,6 +170,12 @@ def build_portfolio_router(
         payload: PortfolioReorderPayload,
         actor: dict = Depends(require_permission("content.write")),
     ):
-        return await invoke(service().reorder(payload.ordered_ids, actor=actor))
+        return await invoke(
+            service().reorder(
+                payload.ordered_ids,
+                expected_versions=payload.expected_versions,
+                actor=actor,
+            )
+        )
 
     return router

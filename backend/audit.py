@@ -69,6 +69,9 @@ async def append_audit_event(
     reason: str | None = None,
     session=None,
 ) -> dict:
+    audit_reason = reason.strip() if isinstance(reason, str) else None
+    if audit_reason is not None and not 3 <= len(audit_reason) <= 500:
+        raise AuditValidationError("Audit reason must be 3-500 characters")
     event = {
         "id": str(uuid.uuid4()),
         "actor_user_id": actor.get("id"),
@@ -78,7 +81,7 @@ async def append_audit_event(
         "target_id": target_id,
         "before": _redact(before) if before is not None else None,
         "after": _redact(after) if after is not None else None,
-        "reason": None,
+        "reason": audit_reason,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     insert_options = {"session": session} if session is not None else {}
@@ -94,6 +97,8 @@ _IDENTITY_GOVERNANCE_ACTIONS = frozenset(
         "identity.staff_roles_updated",
         "identity.staff_deactivated",
         "identity.staff_reactivated",
+        "identity.customer_disabled",
+        "identity.customer_active",
         "identity.granular_role_migrated",
         "identity.granular_role_migration_rolled_back",
     }

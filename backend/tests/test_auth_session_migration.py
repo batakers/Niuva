@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-MIGRATION_PATH = ROOT / "backend" / "migrations" / "008_admin_session_safety.py"
+MIGRATION_PATH = ROOT / "backend" / "migrations" / "009_admin_session_safety.py"
 
 
 def load_migration():

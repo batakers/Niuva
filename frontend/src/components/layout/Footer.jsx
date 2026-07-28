@@ -1,16 +1,18 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
-import { profileContent } from "@/components/brand/CompanyProfileBlocks";
+import { usePublicSettings } from "@/lib/publicSettings";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const { contact } = usePublicSettings();
   const navigation = [
     { label: "Home", to: "/" },
     { label: "About", to: "/about" },
     { label: "Capabilities", to: "/capabilities" },
     { label: "Projects", to: "/projects" },
     { label: "FAQ", to: "/faq" },
+    { label: "Retail", to: "/retail" },
     { label: "Contact", to: "/contact" },
   ];
 
@@ -40,17 +42,21 @@ export function Footer() {
             <div>
               <h2 className="text-base font-bold text-text-primary">Kontak</h2>
               <ul className="mt-4 space-y-3 break-words text-sm leading-6 text-text-secondary md:text-base">
-                <li>{profileContent.contact.location}</li>
-                <li>
-                  <a href={`mailto:${profileContent.contact.email}`} className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
-                    {profileContent.contact.email}
-                  </a>
-                </li>
-                <li>
-                  <a href={profileContent.contact.whatsappHref} className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
-                    WhatsApp {profileContent.contact.whatsapp}
-                  </a>
-                </li>
+                {contact.location && <li>{contact.location}</li>}
+                {contact.email && (
+                  <li>
+                    <a href={`mailto:${contact.email}`} className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
+                      {contact.email}
+                    </a>
+                  </li>
+                )}
+                {contact.whatsappHref && contact.whatsapp && (
+                  <li>
+                    <a href={contact.whatsappHref} className="inline-flex min-h-11 items-center transition-colors duration-emphasis ease-snap hover:text-action-primary">
+                      WhatsApp {contact.whatsapp}
+                    </a>
+                  </li>
+                )}
               </ul>
             </div>
           </div>

@@ -116,9 +116,10 @@ export default function AdminOrders() {
   }, [orders, filters]);
 
   const orderIds = useMemo(
-    () => filteredOrders.map((o) => o.id),
+    () => filteredOrders.filter((o) => o.mutations_enabled).map((o) => o.id),
     [filteredOrders]
   );
+  const mutationsEnabled = orderIds.length > 0;
 
   const hasActiveFilters =
     filters.status !== "all" ||
@@ -251,7 +252,7 @@ export default function AdminOrders() {
         )}
 
         {/* Bulk actions bar - sticky */}
-        {selectedIds.length > 0 && (
+        {mutationsEnabled && selectedIds.length > 0 && (
           <div className="sticky top-16 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-action-primary/20 bg-action-primary/5 px-6 py-3">
             <span className="type-body-small font-medium text-action-primary">
               {selectedIds.length} {t("orders.selectedCount")}
@@ -327,7 +328,7 @@ export default function AdminOrders() {
               <Table data-testid="admin-orders-table">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
+                    {mutationsEnabled && <TableHead className="w-10">
                       <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
                         <input
                           type="checkbox"
@@ -340,7 +341,7 @@ export default function AdminOrders() {
                           className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
                         />
                       </label>
-                    </TableHead>
+                    </TableHead>}
                     <TableHead>{t("orders.col.number")}</TableHead>
                     <TableHead>{t("orders.col.client")}</TableHead>
                     <TableHead>{t("orders.col.config")}</TableHead>
@@ -357,7 +358,7 @@ export default function AdminOrders() {
                       key={o.id}
                       data-state={selectedIds.includes(o.id) ? "selected" : undefined}
                     >
-                      <TableCell>
+                      {mutationsEnabled && <TableCell>
                         <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
                           <input
                             type="checkbox"
@@ -367,7 +368,7 @@ export default function AdminOrders() {
                             className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
                           />
                         </label>
-                      </TableCell>
+                      </TableCell>}
                       <TableCell className="whitespace-nowrap font-mono text-sm font-medium text-action-primary">
                         {o.order_number}
                       </TableCell>
@@ -621,6 +622,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
           )}
 
           {/* Action Buttons */}
+          {order.mutations_enabled ? (
           <div className="grid grid-cols-2 gap-3 pt-2">
             <Button
               loading={busy}
@@ -655,6 +657,17 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
               {t("orders.markCompleted")}
             </Button>
           </div>
+          ) : (
+            <div className="rounded-control border border-status-warning/40 bg-status-warning/10 p-4">
+              <p className="font-semibold text-text-primary">
+                Data historis · hanya baca
+              </p>
+              <p className="mt-1 text-sm text-text-secondary">
+                Mutation pesanan legacy dinonaktifkan. Gunakan flow B2B atau
+                Retail canonical untuk pekerjaan baru.
+              </p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

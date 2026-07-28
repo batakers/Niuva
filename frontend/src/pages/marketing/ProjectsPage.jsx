@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { MarketingLayout } from "@/components/layout/Layout";
-import { HAS_CONFIGURED_BACKEND, api } from "../../lib/api";
+import { HAS_CONFIGURED_BACKEND, api, resolveMediaUrl } from "../../lib/api";
 import {
   BrandButton,
   ProjectCaseStudyCard,
@@ -14,56 +14,51 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
-
-function normalizeTitle(value = "") {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { usePublicSettings } from "../../lib/publicSettings";
 
 // Second case rather than the first, so the hero is not immediately repeated by
 // the card directly beneath it. Left eager: it is the LCP element here.
 const heroProject = profileContent.projects[1];
 
 export default function ProjectsPage() {
-  const [apiProjects, setApiProjects] = useState([]);
+  const { contact } = usePublicSettings();
+  const [portfolioState, setPortfolioState] = useState({
+    status: HAS_CONFIGURED_BACKEND ? "loading" : "disabled",
+    items: [],
+  });
 
-  useEffect(() => {
+  const loadPortfolio = React.useCallback(() => {
     if (!HAS_CONFIGURED_BACKEND) return undefined;
-
-    let mounted = true;
-    api.get("/portfolio").then((response) => {
-      if (mounted) setApiProjects(response.data);
-    }).catch(() => {});
-
-    return () => {
-      mounted = false;
-    };
+    setPortfolioState((current) => ({ ...current, status: "loading" }));
+    return api.get("/portfolio").then((response) => {
+      setPortfolioState({ status: "ready", items: response.data });
+    }).catch(() => {
+      setPortfolioState((current) => ({ ...current, status: "error" }));
+    });
   }, []);
 
-  const projects = useMemo(
-    () =>
-      profileContent.projects.map((project) => {
-        const target = normalizeTitle(project.title);
-        const match = apiProjects.find((item) => {
-          const idTitle = normalizeTitle(item.title_id);
-          const enTitle = normalizeTitle(item.title_en);
-          return (
-            (idTitle && (idTitle.includes(target) || target.includes(idTitle))) ||
-            (enTitle && (enTitle.includes(target) || target.includes(enTitle)))
-          );
-        });
+  useEffect(() => {
+    loadPortfolio();
+  }, [loadPortfolio]);
 
-        return {
-          ...project,
-          body: match?.description_id || project.body,
-          image: match?.images?.[0] || project.image,
-          imageWidth: match?.images?.[0] ? undefined : project.imageWidth,
-          imageHeight: match?.images?.[0] ? undefined : project.imageHeight,
-          imageAlt: match?.images?.[0] ? `Dokumentasi ${project.title}` : project.imageAlt,
-          imageFit: match?.images?.[0] ? "cover" : project.imageFit,
-          client: match?.client,
-        };
-      }),
-    [apiProjects]
+  const projects = useMemo(
+    () => (
+      portfolioState.status === "disabled"
+        ? profileContent.projects
+        : portfolioState.items.map((item) => ({
+            id: item.id,
+            title: item.title_id,
+            body: item.description_id,
+            category: item.category,
+            image: resolveMediaUrl(item.images?.[0]),
+            imageAlt: `Dokumentasi ${item.title_id}`,
+            imageFit: "cover",
+          }))
+    ),
+    [portfolioState],
   );
 
   return (
@@ -100,17 +95,32 @@ export default function ProjectsPage() {
               body="Setiap project diringkas melalui konteks, tantangan, solusi, output, dan kapabilitas yang relevan agar calon mitra dapat menilai pendekatan kerja Niuva dengan cepat."
               align="stacked"
             />
-            <div className="grid gap-12 lg:gap-16">
-              {projects.map((project, index) => (
+            {portfolioState.status === "loading" && (
+              <div className="grid gap-8">
+                {[1, 2, 3].map((item) => (
+                  <Skeleton key={item} className="h-[30rem] rounded-card" />
+                ))}
+              </div>
+            )}
+            {portfolioState.status === "error" && (
+              <ErrorState error="Portfolio belum berhasil dimuat." onRetry={loadPortfolio} />
+            )}
+            {portfolioState.status === "ready" && projects.length === 0 && (
+              <EmptyState>Belum ada project yang dipublikasikan.</EmptyState>
+            )}
+            {portfolioState.status !== "loading" && portfolioState.status !== "error" && (
+              <div className="grid gap-12 lg:gap-16">
+                {projects.map((project, index) => (
                 <ProjectCaseStudyCard
-                  key={project.title}
+                  key={project.id || project.title}
                   project={project}
                   index={index}
                   to="/contact"
                   ctaLabel="Diskusikan Project Serupa"
                 />
               ))}
-            </div>
+              </div>
+            )}
           </PageContainer>
         </MarketingSection>
 
@@ -121,8 +131,8 @@ export default function ProjectsPage() {
           primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
           contactEmphasis="Pembahasan dimulai dari kebutuhan nyata, ruang lingkup teknis, dan bukti pekerjaan yang relevan."
-          whatsappHref={profileContent.contact.whatsappHref}
-          email={profileContent.contact.email}
+          whatsappHref={contact.whatsappHref}
+          email={contact.email}
         />
       </BrandPage>
     </MarketingLayout>

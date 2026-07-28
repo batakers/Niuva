@@ -1,17 +1,22 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from notification_domain import (
     deduplication_key,
     is_allowlisted_reference,
     project_notification,
 )
+from pymongo import ReturnDocument
 
 MAX_DELIVERY_ATTEMPTS = 5
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def now_utc() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _write_options(session=None) -> dict:
@@ -112,12 +117,15 @@ class NotificationService:
     async def list_for_user(
         self, user_id: str, *, unread_only: bool = False, limit: int = 50
     ) -> list[dict]:
-        query = {"user_id": user_id}
+        query: dict[str, object] = {"user_id": user_id}
         if unread_only:
             query["read_at"] = None
-        documents = await self.db.notifications.find(query, {"_id": 0}).sort(
-            "created_at", -1
-        ).limit(min(limit, 200)).to_list(min(limit, 200))
+        documents = (
+            await self.db.notifications.find(query, {"_id": 0})
+            .sort("created_at", -1)
+            .limit(min(limit, 200))
+            .to_list(min(limit, 200))
+        )
         return [project_notification(document) for document in documents]
 
     async def unread_count(self, user_id: str) -> int:
@@ -179,32 +187,93 @@ class NotificationService:
             "status": "pending",
             "attempts": 0,
             "last_error": None,
-            "created_at": now_iso(),
-            "updated_at": now_iso(),
+            "next_attempt_at": now_utc(),
+            "lease_owner": None,
+            "lease_token": None,
+            "lease_until": None,
+            "delivery_key": f"notification-delivery:{uuid.uuid4()}",
+            "created_at": now_utc(),
+            "updated_at": now_utc(),
         }
         await self.db.notification_outbox.insert_one(
             dict(entry), **_write_options(session)
         )
         return entry
 
-    async def claim_pending(self, *, limit: int = 50) -> list[dict]:
-        return await self.db.notification_outbox.find(
-            {"status": "pending"}, {"_id": 0}
-        ).sort("created_at", 1).limit(limit).to_list(limit)
+    async def claim_pending(
+        self,
+        *,
+        worker_id: str,
+        limit: int = 50,
+        lease_seconds: int = 60,
+        at: datetime | None = None,
+    ) -> list[dict]:
+        """Atomically lease due work so concurrent workers cannot both send it."""
+        moment = at or now_utc()
+        claimed = []
+        for _index in range(min(limit, 200)):
+            lease_token = str(uuid.uuid4())
+            entry = await self.db.notification_outbox.find_one_and_update(
+                {
+                    "$or": [
+                        {
+                            "status": "pending",
+                            "next_attempt_at": {"$lte": moment},
+                            "$or": [
+                                {"lease_until": None},
+                                {"lease_until": {"$lte": moment}},
+                            ],
+                        },
+                        {
+                            "status": "processing",
+                            "lease_until": {"$lte": moment},
+                        },
+                    ],
+                },
+                {
+                    "$set": {
+                        "status": "processing",
+                        "lease_owner": worker_id,
+                        "lease_token": lease_token,
+                        "lease_until": moment + timedelta(seconds=lease_seconds),
+                        "updated_at": moment,
+                    }
+                },
+                sort=[("next_attempt_at", 1), ("created_at", 1)],
+                projection={"_id": 0},
+                return_document=ReturnDocument.AFTER,
+            )
+            if not entry:
+                break
+            claimed.append(entry)
+        return claimed
 
     async def record_delivery_result(
-        self, entry_id: str, *, delivered: bool, error: str | None = None
+        self,
+        entry_id: str,
+        *,
+        lease_token: str,
+        delivered: bool,
+        error: str | None = None,
+        at: datetime | None = None,
     ) -> dict:
-        entry = await self.db.notification_outbox.find_one(
-            {"id": entry_id}, {"_id": 0}
-        )
+        entry = await self.db.notification_outbox.find_one({"id": entry_id}, {"_id": 0})
         if not entry:
             raise NotificationError(
                 404, "outbox_entry_not_found", "Entri outbox tidak ditemukan."
             )
 
+        if (
+            entry.get("status") != "processing"
+            or entry.get("lease_token") != lease_token
+        ):
+            raise NotificationError(
+                409,
+                "outbox_lease_lost",
+                "Lease outbox tidak lagi dimiliki worker ini.",
+            )
         attempts = entry.get("attempts", 0) + 1
-        timestamp = now_iso()
+        timestamp = at or now_utc()
         if delivered:
             status = "delivered"
         elif attempts >= MAX_DELIVERY_ATTEMPTS:
@@ -219,8 +288,27 @@ class NotificationService:
             "attempts": attempts,
             "last_error": None if delivered else error,
             "updated_at": timestamp,
+            "next_attempt_at": (
+                None
+                if delivered or status == "exhausted"
+                else timestamp + timedelta(seconds=min(2**attempts, 300))
+            ),
+            "lease_owner": None,
+            "lease_token": None,
+            "lease_until": None,
         }
-        await self.db.notification_outbox.update_one(
-            {"id": entry_id}, {"$set": changes}
+        result = await self.db.notification_outbox.update_one(
+            {
+                "id": entry_id,
+                "status": "processing",
+                "lease_token": lease_token,
+            },
+            {"$set": changes},
         )
+        if not result.matched_count:
+            raise NotificationError(
+                409,
+                "outbox_lease_lost",
+                "Lease outbox hilang sebelum hasil delivery dicatat.",
+            )
         return {**entry, **changes}

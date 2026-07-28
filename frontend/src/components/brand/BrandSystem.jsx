@@ -416,9 +416,9 @@ export function CTASection({
 export function ContactSummary({ className, contact, showMapLink = false }) {
   const items = [
     { label: "Lokasi", value: contact.location, href: showMapLink ? contact.mapsHref : undefined },
-    { label: "Email", value: contact.email, href: `mailto:${contact.email}` },
+    { label: "Email", value: contact.email, href: contact.email ? `mailto:${contact.email}` : undefined },
     { label: "WhatsApp", value: contact.whatsapp, href: contact.whatsappHref },
-  ];
+  ].filter((item) => item.value);
 
   return (
     <div className={cn("grid gap-4 md:grid-cols-3", className)}>
@@ -648,4 +648,3 @@ export function ContactForm({
   );
 }
 export { BrandButton };
-

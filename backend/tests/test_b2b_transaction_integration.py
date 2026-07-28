@@ -8,6 +8,7 @@ Opt in with NIUVA_RUN_REAL_TRANSACTION_TESTS=1 and MONGO_TRANSACTION_TEST_URL.
 """
 
 import asyncio
+from datetime import datetime, timezone
 import os
 import uuid
 
@@ -101,19 +102,44 @@ async def seed_contacted_inquiry(service):
 
 async def accept_quote(service, quote_id):
     """Drive a draft quote to accepted so a project may be created from it."""
-    for target, version in (
-        ("internal_review", 1),
-        ("sent", 2),
-        ("accepted", 3),
-    ):
-        await service.transition_quote(
+    quote = await service.get_quote(quote_id)
+    quote = await service.create_quote_revision(
+        quote_id,
+        expected_version=quote["version"],
+        operation_id=operation_id(),
+        reason="Initial commercial authoring",
+        scope_snapshot=quote["current_version"]["scope_snapshot"],
+        items=[
+            {
+                "description": "Engineering service",
+                "quantity": 1,
+                "unit_price_minor": 1000000,
+                "variant_id": None,
+            }
+        ],
+        total_minor=None,
+        actor=ACTOR,
+    )
+    for target in ("internal_review", "sent"):
+        quote = await service.transition_quote(
             quote_id,
             target_status=target,
-            expected_version=version,
+            expected_version=quote["version"],
             operation_id=operation_id(),
             reason=f"Menuju {target}",
             actor=ACTOR,
         )
+    return await service.accept_quote(
+        quote_id,
+        expected_version=quote["version"],
+        operation_id=operation_id(),
+        reason="Customer approval recorded",
+        approver={"name": "Ayu", "identity": "ayu@example.com"},
+        accepted_at=datetime.now(timezone.utc),
+        channel="email",
+        evidence_reference="email-thread-integration",
+        actor=ACTOR,
+    )
 
 
 async def run_double_conversion(database_name):
@@ -132,9 +158,7 @@ async def run_double_conversion(database_name):
                 actor=ACTOR,
             )
 
-        results = await asyncio.gather(
-            convert(), convert(), return_exceptions=True
-        )
+        results = await asyncio.gather(convert(), convert(), return_exceptions=True)
 
         succeeded = [item for item in results if not isinstance(item, Exception)]
         rejected = [item for item in results if isinstance(item, Exception)]
@@ -201,12 +225,12 @@ async def run_duplicate_project_creation(database_name):
             actor=ACTOR,
         )
         quote_id = converted["quote"]["id"]
-        await accept_quote(service, quote_id)
+        accepted = await accept_quote(service, quote_id)
 
         async def create():
             return await service.create_project_from_quote(
                 quote_id,
-                expected_version=4,
+                expected_version=accepted["version"],
                 operation_id=operation_id(),
                 reason="Mulai eksekusi proyek",
                 actor=ACTOR,

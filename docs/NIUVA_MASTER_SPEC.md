@@ -403,12 +403,13 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Provider-neutral private production storage boundary | Approved with Open Decisions | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` |
 | Provider-neutral Retail online-payment orchestration | Approved with Open Decisions | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` |
 | Existing manual-transfer records are read-only; no new manual-transfer or payment-proof activity is enabled | Approved Decision | `docs/decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md` |
+| Secure-session remediation and read-only Retail catalog discovery | Approved Implementation Decision | `docs/decisions/architecture/ADR-005-backend-remediation-runtime-policy.md` |
 
 ## 16. Deferred Decisions
 
 | Decision | Status | Blocking scope |
 |---|---|---|
-| Detailed visual navigation/switch for Retail and B2B | Deferred | Public navigation, responsive navigation, journey switching |
+| Navigation topology beyond the implemented secondary Retail entry | Deferred | Subdomain/separate-app topology and broader journey switching |
 | Payment gateway provider | Open | Provider integration and production payment activation |
 | Provider-specific payment state mapping and webhook authentication | Open | Payment adapter implementation |
 | Finance operations, reconciliation SLA, and payment-event retention | Open | Payment operations and production readiness |
@@ -419,8 +420,8 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Tax treatment and rounding policy | Open | Price display, invoice, payment, refund, and reconciliation |
 | Reservation duration | Open | Checkout expiry, stock availability, and payment timing |
 | Cancellation, refund, and return policy | Open | Checkout terms, Finance, fulfillment, and support |
-| First Retail vertical slice | Open | Retail implementation sequencing |
-| Protected-scope implementation permission | Open | Legacy order, auth, payment, fulfillment, and compatibility changes |
+| First Retail vertical slice | Resolved: read-only discovery | Implemented listing/detail and secondary entry only; no transaction capability |
+| Protected-scope implementation permission | Bounded approval | Auth/session, legacy-order quarantine, publication/data-integrity remediation, and Retail discovery per `DEC-REMED-001`; payment, fulfillment, production storage, Organization Portal, rollout, and go-live remain open |
 | Production readiness | Open | Feature activation and operational handover |
 | Production go-live | Open | Public production availability |
 | Service taxonomy rename | Deferred | Public content model and navigation labels |
@@ -431,6 +432,11 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Process-photography acquisition | Open dependency | Broader About/Projects/public narrative rollout |
 
 Homepage pattern is not deferred. It is resolved as Unified Homepage with a Business/B2B-primary narrative and a clear secondary Retail path.
+
+The first Retail vertical slice is also no longer deferred. `DEC-REMED-001`
+authorizes read-only discovery on the existing route-based surface. This does
+not select the broader topology in `ADR-004` and does not activate cart,
+checkout, payment, fulfillment, reservation, or upload.
 
 ## 17. Implementation Boundaries
 

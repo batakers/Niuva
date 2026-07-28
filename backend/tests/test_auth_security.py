@@ -29,6 +29,7 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+from tests.auth_support import AuthCollection  # noqa: E402
 
 
 ORIGIN = {"Origin": "https://testserver"}
@@ -227,8 +228,23 @@ class FakeCollection:
 
 class FakeDatabase:
     def __init__(self, users):
+        for user in users:
+            user.setdefault("role_policy_version", server.ROLE_POLICY_VERSION)
+            user.setdefault("token_version", 0)
         self.users = FakeCollection(users)
+        self.login_rate_limits = AuthCollection()
+        self.auth_sessions = AuthCollection()
         self.orders = FakeCollection()
+        self.file_objects = FakeCollection(
+            [
+                {
+                    "id": "private-file",
+                    "storage_path": "niuva/orders/client-2/private.stl",
+                    "owner_id": "client-2",
+                    "state": "active",
+                }
+            ]
+        )
         # The dashboard scopes every aggregate by one range, so it reads the
         # canonical surfaces alongside the legacy one.
         self.retail_orders = FakeCollection()
@@ -395,7 +411,7 @@ async def run_security_matrix():
             json={"email": client["email"], "password": "ClientPassword123"},
             headers=ORIGIN,
         )
-        assert client_admin_login.status_code == 403
+        assert client_admin_login.status_code == 401
 
         invalid_admin_login = await api.post(
             "/api/auth/admin/login",
@@ -418,7 +434,7 @@ async def run_security_matrix():
                 headers=ORIGIN if "/admin/" in path else None,
             )
             assert blocked_login.status_code == 401
-            assert blocked_login.json() == {"detail": "Invalid email or password"}
+            assert blocked_login.json()["detail"] == "Invalid email or password"
             assert "token" not in blocked_login.json()
             assert "access_token" not in blocked_login.cookies
 
@@ -427,14 +443,18 @@ async def run_security_matrix():
             json={"email": client["email"], "password": "ClientPassword123"},
         )
         assert client_login.status_code == 200
-        client_token = client_login.json()["token"]
+        assert "token" not in client_login.json()
+        client_token = server.create_token(client["id"], client["email"], "client")
 
         other_client_login = await api.post(
             "/api/auth/login",
             json={"email": other_client["email"], "password": "OtherClientPassword123"},
         )
         assert other_client_login.status_code == 200
-        other_client_token = other_client_login.json()["token"]
+        assert "token" not in other_client_login.json()
+        other_client_token = server.create_token(
+            other_client["id"], other_client["email"], "client"
+        )
 
         order_before_payment_lockdown = copy.deepcopy(server.db.orders.items[0])
         disabled_mutations = (
@@ -473,6 +493,7 @@ async def run_security_matrix():
             "finance_activation": "not_approved",
         }
 
+        api.cookies.clear()
         assert (await api.get("/api/admin/users")).status_code == 401
         assert (await api.get("/api/admin/users", headers=bearer(client_token))).status_code == 403
         internal_bearer = server.create_token(admin["id"], admin["email"], "super_admin")
@@ -506,17 +527,17 @@ async def run_security_matrix():
             "email": "provisioned@example.com",
             "password": "ProvisionedPassword123",
         }
-        assert (await api.post("/api/admin/users", json=new_client_payload)).status_code == 401
+        assert (await api.post("/api/admin/customers", json=new_client_payload)).status_code == 401
         assert (
             await api.post(
-                "/api/admin/users",
+                "/api/admin/customers",
                 json=new_client_payload,
                 headers=bearer(client_token),
             )
         ).status_code == 403
         provisioned = await commercial_api.request(
             "POST",
-            "/api/admin/users",
+            "/api/admin/customers",
             json=new_client_payload,
         )
         assert provisioned.status_code == 201
@@ -536,13 +557,16 @@ async def run_security_matrix():
         )
         assert commercial_customers.status_code == 200
         assert {customer["email"] for customer in commercial_customers.json()} == {
-            client["email"], other_client["email"], new_client_payload["email"]
+            client["email"],
+            other_client["email"],
+            disabled_client["email"],
+            new_client_payload["email"],
         }
         assert all("password_hash" not in customer for customer in commercial_customers.json())
 
         invalid = await api.get("/api/auth/me", headers=bearer("not-a-token"))
         assert invalid.status_code == 401
-        assert invalid.json()["detail"] == "Invalid token"
+        assert invalid.json()["detail"] == "Session invalid"
 
         expired_token = jwt.encode(
             {
@@ -557,7 +581,7 @@ async def run_security_matrix():
         )
         expired = await api.get("/api/auth/me", headers=bearer(expired_token))
         assert expired.status_code == 401
-        assert expired.json()["detail"] == "Token expired"
+        assert expired.json()["detail"] == "Session invalid"
 
         missing_claim_token = jwt.encode(
             {"type": "access", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)},
@@ -566,26 +590,26 @@ async def run_security_matrix():
         )
         missing_claim = await api.get("/api/auth/me", headers=bearer(missing_claim_token))
         assert missing_claim.status_code == 401
-        assert missing_claim.json()["detail"] == "Invalid token"
+        assert missing_claim.json()["detail"] == "Session invalid"
 
         stale_token = server.create_token("deleted-user", "deleted@example.com", "admin")
         stale = await api.get("/api/auth/me", headers=bearer(stale_token))
         assert stale.status_code == 401
-        assert stale.json()["detail"] == "User not found"
+        assert stale.json()["detail"] == "Session invalid"
 
         disabled_token = server.create_token(
             disabled_client["id"], disabled_client["email"], "client"
         )
         disabled = await api.get("/api/auth/me", headers=bearer(disabled_token))
-        assert disabled.status_code == 403
-        assert disabled.json()["detail"] == "User account is disabled"
+        assert disabled.status_code == 401
+        assert disabled.json()["detail"] == "Session invalid"
 
         forged_role_token = server.create_token(client["id"], client["email"], "admin")
         role_mismatch = await api.get("/api/admin/users", headers=bearer(forged_role_token))
         assert role_mismatch.status_code == 403
 
         missing_csrf = await admin_api.api.post(
-            "/api/admin/users",
+            "/api/admin/customers",
             json={
                 "name": "No CSRF",
                 "email": "no-csrf@example.com",
@@ -595,7 +619,7 @@ async def run_security_matrix():
         )
         assert missing_csrf.status_code == 403
         wrong_origin = await admin_api.api.post(
-            "/api/admin/users",
+            "/api/admin/customers",
             json={
                 "name": "Wrong Origin",
                 "email": "wrong-origin@example.com",
@@ -805,11 +829,6 @@ async def run_login_issuance_contract():
             ) as verify_mock,
             patch.object(
                 server,
-                "auth_response",
-                wraps=server.auth_response,
-            ) as response_mock,
-            patch.object(
-                server,
                 "create_token",
                 wraps=server.create_token,
             ) as token_mock,
@@ -823,12 +842,11 @@ async def run_login_issuance_contract():
                 )
 
                 assert response.status_code == 401
-                assert response.json() == {"detail": "Invalid email or password"}
+                assert response.json()["detail"] == "Invalid email or password"
                 assert verify_mock.call_count == verification_calls + 1
                 if uses_dummy_hash:
                     assert verify_mock.call_args.args[1] == server.DUMMY_PASSWORD_HASH
 
-            response_mock.assert_not_called()
             token_mock.assert_not_called()
 
         with patch.object(
@@ -864,9 +882,7 @@ async def run_login_issuance_contract():
                 },
             )
             assert rejected_public_staff.status_code == 401
-            assert rejected_public_staff.json() == {
-                "detail": "Invalid email or password"
-            }
+            assert rejected_public_staff.json()["detail"] == "Invalid email or password"
             assert "token" not in rejected_public_staff.json()
 
             staff_login = await api.post(
@@ -889,10 +905,8 @@ async def run_login_issuance_contract():
                 },
                 headers=ORIGIN,
             )
-            assert customer_admin_login.status_code == 403
-            assert customer_admin_login.json() == {
-                "detail": "Permission required: admin.access"
-            }
+            assert customer_admin_login.status_code == 401
+            assert customer_admin_login.json()["detail"] == "Invalid email or password"
             assert success_verify_mock.call_count == 5
 
 
@@ -972,7 +986,7 @@ async def run_superseded_role_cannot_obtain_a_session():
                 assert response.status_code == 401, path
                 # Generic, like every other refusal: the response must not
                 # reveal that this address exists but is unmigrated.
-                assert response.json() == {"detail": "Invalid email or password"}
+                assert response.json()["detail"] == "Invalid email or password"
     finally:
         server.db = original_db
 

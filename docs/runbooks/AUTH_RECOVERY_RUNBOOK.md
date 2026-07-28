@@ -2,7 +2,7 @@
 
 ## Scope
 
-This runbook governs migration `007_auth_recovery_safety.py`, recovery
+This runbook governs migration `008_auth_recovery_safety.py`, recovery
 disablement, rollback, and operator handoff. It does not authorize execution
 against shared/staging/production data, real email, Argon2 write enablement,
 deployment, or go-live. Phase 1 permits disposable local replica-set evidence
@@ -47,7 +47,7 @@ sensitive values.
 From `backend/`, connected only to an approved disposable local replica set:
 
 ```powershell
-python migrations\007_auth_recovery_safety.py
+python migrations\008_auth_recovery_safety.py
 ```
 
 Expected output is aggregate-only: scanned count, field-type counts, active-user
@@ -64,7 +64,7 @@ Only after the prerequisites and disposable-data authorization are satisfied:
 
 ```powershell
 $env:TRANSACTION_MUTATIONS_ENABLED = "true"
-python migrations\007_auth_recovery_safety.py `
+python migrations\008_auth_recovery_safety.py `
   --apply `
   --backup "<unused-encrypted-backup-path.json>" `
   --encrypted-backup-confirmed
@@ -76,10 +76,17 @@ Apply creates:
 - partial unique index `one_active_password_reset_token_per_user` on `user_id`
   where `active: true`.
 
+It replaces Migration 007's transitional `uq_password_reset_hash` and
+`ttl_password_reset_expiry` indexes. The legacy index names are recorded in the
+redacted migration backup, removed before the new indexes are created, and
+restored only by rollback. This prevents expired-token history from being
+silently deleted by MongoDB TTL cleanup.
+
 It then transactionally marks every historical token with
-`auth_recovery_migration: 007_auth_recovery_safety`, sets `active: false`, and
-records migration invalidation fields. Index creation is compensated if either
-index or the guarded mutation fails. Historical documents remain intact.
+`auth_recovery_migration: 008_auth_recovery_safety`, sets `active: false`, and
+records migration invalidation fields together with the global Migration 008
+marker. Index replacement is compensated if either an index or the guarded
+mutation fails. Historical documents remain intact.
 
 Run the same apply command again. Expected: `second_run_noop: true`, no writes,
 no backup overwrite, and the same two indexes. Preserve the backup until the
@@ -103,12 +110,13 @@ documents to prove absence.
 
 ## Rollback
 
-Rollback restores only migration-owned token fields and removes only indexes
-that migration `007` introduced:
+Rollback restores only migration-owned token fields, removes the Migration 008
+marker and indexes, and recreates only the transitional Migration 007 indexes
+recorded in the reviewed backup:
 
 ```powershell
 $env:TRANSACTION_MUTATIONS_ENABLED = "true"
-python migrations\007_auth_recovery_safety.py `
+python migrations\008_auth_recovery_safety.py `
   --rollback `
   --backup "<verified-encrypted-backup-path.json>"
 ```

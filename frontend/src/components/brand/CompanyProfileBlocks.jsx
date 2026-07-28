@@ -24,6 +24,7 @@ export const profileContent = {
   },
   services: [
     {
+      slug: "research-development",
       title: "Research & Development",
       body: "Riset untuk memetakan kebutuhan, peluang pasar, arah teknologi, dan kelayakan konsep sebelum masuk ke tahap pengembangan.",
       accent: "Riset",
@@ -37,6 +38,7 @@ export const profileContent = {
       outcomes: ["Pemetaan kebutuhan", "Validasi konsep", "Rekomendasi pengembangan"],
     },
     {
+      slug: "design-prototyping",
       title: "Design & Prototyping",
       body: "Perancangan produk, visual, model 3D, dan prototipe agar ide dapat diuji dari sisi bentuk, fungsi, dan arah implementasi.",
       accent: "Prototipe",
@@ -50,6 +52,7 @@ export const profileContent = {
       outcomes: ["Desain produk", "Model 3D", "Purwarupa uji"],
     },
     {
+      slug: "consultant-workshop",
       title: "Consultant & Workshop",
       body: "Konsultasi ahli dan workshop praktis untuk membantu tim merumuskan strategi, mengambil keputusan, dan membangun kemampuan internal.",
       accent: "Konsultasi",
@@ -63,6 +66,7 @@ export const profileContent = {
       outcomes: ["Konsultasi ahli", "Workshop terapan", "Pengembangan SDM"],
     },
     {
+      slug: "apparel-merchandise",
       title: "Apparel & Merchandise",
       body: "Pengembangan apparel dan merchandise untuk kebutuhan brand, komunitas, event, dan program yang membutuhkan identitas visual konsisten.",
       accent: "Kreatif",
@@ -622,7 +626,6 @@ export function ProjectGrid({ projects = profileContent.projects, onSelect, clas
     </div>
   );
 }
-
 
 
 

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 
 /**
  * UserSelector - Searchable user picker with autocomplete
- * Fetches users from /admin/users and filters client-side
+ * Fetches customers from the dedicated customer directory.
  */
 export function UserSelector({
   value,
@@ -31,7 +31,7 @@ export function UserSelector({
     setError("");
 
     api
-      .get("/admin/users")
+      .get("/admin/customers")
       .then((response) => {
         if (active) {
           setUsers(response.data || []);

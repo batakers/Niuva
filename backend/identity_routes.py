@@ -7,7 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
 from audit import append_identity_governance_event
-from permissions import CUSTOMER_ROLES, INTERNAL_ROLES, validate_roles
+from permissions import (
+    CUSTOMER_ROLES,
+    INTERNAL_ROLES,
+    ROLE_POLICY_VERSION,
+    validate_roles,
+)
 
 
 def now_iso() -> str:
@@ -177,6 +182,7 @@ def build_identity_router(
                 "roles": list(_internal_roles(invitation["roles"])),
                 "status": "active",
                 "access_state": "approved",
+                "role_policy_version": ROLE_POLICY_VERSION,
                 "token_version": 0,
                 "version": 1,
                 "created_at": now_iso(),
@@ -293,7 +299,11 @@ def build_identity_router(
             actor=actor,
             action="identity.staff_roles_updated",
             operation_name="identity.assign_staff_roles",
-            changes={"roles": roles, "access_state": "approved"},
+            changes={
+                "roles": roles,
+                "access_state": "approved",
+                "role_policy_version": ROLE_POLICY_VERSION,
+            },
         )
 
     @router.post("/admin/staff/{user_id}/deactivate")

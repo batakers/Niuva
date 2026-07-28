@@ -31,7 +31,7 @@ export default function ProjectWorkOrders({ project, onChanged }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ variant_id: "", quantity: "1", reason: "" });
+  const [form, setForm] = useState({ quote_line_id: "", quantity: "1", reason: "" });
 
   const canCreate = hasPermission(
     user,
@@ -59,7 +59,7 @@ export default function ProjectWorkOrders({ project, onChanged }) {
       toast.error(t("b2b.reasonRequired"));
       return;
     }
-    if (!form.variant_id) {
+    if (!form.quote_line_id) {
       toast.error(t("workOrder.variantRequired"));
       return;
     }
@@ -70,10 +70,10 @@ export default function ProjectWorkOrders({ project, onChanged }) {
         expected_version: project.version,
         operation_id: operationId(),
         reason: form.reason.trim(),
-        variant_id: form.variant_id,
+        quote_line_id: form.quote_line_id,
         quantity: Number.parseInt(form.quantity, 10) || 1,
       });
-      setForm({ variant_id: "", quantity: "1", reason: "" });
+      setForm({ quote_line_id: "", quantity: "1", reason: "" });
       toast.success(t("workOrder.created"));
       load();
       // Creating a run bumps the project version; the parent must reload or
@@ -145,15 +145,15 @@ export default function ProjectWorkOrders({ project, onChanged }) {
               <select
                 id="wo-variant"
                 data-testid="work-order-variant"
-                value={form.variant_id}
+                value={form.quote_line_id}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, variant_id: event.target.value }))
+                  setForm((current) => ({ ...current, quote_line_id: event.target.value }))
                 }
                 className="brand-field h-11 w-full rounded-control border border-border-default bg-surface-default px-3 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
                 <option value="">{t("workOrder.selectVariant")}</option>
                 {variants.map((item) => (
-                  <option key={item.variant_id} value={item.variant_id}>
+                  <option key={item.quote_line_id} value={item.quote_line_id}>
                     {item.description} · {item.quantity} unit
                   </option>
                 ))}

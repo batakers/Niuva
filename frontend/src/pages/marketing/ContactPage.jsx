@@ -17,6 +17,10 @@ import {
   SectionHeader,
 } from "../../components/brand/BrandSystem";
 import { findBySlug, usePublicContent } from "../../lib/content";
+import {
+  sanitizePublicContact,
+  usePublicSettings,
+} from "../../lib/publicSettings";
 
 const initialForm = {
   name: "",
@@ -104,9 +108,14 @@ export default function ContactPage() {
     setForm((current) => ({ ...current, [key]: value }));
     setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
   };
+  const { contact: settingsContact, status: settingsStatus } = usePublicSettings();
   const { blocks: cmsBlocks } = usePublicContent("contact");
   const cmsFields = useMemo(() => findBySlug(cmsBlocks, "primary"), [cmsBlocks]);
-  const contact = { ...profileContent.contact, ...cmsFields };
+  const contact = sanitizePublicContact({
+    ...profileContent.contact,
+    ...cmsFields,
+    ...(settingsStatus === "ready" ? settingsContact : {}),
+  });
 
   const submit = async (event) => {
     event.preventDefault();
@@ -156,7 +165,7 @@ export default function ContactPage() {
           eyebrow="Contact"
           title="Mulai diskusi proyek dengan brief yang siap."
           body="Sampaikan kebutuhan riset, design engineering, prototyping, EV/product development, simulator, workshop, atau produk kreatif. Tim Niuva akan meninjau konteks awal sebelum diskusi lanjutan."
-          primaryAction={<BrandButton href={contact.whatsappHref}>Diskusikan Project</BrandButton>}
+          primaryAction={<BrandButton href={contact.whatsappHref || "#form-konsultasi"}>Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton href="#form-konsultasi" variant="secondary">Isi Formulir Project</BrandButton>}
           variant="contact"
           visual={
@@ -164,8 +173,8 @@ export default function ContactPage() {
                hero too; the rendered values are unchanged by default. */
             <RoundedVisualFrame motif={false} title="WhatsApp adalah jalur tercepat untuk memulai." kicker="Kanal konsultasi">
               <div className="grid gap-3 [overflow-wrap:anywhere] text-sm font-semibold text-text-inverse">
-                <span>WhatsApp: {contact.whatsapp}</span>
-                <span>Email: {contact.email}</span>
+                {contact.whatsapp && <span>WhatsApp: {contact.whatsapp}</span>}
+                {contact.email && <span>Email: {contact.email}</span>}
                 <span>Bandung Techno Park</span>
               </div>
             </RoundedVisualFrame>

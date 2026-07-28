@@ -1,11 +1,11 @@
 """Safe local object storage for NIUVA development and demonstrations."""
 
+import io
 import json
 import mimetypes
 import os
 import tempfile
 from pathlib import Path, PurePosixPath, PureWindowsPath
-
 
 BACKEND_DIR = Path(__file__).resolve().parent
 DEFAULT_STORAGE_ROOT = BACKEND_DIR / ".local-storage"
@@ -102,9 +102,7 @@ def _resolve_path(storage_path: str) -> tuple[Path, str]:
         PurePosixPath(normalized).is_absolute()
         or windows_path.drive
         or any(
-            part in {"", ".", ".."}
-            or ":" in part
-            or part.endswith((" ", "."))
+            part in {"", ".", ".."} or ":" in part or part.endswith((" ", "."))
             for part in parts
         )
     ):
@@ -157,7 +155,7 @@ def _sanitize_content_type(content_type: object) -> str:
     return normalized
 
 
-def put_object(path: str, data: bytes, content_type: str) -> dict:
+def put_file_object(path: str, source, size: int, content_type: str) -> dict:
     target, normalized = _resolve_path(path)
     metadata_target = _metadata_path(target)
     if target.exists() or metadata_target.exists():
@@ -166,10 +164,33 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
     metadata = {
         "version": 1,
         "content_type": _sanitize_content_type(content_type),
-        "size": len(data),
+        "size": size,
     }
+    temporary = None
+    descriptor = None
     try:
-        _atomic_write(target, data)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{target.name}.",
+            suffix=".upload",
+            dir=target.parent,
+        )
+        temporary = Path(temporary_name)
+        written = 0
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = None
+            while True:
+                chunk = source.read(64 * 1024)
+                if not chunk:
+                    break
+                handle.write(chunk)
+                written += len(chunk)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if written != size:
+            raise StorageError("Stored object size mismatch")
+        os.replace(temporary, target)
+        temporary = None
         _atomic_write(
             metadata_target,
             json.dumps(metadata, sort_keys=True).encode("utf-8"),
@@ -178,13 +199,29 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
         target.unlink(missing_ok=True)
         metadata_target.unlink(missing_ok=True)
         raise StorageError("Unable to store object") from exc
-    return {"path": normalized, "size": len(data), "content_type": metadata["content_type"]}
+    finally:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return {
+        "path": normalized,
+        "size": size,
+        "content_type": metadata["content_type"],
+    }
 
 
-def get_object(path: str) -> tuple[bytes, str]:
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    return put_file_object(path, io.BytesIO(data), len(data), content_type)
+
+
+def _object_descriptor(path: str) -> tuple[Path, str, int]:
     target, _normalized = _resolve_path(path)
     try:
-        data = target.read_bytes()
+        size = target.stat().st_size
     except FileNotFoundError as exc:
         raise StorageNotFoundError("Stored file not found") from exc
     except OSError as exc:
@@ -202,4 +239,55 @@ def get_object(path: str) -> tuple[bytes, str]:
 
     if not content_type:
         content_type = mimetypes.guess_type(target.name)[0] or DEFAULT_CONTENT_TYPE
+    return target, content_type, size
+
+
+def get_object(path: str) -> tuple[bytes, str]:
+    target, content_type, _size = _object_descriptor(path)
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError as exc:
+        raise StorageNotFoundError("Stored file not found") from exc
+    except OSError as exc:
+        raise StorageError("Unable to read stored file") from exc
     return data, content_type
+
+
+def stream_object(path: str, *, chunk_size: int = 64 * 1024):
+    """Return a bounded-chunk iterator without exposing the resolved local path."""
+
+    if chunk_size < 1 or chunk_size > 1024 * 1024:
+        raise StorageError("Invalid stream chunk size")
+    target, content_type, size = _object_descriptor(path)
+
+    def chunks():
+        try:
+            with target.open("rb") as handle:
+                while True:
+                    chunk = handle.read(chunk_size)
+                    if not chunk:
+                        return
+                    yield chunk
+        except FileNotFoundError as exc:
+            raise StorageNotFoundError("Stored file not found") from exc
+        except OSError as exc:
+            raise StorageError("Unable to read stored file") from exc
+
+    return chunks(), content_type, size
+
+
+def delete_object(path: str) -> None:
+    """Delete one resolved local object and its sidecar.
+
+    This is used only to compensate a just-created development upload whose
+    database metadata could not be persisted. It never accepts a filesystem
+    path and therefore cannot escape the configured storage root.
+    """
+
+    target, _normalized = _resolve_path(path)
+    metadata_target = _metadata_path(target)
+    try:
+        target.unlink(missing_ok=True)
+        metadata_target.unlink(missing_ok=True)
+    except OSError as exc:
+        raise StorageError("Unable to delete stored object") from exc

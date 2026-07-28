@@ -307,6 +307,13 @@ def project_publication_for_public(
     public = deepcopy(snapshot)
     public.pop("published_by", None)
     public.pop("publish_reason", None)
+    product = public.get("product", {})
+    if not product.get("retail_cta_enabled"):
+        public["cta_state"] = "unavailable"
+    elif product.get("pricing_mode") == "quote_required":
+        public["cta_state"] = "quote_required"
+    else:
+        public["cta_state"] = "discovery_only"
 
     for variant in public.get("variants", []):
         stock = stock_by_variant.get(variant["id"], {})

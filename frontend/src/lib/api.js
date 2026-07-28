@@ -3,22 +3,23 @@ import axios from "axios";
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 export const HAS_CONFIGURED_BACKEND = Boolean(BACKEND_URL);
 export const API = `${BACKEND_URL}/api`;
-export const TOKEN_KEY = "niuva_token";
-
-export const api = axios.create({ baseURL: API, withCredentials: true });
+const CSRF_COOKIE = "niuva_csrf";
+const CSRF_HEADER = "X-CSRF-Token";
 let adminCsrfToken = null;
-const SAFE_METHODS = new Set(["get", "head", "options"]);
 
-export function getStoredToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
+export const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+});
 
-export function setStoredToken(token) {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearStoredToken() {
-  localStorage.removeItem(TOKEN_KEY);
+function readCookie(name) {
+  if (typeof document === "undefined") return "";
+  const prefix = `${encodeURIComponent(name)}=`;
+  const item = document.cookie
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(prefix));
+  return item ? decodeURIComponent(item.slice(prefix.length)) : "";
 }
 
 export function setAdminCsrfToken(token) {
@@ -30,15 +31,56 @@ export function clearAdminCsrfToken() {
 }
 
 api.interceptors.request.use((config) => {
-  const token = getStoredToken();
-  const path = String(config.url || "");
-  const isAdminPath = path === "/admin" || path.startsWith("/admin/") || path.startsWith("/auth/admin/");
-  if (token && !isAdminPath) config.headers.Authorization = `Bearer ${token}`;
-  if (adminCsrfToken && !SAFE_METHODS.has((config.method || "get").toLowerCase())) {
-    config.headers["X-CSRF-Token"] = adminCsrfToken;
+  const method = String(config.method || "get").toUpperCase();
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const csrf = adminCsrfToken || readCookie(CSRF_COOKIE);
+    if (csrf) config.headers[CSRF_HEADER] = csrf;
   }
   return config;
 });
+
+let refreshPromise = null;
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    const path = String(original?.url || "");
+    const isAuthOperation =
+      path.includes("/auth/login") ||
+      path.includes("/auth/admin/login") ||
+      path.includes("/auth/admin/session") ||
+      path.includes("/auth/admin/logout") ||
+      path.includes("/auth/refresh") ||
+      path.includes("/auth/logout");
+    const isAdminOperation =
+      path === "/admin" ||
+      path.startsWith("/admin/") ||
+      path.startsWith("/auth/admin/");
+    if (
+      error.response?.status !== 401 ||
+      !original ||
+      original._retry ||
+      isAuthOperation ||
+      isAdminOperation
+    ) {
+      return Promise.reject(error);
+    }
+
+    original._retry = true;
+    if (!refreshPromise) {
+      refreshPromise = api.post("/auth/refresh").finally(() => {
+        refreshPromise = null;
+      });
+    }
+    try {
+      await refreshPromise;
+      return api(original);
+    } catch {
+      return Promise.reject(error);
+    }
+  },
+);
 
 export function unwrap(request) {
   return request.then((response) => response.data);
@@ -49,23 +91,52 @@ export function fileUrl(path) {
   return `${API}/files/${normalized}`;
 }
 
-async function authenticatedFetch(url, options = {}) {
-  const token = getStoredToken();
-  const method = (options.method || "GET").toUpperCase();
-  const headers = new Headers(options.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  if (adminCsrfToken && !SAFE_METHODS.has(method.toLowerCase())) {
-    headers.set("X-CSRF-Token", adminCsrfToken);
+export function resolveMediaUrl(reference) {
+  const value = String(reference || "").trim();
+  const mediaMatch = /^media:([A-Za-z0-9-]+)$/.exec(value);
+  if (mediaMatch) return `${API}/media/${encodeURIComponent(mediaMatch[1])}`;
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const parsed = new URL(value);
+    return (
+      parsed.protocol === "https:" &&
+      !parsed.username &&
+      !parsed.password
+    ) ? value : "";
+  } catch {
+    return "";
   }
-  return fetch(url, {
+}
+
+export function safeExternalUrl(value) {
+  const candidate = String(value || "").trim();
+  try {
+    const parsed = new URL(candidate);
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password
+    ) {
+      return "";
+    }
+    return candidate;
+  } catch {
+    return "";
+  }
+}
+
+export async function fetchFile(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const headers = new Headers(options.headers);
+  const csrf = adminCsrfToken || readCookie(CSRF_COOKIE);
+  if (csrf && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+    headers.set(CSRF_HEADER, csrf);
+  }
+  const response = await fetch(fileUrl(path), {
     ...options,
     credentials: "include",
     headers,
   });
-}
-
-export async function fetchFile(path, options) {
-  const response = await authenticatedFetch(fileUrl(path), options);
   if (!response.ok) throw new Error(`File request failed (${response.status})`);
   return response.blob();
 }
@@ -88,7 +159,12 @@ export async function downloadFile(path, filename = "download") {
 }
 
 export async function downloadCsv(apiPath, filename = "export.csv") {
-  const response = await authenticatedFetch(`${API}${apiPath}`);
+  const headers = new Headers();
+  if (adminCsrfToken) headers.set(CSRF_HEADER, adminCsrfToken);
+  const response = await fetch(`${API}${apiPath}`, {
+    credentials: "include",
+    headers,
+  });
   if (!response.ok) throw new Error(`Export failed (${response.status})`);
   triggerBlobDownload(await response.blob(), filename);
 }

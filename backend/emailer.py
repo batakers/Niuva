@@ -52,6 +52,7 @@ async def _send_provider_email(
     subject: str,
     title: str,
     body_html: str,
+    idempotency_key: str | None = None,
 ) -> dict:
     """Send without persisting payloads or exposing raw provider errors."""
 
@@ -63,6 +64,11 @@ async def _send_provider_email(
         "to": [to_email],
         "subject": subject,
         "html": _wrap(title, body_html),
+        **(
+            {"headers": {"Idempotency-Key": idempotency_key}}
+            if idempotency_key
+            else {}
+        ),
     }
     try:
         result = await asyncio.to_thread(resend.Emails.send, params)
@@ -79,6 +85,7 @@ async def send_email(
     body_html: str,
     db=None,
     user_id: str | None = None,
+    idempotency_key: str | None = None,
 ):
     """Send a general notification and persist its non-secret in-app copy."""
 
@@ -100,6 +107,7 @@ async def send_email(
         subject=subject,
         title=title,
         body_html=body_html,
+        idempotency_key=idempotency_key,
     )
 
 

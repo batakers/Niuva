@@ -5,6 +5,8 @@ const {
   CONTENT_ACTION_PERMISSIONS,
   CONTENT_ACTION_TARGETS,
   CONTENT_STAGE_ACTIONS,
+  coerceContentFieldValue,
+  emptyFieldsFor,
 } = require("@/lib/content");
 
 const read = (...segments) =>
@@ -66,12 +68,19 @@ describe("CMS lifecycle wiring", () => {
     expect(apiSource).toContain("/transitions`");
     expect(apiSource).toContain("target_status: targetStatus");
   });
+
+  test("capability order remains an integer through the editor contract", () => {
+    const orderField = { type: "number" };
+    expect(emptyFieldsFor("capability").display_order).toBe(0);
+    expect(coerceContentFieldValue(orderField, "12")).toBe(12);
+    expect(coerceContentFieldValue(orderField, "")).toBe(0);
+  });
 });
 
 describe("Rollback carries a real reason", () => {
   test("the reason comes from the operator, not a canned string", () => {
     // A canned reason would stamp every rollback with the same sentence.
-    expect(editorSource).toContain("contentApi.rollback(blockId, versionId, reason.trim())");
+    expect(editorSource).toContain("versionId,\n        reason.trim(),\n        block.version,");
     expect(editorSource).not.toContain('t("content.rollbackReason")');
     expect(editorSource).toContain('t("content.rollbackReasonRequired")');
   });

@@ -19,6 +19,7 @@ from b2b_domain import (
     project_b2b_project,
     project_quote,
     validate_inquiry_transition,
+    validate_quote_readiness,
     validate_quote_transition,
     validate_project_transition,
 )
@@ -264,7 +265,16 @@ class B2BService:
                     ],
                 },
             )
+        if target_status == "accepted":
+            raise B2BDomainError(
+                409,
+                "acceptance_evidence_required",
+                "Penerimaan Quote harus direkam melalui command acceptance dengan evidence.",
+            )
         validate_quote_transition(quote["status"], target_status, reason=reason)
+        current_version = await self._get_quote_version(quote["current_version_id"])
+        if target_status in {"internal_review", "sent"}:
+            validate_quote_readiness(current_version)
         timestamp = now_iso()
         event = {
             "from_status": quote["status"],
@@ -280,8 +290,8 @@ class B2BService:
             "history": [*quote.get("history", []), event],
             "updated_at": timestamp,
         }
-        if target_status == "accepted":
-            changes["accepted_version_id"] = quote["current_version_id"]
+        if target_status == "sent":
+            changes["sent_version_id"] = quote["current_version_id"]
         result = await self.db.b2b_quotes.update_one(
             {"id": quote_id, "version": expected_version, "status": quote["status"]},
             {"$set": changes},
@@ -300,7 +310,119 @@ class B2BService:
                     ],
                 },
             )
+        return project_quote({**quote, **changes}, current_version)
+
+    async def accept_quote(
+        self,
+        quote_id: str,
+        *,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        approver: dict,
+        accepted_at: datetime,
+        channel: str,
+        evidence_reference: str,
+        actor: dict,
+    ) -> dict:
+        quote = await self._get_quote(quote_id)
+        for event in quote.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if event.get("event") != "quote_accepted_with_evidence":
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi Quote berbeda.",
+                    )
+                return await self.get_quote(quote_id)
+        if quote["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Quote telah berubah. Muat versi terbaru sebelum menerima.",
+                details={
+                    "current_version": quote["version"],
+                    "current_status": quote["status"],
+                },
+            )
+        validate_quote_transition(quote["status"], "accepted", reason=reason)
         current_version = await self._get_quote_version(quote["current_version_id"])
+        validate_quote_readiness(current_version)
+        if quote.get("sent_version_id") != quote["current_version_id"]:
+            raise B2BDomainError(
+                409,
+                "quote_sent_version_mismatch",
+                "Versi Quote yang diterima harus sama dengan versi yang dikirim.",
+            )
+        if accepted_at.tzinfo is None:
+            raise B2BDomainError(
+                422,
+                "accepted_at_timezone_required",
+                "Waktu penerimaan harus memiliki timezone.",
+            )
+        if accepted_at > datetime.now(timezone.utc):
+            raise B2BDomainError(
+                422,
+                "accepted_at_in_future",
+                "Waktu penerimaan tidak boleh berada di masa depan.",
+            )
+        approver_name = str(approver.get("name") or "").strip()
+        approver_identity = str(approver.get("identity") or "").strip()
+        evidence_reference = evidence_reference.strip()
+        if not approver_name or not approver_identity or len(evidence_reference) < 3:
+            raise B2BDomainError(
+                422,
+                "acceptance_evidence_invalid",
+                "Identitas approver dan referensi evidence wajib diisi.",
+            )
+        timestamp = now_iso()
+        acceptance = {
+            "approver": {
+                "name": approver_name,
+                "identity": approver_identity,
+            },
+            "accepted_at": accepted_at.astimezone(timezone.utc).isoformat(),
+            "channel": channel,
+            "evidence_reference": evidence_reference,
+            "recorded_by": actor.get("id"),
+            "recorded_at": timestamp,
+            "reason": reason.strip(),
+            "version_id": quote["current_version_id"],
+        }
+        event = {
+            "event": "quote_accepted_with_evidence",
+            "from_status": quote["status"],
+            "to_status": "accepted",
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "operation_id": operation_id,
+            "timestamp": timestamp,
+            "acceptance": deepcopy(acceptance),
+        }
+        changes = {
+            "status": "accepted",
+            "version": expected_version + 1,
+            "accepted_version_id": quote["current_version_id"],
+            "acceptance": acceptance,
+            "history": [*quote.get("history", []), event],
+            "updated_at": timestamp,
+        }
+        result = await self.db.b2b_quotes.update_one(
+            {
+                "id": quote_id,
+                "version": expected_version,
+                "status": "sent",
+                "current_version_id": quote["current_version_id"],
+                "sent_version_id": quote["current_version_id"],
+            },
+            {"$set": changes},
+        )
+        if not result.matched_count:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Quote berubah selama pencatatan penerimaan.",
+            )
         return project_quote({**quote, **changes}, current_version)
 
     async def create_quote_revision(
@@ -332,11 +454,11 @@ class B2BService:
                 "Quote telah berubah. Muat versi terbaru sebelum membuat revisi.",
                 details={"current_version": quote["version"], "current_status": quote["status"]},
             )
-        if quote["status"] != "revision_requested":
+        if quote["status"] not in {"draft", "revision_requested"}:
             raise B2BDomainError(
                 409,
                 "quote_revision_forbidden",
-                "Revisi baru hanya dapat dibuat setelah revision requested.",
+                "Revisi hanya dapat dibuat saat Quote draft atau revision requested.",
             )
         if not reason.strip():
             raise B2BDomainError(422, "reason_required", "Alasan revisi wajib diisi.")
@@ -368,7 +490,7 @@ class B2BService:
         }
         event = {
             "event": "revision_created",
-            "from_status": "revision_requested",
+            "from_status": quote["status"],
             "to_status": "draft",
             "actor_user_id": actor.get("id"),
             "reason": reason.strip(),
@@ -391,7 +513,7 @@ class B2BService:
                 {
                     "id": quote_id,
                     "version": expected_version,
-                    "status": "revision_requested",
+                    "status": quote["status"],
                     "current_version_id": quote["current_version_id"],
                 },
                 {"$set": changes},
@@ -444,12 +566,40 @@ class B2BService:
         ).limit(500).to_list(500)
         return [project_work_order(document) for document in documents]
 
-    async def _accepted_line_for_variant(self, project: dict, variant_id: str) -> dict:
-        """Find the accepted quotation line a production run draws from."""
+    async def _accepted_line(
+        self,
+        project: dict,
+        *,
+        quote_line_id: str | None,
+        variant_id: str | None,
+    ) -> dict:
+        """Resolve one immutable accepted line, never merely the first variant."""
         version = await self._get_quote_version(project["source_quote_version_id"])
-        for item in version.get("items") or []:
-            if item.get("variant_id") == variant_id:
-                return item
+        if quote_line_id:
+            for item in version.get("items") or []:
+                if item.get("quote_line_id") == quote_line_id:
+                    return item
+            raise B2BDomainError(
+                422,
+                "work_order_line_not_quoted",
+                "Baris penawaran tidak ada pada Quote yang diterima.",
+                details={"quote_line_id": quote_line_id},
+            )
+        # Internal compatibility for historical callers. It is safe only when
+        # one line matches; the HTTP contract always requires quote_line_id.
+        matches = [
+            item
+            for item in version.get("items") or []
+            if item.get("variant_id") == variant_id
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise B2BDomainError(
+                409,
+                "work_order_quote_line_ambiguous",
+                "Variant muncul pada beberapa baris; quote_line_id wajib dipilih.",
+            )
         raise B2BDomainError(
             422,
             "work_order_line_not_quoted",
@@ -464,7 +614,8 @@ class B2BService:
         expected_version: int,
         operation_id: str,
         reason: str,
-        variant_id: str,
+        quote_line_id: str | None = None,
+        variant_id: str | None = None,
         quantity: int,
         actor: dict,
     ) -> dict:
@@ -508,7 +659,52 @@ class B2BService:
                 "Jumlah produksi harus minimal satu.",
             )
 
-        line = await self._accepted_line_for_variant(project, variant_id)
+        line = await self._accepted_line(
+            project,
+            quote_line_id=quote_line_id,
+            variant_id=variant_id,
+        )
+        resolved_line_id = line.get("quote_line_id")
+        if not resolved_line_id:
+            raise B2BDomainError(
+                409,
+                "work_order_quote_line_identity_missing",
+                "Quote historis tidak memiliki quote_line_id dan harus direkonsiliasi.",
+            )
+        resolved_variant_id = line.get("variant_id")
+        if not resolved_variant_id:
+            raise B2BDomainError(
+                422,
+                "work_order_line_has_no_variant",
+                "Baris Quote tidak mereferensikan varian produksi.",
+            )
+        active_work_orders = await self.db.work_orders.find(
+            {
+                "project_id": project_id,
+                "quote_line_id": resolved_line_id,
+                "status": {"$ne": "cancelled"},
+            },
+            {"_id": 0, "quantity": 1},
+        ).to_list(1000)
+        committed_quantity = sum(
+            int(item.get("quantity", 0)) for item in active_work_orders
+        )
+        accepted_quantity = int(line["quantity"])
+        if committed_quantity + quantity > accepted_quantity:
+            raise B2BDomainError(
+                409,
+                "work_order_quote_quantity_exceeded",
+                "Total Work Order tidak boleh melebihi kuantitas Quote yang diterima.",
+                details={
+                    "accepted_quantity": accepted_quantity,
+                    "committed_quantity": committed_quantity,
+                    "requested_quantity": quantity,
+                    "remaining_quantity": max(
+                        accepted_quantity - committed_quantity,
+                        0,
+                    ),
+                },
+            )
 
         timestamp = now_iso()
         work_order_id = str(uuid.uuid4())
@@ -517,7 +713,8 @@ class B2BService:
             "project_id": project_id,
             "quote_id": project["quote_id"],
             "source_quote_version_id": project["source_quote_version_id"],
-            "variant_id": variant_id,
+            "quote_line_id": resolved_line_id,
+            "variant_id": resolved_variant_id,
             "quantity": quantity,
             "status": "planned",
             "version": 1,
@@ -989,6 +1186,7 @@ class B2BService:
         operation_id: str,
         reason: str,
         actor: dict,
+        inventory_service=None,
     ) -> dict:
         work_order = await self._get_work_order(work_order_id)
         for event in work_order.get("history", []):
@@ -1049,6 +1247,85 @@ class B2BService:
             "history": [*work_order.get("history", []), event],
             "updated_at": timestamp,
         }
+        if (
+            target_status == "cancelled"
+            and work_order.get("reservation_ids")
+            and not work_order.get("materials_consumed")
+        ):
+            if inventory_service is None:
+                raise B2BDomainError(
+                    503,
+                    "inventory_unavailable",
+                    "Pembatalan dengan reservation memerlukan layanan inventory.",
+                )
+            operations = []
+            for reservation_id in work_order["reservation_ids"]:
+                reservation = await self.db.inventory_reservations.find_one(
+                    {"id": reservation_id},
+                    {"_id": 0},
+                )
+                if not reservation:
+                    raise B2BDomainError(
+                        409,
+                        "reservation_missing",
+                        "Reservation Work Order tidak ditemukan.",
+                        details={"reservation_id": reservation_id},
+                    )
+                if reservation.get("status") != "active":
+                    continue
+                operations.append(
+                    {
+                        "payload": {
+                            "operation_id": (
+                                f"{operation_id}:release:{reservation_id}"
+                            ),
+                            "subject_type": reservation["subject_type"],
+                            "subject_id": reservation["subject_id"],
+                            "movement_type": "release",
+                            "quantity": decimal_string(reservation["quantity"]),
+                            "reference_type": "work_order",
+                            "reference_id": work_order_id,
+                            "reason": reason.strip(),
+                        },
+                        "reservation_transition": {
+                            "reservation_id": reservation_id,
+                            "action": "release",
+                            "status": "released",
+                        },
+                    }
+                )
+
+            async def update_cancelled_work_order(session, _results):
+                updated = await self.db.work_orders.update_one(
+                    {
+                        "id": work_order_id,
+                        "version": expected_version,
+                        "status": work_order["status"],
+                    },
+                    {"$set": changes},
+                    session=session,
+                )
+                if not updated.matched_count:
+                    raise B2BDomainError(
+                        409,
+                        "version_conflict",
+                        "Work Order berubah selama pembatalan.",
+                    )
+
+            try:
+                await inventory_service.apply_bulk_operations(
+                    actor=actor,
+                    operations=operations,
+                    extra_mutation=update_cancelled_work_order,
+                )
+            except InventoryError as exc:
+                raise B2BDomainError(
+                    exc.status_code,
+                    exc.code,
+                    exc.message,
+                ) from exc
+            return await self.get_work_order(work_order_id)
+
         result = await self.db.work_orders.update_one(
             {
                 "id": work_order_id,
@@ -1203,6 +1480,12 @@ class B2BService:
                 "project_creation_forbidden",
                 "Project hanya dapat dibuat dari Quote yang sudah accepted.",
             )
+        if not quote.get("acceptance"):
+            raise B2BDomainError(
+                409,
+                "project_acceptance_evidence_missing",
+                "Project memerlukan evidence penerimaan Quote yang lengkap.",
+            )
         if not reason.strip():
             raise B2BDomainError(422, "reason_required", "Alasan pembuatan Project wajib diisi.")
 
@@ -1323,6 +1606,32 @@ class B2BService:
                 },
             )
         validate_project_transition(project["status"], target_status, reason=reason)
+        if target_status in {"completed", "cancelled"}:
+            work_orders = await self.db.work_orders.find(
+                {"project_id": project_id},
+                {"_id": 0, "id": 1, "status": 1},
+            ).to_list(1000)
+            required_status = (
+                "completed" if target_status == "completed" else "cancelled"
+            )
+            blockers = [
+                {
+                    "id": work_order.get("id"),
+                    "status": work_order.get("status"),
+                }
+                for work_order in work_orders
+                if work_order.get("status") != required_status
+            ]
+            if blockers:
+                raise B2BDomainError(
+                    409,
+                    "project_child_state_blocked",
+                    "Status Work Order belum kompatibel dengan status Project tujuan.",
+                    details={
+                        "required_work_order_status": required_status,
+                        "blockers": blockers,
+                    },
+                )
         timestamp = now_iso()
         event = {
             "from_status": project["status"],

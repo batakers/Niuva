@@ -1,5 +1,14 @@
 # Foundation Identity, RBAC, Organization, and Audit Implementation Plan
 
+Status: **Context Only — Misleading if Read as Backlog — Do Not Re-Execute**
+Status recorded: 26 July 2026
+Basis: `docs/context/BACKEND_AUDIT_TRACKER_2026-07-24.md` Section 6
+
+Plan ini memiliki puluhan checkbox kosong, tetapi implementation berikutnya
+sudah ada pada source dan test. Organization management juga sudah dihapus dari
+scope oleh `DEC-OPS-002`. Gunakan dokumen ini sebagai riwayat saja. Role
+direction yang berlaku adalah `DEC-ACCESS-001`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the first testable Foundation package: granular internal permissions, compatible customer authentication, B2B organizations and memberships, and auditable identity changes.

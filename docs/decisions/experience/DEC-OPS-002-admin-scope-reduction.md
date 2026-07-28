@@ -31,7 +31,7 @@ Removing these features reduces maintenance surface, focuses the admin on commer
 | Feature | Frontend | Backend | Data |
 |---|---|---|---|
 | Internship | `Internships.jsx`, route, nav, i18n, dashboard stat | `POST /internships`, `GET /admin/internships`, `InternshipReq` model, `interns` stat field | Collections untouched (non-destructive) |
-| Organization management | `Organizations.jsx`, route, nav group, i18n | `organization_routes.py` (all endpoints: `GET /admin/organizations`, `POST /admin/organizations`, `GET /organizations/mine`), permission matrix keys `organizations.*` | Collections untouched |
+| Organization management | `Organizations.jsx`, route, nav group, i18n | `organization_routes.py` (all endpoints: `GET /admin/organizations`, `POST /admin/organizations`, `GET /organizations/mine`), permission matrix keys `organizations.*` | Existing records remain archived; startup must not recreate active organization collections |
 | Role management (original scope) | The former operational Edit Access dialog and aggregate three-role selector remain removed. `DEC-ACCESS-002` authorizes a new Super Admin-only granular invitation and access-governance surface. | The former aggregate-role endpoints remain removed. New bounded identity-governance APIs must follow `DEC-ACCESS-002`. | — |
 | Audit viewer | `AuditLog.jsx`, route, nav, i18n, `safeAuditEvent`/`safeAuditProjection` utilities | `GET /admin/audit-events` | — |
 | Restock sidebar nav entry | Sidebar link removed | — | — |
@@ -61,7 +61,12 @@ Removing these features reduces maintenance surface, focuses the admin on commer
    Super Admin-only internal invite and granular access-management workflow.
    Customer provisioning remains a separate operation.
 2. **Audit events accumulate without a viewer.** A viewer can be rebuilt when a defined consumption model is approved.
-3. **Orphan collections** (`internships`, `organizations`, `organization_memberships`) remain in MongoDB. A non-destructive cleanup migration is planned separately (Batch G) and requires explicit approval before execution.
+3. **Organization archive is an explicit postponement.** Existing
+   `organizations` and `organization_memberships` records are preserved and
+   inventoried as an archived namespace, not treated as active schema. Startup
+   must not recreate these collections or their indexes. Moving, deleting, or
+   otherwise cleaning up archived records remains a separately approved,
+   non-destructive migration. `internships` cleanup is likewise separate.
 4. **`DEC-ACCESS-001` is unaffected.** The granular internal role model remains canonical; removing the three-role Edit Access UI does not change the role direction.
 
 ## Supersedes

@@ -53,6 +53,7 @@ ROLE_PERMISSIONS = {
         {
             "content.read",
             "content.write",
+            "content.archive",
             "media.read",
             "media.write",
             "portfolio.read",

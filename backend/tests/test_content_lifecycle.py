@@ -13,6 +13,7 @@ from content_domain import (
     ContentTransitionError,
     content_next_actions,
     content_requires_publish_authority,
+    validate_content_fields,
     validate_content_transition,
 )
 
@@ -70,3 +71,32 @@ def test_only_reaching_the_public_needs_approval():
     # Authoring a block through the review stages is not an approval.
     for status in ("draft", "review", "preview", "archived"):
         assert content_requires_publish_authority(status) is False
+
+
+def test_public_contact_and_cta_links_reject_unsafe_targets():
+    contact_errors = validate_content_fields(
+        "contact",
+        {
+            "location": "Bandung",
+            "email": "hello@example.com",
+            "whatsapp": "0812",
+            "whatsappHref": "javascript:alert(1)",
+            "mapsHref": "https://user:secret@example.com/location",
+        },
+    )
+    assert {error["field"] for error in contact_errors} == {
+        "whatsappHref",
+        "mapsHref",
+    }
+
+    cta_errors = validate_content_fields(
+        "cta",
+        {
+            "label": "Mulai",
+            "title": "Diskusikan proyek",
+            "body": "Ceritakan kebutuhan Anda.",
+            "primaryActionLabel": "Kontak",
+            "primaryActionTarget": "javascript:alert(1)",
+        },
+    )
+    assert [error["field"] for error in cta_errors] == ["primaryActionTarget"]

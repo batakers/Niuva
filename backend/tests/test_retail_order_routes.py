@@ -14,6 +14,7 @@ from fastapi import APIRouter, FastAPI, Header, HTTPException
 
 from permissions import has_permission
 from retail_routes import build_retail_router
+from retail_service import RetailOrderService
 from tests.test_b2b_quote_conversion import EnabledGuard
 from tests.test_retail_order_aggregate import (
     CUSTOMER,
@@ -88,7 +89,7 @@ def test_retail_orders_are_permission_scoped():
     asyncio.run(scenario())
 
 
-def test_creating_and_reading_a_retail_order():
+def test_retail_order_creation_is_explicitly_inactive():
     async def scenario():
         app, _db = await build_app()
         async with client(app) as api:
@@ -97,18 +98,8 @@ def test_creating_and_reading_a_retail_order():
                 headers={"X-Role": "order_admin"},
                 json=CREATE_BODY,
             )
-            assert created.status_code == 201
-            order = created.json()
-            assert order["status"] == "created"
-            assert order["total_minor"] == 300000
-            assert order["order_number"].startswith("NIV-R-")
-
-            fetched = await api.get(
-                f"/api/admin/retail-orders/{order['id']}",
-                headers={"X-Role": "order_admin"},
-            )
-            assert fetched.status_code == 200
-            assert fetched.json()["id"] == order["id"]
+            assert created.status_code == 503
+            assert created.json()["detail"]["code"] == "retail_transaction_inactive"
 
     asyncio.run(scenario())
 
@@ -137,42 +128,33 @@ def test_a_caller_cannot_name_its_own_price():
     asyncio.run(scenario())
 
 
-def test_the_transition_surface_walks_the_canonical_graph():
+def test_the_transition_surface_is_explicitly_read_only():
     async def scenario():
-        app, _db = await build_app()
+        app, db = await build_app()
+        order = await RetailOrderService(
+            db=db,
+            transaction_guard=EnabledGuard(),
+        ).create_order(
+            operation_id="historical-order-fixture",
+            customer=dict(CUSTOMER),
+            items=[{"variant_id": "var-1", "quantity": 2}],
+            fulfilment_method="ship",
+            notes="Historical fixture",
+            actor={"id": "fixture-admin"},
+        )
         async with client(app) as api:
-            created = await api.post(
-                "/api/admin/retail-orders",
-                headers={"X-Role": "order_admin"},
-                json=CREATE_BODY,
-            )
-            order = created.json()
-
-            skipped = await api.post(
-                f"/api/admin/retail-orders/{order['id']}/transitions",
-                headers={"X-Role": "order_admin"},
-                json={
-                    "target_status": "paid",
-                    "expected_version": order["version"],
-                    "operation_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-                    "reason": "Lompat tagihan",
-                },
-            )
-            assert skipped.status_code == 409
-            assert skipped.json()["detail"]["code"] == "retail_transition_invalid"
-
-            billed = await api.post(
+            blocked = await api.post(
                 f"/api/admin/retail-orders/{order['id']}/transitions",
                 headers={"X-Role": "order_admin"},
                 json={
                     "target_status": "awaiting_payment",
                     "expected_version": order["version"],
-                    "operation_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+                    "operation_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
                     "reason": "Tagihan dikirim",
                 },
             )
-            assert billed.status_code == 200
-            assert billed.json()["status"] == "awaiting_payment"
+            assert blocked.status_code == 503
+            assert blocked.json()["detail"]["code"] == "retail_transaction_inactive"
 
     asyncio.run(scenario())
 
@@ -189,15 +171,8 @@ def test_suspended_actions_are_refused_with_a_reason(action, code):
     async def scenario():
         app, _db = await build_app()
         async with client(app) as api:
-            created = await api.post(
-                "/api/admin/retail-orders",
-                headers={"X-Role": "order_admin"},
-                json=CREATE_BODY,
-            )
-            order = created.json()
-
             refused = await api.post(
-                f"/api/admin/retail-orders/{order['id']}/{action}",
+                f"/api/admin/retail-orders/historical-order/{action}",
                 headers={"X-Role": "order_admin"},
             )
             # A 409 with a named code, not a 404 that reads like a gap.

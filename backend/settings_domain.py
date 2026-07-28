@@ -39,6 +39,7 @@ INTEGRATION_CAPABILITIES = ("payment", "messaging", "email")
 def default_settings() -> dict:
     return {
         "key": "site",
+        "version": 1,
         "legal_name": "PT Niuva Inovasi Utama",
         "tagline": "",
         "address": "",

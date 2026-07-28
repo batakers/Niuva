@@ -465,6 +465,18 @@ class MongoRecoveryStore:
             },
             session=session,
         )
+        await self.database.auth_sessions.update_many(
+            {"user_id": user_id, "status": "active"},
+            {
+                "$set": {
+                    "status": "revoked",
+                    "revoked_at": completed_at,
+                    "revoke_reason": "password_reset",
+                    "updated_at": completed_at,
+                }
+            },
+            session=session,
+        )
         return True
 
 

@@ -396,7 +396,7 @@ async def run(
         (account for account in accounts if account.get("id") == bootstrap_owner_id),
         None,
     )
-    if bootstrap is None or bootstrap.get("status") != "active":
+    if bootstrap is None or bootstrap.get("status") not in {None, "active"}:
         raise MigrationSafetyError("The bootstrap Owner must exist and be active")
     if rollback and canonical_roles(bootstrap) != ("super_admin",):
         raise MigrationSafetyError("Rollback requires the active approved Owner")
