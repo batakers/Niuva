@@ -1,5 +1,11 @@
 # Redesign-to-Main Reconciliation Implementation Plan
 
+Status: **Context Only — Historical reconciliation plan; not executable**
+
+> **Historical environment note:** The clone path, branch names, baseline SHA,
+> and remote-mutation instructions below describe the 21 July reconciliation.
+> They must not be reused for current branch management or execution.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Reconcile the approved redesign and Emergent-removal outcome into current `main`, delete the twelve proven no-op remote branches atomically, and open a reviewable PR without importing divergent history.

@@ -19,6 +19,12 @@ Sumber temuan: audit page-inventory frontend/backend read-only, 24-25 Juli 2026.
 > decision record adalah authority. Dokumen ini tetap tidak mengotorisasi
 > source change.
 
+> **Historical-status note — 28 Juli 2026:** Pernyataan lama di addendum bahwa
+> implementasi “Belum di-PR” adalah status pada saat perencanaan. Bounded
+> recovery implementation kemudian merged melalui
+> [PR #51](https://github.com/batakers/Niuva/pull/51). Catatan ini tidak
+> menaikkan dokumen menjadi authority atau mengizinkan rollout.
+
 Dokumen ini adalah rencana desain. `2026-07-23-auth-experience-remediation.md` baris 11-15
 menegaskan perubahan source, provider identitas, atau role model memerlukan "a later,
 explicit implementation approval" terpisah dari plan ini. Dokumen ini menyediakan

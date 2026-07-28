@@ -1,9 +1,12 @@
 # Backend Remediation and Retail Discovery — Implementation Record
 
-Status: **Implemented in source; not deployed**
+Status: **Context Only — Implemented in source; not deployed**
 Date: 27 July 2026
 Authority: `DEC-REMED-001` /
 `docs/decisions/architecture/ADR-005-backend-remediation-runtime-policy.md`
+
+This record preserves bounded implementation evidence. It does not authorize
+further source changes, migration, deployment, production readiness, or go-live.
 
 ## Scope delivered
 
