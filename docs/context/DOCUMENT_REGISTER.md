@@ -13,6 +13,11 @@ This register does not upgrade the approval status of any source. Approval evide
 - **Approved Canonical:** approved primary source or register within its stated canonical scope.
 - **Approved Baseline:** approved planning baseline within its recorded scope.
 - **Approved Decision:** explicit decision with a recorded source and bounded scope.
+- **Approved Implementation Decision with Needs Clarification:** explicit,
+  bounded implementation decision whose listed conflicts or ambiguities must be
+  clarified before interpreting or extending the affected scope.
+- **Approved Deferral Decision:** explicit decision to leave a selection open;
+  it may bound analysis or planning but does not authorize implementation.
 - **Approved with Open Decisions:** an approved direction whose listed open decisions remain unresolved.
 - **Implementation Merged:** an explicitly authorized bounded implementation has
   entered the base branch; it does not grant any remaining rollout, production,
@@ -120,6 +125,8 @@ This register does not upgrade the approval status of any source. Approval evide
 | `docs/runbooks/IDENTITY_RBAC_AUDIT_RUNBOOK.md` | Runbook | Identity migration, role recovery, audit, handoff | Procedural authority within its operational scope | Migration dry run, backup, rollback, access recovery, and handoff | Product role direction or visual design |
 | `docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` | Runbook | Catalog/material/inventory rollout and recovery | Procedural authority within its operational scope | Rollout, migration, correction, verification, rollback, and recovery | Product direction, pricing policy, or customer experience design |
 | `docs/runbooks/PERFORMANCE_READONLY_RUNBOOK.md` | Runbook — Thresholds Pending Approval | Bounded GET-only Retail catalog load verification | Procedural authority only after numerical thresholds and target environment are approved | Staging read-performance verification and redacted evidence capture | Selecting an SLA, inventing thresholds, load-testing production, mutations, or go-live |
+| `docs/runbooks/AUTH_RECOVERY_RUNBOOK.md` | Runbook — Disposable Local Evidence Only | Authentication recovery migration, disablement, rollback, and handoff | Procedural authority within the approved recovery boundary; shared/staging/production data, real email, Argon2-write enablement, deployment, and go-live remain separately gated | Preparing or reviewing approved local replica-set recovery evidence | Shared/staging/production mutation, real email, enabling Argon2 writes, deployment, or go-live |
+| `docs/runbooks/AUTH_SESSION_RUNBOOK.md` | Runbook — Disposable Local Evidence Only | Admin-session migration, cleanup, cutover/disablement, rollback, monitoring, and handoff | Procedural authority within the approved Admin session boundary; shared/staging/production mutation, deployment, activation, and go-live remain separately gated | Preparing or reviewing approved local Admin-session evidence | Shared/staging/production mutation, deployment, production activation, or go-live |
 | `doc/PRODUCTION_DEPLOYMENT.md` | Runbook | Provider-neutral production deployment | Procedural authority subject to approved architecture gates | Release, configuration, headers, readiness, and rollback | Selecting provider or authorizing go-live |
 | `docs/runbooks/NIV-001_GIT_HISTORY_REWRITE_RUNBOOK.md` | Runbook | Controlled Git history rewrite | Procedural authority for NIV-001 only | Freeze, backup, rewrite, verification, publication, and recovery | Ordinary Git workflow or product direction |
 
@@ -128,6 +135,7 @@ This register does not upgrade the approval status of any source. Approval evide
 | Document | Status | Scope | Authority | Use when | Do not use for |
 |---|---|---|---|---|---|
 | `docs/implementation/plans/pending-reconciliation/2026-07-14-foundation-identity-rbac-organization-audit.md` | Context Only | Identity/RBAC implementation plan | Implementation history; older standalone assumptions are overridden by ADR-001 where relevant | Understanding completed/planned slice work | New product decisions or transaction policy |
+| `docs/implementation/production-readiness/README.md` | Context Only — Audit and Remediation Planning | Layered production-readiness audit, normalization, planning, assignment, and verification context | Directory classification only; individual audit records remain context and do not authorize implementation, production readiness, or go-live | Locating audit context and preparing a separately approved remediation review | Treating findings, scores, plans, checklists, or progress as a decision, implementation authorization, production readiness, or go-live approval |
 | `docs/implementation/plans/pending-reconciliation/2026-07-14-catalog-material-pricing-inventory-foundation.md` | Context Only | Catalog/material/inventory implementation plan | Implementation plan subordinate to its spec and ADRs | Detailed task history and file mapping | Product direction or unresolved policy decisions |
 | `docs/implementation/plans/pending-reconciliation/2026-07-16-remove-emergent-local-storage.md` | Context Only | Emergent removal and local dev storage | Dev/demo implementation context | Historical implementation and verification | Production storage or upload authorization |
 | `docs/implementation/plans/pending-reconciliation/2026-07-17-foundation-transaction-capability.md` | Context Only | Transaction-capability implementation | Implementation context subordinate to ADR-001 | Detailed implementation and verification history | Expanding approved transaction scope or production authorization |

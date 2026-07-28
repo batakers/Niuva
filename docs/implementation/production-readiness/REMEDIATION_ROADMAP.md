@@ -12,21 +12,21 @@ dependency-ordered remediation planning. It preserves all source finding IDs in
 [FINDING_TRACEABILITY.md](FINDING_TRACEABILITY.md), but does not grant source,
 migration, deployment, provider, production-readiness, or go-live authority.
 
-The canonical authority order remains `AGENTS.md`, the Master Specification,
-the Document Register, the Decision Register, the applicable decision/ADR, and
-the applicable runbook. Audit recommendations and this roadmap are planning
-evidence only.
+The canonical authority order remains the Master Specification, the Document
+Register, the Decision Register, the applicable decision/ADR, the applicable
+runbook, and current source/tests. `AGENTS.md` is a subordinate implementation
+guardrail. Audit recommendations and this roadmap are planning evidence only.
 
 ## Baseline and freshness
 
 | Item | Recorded state |
 | --- | --- |
-| Active branch | `feat/marketing-redesign-dec-ux-002` |
-| Current HEAD | `c28684d34c03505ea2f862f32c6edc24b1d7bfba` |
-| Audit baseline SHA | `c28684d34c03505ea2f862f32c6edc24b1d7bfba` - exact match with HEAD |
-| Local `origin/main` | `f56a9d231f3baecf8aa7facc8dc42159474fbfe9` |
-| Ancestry | HEAD is 13 commits behind local `origin/main`; no fetch or synchronization was performed |
-| Changed scope after audit baseline | 45 paths: 23 backend, 14 frontend, 1 CI workflow, 1 Decision Register, 1 Document Register, 2 runbooks, 2 implementation documents, and 1 repository-history record |
+| Recorded audit-worktree branch | `feat/marketing-redesign-dec-ux-002` |
+| Recorded audit-worktree HEAD | `c28684d34c03505ea2f862f32c6edc24b1d7bfba` |
+| Recorded audit baseline SHA | `c28684d34c03505ea2f862f32c6edc24b1d7bfba` - exact match with the recorded audit-worktree HEAD |
+| Recorded local `origin/main` | `f56a9d231f3baecf8aa7facc8dc42159474fbfe9` |
+| Recorded ancestry | Audit-worktree HEAD was 13 commits behind its local `origin/main`; no fetch or synchronization was performed |
+| Changed scope observed after audit baseline | 45 paths: 23 backend, 14 frontend, 1 CI workflow, 1 Decision Register, 1 Document Register, 2 runbooks, 2 implementation documents, and 1 repository-history record |
 | Findings requiring revalidation | `SUM-FRESH-001`; the Admin session/recovery groups (`FE-002`, `FE-003`, `BE-008`, `DB-002`, `INT-004`, `SEC-002`, `SEC-004`, `SEC-005`, `SEC-007`, `SEC-013`); migration/CI documentation candidates (`QA-004`, `GOV-013`); and any finding whose implementation scope is selected from the newer default branch |
 | Pre-existing worktree state | Modified Phase 1 auth authorization packet; untracked `.coverage`; untracked production-readiness audit directory. These are preserved. |
 | Roadmap worktree state | This roadmap directory is newly created by this planning task and is untracked until the user decides otherwise. |
