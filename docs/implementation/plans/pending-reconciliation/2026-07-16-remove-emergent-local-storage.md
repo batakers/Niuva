@@ -8,7 +8,10 @@ Bagian backend sudah terimplementasi. Fresh optimized frontend build masih
 unchecked. Production storage provider tidak termasuk scope plan ini dan tetap
 diatur oleh ADR-002.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical execution note:** The task and agent instructions below are
+> retained as implementation history. Do not execute them as a backlog. For new
+> work, follow `AGENTS.md`, `docs/context/AI_AGENT_TEAM_WORKFLOW.md`, and
+> current explicit approval.
 
 **Goal:** Remove all active Emergent dependencies while preserving authenticated order-design and payment-proof upload/download flows through safe local development storage.
 

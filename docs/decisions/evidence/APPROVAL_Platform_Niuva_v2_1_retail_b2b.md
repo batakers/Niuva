@@ -3,6 +3,17 @@
 Tanggal approval: 14 Juli 2026
 Status: Approved Baseline untuk perencanaan implementasi
 
+> **Current-location note (28 July 2026):** The branch-availability statements
+> below record the 14 July approval context. They do not describe the current
+> repository locations. The catalog, local-storage, and checkout records are
+> now retained respectively at
+> `docs/implementation/specs/active/2026-07-14-catalog-material-pricing-inventory-foundation-design.md`,
+> `docs/implementation/specs/active/2026-07-16-remove-emergent-local-storage-design.md`,
+> and
+> `docs/implementation/specs/candidates/2026-07-16-retail-order-checkout-foundation-design.md`.
+> Their current status is governed by the Document Register and applicable
+> decisions, not by the historical availability wording in this record.
+
 ## Metadata Approval
 
 - **Approval party recorded in the source:** Stakeholder

@@ -9,7 +9,10 @@ verification terpenuhi pada 26 July 2026. Yang masih unchecked adalah browser
 permission dan workflow QA. Checkbox di bawah adalah riwayat eksekusi, bukan
 backlog; jangan dijalankan ulang secara mekanis.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical execution note:** The task and agent instructions below are
+> retained as implementation history. Do not execute them as a backlog. For new
+> work, follow `AGENTS.md`, `docs/context/AI_AGENT_TEAM_WORKFLOW.md`, and
+> current explicit approval.
 
 **Goal:** Build the shared Catalog, Material Pricing, Inventory, and internal Restock Alert foundation that Retail and B2B workflows can safely consume.
 

@@ -17,10 +17,10 @@
 > - [x] Task 9 — Operator and developer documentation
 > - [x] Task 10 — Final verification and rollback
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use
-> superpowers:subagent-driven-development (recommended) or
-> superpowers:executing-plans to implement this plan task-by-task. Steps use
-> checkbox (`- [x]`) syntax for tracking.
+> **Historical execution note:** The task and agent instructions below are
+> retained as completed implementation evidence. Do not execute them again. For
+> new work, follow `AGENTS.md`, `docs/context/AI_AGENT_TEAM_WORKFLOW.md`, and
+> current explicit approval.
 
 **Goal:** Establish a tested, reusable, fail-closed MongoDB transaction
 capability foundation for transaction-required platform mutations.

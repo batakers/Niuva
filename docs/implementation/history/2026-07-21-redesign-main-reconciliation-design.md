@@ -1,6 +1,13 @@
 # Redesign-to-Main Reconciliation and Branch Cleanup Design
 
-**Status:** Approved in conversation on 21 July 2026
+**Status:** Context Only — historical record of an approved 21 July 2026
+decision; not executable.
+
+> **Historical execution note:** The branch, remote, and cleanup instructions
+> below describe the completed reconciliation context. Do not execute them for
+> current branch management. Follow `AGENTS.md`,
+> `docs/context/AI_AGENT_TEAM_WORKFLOW.md`, and current explicit approval for
+> any new Git operation.
 
 ## Goal
 

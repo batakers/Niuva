@@ -15,6 +15,11 @@ Dokumen induk: `docs/references/requirements/historical-active/PRS_Website_Niuva
 Business source: `doc/BRD_Platform_Niuva_v2_addendum.md`  
 Referensi desain: `docs/superpowers/specs/2026-07-14-integrated-operations-marketplace-design.md`
 
+Historical pointer note: the referenced legacy path is no longer present. Its
+preserved superseded design record is
+`docs/archive/superseded/2026-07-14-integrated-operations-marketplace-design.md`.
+Neither path is authority for new planning.
+
 ## 1. Tujuan Addendum
 
 PRS v1.0 tetap menjadi baseline produk untuk website company profile, portfolio, dan lead generation. Addendum v2.0 memperluas produk menjadi platform terintegrasi dengan tiga area:

@@ -9,7 +9,10 @@ sudah ada pada source dan test. Organization management juga sudah dihapus dari
 scope oleh `DEC-OPS-002`. Gunakan dokumen ini sebagai riwayat saja. Role
 direction yang berlaku adalah `DEC-ACCESS-001`.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical execution note:** The task and agent instructions below are
+> retained as implementation history. Do not execute them as a backlog. For new
+> work, follow `AGENTS.md`, `docs/context/AI_AGENT_TEAM_WORKFLOW.md`, and
+> current explicit approval.
 
 **Goal:** Build the first testable Foundation package: granular internal permissions, compatible customer authentication, B2B organizations and memberships, and auditable identity changes.
 

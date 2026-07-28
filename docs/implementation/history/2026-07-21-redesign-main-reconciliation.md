@@ -6,7 +6,10 @@ Status: **Context Only — Historical reconciliation plan; not executable**
 > and remote-mutation instructions below describe the 21 July reconciliation.
 > They must not be reused for current branch management or execution.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical execution note:** The task and agent instructions below record
+> the 21 July reconciliation only. Do not execute them. For new work, follow
+> `AGENTS.md`, `docs/context/AI_AGENT_TEAM_WORKFLOW.md`, and current explicit
+> approval.
 
 **Goal:** Reconcile the approved redesign and Emergent-removal outcome into current `main`, delete the twelve proven no-op remote branches atomically, and open a reviewable PR without importing divergent history.
 
