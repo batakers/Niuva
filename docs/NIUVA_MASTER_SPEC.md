@@ -316,6 +316,11 @@ Pricing modes are:
 
 Accepted quotation versions and approved design versions are immutable. Scope changes create new versions and may change price, ETA, milestones, and payment terms.
 
+Each Quote-version line has an immutable `quote_line_id`. Work Orders retain
+their accepted `source_quote_version_id` and exact `quote_line_id`; a historical
+line that cannot be identified uniquely remains read-only and must not be
+inferred or backfilled automatically. See `DEC-DATA-002`.
+
 Material prices use versions and effective dates. New prices affect new calculations or explicitly recalculated drafts, not paid orders or accepted quotations. Commercial records store product, configuration, material, price, and policy snapshots appropriate to their lifecycle.
 
 Referenced materials, content, and commercial data are archived rather than hard-deleted. Monetary values use Decimal or a consistent minor-unit representation, never binary floating point.
