@@ -1,6 +1,14 @@
 # Backend Framework Security Upgrade Design
 
-**Status:** Approved in conversation on 21 July 2026
+**Status:** Approved Decision — implementation completed; retained as scope and verification record
+
+## Execution Reconciliation
+
+The approved dependency upgrade was implemented in commit `af4652f` (PR #41).
+Current audit tracking records the bounded security-upgrade scope as `resolved`.
+This document is no longer a pending upgrade task; it remains the record of the
+approved change boundary and verification intent. It does not authorize broader
+framework modernization.
 
 ## Goal
 

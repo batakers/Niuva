@@ -2,7 +2,9 @@
 
 Tanggal: 24 Juli 2026
 Status: **Superseded Candidate as of 27 July 2026** (original status:
-Technical Design Candidate — not approved for implementation)
+Technical Design Candidate — not approved for implementation). The current
+bounded implementation decision for read-only Retail discovery is
+`docs/decisions/architecture/ADR-005-backend-remediation-runtime-policy.md`.
 Scope kandidat: Read-only public Retail catalog discovery (browse, kategori, produk, varian, safe price/ETA display) sebagai first Retail vertical slice; bukan cart, bukan checkout, bukan payment, bukan implementation approval.
 Canonical authority:
 - `docs/NIUVA_MASTER_SPEC.md`
@@ -10,10 +12,14 @@ Canonical authority:
 Approved architecture pointers:
 - `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
 - `docs/decisions/architecture/ADR-004-surface-boundary-topology.md` (proposed; topology deferred)
+- `docs/decisions/architecture/ADR-005-backend-remediation-runtime-policy.md` (current bounded implementation decision)
 Related candidate (downstream, not part of this slice):
 - `docs/implementation/specs/candidates/2026-07-16-retail-order-checkout-foundation-design.md`
 
-Dokumen ini hanya mengubah dokumen desain; tidak ada production code, migrasi, atau infrastruktur yang diubah. Master Spec, DEC-UX-001, dan approved ADR menjadi sumber kebenaran.
+Dokumen ini adalah evidence desain historis; tidak memiliki implementation
+authority. Master Spec, DEC-UX-001, dan approved ADR menjadi sumber kebenaran.
+Status source saat ini harus dibuktikan dari source, test, dan tracker evidence
+yang relevan; candidate ini tidak boleh dipakai sebagai backlog aktif.
 
 ## 1. Tujuan dan Posisi Produk
 
