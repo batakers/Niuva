@@ -140,16 +140,21 @@ the current source state.
 | Phase 3 — Retail discovery | `implemented_in_source` | staging performance/accessibility evidence; every transaction capability remains inactive |
 | Phase 4 — active frontend/backend integration | `implemented_in_source` | manual Admin browser matrix requires approved HTTPS staging origins and dedicated role accounts |
 | Phase 5 — active-scope business logic | `implemented_in_source` | historical compatibility fixtures require migration preflight; excluded checkout/payment/production-storage policy remains unresolved |
-| Phase 6 — quality/operations | `partial` | NIV-001 keeps the real history secret-scan red; alert/metrics provider and numerical performance thresholds are unapproved; staging, outage/recovery, backup/restore, and documentation rehearsal remain operational work |
+| Phase 6 — quality/operations | `partial` | NIV-001 closure evidence remains open, while the current PR scan findings are reviewed exact false positives; alert/metrics provider and numerical performance thresholds are unapproved; staging, outage/recovery, backup/restore, and documentation rehearsal remain operational work |
 
 Current finding reconciliation:
 
 - `BA-004`: `resolved`; local `pip-audit` reports no known backend
   vulnerabilities.
-- `BA-005`: remains `open`; the corrected GitHub Actions Gitleaks scan covers
-  all 234 reachable commits and reports three unresolved NIV-001 historical
-  findings after six exact-fingerprint synthetic/test false positives are
-  ignored. The real findings are not ignored.
+- `BA-005`: remains `open`, but the 28 July rehearsal preflight corrects the
+  immediate CI diagnosis. The three findings in the 234-commit PR checkout are
+  one test-only CSRF fixture and two historical documentation sentences about
+  token removal, all reviewed with a 100%-redacted Gitleaks 8.30.1 report and
+  ignored only by exact fingerprint. After pruning deleted remote-tracking
+  refs, none of the four advertised remote heads or any remote tag contains
+  the recorded NIV-001 introducing commit. Credential rotation/revocation,
+  cached PR-ref/clone disposition, and final incident evidence are still
+  unverified, so NIV-001 is not closed and no real finding is ignored.
 - `BA-007`: `resolved_for_active_scope`; all legacy order creation, estimate,
   payment verification, status, and bulk mutation paths are denied, while
   historical reads remain available.

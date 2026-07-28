@@ -163,12 +163,16 @@ Latest local source verification on 28 July 2026:
 - a separate fresh-database smoke test created the one configured Super Admin
   and received HTTP 200 from the staff-only login surface; the temporary
   backend, database, and files were then removed.
-- the corrected Gitleaks history command scanned all 234 reachable commits in
-  GitHub Actions. Six reviewed synthetic/test-source false positives are
-  ignored by exact fingerprint, while the current redacted scan reports three
-  unresolved NIV-001 historical findings. The secret-scan job must remain
-  failing until the separately approved incident closure/rewrite process is
-  completed; real findings are not allowlisted.
+- the corrected Gitleaks history command scanned all 234 commits reachable from
+  the PR checkout in GitHub Actions. A pinned local redacted review proved its
+  three findings were exact false positives: one test-only CSRF fixture and two
+  historical documentation sentences about token removal. They are ignored by
+  exact commit/path/rule/line fingerprints only. After pruning deleted
+  remote-tracking refs, none of the four advertised remote heads or any remote
+  tag contains the recorded NIV-001 introducing commit. NIV-001 nevertheless
+  remains open until credential rotation/revocation, cached PR-ref/clone
+  disposition, and reviewed closure evidence exist; no real finding is
+  allowlisted.
 
 The real Mongo transaction job remains mandatory in CI despite the local
 evidence. Full Admin
