@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import { api } from "../lib/api";
 
 jest.mock("../lib/api", () => ({
+  clearAdminCsrfToken: jest.fn(),
+  setAdminCsrfToken: jest.fn(),
   api: {
     get: jest.fn(),
     post: jest.fn(),

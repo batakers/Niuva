@@ -5,6 +5,7 @@ export const HAS_CONFIGURED_BACKEND = Boolean(BACKEND_URL);
 export const API = `${BACKEND_URL}/api`;
 const CSRF_COOKIE = "niuva_csrf";
 const CSRF_HEADER = "X-CSRF-Token";
+let adminCsrfToken = null;
 
 export const api = axios.create({
   baseURL: API,
@@ -21,10 +22,18 @@ function readCookie(name) {
   return item ? decodeURIComponent(item.slice(prefix.length)) : "";
 }
 
+export function setAdminCsrfToken(token) {
+  adminCsrfToken = token || null;
+}
+
+export function clearAdminCsrfToken() {
+  adminCsrfToken = null;
+}
+
 api.interceptors.request.use((config) => {
   const method = String(config.method || "get").toUpperCase();
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-    const csrf = readCookie(CSRF_COOKIE);
+    const csrf = adminCsrfToken || readCookie(CSRF_COOKIE);
     if (csrf) config.headers[CSRF_HEADER] = csrf;
   }
   return config;
@@ -40,9 +49,21 @@ api.interceptors.response.use(
     const isAuthOperation =
       path.includes("/auth/login") ||
       path.includes("/auth/admin/login") ||
+      path.includes("/auth/admin/session") ||
+      path.includes("/auth/admin/logout") ||
       path.includes("/auth/refresh") ||
       path.includes("/auth/logout");
-    if (error.response?.status !== 401 || !original || original._retry || isAuthOperation) {
+    const isAdminOperation =
+      path === "/admin" ||
+      path.startsWith("/admin/") ||
+      path.startsWith("/auth/admin/");
+    if (
+      error.response?.status !== 401 ||
+      !original ||
+      original._retry ||
+      isAuthOperation ||
+      isAdminOperation
+    ) {
       return Promise.reject(error);
     }
 
@@ -70,9 +91,17 @@ export function fileUrl(path) {
   return `${API}/files/${normalized}`;
 }
 
-export async function fetchFile(path) {
+export async function fetchFile(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const headers = new Headers(options.headers);
+  const csrf = adminCsrfToken || readCookie(CSRF_COOKIE);
+  if (csrf && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+    headers.set(CSRF_HEADER, csrf);
+  }
   const response = await fetch(fileUrl(path), {
+    ...options,
     credentials: "include",
+    headers,
   });
   if (!response.ok) throw new Error(`File request failed (${response.status})`);
   return response.blob();
@@ -96,8 +125,11 @@ export async function downloadFile(path, filename = "download") {
 }
 
 export async function downloadCsv(apiPath, filename = "export.csv") {
+  const headers = new Headers();
+  if (adminCsrfToken) headers.set(CSRF_HEADER, adminCsrfToken);
   const response = await fetch(`${API}${apiPath}`, {
     credentials: "include",
+    headers,
   });
   if (!response.ok) throw new Error(`Export failed (${response.status})`);
   triggerBlobDownload(await response.blob(), filename);

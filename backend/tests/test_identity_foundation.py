@@ -1,12 +1,15 @@
 import asyncio
 import copy
+import hashlib
 import importlib.util
 import os
 import sys
 import types
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
+import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
@@ -16,6 +19,8 @@ os.environ.setdefault("DB_NAME", "niuva_identity_test")
 os.environ.setdefault("JWT_SECRET", "identity-test-secret-at-least-32-characters")
 os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
+os.environ.setdefault("PUBLIC_SITE_URL", "https://testserver")
+os.environ.setdefault("AUTH_SESSION_CSRF_KEY", "identity-test-csrf-key-at-least-32-bytes")
 
 
 resend_module = types.ModuleType("resend")
@@ -27,6 +32,14 @@ import server  # noqa: E402
 from tests.auth_support import AuthCollection  # noqa: E402
 
 REAL_TRANSACTION_GUARD = server.app.state.transaction_guard
+ORIGIN = {"Origin": "https://testserver"}
+
+
+def configure_password_writes(monkeypatch, tmp_path, *, enabled):
+    blocklist = tmp_path / "identity-password-blocklist.txt"
+    blocklist.write_text("known compromised phrase\n", encoding="utf-8")
+    monkeypatch.setenv("AUTH_PASSWORD_BLOCKLIST_PATH", str(blocklist))
+    monkeypatch.setenv("AUTH_ARGON2_WRITES_ENABLED", "true" if enabled else "false")
 
 
 class FakeCursor:
@@ -148,6 +161,17 @@ class FakeCollection:
             )
         return types.SimpleNamespace(matched_count=0, modified_count=0)
 
+    async def update_many(self, query, update, **options):
+        self.operations.append(("update_many", dict(options)))
+        modified_count = 0
+        for item in self.items:
+            if self._matches(item, query):
+                item.update(update.get("$set", {}))
+                for key in update.get("$unset", {}):
+                    item.pop(key, None)
+                modified_count += 1
+        return types.SimpleNamespace(matched_count=modified_count, modified_count=modified_count)
+
     async def count_documents(self, query, **options):
         self.operations.append(("count_documents", dict(options)))
         return sum(1 for item in self.items if self._matches(item, query))
@@ -159,8 +183,14 @@ class FakeCollection:
 
 class FakeDatabase:
     def __init__(self, users):
+        for user in users:
+            user.setdefault("role_policy_version", server.ROLE_POLICY_VERSION)
+            user.setdefault("token_version", 0)
         self.users = FakeCollection(users)
+        self.login_rate_limits = AuthCollection()
+        self.auth_sessions = AuthCollection()
         self.audit_events = FakeCollection()
+        self.admin_sessions = FakeCollection()
         self.staff_invitations = FakeCollection()
         self.identity_policy_state = FakeCollection()
         self.organizations = FakeCollection()
@@ -169,12 +199,9 @@ class FakeDatabase:
         self.orders = FakeCollection()
         self.portfolio = FakeCollection()
         self.portfolio_revisions = FakeCollection()
-        self.portfolio_publications = FakeCollection()
         self.contacts = FakeCollection()
         self.settings = FakeCollection()
         self.file_objects = FakeCollection()
-        self.auth_sessions = AuthCollection()
-        self.login_rate_limits = AuthCollection()
 
 
 class FakeTransactionGuard:
@@ -200,6 +227,102 @@ class FakeTransactionGuard:
                 raise
 
 
+class FakeAdminSessionModule:
+    def __init__(self, database):
+        self.database = database
+        self.counter = 0
+
+    async def create_admin_session(self, user, remember_me, _request_context):
+        self.counter += 1
+        now = datetime.now(timezone.utc)
+        grant = types.SimpleNamespace(
+            session_id=f"identity-session-{self.counter}",
+            user_id=user["id"],
+            access_secret=f"identity-access-{self.counter}",
+            session_secret=f"identity-refresh-{self.counter}",
+            csrf_token=f"identity-csrf-{self.counter}",
+            access_expires_at=now + timedelta(minutes=15),
+            idle_expires_at=now + timedelta(minutes=30),
+            absolute_expires_at=now + timedelta(hours=8),
+            remember_me=remember_me,
+        )
+        self.database.admin_sessions.items.append(
+            {
+                "id": grant.session_id,
+                "user_id": user["id"],
+                "access_secret": grant.access_secret,
+                "csrf_token": grant.csrf_token,
+                "revoked_at": None,
+                "revocation_reason": None,
+            }
+        )
+        return grant
+
+    async def authenticate_admin_session(self, request_context):
+        record = await self.database.admin_sessions.find_one(
+            {
+                "access_secret": request_context.get("access_secret"),
+                "revoked_at": None,
+            }
+        )
+        if not record:
+            raise server.SessionExpiredError()
+        return types.SimpleNamespace(
+            session_id=record["id"],
+            user_id=record["user_id"],
+            _csrf_token=record["csrf_token"],
+        )
+
+    async def revoke_admin_session(self, session, reason):
+        result = await self.database.admin_sessions.update_one(
+            {"id": session.session_id, "revoked_at": None},
+            {
+                "$set": {
+                    "revoked_at": datetime.now(timezone.utc),
+                    "revocation_reason": reason,
+                }
+            },
+        )
+        return result.modified_count == 1
+
+    def verify_csrf(self, session, candidate):
+        if candidate != session._csrf_token:
+            raise server.RequestVerificationError()
+
+
+class AdminApi:
+    def __init__(self, transport, session_module):
+        self.api = httpx.AsyncClient(transport=transport, base_url="https://testserver")
+        self.session_module = session_module
+        self.csrf = None
+
+    async def authorize(self, user):
+        grant = await self.session_module.create_admin_session(user, False, {})
+        self.api.cookies.set(server.ACCESS_COOKIE_NAME, grant.access_secret)
+        self.api.cookies.set(server.SESSION_COOKIE_NAME, grant.session_secret)
+        self.csrf = grant.csrf_token
+        return grant
+
+    async def request(self, method, path, **kwargs):
+        headers = dict(kwargs.pop("headers", {}))
+        if method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+            headers.update(ORIGIN)
+            headers["X-CSRF-Token"] = self.csrf
+        return await self.api.request(method, path, headers=headers, **kwargs)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args):
+        await self.api.aclose()
+
+
+def install_fake_admin_sessions(database):
+    module = FakeAdminSessionModule(database)
+    server.app.state.admin_session_module = module
+    return module
+
+
 def bearer(token):
     return {"Authorization": f"Bearer {token}"}
 
@@ -213,9 +336,6 @@ def make_user(user_id, email, roles, *, status="active"):
         "roles": list(roles),
         "status": status,
         "access_state": "approved",
-        "role_policy_version": server.ROLE_POLICY_VERSION,
-        "token_version": 0,
-        "version": 1,
         "created_at": "2026-07-14T00:00:00+00:00",
     }
 
@@ -227,33 +347,26 @@ async def run_staff_access_matrix():
     customer = make_user("user-2", "customer@example.com", ["retail_customer"])
     db = FakeDatabase([super_admin, manager, warehouse, customer])
     server.db = db
+    server.app.state.transaction_guard = FakeTransactionGuard(db)
     guard = FakeTransactionGuard(db)
     server.app.state.transaction_guard = guard
-
-    super_admin_token = server.create_token(
-        super_admin["id"], super_admin["email"], "super_admin"
-    )
-    manager_token = server.create_token(
-        manager["id"], manager["email"], "manager_approver"
-    )
-    warehouse_token = server.create_token(
-        warehouse["id"], warehouse["email"], "warehouse"
-    )
+    session_module = install_fake_admin_sessions(db)
 
     transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://testserver"
-    ) as api:
-        denied_response = await api.get(
-            "/api/admin/users", headers=bearer(warehouse_token)
-        )
+    async with (
+        AdminApi(transport, session_module) as owner_api,
+        AdminApi(transport, session_module) as manager_api,
+        AdminApi(transport, session_module) as warehouse_api,
+    ):
+        await owner_api.authorize(super_admin)
+        await manager_api.authorize(manager)
+        await warehouse_api.authorize(warehouse)
+        denied_response = await warehouse_api.request("GET", "/api/admin/users")
         assert denied_response.status_code == 403
 
-        manager_users = await api.get("/api/admin/users", headers=bearer(manager_token))
+        manager_users = await manager_api.request("GET", "/api/admin/users")
         assert manager_users.status_code == 403
-        owner_users = await api.get(
-            "/api/admin/users", headers=bearer(super_admin_token)
-        )
+        owner_users = await owner_api.request("GET", "/api/admin/users")
         assert owner_users.status_code == 200
         assert all("password_hash" not in user for user in owner_users.json())
 
@@ -332,32 +445,30 @@ async def run_staff_invitation_and_access_lifecycle():
     server.db = database
     guard = FakeTransactionGuard(database)
     server.app.state.transaction_guard = guard
+    session_module = install_fake_admin_sessions(database)
 
     transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
-        owner_login = await api.post(
-            "/api/auth/admin/login",
-            json={"email": owner["email"], "password": "OwnerLifecycle123"},
-        )
-        warehouse_login = await api.post(
-            "/api/auth/admin/login",
-            json={"email": warehouse["email"], "password": "WarehouseLifecycle123"},
-        )
-        owner_headers = bearer(owner_login.cookies["niuva_access"])
-        warehouse_headers = bearer(warehouse_login.cookies["niuva_access"])
+    async with (
+        httpx.AsyncClient(transport=transport, base_url="https://testserver") as api,
+        AdminApi(transport, session_module) as owner_api,
+        AdminApi(transport, session_module) as warehouse_api,
+        AdminApi(transport, session_module) as staff_api,
+    ):
+        await owner_api.authorize(owner)
+        await warehouse_api.authorize(warehouse)
 
-        directory = await api.get("/api/admin/users", headers=owner_headers)
+        directory = await owner_api.request("GET", "/api/admin/users")
         assert directory.status_code == 200
         assert customer["email"] not in {item["email"] for item in directory.json()}
 
-        customer_conversion = await api.put(
+        customer_conversion = await owner_api.request(
+            "PUT",
             f"/api/admin/staff/{customer['id']}/roles",
             json={
                 "roles": ["warehouse"],
                 "expected_version": 1,
                 "reason": "Percobaan konversi customer menjadi staf",
             },
-            headers=owner_headers,
         )
         assert customer_conversion.status_code == 409
         assert customer_conversion.json()["detail"]["code"] == "customer_account_boundary"
@@ -368,17 +479,17 @@ async def run_staff_invitation_and_access_lifecycle():
             "roles": ["manager_approver", "warehouse"],
             "reason": "Menambah penanggung jawab gudang cabang utama",
         }
-        forbidden = await api.post(
+        forbidden = await warehouse_api.request(
+            "POST",
             "/api/admin/staff-invitations",
             json=invite_payload,
-            headers=warehouse_headers,
         )
         assert forbidden.status_code == 403
 
-        invited = await api.post(
+        invited = await owner_api.request(
+            "POST",
             "/api/admin/staff-invitations",
             json=invite_payload,
-            headers=owner_headers,
         )
         assert invited.status_code == 201, invited.text
         setup_token = invited.json()["setup_token"]
@@ -398,6 +509,7 @@ async def run_staff_invitation_and_access_lifecycle():
         assert staff["status"] == "active"
         assert staff["access_state"] == "approved"
         assert staff["version"] == 1
+        assert staff["password_hash"].startswith("$argon2id$")
         assert server.verify_password("StaffBaruPassword123", staff["password_hash"])
         replay = await api.post(
             "/api/auth/staff-invitations/accept",
@@ -405,57 +517,74 @@ async def run_staff_invitation_and_access_lifecycle():
         )
         assert replay.status_code == 410
 
-        staff_login = await api.post(
-            "/api/auth/admin/login",
-            json={"email": staff["email"], "password": "StaffBaruPassword123"},
-        )
-        old_staff_token = staff_login.cookies["niuva_access"]
+        role_session = await staff_api.authorize(staff)
 
-        changed = await api.put(
+        changed = await owner_api.request(
+            "PUT",
             f"/api/admin/staff/{staff['id']}/roles",
             json={
                 "roles": ["order_admin"],
                 "expected_version": 1,
                 "reason": "Memindahkan tanggung jawab ke administrasi pesanan",
             },
-            headers=owner_headers,
         )
         assert changed.status_code == 200, changed.text
         assert changed.json()["roles"] == ["order_admin"]
         assert changed.json()["version"] == 2
-        assert (await api.get("/api/auth/me", headers=bearer(old_staff_token))).status_code == 401
+        stored_staff = await database.users.find_one({"id": staff["id"]})
+        assert stored_staff["token_version"] == 1
+        assert next(
+            item for item in database.admin_sessions.items if item["id"] == role_session.session_id
+        )["revocation_reason"] == "identity_access_changed"
+        assert (await staff_api.request("GET", "/api/auth/me")).status_code == 401
 
-        stale = await api.post(
+        stale = await owner_api.request(
+            "POST",
             f"/api/admin/staff/{staff['id']}/deactivate",
             json={"expected_version": 1, "reason": "Versi stale untuk test konflik"},
-            headers=owner_headers,
         )
         assert stale.status_code == 409
         assert stale.json()["detail"]["code"] == "version_conflict"
         assert stale.json()["detail"]["current_version"] == 2
 
-        deactivated = await api.post(
+        status_session = await staff_api.authorize(stored_staff)
+        deactivated = await owner_api.request(
+            "POST",
             f"/api/admin/staff/{staff['id']}/deactivate",
             json={"expected_version": 2, "reason": "Akses sementara tidak diperlukan"},
-            headers=owner_headers,
         )
         assert deactivated.status_code == 200
         assert deactivated.json()["status"] == "disabled"
         assert deactivated.json()["version"] == 3
+        stored_staff = await database.users.find_one({"id": staff["id"]})
+        assert stored_staff["token_version"] == 2
+        assert next(
+            item for item in database.admin_sessions.items if item["id"] == status_session.session_id
+        )["revocation_reason"] == "identity_access_changed"
         blocked_login = await api.post(
             "/api/auth/admin/login",
             json={"email": staff["email"], "password": "StaffBaruPassword123"},
+            headers=ORIGIN,
         )
         assert blocked_login.status_code == 401
 
-        reactivated = await api.post(
+        reactivated = await owner_api.request(
+            "POST",
             f"/api/admin/staff/{staff['id']}/reactivate",
             json={"expected_version": 3, "reason": "Akses operasional dibutuhkan kembali"},
-            headers=owner_headers,
         )
         assert reactivated.status_code == 200
         assert reactivated.json()["status"] == "active"
         assert reactivated.json()["version"] == 4
+        assert (await database.users.find_one({"id": staff["id"]}))["token_version"] == 3
+
+    session_updates = [
+        options
+        for operation, options in database.admin_sessions.operations
+        if operation == "update_many"
+    ]
+    assert len(session_updates) == 3
+    assert all(options.get("session") is guard.session for options in session_updates)
 
     assert [call[0] for call in guard.calls] == [
         "identity.assign_staff_roles",
@@ -469,7 +598,10 @@ async def run_staff_invitation_and_access_lifecycle():
     ]
 
 
-def test_staff_invitation_and_access_lifecycle_is_audited_and_versioned():
+def test_staff_invitation_and_access_lifecycle_is_audited_and_versioned(
+    monkeypatch, tmp_path
+):
+    configure_password_writes(monkeypatch, tmp_path, enabled=True)
     try:
         asyncio.run(run_staff_invitation_and_access_lifecycle())
     finally:
@@ -518,7 +650,7 @@ async def run_legacy_admin_route_permission_matrix():
     )
     db.file_objects.items.append(
         {
-            "id": "file-permission-1",
+            "id": "private-file",
             "storage_path": "niuva/orders/customer-routes/private.stl",
             "owner_id": customer["id"],
             "state": "active",
@@ -526,53 +658,41 @@ async def run_legacy_admin_route_permission_matrix():
     )
     server.db = db
     server.app.state.transaction_guard = FakeTransactionGuard(db)
-
-    warehouse_token = server.create_token(
-        warehouse["id"], warehouse["email"], "warehouse"
-    )
-    order_admin_token = server.create_token(
-        order_admin["id"], order_admin["email"], "order_admin"
-    )
-    content_editor_token = server.create_token(
-        content_editor["id"], content_editor["email"], "content_editor"
-    )
+    session_module = install_fake_admin_sessions(db)
     customer_token = server.create_token(
         other_customer["id"], other_customer["email"], "retail_customer"
     )
 
     transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://testserver"
-    ) as api:
+    async with (
+        httpx.AsyncClient(transport=transport, base_url="https://testserver") as api,
+        AdminApi(transport, session_module) as warehouse_api,
+        AdminApi(transport, session_module) as order_admin_api,
+        AdminApi(transport, session_module) as content_editor_api,
+    ):
+        await warehouse_api.authorize(warehouse)
+        await order_admin_api.authorize(order_admin)
+        await content_editor_api.authorize(content_editor)
         assert (
-            await api.get(
-                "/api/admin/materials",
-                headers=bearer(warehouse_token),
-            )
+            await warehouse_api.request("GET", "/api/admin/materials")
         ).status_code == 200
         assert (
-            await api.get(
-                "/api/admin/orders",
-                headers=bearer(warehouse_token),
-            )
+            await warehouse_api.request("GET", "/api/admin/orders")
         ).status_code == 403
         assert (
-            await api.get(
-                "/api/admin/orders",
-                headers=bearer(order_admin_token),
-            )
+            await order_admin_api.request("GET", "/api/admin/orders")
         ).status_code == 200
 
-        forbidden_material = await api.post(
+        forbidden_material = await content_editor_api.request(
+            "POST",
             "/api/admin/materials",
-            headers=bearer(content_editor_token),
             json={"name": "ABS", "description": "", "color": "", "active": True},
         )
         assert forbidden_material.status_code == 403
 
-        portfolio = await api.post(
+        portfolio = await content_editor_api.request(
+            "POST",
             "/api/admin/portfolio",
-            headers=bearer(content_editor_token),
             json={"title_id": "Purwarupa", "title_en": "Prototype"},
         )
         # Creation answers 201, and the entry starts as a draft: content.write
@@ -580,9 +700,8 @@ async def run_legacy_admin_route_permission_matrix():
         assert portfolio.status_code == 201
         assert portfolio.json()["status"] == "draft"
 
-        cross_customer_order = await api.get(
-            "/api/orders/order-permission-1",
-            headers=bearer(order_admin_token),
+        cross_customer_order = await order_admin_api.request(
+            "GET", "/api/orders/order-permission-1"
         )
         assert cross_customer_order.status_code == 200
 
@@ -594,10 +713,7 @@ async def run_legacy_admin_route_permission_matrix():
 
 
 def test_legacy_admin_routes_use_exact_backend_permissions():
-    try:
-        asyncio.run(run_legacy_admin_route_permission_matrix())
-    finally:
-        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD
+    asyncio.run(run_legacy_admin_route_permission_matrix())
 
 
 async def run_canonical_account_creation_contract():
@@ -614,6 +730,7 @@ async def run_canonical_account_creation_contract():
     )
 
     assert provisioned["roles"] == ["retail_customer"]
+    assert database.users.items[0]["password_hash"].startswith("$argon2id$")
     assert database.users.items[0]["role_policy_version"] == server.ROLE_POLICY_VERSION
     assert "role" not in database.users.items[0]
 
@@ -628,30 +745,83 @@ async def run_canonical_account_creation_contract():
     assert seeded_admin["role_policy_version"] == server.ROLE_POLICY_VERSION
     assert "role" not in seeded_admin
 
+    original_hash = seeded_admin["password_hash"]
+    assert original_hash.startswith("$argon2id$")
+    os.environ["ADMIN_PASSWORD"] = "A different environment password 2026"
+    await server.seed()
+    unchanged = next(
+        account
+        for account in database.users.items
+        if account["email"] == os.environ["ADMIN_EMAIL"].lower()
+    )
+    assert unchanged["password_hash"] == original_hash
 
-def test_runtime_account_creation_never_recreates_legacy_or_owner_authority():
-    asyncio.run(run_canonical_account_creation_contract())
 
+async def run_password_write_gate_contract():
+    database = FakeDatabase([])
+    server.db = database
+    guard = FakeTransactionGuard(database)
+    server.app.state.transaction_guard = guard
 
-def test_bootstrap_is_one_time_and_never_reasserts_the_environment_password():
-    async def scenario():
-        owner = make_user("bootstrap-once", os.environ["ADMIN_EMAIL"], ["super_admin"])
-        owner["password_hash"] = server.hash_password("RotatedOwnerPassword123")
-        database = FakeDatabase([owner])
-        server.db = database
+    with pytest.raises(server.PasswordWriteDisabledError):
+        await server.provision_client(
+            server.ClientProvisionReq(
+                name="Gated Retail Customer",
+                email="gated-retail@example.com",
+                password="A gated customer password 2026",
+                phone="",
+                company="",
+            )
+        )
+    assert database.users.items == []
 
-        original_hash = owner["password_hash"]
+    raw_token = "invitation-token-with-at-least-thirty-two-characters"
+    database.staff_invitations.items.append(
+        {
+            "id": "gated-invitation",
+            "name": "Gated Staff",
+            "email": "gated-staff@niuva.com",
+            "roles": ["warehouse"],
+            "token_hash": hashlib.sha256(raw_token.encode("utf-8")).hexdigest(),
+            "status": "pending",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+        }
+    )
+    transport = httpx.ASGITransport(app=server.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+        response = await api.post(
+            "/api/auth/staff-invitations/accept",
+            json={
+                "token": raw_token,
+                "password": "A gated staff password 2026",
+            },
+        )
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "password_writes_disabled"
+    assert database.users.items == []
+    assert database.staff_invitations.items[0]["status"] == "pending"
+
+    with pytest.raises(server.PasswordWriteDisabledError):
         await server.seed()
+    assert database.users.items == []
 
-        stored = await database.users.find_one({"id": owner["id"]})
-        assert stored["password_hash"] == original_hash
-        assert server.verify_password(
-            "RotatedOwnerPassword123",
-            stored["password_hash"],
-        )
-        assert not server.verify_password(
-            os.environ["ADMIN_PASSWORD"],
-            stored["password_hash"],
-        )
 
-    asyncio.run(scenario())
+def test_runtime_account_creation_never_recreates_legacy_or_owner_authority(
+    monkeypatch, tmp_path
+):
+    configure_password_writes(monkeypatch, tmp_path, enabled=True)
+    original_admin_password = os.environ["ADMIN_PASSWORD"]
+    try:
+        asyncio.run(run_canonical_account_creation_contract())
+    finally:
+        os.environ["ADMIN_PASSWORD"] = original_admin_password
+
+
+def test_all_runtime_password_writes_fail_closed_when_gate_is_disabled(
+    monkeypatch, tmp_path
+):
+    configure_password_writes(monkeypatch, tmp_path, enabled=False)
+    try:
+        asyncio.run(run_password_write_gate_contract())
+    finally:
+        server.app.state.transaction_guard = REAL_TRANSACTION_GUARD

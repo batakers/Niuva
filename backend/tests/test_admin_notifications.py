@@ -1,6 +1,7 @@
 import os
 import sys
 import types
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -14,6 +15,8 @@ os.environ.setdefault("DB_NAME", "niuva_notifications_test")
 os.environ.setdefault("JWT_SECRET", "notifications-test-secret-at-least-32-characters")
 os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
+os.environ.setdefault("PUBLIC_SITE_URL", "https://testserver")
+os.environ.setdefault("AUTH_SESSION_CSRF_KEY", "notifications-test-csrf-key-at-least-32-bytes")
 
 
 resend_module = types.ModuleType("resend")
@@ -23,6 +26,74 @@ sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
 from tests.auth_support import AuthCollection  # noqa: E402
+
+
+ORIGIN = {"Origin": "https://testserver"}
+
+
+class FakeAdminSessionModule:
+    def __init__(self):
+        self.counter = 0
+        self.sessions = {}
+
+    async def create_admin_session(self, user, remember_me, _request_context):
+        self.counter += 1
+        now = datetime.now(timezone.utc)
+        grant = types.SimpleNamespace(
+            session_id=f"session-{self.counter}",
+            user_id=user["id"],
+            access_secret=f"access-{self.counter}",
+            session_secret=f"session-secret-{self.counter}",
+            csrf_token=f"csrf-{self.counter}",
+            access_expires_at=now,
+            idle_expires_at=now,
+            absolute_expires_at=now,
+            remember_me=remember_me,
+        )
+        self.sessions[grant.access_secret] = grant
+        return grant
+
+    async def authenticate_admin_session(self, request_context):
+        grant = self.sessions.get(request_context.get("access_secret"))
+        if not grant:
+            raise server.SessionExpiredError()
+        return types.SimpleNamespace(
+            session_id=grant.session_id,
+            user_id=grant.user_id,
+            _csrf_token=grant.csrf_token,
+        )
+
+    def verify_csrf(self, session, candidate):
+        if candidate != session._csrf_token:
+            raise server.RequestVerificationError()
+
+
+class AdminApi:
+    def __init__(self, transport):
+        self.api = httpx.AsyncClient(transport=transport, base_url="https://testserver")
+        self.csrf = None
+
+    async def login(self, email, password):
+        response = await self.api.post(
+            "/api/auth/admin/login",
+            json={"email": email, "password": password},
+            headers=ORIGIN,
+        )
+        assert response.status_code == 200, response.text
+        self.csrf = response.json()["csrf_token"]
+
+    async def request(self, method, path, **kwargs):
+        headers = dict(kwargs.pop("headers", {}))
+        if method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+            headers.update(ORIGIN)
+            headers["X-CSRF-Token"] = self.csrf
+        return await self.api.request(method, path, headers=headers, **kwargs)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args):
+        await self.api.aclose()
 
 
 class FakeCollection:
@@ -67,7 +138,7 @@ class FakeCollection:
         self.items.append(dict(item))
         return types.SimpleNamespace(inserted_id=item.get("id"))
 
-    def find(self, query, projection=None, **_options):
+    def find(self, query, projection=None):
         matched = [self._project(item, projection) for item in self.items if self._matches(item, query)]
 
         class _Cursor:
@@ -93,38 +164,23 @@ class FakeCollection:
 
 class FakeDatabase:
     def __init__(self, users, orders=None):
-        self.users = FakeCollection([
-            {
-                "role_policy_version": server.ROLE_POLICY_VERSION,
-                "token_version": 0,
-                "version": 1,
-                **user,
-            }
-            for user in users
-        ])
+        for user in users:
+            user.setdefault("role_policy_version", server.ROLE_POLICY_VERSION)
+            user.setdefault("token_version", 0)
+        self.users = FakeCollection(users)
+        self.login_rate_limits = AuthCollection()
+        self.public_rate_limits = AuthCollection()
         self.orders = FakeCollection(orders or [])
         self.admin_notification_log = FakeCollection()
         self.notifications = FakeCollection()
         self.notification_outbox = FakeCollection()
         self.audit_events = FakeCollection()
-        self.auth_sessions = AuthCollection()
-        self.login_rate_limits = AuthCollection()
-        self.public_rate_limits = AuthCollection()
+        self.admin_sessions = FakeCollection()
 
 
-class FakeTransactionGuard:
-    async def run(self, callback, *, operation_name, retry_safe=False):
-        return await callback(object())
-
-
-def bearer(token):
-    return {"Authorization": f"Bearer {token}"}
-
-
-async def login(api, email, password):
-    response = await api.post("/api/auth/admin/login", json={"email": email, "password": password})
-    assert response.status_code == 200, response.text
-    return response.cookies["niuva_access"]
+class PassthroughGuard:
+    async def run(self, callback, **_options):
+        return await callback(None)
 
 
 def build_users():
@@ -162,65 +218,72 @@ async def run_admin_notifications_matrix():
             {"id": "order-2", "user_id": customer_b["id"], "status": "completed"},
         ],
     )
-    server.app.state.transaction_guard = FakeTransactionGuard()
+    server.app.state.transaction_guard = PassthroughGuard()
+    server.app.state.admin_session_module = FakeAdminSessionModule()
 
     transport = httpx.ASGITransport(app=server.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
-        admin_token = await login(api, admin["email"], "AdminPassword123")
-        warehouse_token = await login(api, warehouse["email"], "WarehousePassword123")
+    async with (
+        AdminApi(transport) as admin_api,
+        AdminApi(transport) as warehouse_api,
+    ):
+        await admin_api.login(admin["email"], "AdminPassword123")
+        await warehouse_api.login(warehouse["email"], "WarehousePassword123")
 
-        forbidden = await api.post(
+        forbidden = await warehouse_api.request(
+            "POST",
             "/api/admin/notifications",
             json={"target": "user", "user_id": customer_a["id"], "subject": "Hi", "message": "Hello there"},
-            headers=bearer(warehouse_token),
         )
         assert forbidden.status_code == 403
 
-        to_user = await api.post(
+        to_user = await admin_api.request(
+            "POST",
             "/api/admin/notifications",
             json={"target": "user", "user_id": customer_a["id"], "subject": "Update pesanan", "message": "Pesanan Anda diperbarui."},
-            headers=bearer(admin_token),
         )
         assert to_user.status_code == 200
         assert to_user.json()["recipient_count"] == 1
 
-        missing_user = await api.post(
+        missing_user = await admin_api.request(
+            "POST",
             "/api/admin/notifications",
             json={"target": "user", "user_id": "no-such-user", "subject": "Halo", "message": "Pesan uji"},
-            headers=bearer(admin_token),
         )
         assert missing_user.status_code == 404
 
-        to_segment = await api.post(
+        to_segment = await admin_api.request(
+            "POST",
             "/api/admin/notifications",
             json={"target": "segment", "segment": "active_orders", "subject": "Info produksi", "message": "Produksi berjalan normal."},
-            headers=bearer(admin_token),
         )
         assert to_segment.status_code == 200
         assert to_segment.json()["recipient_count"] == 1  # only customer_a has an active-status order
 
-        to_broadcast = await api.post(
+        to_broadcast = await admin_api.request(
+            "POST",
             "/api/admin/notifications",
             json={"target": "broadcast", "subject": "Pengumuman", "message": "Libur produksi minggu ini."},
-            headers=bearer(admin_token),
         )
         assert to_broadcast.status_code == 200
         assert to_broadcast.json()["recipient_count"] == 2
 
-        history = await api.get("/api/admin/notifications/sent", headers=bearer(admin_token))
+        history = await admin_api.request("GET", "/api/admin/notifications/sent")
         assert history.status_code == 200
         assert len(history.json()) == 3
 
-        history_forbidden = await api.get("/api/admin/notifications/sent", headers=bearer(warehouse_token))
+        history_forbidden = await warehouse_api.request("GET", "/api/admin/notifications/sent")
         assert history_forbidden.status_code == 403
 
-        # Every successful enqueue must also land in the shared audit log and
-        # durable delivery outbox; delivery is no longer performed inline.
-        queued_audit_events = [event for event in server.db.audit_events.items if event["action"] == "notifications.queued"]
+        # Every successful enqueue lands in the outbox and shared audit log.
+        queued_audit_events = [
+            event
+            for event in server.db.audit_events.items
+            if event["action"] == "notifications.queued"
+        ]
         assert len(queued_audit_events) == 3
+        assert len(server.db.notification_outbox.items) == 4
         assert queued_audit_events[-1]["after"]["target"] == "broadcast"
         assert queued_audit_events[-1]["after"]["recipient_count"] == 2
-        assert len(server.db.notification_outbox.items) == 4
 
 
 def test_admin_notifications_permission_targets_and_history():

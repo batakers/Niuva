@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
 from audit import append_identity_governance_event
-from password_policy import validate_password
 from permissions import (
     CUSTOMER_ROLES,
     INTERNAL_ROLES,
@@ -34,7 +33,7 @@ class StaffInvitationRequest(BaseModel):
 
 class StaffInvitationAcceptRequest(BaseModel):
     token: str = Field(min_length=32, max_length=500)
-    password: str = Field(min_length=1, max_length=256)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class StaffRoleAssignmentRequest(BaseModel):
@@ -91,7 +90,7 @@ def _conflict(record: dict):
 
 
 def build_identity_router(
-    *, get_db, get_transaction_guard, require_permission, safe_user, hash_password
+    *, get_db, get_transaction_guard, require_permission, safe_user, hash_new_password
 ) -> APIRouter:
     router = APIRouter(tags=["identity"])
 
@@ -158,7 +157,6 @@ def build_identity_router(
     async def accept_staff_invitation(payload: StaffInvitationAcceptRequest):
         database = get_db()
         guard = get_transaction_guard()
-        validate_password(payload.password)
         digest = token_hash(payload.token)
         created = {}
 
@@ -177,7 +175,10 @@ def build_identity_router(
                 "id": str(uuid.uuid4()),
                 "name": invitation["name"],
                 "email": invitation["email"],
-                "password_hash": hash_password(payload.password),
+                "password_hash": hash_new_password(
+                    payload.password,
+                    context_terms=(invitation["email"], invitation["name"]),
+                ),
                 "roles": list(_internal_roles(invitation["roles"])),
                 "status": "active",
                 "access_state": "approved",
@@ -258,6 +259,16 @@ def build_identity_router(
             if write.matched_count == 0:
                 latest = await database.users.find_one({"id": user_id}, session=session)
                 _conflict(latest or current)
+            await database.admin_sessions.update_many(
+                {"user_id": user_id, "revoked_at": None},
+                {
+                    "$set": {
+                        "revoked_at": datetime.now(timezone.utc),
+                        "revocation_reason": "identity_access_changed",
+                    }
+                },
+                session=session,
+            )
             await append_identity_governance_event(
                 database,
                 actor=actor,

@@ -68,3 +68,7 @@ This decision does not authorize:
 - MongoDB, Redis, proxy, gateway, or another provider selection;
 - login thresholds or response headers;
 - production activation or go-live.
+
+## Subsequent Decision
+
+`DEC-AUTH-006` approves a provider-neutral distributed limiter interface, privacy-preserving identifier handling, generic client responses, `429` with `Retry-After`, and the 60-second resend cooldown. It amends this record but does not replace its deferral of deployment topology, provider selection, trusted proxy policy, login thresholds, outage behavior, retention ownership, or implementation authorization.

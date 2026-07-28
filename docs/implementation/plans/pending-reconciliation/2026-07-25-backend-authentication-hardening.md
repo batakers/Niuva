@@ -1,15 +1,9 @@
 # Niuva Backend Authentication Hardening Plan
 
-Status: **Context Only — Partially Implemented — Phase A Complete; Remaining Security Decisions and Implementation Gates Open**
+Status: **Context Only — Phase 0 Decisions Recorded; Open Consequences and Separate Implementation Approval Remain**
 Prepared: 25 July 2026 (Asia/Jakarta; 24 July 2026 UTC)
 Scope: Existing customer and internal login endpoints, access-token validation,
 password verification boundary, and login-abuse controls
-
-Implementation reconciliation: 27 July 2026. Phase A login issuance is
-implemented and merged. The related forgot/reset-password plan is also
-implemented. Login limiter topology, access-token/session policy, password
-migration policy, and authentication-event governance remain open; this plan
-still grants no production rollout authority.
 
 ## 1. Authority and Non-Authorization Gate
 
@@ -26,9 +20,11 @@ Read authority in this order:
 4. `docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md`;
 5. `docs/decisions/access/DEC-AUTH-001-login-failure-and-legacy-compatibility.md`;
 6. `docs/decisions/access/DEC-AUTH-002-rate-limit-topology-deferral.md`;
-7. applicable runbooks;
-8. current source and tests;
-9. `docs/context/BACKEND_AUDIT_TRACKER_2026-07-24.md` as context only.
+7. `docs/decisions/access/DEC-AUTH-003-account-recovery-contract-and-compatibility.md`
+   through `docs/decisions/access/DEC-AUTH-009-authentication-security-event-governance.md`;
+8. applicable runbooks;
+9. current source and tests;
+10. `docs/context/BACKEND_AUDIT_TRACKER_2026-07-24.md` as context only.
 
 Implementation may begin only after the decisions in Section 7 and the exact
 implementation slice receive explicit approval. Commit, push, rollout, and
@@ -42,6 +38,7 @@ production activation remain separate actions.
 | `DEC-ACCESS-001` | Session/token invalidation and access-review rollout remain open | This plan must not invent invalidation or rollout policy |
 | `DEC-AUTH-001` | Blocked/invalid login outcomes share generic `401` and issue no token; supported low-privilege legacy customers remain compatible | Phase A must implement this exact contract without broadening legacy authority |
 | `DEC-AUTH-002` | Rate-limit topology/storage is unselected; limiter implementation is deferred; Phase A planning may proceed without source changes | Phase B remains blocked and process-local limiting is not promoted as production authority |
+| `DEC-AUTH-003` through `DEC-AUTH-009` | Recovery, password, Admin-session, abuse-interface, MFA, support-channel, and security-event directions are approved with explicit open consequences | Apply the dedicated record for each bounded selection; do not treat an open provider, topology, parameter, owner, migration, or implementation gate as resolved |
 | Backend audit `BA-010` | Disabled login, rate limiting, and public-input hardening remain open | Confirmed problem context, not implementation authority |
 | Auth experience remediation plan | Customer-safe errors and recovery are planned; backend authorization changes are excluded | Frontend experience work cannot authorize this backend change |
 | Retail checkout candidate | Describes possible guest sessions and rate limits | Candidate only; it cannot define the existing account/session policy |
@@ -58,8 +55,11 @@ No authoritative document currently defines:
 - trusted-proxy/client-IP rules specifically for login;
 - authentication-event retention, access, and privacy governance.
 
-Those values remain decision gates rather than defaults. The disabled and
-review-blocked public response is no longer open; `DEC-AUTH-001` governs it.
+The bounded selections are now governed by `DEC-AUTH-003` through
+`DEC-AUTH-009`. Exact provider, topology, signing, proxy, threshold, owner,
+operational, migration, and implementation inputs listed as open consequences
+remain gates rather than defaults. `DEC-AUTH-001` continues to govern the
+disabled and review-blocked public response.
 
 ## 3. Verified Current State
 
@@ -154,7 +154,8 @@ authorized by the decision alone.
 
 ### AUTH-DEC-02 — Login limiter topology and failure behavior
 
-Status: **Deferred by `DEC-AUTH-002` on 25 July 2026 (Asia/Jakarta)**
+Status: **Interface direction approved by `DEC-AUTH-006`; topology and outage
+behavior remain deferred by `DEC-AUTH-002` and `DEC-AUTH-006`**
 
 Approve:
 
@@ -170,6 +171,9 @@ multi-instance production authority. No store or topology is selected, and
 Phase B must not begin until `DEC-AUTH-002` reopening conditions are satisfied.
 
 ### AUTH-DEC-03 — Limit dimensions and thresholds
+
+Status: **Account/IP dimensions, HMAC identifiers, generic responses, and
+`Retry-After` approved by `DEC-AUTH-006`; login thresholds remain open**
 
 Approve:
 
@@ -187,11 +191,16 @@ No threshold is selected by this plan.
 
 ### AUTH-DEC-04 — Trusted client-address contract
 
+Status: **Still open under `DEC-AUTH-002` and `DEC-AUTH-006`**
+
 Approve the proxy topology and the single trusted source of client address.
 Forwarded headers must be ignored unless an approved proxy overwrites them.
 IPv4, IPv6, missing address, and malformed forwarded values require tests.
 
 ### AUTH-DEC-05 — Access-token and session policy
+
+Status: **Admin-session direction approved by `DEC-AUTH-005`; customer-session,
+signing-key, claim, and topology details remain open**
 
 Approve:
 
@@ -213,6 +222,9 @@ implementation slice. This backend plan does not silently select it.
 
 ### AUTH-DEC-06 — Password policy and hash migration
 
+Status: **Direction approved by `DEC-AUTH-004`; dependency, work factors,
+blocklist operations, migration runbook, and implementation remain open**
+
 Approve:
 
 - minimum and maximum input boundaries;
@@ -229,6 +241,9 @@ Existing bcrypt hashes must remain usable until an approved, reversible
 migration says otherwise.
 
 ### AUTH-DEC-07 — Authentication security-event governance
+
+Status: **Direction approved by `DEC-AUTH-009`; owner, storage, deletion,
+alerting, and implementation remain open**
 
 Approve:
 

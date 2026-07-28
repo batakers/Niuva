@@ -80,11 +80,11 @@ beforeEach(() => {
 function renderPage() {
   render(
     <I18nProvider>
-      <AuthProvider>
-        <MemoryRouter>
+      <MemoryRouter>
+        <AuthProvider>
           <ContactPage />
-        </MemoryRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </MemoryRouter>
     </I18nProvider>
   );
 }
