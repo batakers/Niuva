@@ -24,7 +24,7 @@ audit.
 
 | Control | Current implementation | Result |
 | --- | --- | --- |
-| `__Host-` cookies | Access and rotating session cookies use `__Host-` names with `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`, and no `Domain`. Responses expose no credential value. | Pass locally |
+| `__Host-` cookies | Access and rotating session cookies use `__Host-` names with `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`, and no `Domain`. Response bodies and JavaScript-readable storage expose no Admin session credential. | Pass locally |
 | Remember-me | Defaults off. Default session cookie is non-persistent; explicit remember-me makes the rotating session cookie persistent for at most seven days. | Pass locally |
 | Idle and absolute expiry | Access is 15 minutes. Default idle/absolute limits are 30 minutes/8 hours; remembered limits are 8 hours/7 days. Activity cannot extend the absolute boundary. | Pass locally |
 | Refresh rotation | Refresh uses the opaque rotating session secret, rotates access/session/CSRF material atomically, preserves absolute expiry, and fails closed without transaction capability. | Pass locally and on isolated MongoDB |
@@ -73,15 +73,45 @@ browser test. Do not weaken replay-family revocation.
 
 ## Verification Evidence
 
+Commands below were run from repository baseline
+`1200340f4eab634d608d331f3a830c7ccb258212` on macOS with Python `3.12.13`,
+Node `24.18.0`, and npm `11.16.0`.
+
 Focused backend session, route, migration, identity, and recovery suite:
 
-```text
-43 passed, 2 skipped in 15.40s
+```bash
+backend/.venv/bin/python -m pytest -c backend/pytest.ini -n 0 -q -rs \
+  backend/tests/test_auth_session.py \
+  backend/tests/test_auth_security.py \
+  backend/tests/test_auth_session_migration.py \
+  backend/tests/test_auth_session_transaction_integration.py \
+  backend/tests/test_identity_foundation.py \
+  backend/tests/test_reset_password.py
 ```
 
-The two skipped cases require explicit real-Mongo opt-in.
+```text
+43 passed, 2 skipped in 14.82s
+```
+
+The two explicitly identified skips were:
+
+- `test_real_replica_set_apply_cleanup_and_rollback` in
+  `backend/tests/test_auth_session_migration.py`; and
+- `test_real_replica_set_rotates_once_and_revokes_replayed_family` in
+  `backend/tests/test_auth_session_transaction_integration.py`.
+
+Both require `NIUVA_RUN_REAL_TRANSACTION_TESTS=1` and
+`MONGO_TRANSACTION_TEST_URL`.
 
 Isolated MongoDB Admin rotation and Migration 009 tests:
+
+```bash
+NIUVA_RUN_REAL_TRANSACTION_TESTS=1 \
+MONGO_TRANSACTION_TEST_URL='mongodb://127.0.0.1:27019/?replicaSet=rs0' \
+backend/.venv/bin/python -m pytest -c backend/pytest.ini -n 0 -q \
+  backend/tests/test_auth_session_transaction_integration.py \
+  backend/tests/test_auth_session_migration.py
+```
 
 ```text
 7 passed in 0.56s
@@ -89,9 +119,16 @@ Isolated MongoDB Admin rotation and Migration 009 tests:
 
 These tests used generated database names on a disposable local replica set and
 dropped only those databases. They did not run Migration 009 against the
-application database.
+application database. The fixture
+`transaction_database_name` provides the unique database boundary and each
+real-Mongo test drops that database in `finally`. No local log artifact
+containing session material was retained.
 
 Full backend regression:
+
+```bash
+backend/.venv/bin/python -m pytest -c backend/pytest.ini -q backend/tests
+```
 
 ```text
 571 passed, 12 skipped, 14 subtests passed in 17.37s
@@ -99,18 +136,37 @@ Full backend regression:
 
 Focused frontend auth tests:
 
+```bash
+cd frontend
+npm test -- --watchAll=false --runInBand \
+  --testPathPattern='AuthContext.test.jsx|AdminLogin.test.jsx|api.test.js'
+```
+
 ```text
-23 passed
+2 suites passed, 23 tests passed
 ```
 
 Full frontend regression:
+
+```bash
+cd frontend
+npm test -- --watchAll=false --runInBand
+```
 
 ```text
 32 suites passed, 229 tests passed
 ```
 
-The optimized frontend bundle compiled successfully. Postbuild stopped at the
-intentional confirmed-production-origin gate described in AS-001.
+The proportional documentation-PR checks are defined in
+`.github/workflows/quality-gates.yml`; PR `#80` records successful backend,
+frontend, and secret-scan jobs. Real transaction CI is defined in
+`.github/workflows/transaction-tests.yml`; the local opt-in run above used the
+same two Admin Session test paths and database isolation contract.
+
+`npm run build` compiled the optimized frontend bundle successfully. Its
+postbuild step then stopped at the intentional confirmed-production-origin gate
+described in AS-001. No approved production origin was available, so a complete
+release artifact was unavailable and the gate was not bypassed.
 
 ## Recommended Next Action
 
