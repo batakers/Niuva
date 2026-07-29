@@ -156,6 +156,8 @@ def _sanitize_content_type(content_type: object) -> str:
 
 
 def put_file_object(path: str, source, size: int, content_type: str) -> dict:
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise StorageError("Invalid stored object size")
     target, normalized = _resolve_path(path)
     metadata_target = _metadata_path(target)
     if target.exists() or metadata_target.exists():
@@ -168,6 +170,7 @@ def put_file_object(path: str, source, size: int, content_type: str) -> dict:
     }
     temporary = None
     descriptor = None
+    target_created = False
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         descriptor, temporary_name = tempfile.mkstemp(
@@ -180,24 +183,35 @@ def put_file_object(path: str, source, size: int, content_type: str) -> dict:
         with os.fdopen(descriptor, "wb") as handle:
             descriptor = None
             while True:
-                chunk = source.read(64 * 1024)
+                chunk = source.read(min(64 * 1024, size - written + 1))
                 if not chunk:
                     break
-                handle.write(chunk)
                 written += len(chunk)
+                if written > size:
+                    raise StorageError("Stored object size mismatch")
+                handle.write(chunk)
             handle.flush()
             os.fsync(handle.fileno())
         if written != size:
             raise StorageError("Stored object size mismatch")
         os.replace(temporary, target)
+        target_created = True
         temporary = None
         _atomic_write(
             metadata_target,
             json.dumps(metadata, sort_keys=True).encode("utf-8"),
         )
-    except OSError as exc:
-        target.unlink(missing_ok=True)
-        metadata_target.unlink(missing_ok=True)
+    except Exception as exc:
+        try:
+            if target_created:
+                target.unlink(missing_ok=True)
+                metadata_target.unlink(missing_ok=True)
+        except OSError as cleanup_exc:
+            raise StorageError(
+                "Unable to compensate partial object write"
+            ) from cleanup_exc
+        if isinstance(exc, StorageError):
+            raise
         raise StorageError("Unable to store object") from exc
     finally:
         if descriptor is not None:
