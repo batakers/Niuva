@@ -2,6 +2,7 @@
 
 Date: 29 July 2026
 Branch: `fix/backend-file-security`
+PR: `#93`
 Baseline: `7d8d5c90f6440f1276ee4b82c166258514a93cd1` (`origin/main`)
 Authority: `DEC-STOR-01` / `ADR-002`, `DEC-ACCESS-002`, and
 `DEC-REMED-001`
@@ -95,4 +96,5 @@ The following are not completed or authorized by this remediation:
 ## Safety boundary
 
 No dependency, schema, migration, `.env`, provider, shared database, production
-data, deployment, or go-live state was changed.
+data, deployment, or go-live state was changed. Commit and PR publication are
+review artifacts only and do not grant production authority.
