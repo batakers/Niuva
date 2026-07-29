@@ -5,6 +5,23 @@ Status: Planning and Progress Context — Not Implementation Authority Unless Ex
 This directory is reserved for future bounded phase plans. It intentionally
 contains no implementation plan in the initial roadmap handoff.
 
+## Current Phase 1 evidence index
+
+The following packets were merged after the initial roadmap handoff. Their
+feature numbering is evidence organization within roadmap `PHASE-01A`; it does
+not create three separate roadmap phases.
+
+| Feature | Evidence packets | Merged PR | Tracker status |
+| --- | --- | --- | --- |
+| 1.1 Customer Session | [Read-only revalidation](FEATURE-1.1-customer-session-revalidation.md); [remediation](FEATURE-1.1-customer-session-remediation.md) | #79 | Bounded source/local-test evidence merged; Migration 007 and production topology/deployment evidence remain open. |
+| 1.2 Admin Session | [Read-only revalidation](FEATURE-1.2-admin-session-revalidation.md) | #80 | Local revalidation passed; AS-001 production evidence, AS-002 cross-tab policy/browser evidence, Migration 009, and cutover remain open. |
+| 1.3 Password Recovery | [Read-only revalidation](FEATURE-1.3-password-recovery-revalidation.md); [remediation](FEATURE-1.3-password-recovery-remediation.md) | #81 | Bounded remediation evidence merged; PR-002 timing, PR-004 provider delivery, and Migration 008 remain open. |
+
+See [REMEDIATION_PROGRESS.md](../REMEDIATION_PROGRESS.md) and
+[TEAM_ASSIGNMENT.md](../TEAM_ASSIGNMENT.md) for the consolidated roadmap
+status. A merged feature packet is not by itself a roadmap phase exit,
+production-readiness pass, release approval, or go-live approval.
+
 ## How to open a phase plan
 
 Create a phase-specific plan only after the corresponding tracker row in
