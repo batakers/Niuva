@@ -2,11 +2,12 @@
 
 Status: **Context Only — Active Audit Tracker — Not Implementation Authority**
 Audit date: 24 July 2026
-Last updated: 27 July 2026
-Repository baseline at last update: `origin/main` at `fd299cd`, reconciled into
-local branch by merge commit `2dbcd8b`
-Backend test baseline: backend remediation working tree; final full regression
-is recorded in the 27 July 2026 remediation update below
+Last updated: 29 July 2026
+Repository baseline at last update: `origin/main` at
+`1ada96a591f607e2dba38013cebb1a20e593b782`; Feature 2.3 verification ran on
+`fix/backend-legacy-order-projection`
+Backend test baseline: 620 passed, 12 skipped, and 14 subtests passed on the
+Feature 2.3 working tree
 
 ## 1. Purpose and Authority
 
@@ -182,6 +183,31 @@ Current finding reconciliation:
 
 Latest verified evidence is maintained in
 [`docs/implementation/history/2026-07-27-backend-remediation-retail-discovery.md`](../implementation/history/2026-07-27-backend-remediation-retail-discovery.md).
+
+### 3.2 Feature 2.3 reconciliation update — 29 July 2026
+
+This update supersedes older BA-006/BA-007 statements that described active
+legacy create or status behavior.
+
+- Customer list/detail responses use an explicit nested allowlist and omit
+  notes, storage paths, bank/provider fields, cost, margin, supplier, profit,
+  raw audit data, and unknown fields.
+- Customer detail and design-file lookup bind `id` and authenticated `user_id`
+  in the database query.
+- Internal readers receive an allowlisted projection. Operational notes require
+  `orders.write`; safe estimate/payment history requires `payments.read`.
+- Safe historical payment metadata may show amount/currency/time, verification
+  state/time, proof-recorded state, and safe proof filename/type/size.
+- Legacy creation, estimate, payment-proof upload, payment verification, single
+  status mutation, and bulk status mutation remain inactive.
+- Focused Feature 2.3 verification passed 47 tests. Full backend regression
+  passed 620 tests with 12 documented skips and 14 subtests.
+
+Detailed evidence:
+[`FEATURE-2.3-legacy-order-projection-remediation.md`](../implementation/production-readiness/phases/FEATURE-2.3-legacy-order-projection-remediation.md).
+
+Historical reconciliation, retention, proof-object custody, production-data
+inventory, deployment, and go-live remain separate operational gates.
 
 ## 4. Verification Evidence
 
@@ -538,36 +564,31 @@ Status vocabulary:
 ### BA-007 — Legacy order lifecycle and monetary integrity are unsafe
 
 - Severity: P1
-- Status: `open`
-- Evidence in [`backend/server.py`](../../backend/server.py):
-  - estimate amount memakai binary `float`, bukan Decimal/minor unit;
-  - amount tidak memiliki positive-value constraint;
-  - order number memakai `count_documents + 1`;
-  - tidak ada unique index untuk `order_number`;
-  - estimate dapat overwrite state tanpa version check;
-  - verify-payment dapat diulang;
-  - status dapat berpindah ke state apa pun dalam daftar, termasuk backward
-    transition;
-  - tidak ada operation ID/idempotency key;
-  - tidak ada atomic audit untuk legacy order/payment mutations.
+- Status: `resolved_for_active_scope`
+- Resolution evidence date: 29 July 2026
+- Active runtime resolution:
+  - legacy create returns `503 legacy_order_creation_inactive`;
+  - estimate, payment-proof upload, and verification return `410
+    legacy_manual_transfer_disabled`;
+  - single and bulk status commands return `410
+    legacy_order_mutations_disabled`;
+  - tests prove every refused command leaves the historical record unchanged;
+  - the retained reads use ownership/permission-scoped allowlisted projections.
 - Positive replacement foundation pada 27 July 2026:
   - `backend/retail_domain.py`, `retail_service.py`, dan `retail_routes.py`
     menyediakan Retail Order aggregate terpisah;
   - order baru pada aggregate tersebut memakai integer minor units, immutable
     item/price snapshots, transactional counter, operation ID, version check,
     transition graph, dan customer-safe projection.
-- Gap tetap open karena legacy `/api/orders` create/status routes masih aktif
-  dan masih memiliki sebagian besar defect di atas. Replacement aggregate
-  belum merupakan guest-first checkout atau production payment flow.
-- Impact:
-  - duplicate order number pada concurrency;
-  - duplicate history/notification;
-  - status regression;
-  - inconsistent amount semantics;
-  - retry setelah ambiguous failure dapat menghasilkan efek ganda.
-- Re-verifikasi 27 July 2026: legacy `EstimateReq.amount` masih `float`, legacy
-  order number masih memakai `count_documents`, dan legacy status mutation
-  belum memakai version/idempotency/transition graph.
+- The former concurrency, float, transition, version, idempotency, and atomic
+  audit defects are no longer reachable through active legacy commands. They
+  must not be treated as permission to re-enable those commands.
+- Remaining gates:
+  - unresolved historical-case procedure and named reconciliation owner;
+  - retention and proof-object custody;
+  - production-data inventory and reconciliation evidence;
+  - any future Retail mutation activation requires its own approved canonical
+    aggregate/payment implementation, not revival of the legacy commands.
 
 ### BA-008 — File access, validation, and retention do not meet ADR-002
 
@@ -916,11 +937,16 @@ Exit criteria:
       Selesai 27 July 2026 dengan shared guard dan injected-failure regression.
 - [x] Jadikan catalog/content/portfolio/settings mutation terkait atomic dan
       expected-version conflict-safe.
-- [ ] Ganti monetary float dengan Decimal/minor unit.
-- [ ] Buat order number concurrency-safe dan unique.
-- [ ] Definisikan legacy order transition graph.
-- [ ] Tambahkan version check dan idempotency key.
-- [ ] Tambahkan transactional audit untuk sensitive order/payment mutation.
+- [x] Contain legacy monetary-float risk by keeping every legacy financial
+      command inactive; canonical Retail uses integer minor units.
+- [x] Contain legacy order-number concurrency risk by keeping legacy creation
+      inactive; canonical Retail uses its transactional counter.
+- [x] Resolve active legacy transition risk by retaining read-only history;
+      legacy single/bulk status commands remain inactive.
+- [x] Resolve active legacy replay risk by retaining read-only history; no
+      legacy command requires a version or idempotency key while inactive.
+- [x] Resolve active legacy audit-atomicity risk by retaining read-only history;
+      no sensitive legacy order/payment mutation is enabled.
 - [x] Hubungkan notification outbox/retry primitives ke delivery worker,
       backoff/claim coordination, dan operator reconciliation.
 - [x] Jalankan real MongoDB replica-set tests. Selesai 26 July 2026 memakai
@@ -1292,3 +1318,28 @@ Backend Remediation dan Retail Discovery Plan.
     Router RSC-only yang tidak reachable; semua advisory lain ditolak gate.
 - NIV-001 destructive history rewrite, production migration, provider
   selection, deployment, commit/push, dan go-live tidak dilakukan.
+
+### 29 July 2026 — Feature 2.3 legacy Order compatibility remediation
+
+Baseline: `origin/main` `1ada96a591f607e2dba38013cebb1a20e593b782`.
+
+- Customer detail and design-file reads became query-scoped by both order ID
+  and authenticated owner ID.
+- Customer and internal legacy Order responses now use separate nested
+  allowlists.
+- Operational notes require `orders.write`; safe estimate/payment history
+  requires `payments.read`.
+- Historical proof metadata exposes only safe recorded/file metadata and never
+  raw storage, bank, provider, cost, margin, supplier, profit, audit, or unknown
+  fields.
+- Legacy create, estimate, proof upload, verification, single status, and bulk
+  status commands remain inactive and are covered by no-mutation assertions.
+- Focused compatibility/authorization suite: 47 passed.
+- Full backend regression: 620 passed, 12 skipped, 14 subtests passed.
+- Dependency audit, compile, critical Flake8, focused MyPy including
+  `retail_domain.py`, Black, isort, and diff checks passed.
+- BA-007 is `resolved_for_active_scope`; historical reconciliation, retention,
+  proof custody, production inventory, deployment, and go-live remain open.
+
+No migration, historical rewrite/deletion, provider activation, production data
+access, deployment, or go-live was performed.

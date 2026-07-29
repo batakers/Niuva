@@ -31,17 +31,17 @@ from auth_password import (
     build_password_module,
 )
 from auth_rate_limit import LoginRateLimiter, PublicRateLimiter
-from auth_security_events import (
-    AuthenticationSecurityEventService,
-    EventPseudonymizer,
-    MongoSecurityEventStore,
-    SecurityEventDependencyError,
-)
 from auth_recovery import (
     MongoRecoveryStore,
     PublicSiteOrigin,
     PublicSiteOriginError,
     build_recovery_module,
+)
+from auth_security_events import (
+    AuthenticationSecurityEventService,
+    EventPseudonymizer,
+    MongoSecurityEventStore,
+    SecurityEventDependencyError,
 )
 from auth_session import (
     ACCESS_COOKIE_NAME,
@@ -117,7 +117,10 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
-from retail_domain import classify_legacy_order, project_customer_legacy_order
+from retail_domain import (
+    project_customer_legacy_order,
+    project_internal_legacy_order,
+)
 from retail_routes import build_retail_router
 from schema_readiness import inspect_schema
 from settings_domain import (
@@ -1484,11 +1487,12 @@ async def download_legacy_order_design_file(
 ):
     if has_permission(user, "orders.read"):
         raise HTTPException(status_code=403, detail="Forbidden")
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
+    order = await db.orders.find_one(
+        {"id": oid, "user_id": user["id"]},
+        {"_id": 0},
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if order.get("user_id") != user["id"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
     file = order.get("file")
     storage_path = file.get("storage_path") if isinstance(file, dict) else None
     if not isinstance(storage_path, str):
@@ -1500,11 +1504,12 @@ async def download_legacy_order_design_file(
 async def get_order(oid: str, user: dict = Depends(get_current_user)):
     if has_permission(user, "orders.read"):
         raise HTTPException(status_code=403, detail="Forbidden")
-    order = await db.orders.find_one({"id": oid}, {"_id": 0})
+    order = await db.orders.find_one(
+        {"id": oid, "user_id": user["id"]},
+        {"_id": 0},
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if order["user_id"] != user["id"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
     return project_customer_legacy_order(order)
 
 
@@ -1555,27 +1560,11 @@ def serialize_admin_order_for(actor: dict, order: dict) -> dict:
     Classified as legacy on read: these records predate the separate retail
     aggregate and follow a four-status flow, not the canonical lifecycle.
     """
-    value = classify_legacy_order(order)
-    if has_permission(actor, "payments.read"):
-        return value
-    operational_fields = {
-        "id",
-        "order_number",
-        "user_id",
-        "user_name",
-        "user_email",
-        "material_id",
-        "material_name",
-        "file",
-        "notes",
-        "status",
-        "status_history",
-        "created_at",
-        "updated_at",
-        "record_class",
-        "canonical_status_equivalent",
-    }
-    return {key: value[key] for key in operational_fields if key in value}
+    return project_internal_legacy_order(
+        order,
+        include_payment=has_permission(actor, "payments.read"),
+        include_operational_notes=has_permission(actor, "orders.write"),
+    )
 
 
 # ----------------------------- Admin orders -----------------------------
@@ -1635,8 +1624,8 @@ async def export_orders(
             if not key.startswith(("estimate_", "payment_"))
         }
         if include_payment:
-            estimate = order.get("estimate") or {}
-            payment = order.get("payment") or {}
+            estimate = safe.get("estimate") or {}
+            payment = safe.get("payment") or {}
             row["estimate_amount"] = estimate.get("amount", "")
             row["estimate_currency"] = estimate.get("currency", "")
             row["payment_verified"] = payment.get("verified", "")

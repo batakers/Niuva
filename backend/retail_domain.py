@@ -6,6 +6,9 @@ uploads driven by a four-status flow that is not the canonical retail
 lifecycle. Those records are classified on read here, never rewritten.
 """
 
+from datetime import datetime
+from decimal import Decimal
+
 # The canonical retail lifecycle, in order. A retail order walks this forward
 # and never backward; there is no edit-in-place on a stage that has passed.
 RETAIL_STATUSES = (
@@ -142,15 +145,117 @@ def classify_legacy_order(document: dict) -> dict:
     """Label a pre-separation order without touching what was stored.
 
     The legacy flow has no canonical equivalent for cancellation, so that maps
-    to None rather than being forced onto a stage it never had.
+    to None rather than being forced onto a stage it never had. This helper
+    preserves stored fields for offline classification only; HTTP routes must
+    use one of the explicit projection functions below.
     """
     value = {key: item for key, item in document.items() if key != "_id"}
     status = value.get("status")
     value["record_class"] = "legacy_order"
-    value["canonical_status_equivalent"] = LEGACY_STATUS_EQUIVALENT.get(status)
+    value["canonical_status_equivalent"] = (
+        LEGACY_STATUS_EQUIVALENT.get(status) if isinstance(status, str) else None
+    )
     value["creation_enabled"] = False
     value["mutations_enabled"] = False
     return value
+
+
+def _legacy_projection_metadata(document: dict) -> dict[str, object]:
+    status = document.get("status")
+    return {
+        "record_class": "legacy_order",
+        "canonical_status_equivalent": (
+            LEGACY_STATUS_EQUIVALENT.get(status) if isinstance(status, str) else None
+        ),
+        "creation_enabled": False,
+        "mutations_enabled": False,
+    }
+
+
+def _safe_text(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _safe_time(value: object) -> str | datetime | None:
+    return value if isinstance(value, (str, datetime)) else None
+
+
+def _safe_amount(value: object) -> int | float | Decimal | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+        return None
+    return value
+
+
+def _safe_file_metadata(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, object] = {}
+    for key in ("original_filename", "content_type"):
+        safe = _safe_text(value.get(key))
+        if safe is not None:
+            result[key] = safe
+    size = value.get("size")
+    if isinstance(size, int) and not isinstance(size, bool) and size >= 0:
+        result["size"] = size
+    return result
+
+
+def _safe_estimate(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, object] = {}
+    amount = _safe_amount(value.get("amount"))
+    if amount is not None:
+        result["amount"] = amount
+    currency = _safe_text(value.get("currency"))
+    if currency is not None:
+        result["currency"] = currency
+    estimated_at = _safe_time(value.get("estimated_at"))
+    if estimated_at is not None:
+        result["estimated_at"] = estimated_at
+    return result
+
+
+def _safe_payment(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, object] = {}
+    verified = value.get("verified")
+    if isinstance(verified, bool):
+        result["verified"] = verified
+    for key in ("uploaded_at", "verified_at"):
+        safe = _safe_time(value.get(key))
+        if safe is not None:
+            result[key] = safe
+    raw_proof = value.get("proof")
+    if isinstance(raw_proof, dict) and isinstance(raw_proof.get("storage_path"), str):
+        result["proof_recorded"] = True
+    proof = _safe_file_metadata(raw_proof)
+    if proof:
+        result["proof"] = proof
+    return result
+
+
+def _safe_status_history(value: object, *, include_notes: bool) -> list[dict]:
+    if not isinstance(value, list):
+        return []
+    result = []
+    for event in value:
+        if not isinstance(event, dict):
+            continue
+        status = _safe_text(event.get("status"))
+        if status is None:
+            continue
+        projected: dict[str, object] = {"status": status}
+        at = _safe_time(event.get("at"))
+        if at is not None:
+            projected["at"] = at
+        if include_notes:
+            note = _safe_text(event.get("note"))
+            if note is not None:
+                projected["note"] = note
+        result.append(projected)
+    return result
 
 
 def project_customer_legacy_order(document: dict) -> dict:
@@ -168,37 +273,88 @@ def project_customer_legacy_order(document: dict) -> dict:
         "created_at",
         "updated_at",
     )
-    value = {key: document[key] for key in fields if key in document}
-    status = value.get("status")
-    value["record_class"] = "legacy_order"
-    value["canonical_status_equivalent"] = LEGACY_STATUS_EQUIVALENT.get(status)
-    value["creation_enabled"] = False
-    value["mutations_enabled"] = False
+    value: dict[str, object] = {}
+    for key in fields:
+        safe = (
+            _safe_time(document.get(key))
+            if key.endswith("_at")
+            else _safe_text(document.get(key))
+        )
+        if safe is not None:
+            value[key] = safe
+    value.update(_legacy_projection_metadata(document))
 
-    file = document.get("file")
-    if isinstance(file, dict) and isinstance(file.get("original_filename"), str):
-        value["file"] = {"original_filename": file["original_filename"]}
+    file = _safe_file_metadata(document.get("file"))
+    if file:
+        value["file"] = file
 
-    estimate = document.get("estimate")
-    if isinstance(estimate, dict) and "amount" in estimate:
-        value["estimate"] = {"amount": estimate["amount"]}
-        if isinstance(estimate.get("currency"), str):
-            value["estimate"]["currency"] = estimate["currency"]
+    estimate = _safe_estimate(document.get("estimate"))
+    if estimate:
+        value["estimate"] = estimate
 
-    payment = document.get("payment")
-    if isinstance(payment, dict):
-        value["payment"] = {"verified": bool(payment.get("verified"))}
+    payment = _safe_payment(document.get("payment"))
+    if payment:
+        value["payment"] = payment
 
-    history = document.get("status_history")
-    value["status_history"] = (
-        [
-            {key: event[key] for key in ("status", "at") if key in event}
-            for event in history
-            if isinstance(event, dict) and "status" in event
-        ]
-        if isinstance(history, list)
-        else []
+    value["status_history"] = _safe_status_history(
+        document.get("status_history"),
+        include_notes=False,
     )
+
+    return value
+
+
+def project_internal_legacy_order(
+    document: dict,
+    *,
+    include_payment: bool,
+    include_operational_notes: bool,
+) -> dict:
+    """Return an allowlisted internal projection for an authorized order reader."""
+
+    text_fields = (
+        "id",
+        "order_number",
+        "user_id",
+        "user_name",
+        "user_email",
+        "material_id",
+        "material_name",
+        "status",
+    )
+    value: dict[str, object] = {}
+    for key in text_fields:
+        safe_text = _safe_text(document.get(key))
+        if safe_text is not None:
+            value[key] = safe_text
+    for key in ("created_at", "updated_at"):
+        safe_time = _safe_time(document.get(key))
+        if safe_time is not None:
+            value[key] = safe_time
+    if include_operational_notes:
+        notes = _safe_text(document.get("notes"))
+        if notes is not None:
+            value["notes"] = notes
+    value.update(_legacy_projection_metadata(document))
+
+    file = _safe_file_metadata(document.get("file"))
+    raw_file = document.get("file")
+    if isinstance(raw_file, dict) and isinstance(raw_file.get("storage_path"), str):
+        file["historical_file_recorded"] = True
+    if file:
+        value["file"] = file
+    value["status_history"] = _safe_status_history(
+        document.get("status_history"),
+        include_notes=include_operational_notes,
+    )
+
+    if include_payment:
+        estimate = _safe_estimate(document.get("estimate"))
+        if estimate:
+            value["estimate"] = estimate
+        payment = _safe_payment(document.get("payment"))
+        if payment:
+            value["payment"] = payment
 
     return value
 

@@ -554,7 +554,7 @@ def test_legacy_order_design_file_download_is_owner_scoped(
     assert owner.status_code == 200
     assert owner.content == b"solid design"
     assert owner.headers["x-content-type-options"] == "nosniff"
-    assert other.status_code == 403
+    assert other.status_code == 404
 
 
 def test_deleted_or_quarantined_metadata_is_never_downloadable(

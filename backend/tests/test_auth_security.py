@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import httpx
 import jwt
+import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
@@ -518,6 +519,37 @@ async def run_security_matrix():
             }
         assert server.db.orders.items[0] == order_before_payment_lockdown
 
+        disabled_order_commands = (
+            await api.post("/api/orders", headers=bearer(client_token)),
+            await commercial_api.request(
+                "POST",
+                "/api/admin/orders/order-1/status",
+                json={"status": "completed", "note": "must stay read-only"},
+            ),
+            await commercial_api.request(
+                "POST",
+                "/api/admin/orders/bulk-status",
+                json={
+                    "order_ids": ["order-1"],
+                    "status": "completed",
+                    "note": "must stay read-only",
+                },
+            ),
+        )
+        assert [response.status_code for response in disabled_order_commands] == [
+            503,
+            410,
+            410,
+        ]
+        assert [
+            response.json()["detail"]["code"] for response in disabled_order_commands
+        ] == [
+            "legacy_order_creation_inactive",
+            "legacy_order_mutations_disabled",
+            "legacy_order_mutations_disabled",
+        ]
+        assert server.db.orders.items[0] == order_before_payment_lockdown
+
         payment_capabilities = await commercial_api.request(
             "GET", "/api/admin/payment-capabilities"
         )
@@ -552,7 +584,10 @@ async def run_security_matrix():
         customer_order = customer_orders.json()[0]
         assert customer_order["file"] == {"original_filename": "design.stl"}
         assert customer_order["estimate"] == {"amount": 250000, "currency": "IDR"}
-        assert customer_order["payment"] == {"verified": False}
+        assert customer_order["payment"] == {
+            "verified": False,
+            "proof_recorded": True,
+        }
         assert customer_order["status_history"] == [
             {"status": "pending_estimate", "at": "2026-07-01T00:00:00Z"}
         ]
@@ -577,7 +612,7 @@ async def run_security_matrix():
         assert customer_detail.json() == customer_order
         assert (
             await api.get("/api/orders/order-1", headers=bearer(other_client_token))
-        ).status_code == 403
+        ).status_code == 404
         assert (
             await admin_api.request("GET", "/api/orders/order-1")
         ).status_code == 403
@@ -586,7 +621,7 @@ async def run_security_matrix():
                 "/api/orders/order-1/design-file",
                 headers=bearer(other_client_token),
             )
-        ).status_code == 403
+        ).status_code == 404
 
         assert (
             await api.get("/api/files/niuva/orders/client-2/private.stl")
@@ -864,7 +899,20 @@ async def run_admin_boundary_projections_and_capability_gates():
         assert not {"estimate", "payment", "internal_price"}.intersection(safe_order)
         commercial_orders = await commercial_api.request("GET", "/api/admin/orders")
         assert commercial_orders.status_code == 200
-        assert commercial_orders.json()[0]["payment"]["verified"] is False
+        finance_order = commercial_orders.json()[0]
+        assert finance_order["payment"]["verified"] is False
+        assert finance_order["estimate"] == {"amount": 950000, "currency": "IDR"}
+        assert "notes" not in finance_order
+        assert finance_order["status_history"] == [
+            {"status": "pending_estimate", "at": "2026-07-22T00:00:00Z"}
+        ]
+        assert "storage_path" not in repr(finance_order)
+        assert not {
+            "internal_price",
+            "supplier",
+            "margin",
+            "profit",
+        }.intersection(finance_order)
         assert (
             await operations_api.request("GET", "/api/admin/stats")
         ).status_code == 200
@@ -1216,3 +1264,36 @@ def test_generic_customer_order_routes_deny_orders_read_before_lookup(monkeypatc
                 )
 
     asyncio.run(run())
+
+
+def test_customer_order_detail_queries_are_owner_scoped(monkeypatch):
+    class CapturingOrders:
+        def __init__(self):
+            self.queries = []
+
+        async def find_one(self, query, *_args, **_kwargs):
+            self.queries.append(query)
+            return None
+
+    orders = CapturingOrders()
+    monkeypatch.setattr(
+        server,
+        "db",
+        types.SimpleNamespace(orders=orders),
+    )
+    customer = {"id": "customer-1", "role": "client"}
+
+    async def run():
+        for handler in (
+            server.get_order,
+            server.download_legacy_order_design_file,
+        ):
+            with pytest.raises(server.HTTPException) as captured:
+                await handler("order-1", customer)
+            assert captured.value.status_code == 404
+
+    asyncio.run(run())
+    assert orders.queries == [
+        {"id": "order-1", "user_id": "customer-1"},
+        {"id": "order-1", "user_id": "customer-1"},
+    ]
