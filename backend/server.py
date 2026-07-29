@@ -642,9 +642,7 @@ def get_admin_session_module():
                 if reason == "session_secret_replay"
                 else "auth.session_revoked"
             ),
-            outcome=(
-                "blocked" if reason == "session_secret_replay" else "success"
-            ),
+            outcome=("blocked" if reason == "session_secret_replay" else "success"),
             reason_code=(
                 "session_replay"
                 if reason == "session_secret_replay"
@@ -2506,8 +2504,7 @@ async def health_ready():
             )
             auth_event_marker = marker is not None
             auth_events_ready = bool(
-                app.state.auth_security_event_status.get("ready")
-                and auth_event_marker
+                app.state.auth_security_event_status.get("ready") and auth_event_marker
             )
         except Exception:
             auth_events_ready = False
