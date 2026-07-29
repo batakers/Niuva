@@ -170,13 +170,10 @@ release artifact was unavailable and the gate was not bypassed.
 
 ## Recommended Next Action
 
-The next authorized Admin Session action should be a separate remediation or
-evidence branch only after choosing one of these scopes:
+The bounded AS-002 follow-up is recorded in
+[Feature 1.2 — Admin Session Bounded Completion](FEATURE-1.2-admin-session-completion.md).
+`DEC-AUTH-012` approves forced cross-tab re-login and a Migration 009 drill only
+on a disposable replica set. AS-001 and every production gate remain open.
 
-1. local source/test work for the AS-002 cross-tab policy; or
-2. production/staging evidence work after target, exact origin, proxy/TLS
-   topology, monitoring owner, maintenance window, backup custody, operator,
-   reviewer, and explicit execution permission are available.
-
-Migration 009, cleanup, cutover, forced re-login, deployment, and production
-activation remain unauthorized by this audit.
+Deployment, production migration/cutover, and production activation remain
+unauthorized by this audit.
