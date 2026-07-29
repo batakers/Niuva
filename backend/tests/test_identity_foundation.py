@@ -31,6 +31,7 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
+
 from tests.auth_support import AuthCollection  # noqa: E402
 
 REAL_TRANSACTION_GUARD = server.app.state.transaction_guard
@@ -765,7 +766,7 @@ async def run_legacy_admin_route_permission_matrix():
         cross_customer_order = await order_admin_api.request(
             "GET", "/api/orders/order-permission-1"
         )
-        assert cross_customer_order.status_code == 200
+        assert cross_customer_order.status_code == 403
 
         forbidden_file = await api.get(
             "/api/files/niuva/orders/customer-routes/private.stl",

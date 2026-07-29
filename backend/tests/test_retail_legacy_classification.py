@@ -7,11 +7,11 @@ of that is written back.
 """
 
 import pytest
-
 from retail_domain import (
     LEGACY_STATUS_EQUIVALENT,
     RETAIL_STATUSES,
     classify_legacy_order,
+    project_customer_legacy_order,
 )
 
 LEGACY_ORDER = {
@@ -21,7 +21,9 @@ LEGACY_ORDER = {
     "user_id": "user-1",
     "status": "in_process",
     "estimate": {"amount": 250000},
-    "status_history": [{"status": "pending_estimate", "at": "t", "note": "Order received"}],
+    "status_history": [
+        {"status": "pending_estimate", "at": "t", "note": "Order received"}
+    ],
     "created_at": "2026-07-01T00:00:00Z",
 }
 
@@ -52,6 +54,59 @@ def test_classification_does_not_mutate_the_source():
 
     assert document == LEGACY_ORDER
     assert "record_class" not in document
+
+
+def test_customer_projection_allowlists_historical_fields_and_withholds_internal_data():
+    safe = project_customer_legacy_order(
+        {
+            **LEGACY_ORDER,
+            "user_id": "user-1",
+            "user_email": "customer@example.com",
+            "material_name": "Acrylic",
+            "notes": "Internal fulfilment note",
+            "internal_price": 150000,
+            "supplier": "Supplier internal",
+            "file": {
+                "storage_path": "niuva/orders/user-1/design.stl",
+                "original_filename": "design.stl",
+            },
+            "estimate": {
+                "amount": 250000,
+                "currency": "IDR",
+                "note": "Internal pricing rationale",
+            },
+            "payment": {
+                "verified": False,
+                "proof": {"storage_path": "niuva/payments/user-1/proof.png"},
+            },
+            "status_history": [
+                {
+                    "status": "pending_estimate",
+                    "at": "2026-07-01T00:00:00Z",
+                    "note": "Internal staff note",
+                }
+            ],
+            "unexpected_internal_field": "never expose",
+        }
+    )
+
+    assert safe == {
+        "id": "order-1",
+        "order_number": "NIV-2607-0001",
+        "material_name": "Acrylic",
+        "status": "in_process",
+        "created_at": "2026-07-01T00:00:00Z",
+        "record_class": "legacy_order",
+        "canonical_status_equivalent": "in_production",
+        "creation_enabled": False,
+        "mutations_enabled": False,
+        "file": {"original_filename": "design.stl"},
+        "estimate": {"amount": 250000, "currency": "IDR"},
+        "payment": {"verified": False},
+        "status_history": [
+            {"status": "pending_estimate", "at": "2026-07-01T00:00:00Z"}
+        ],
+    }
 
 
 @pytest.mark.parametrize(

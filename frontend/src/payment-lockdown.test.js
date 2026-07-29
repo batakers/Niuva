@@ -15,6 +15,9 @@ describe("Legacy manual-transfer lockdown", () => {
     const source = fs.readFileSync(orderDetailPath, "utf8");
 
     expect(source).not.toContain("/payment-proof");
+    expect(source).not.toContain("order.file?.storage_path");
+    expect(source).toContain("downloadApiFile");
+    expect(source).toContain("/orders/${order.id}/design-file");
     expect(source).not.toContain('data-testid="upload-proof-btn"');
     expect(source).toContain('t("payment.mutationsDisabled")');
     expect(source).toContain("order.payment");

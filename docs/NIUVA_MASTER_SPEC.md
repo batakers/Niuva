@@ -353,6 +353,10 @@ Detailed rollout, migration, correction, rollback, and recovery procedures remai
 
 - Protected operations require backend authorization and least privilege.
 - Customer responses and views must exclude internal cost, margin, supplier, profit, and internal notes.
+- Legacy Order compatibility is retained as an ownership-scoped, read-only
+  historical surface. Customer output must use an explicit safe allowlist;
+  ambiguous free-text provenance stays withheld, and file access remains
+  controlled rather than exposing raw storage paths. See `DEC-ACCESS-003`.
 - File access requires type/size validation, ownership checks, authorization, and controlled access.
 - Production files use private persistent storage through a provider-neutral storage port.
 - Local filesystem storage is development/demo only.
@@ -404,6 +408,7 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Real milestones and ETA replace fake percentage progress | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Granular internal roles remain canonical; operational staff have no general user directory, complete role definitions, or full audit log | Approved Decision | `docs/decisions/access/DEC-ACCESS-001-granular-internal-role-boundary.md` |
 | Stable granular role identifiers, additive multi-role policy, separation of duties, and Super Admin-only identity governance | Approved Decision | `docs/decisions/access/DEC-ACCESS-002-granular-role-permission-matrix.md` |
+| Retained legacy Order compatibility, customer-safe projections, and no automatic sunset | Approved Decision | `docs/decisions/access/DEC-ACCESS-003-legacy-order-compatibility-and-customer-projection.md` |
 | Replica-set transaction capability | Approved Baseline | `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` |
 | Provider-neutral private production storage boundary | Approved with Open Decisions | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` |
 | Provider-neutral Retail online-payment orchestration | Approved with Open Decisions | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` |

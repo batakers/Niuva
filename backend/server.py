@@ -112,7 +112,7 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
-from retail_domain import classify_legacy_order
+from retail_domain import classify_legacy_order, project_customer_legacy_order
 from retail_routes import build_retail_router
 from schema_readiness import inspect_schema
 from settings_domain import (
@@ -1230,22 +1230,44 @@ async def public_capabilities():
 
 @api.get("/orders")
 async def my_orders(user: dict = Depends(get_current_user)):
+    if has_permission(user, "orders.read"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     documents = (
         await db.orders.find({"user_id": user["id"]}, {"_id": 0})
         .sort("created_at", -1)
         .to_list(200)
     )
-    return [classify_legacy_order(document) for document in documents]
+    return [project_customer_legacy_order(document) for document in documents]
+
+
+@api.get("/orders/{oid}/design-file")
+async def download_legacy_order_design_file(
+    oid: str, user: dict = Depends(get_current_user)
+):
+    if has_permission(user, "orders.read"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    order = await db.orders.find_one({"id": oid}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    file = order.get("file")
+    storage_path = file.get("storage_path") if isinstance(file, dict) else None
+    if not isinstance(storage_path, str):
+        raise HTTPException(status_code=404, detail="File not found")
+    return await download_file(storage_path, user)
 
 
 @api.get("/orders/{oid}")
 async def get_order(oid: str, user: dict = Depends(get_current_user)):
+    if has_permission(user, "orders.read"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if not has_permission(user, "orders.read") and order["user_id"] != user["id"]:
+    if order["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Forbidden")
-    return classify_legacy_order(order)
+    return project_customer_legacy_order(order)
 
 
 @api.post("/orders/{oid}/payment-proof")

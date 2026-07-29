@@ -2,8 +2,8 @@ import asyncio
 import io
 import os
 import sys
-from pathlib import Path
 import types
+from pathlib import Path
 
 import httpx
 import pytest
@@ -21,6 +21,7 @@ os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
 
 import server  # noqa: E402
 import storage  # noqa: E402
+
 from tests.auth_support import AuthCollection  # noqa: E402
 
 
@@ -491,6 +492,67 @@ def test_file_download_forces_active_metadata_to_binary(
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/octet-stream"
     assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_legacy_order_design_file_download_is_owner_scoped(
+    local_storage_root, monkeypatch
+):
+    path = "niuva/orders/customer-1/design.stl"
+    storage.put_object(path, b"solid design", "model/stl")
+    monkeypatch.setattr(
+        server,
+        "db",
+        types.SimpleNamespace(
+            orders=AuthCollection(
+                [
+                    {
+                        "id": "order-1",
+                        "user_id": "customer-1",
+                        "file": {"storage_path": path},
+                    }
+                ]
+            ),
+            file_objects=AuthCollection(
+                [
+                    {
+                        "id": "file-1",
+                        "storage_path": path,
+                        "owner_id": "customer-1",
+                        "state": "active",
+                    }
+                ]
+            ),
+        ),
+    )
+
+    async def fake_user(token):
+        return {
+            "owner": {"id": "customer-1", "email": "owner@example.com"},
+            "other": {"id": "customer-2", "email": "other@example.com"},
+        }[token]
+
+    monkeypatch.setattr(server, "get_user_from_token", fake_user)
+
+    async def run():
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="https://testserver"
+        ) as api:
+            owner = await api.get(
+                "/api/orders/order-1/design-file",
+                headers={"Authorization": "Bearer owner"},
+            )
+            other = await api.get(
+                "/api/orders/order-1/design-file",
+                headers={"Authorization": "Bearer other"},
+            )
+            return owner, other
+
+    owner, other = asyncio.run(run())
+    assert owner.status_code == 200
+    assert owner.content == b"solid design"
+    assert owner.headers["x-content-type-options"] == "nosniff"
+    assert other.status_code == 403
 
 
 def test_deleted_or_quarantined_metadata_is_never_downloadable(
