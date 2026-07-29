@@ -23,8 +23,10 @@ This roadmap records readiness dependencies and evidence. It is not the order
 in which every authorized code or documentation task must be performed. A
 blocked roadmap phase blocks that phase's exit criteria and any readiness claim
 that consumes them; it does not automatically block a separately authorized
-Delivery task with disjoint paths, a frozen contract, and independent
-verification.
+Delivery task. Such work may run in parallel only with disjoint exact paths, a
+frozen producer/consumer contract, separate safety invariants, independent
+verification, and a recorded integration/merge order. Parallelism never waives
+producer-before-consumer or any other recorded integration ordering.
 
 For daily work, use the compact brief and path/contract-lock rules in
 [`AI_AGENT_TEAM_WORKFLOW.md`](../../context/AI_AGENT_TEAM_WORKFLOW.md). Link the
@@ -344,7 +346,9 @@ Those conditions do not expand the scope of a separately approved task.
 
 The table below controls readiness milestones and claims, not the daily
 Delivery queue. A listed dependency is a serial implementation dependency only
-when the active task shares its exact path, contract, or safety invariant.
+when the active task shares its exact path, contract, safety invariant, or
+recorded producer/consumer integration order. Parallel work does not waive that
+recorded order.
 
 | Phase | Depends on | Readiness milestone blocked | Decision required | Migration required | Rollback risk |
 | --- | --- | --- | --- | --- | --- |

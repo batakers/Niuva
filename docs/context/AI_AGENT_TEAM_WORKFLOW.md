@@ -44,21 +44,28 @@ for an entire phase to finish.
 
 ## Start with the smallest useful brief
 
-Use this brief for ordinary Delivery work. Put it in an issue, draft PR, or
-team note; do not duplicate a roadmap table.
+Use this brief for every Delivery task before invoking an agent. Put it in an
+issue, draft PR, or team note; keep each answer to one line or a link instead
+of duplicating a roadmap table.
 
 ```text
-Title and user outcome:
+Title and user outcome (objective):
 In scope (paths/behaviour):
+Out of scope / files that must not change:
+Authority / approved decisions / runbook:
+Affected areas:
 Contract or dependency (if any):
 Done when:
 Verification:
 Owner and verifier:
+Commit/push/PR permitted? (Yes/No):
+Risks or open decisions:
 ```
 
 Add Finding ID, selected SHA, and freshness only for remediation work. Add an
-explicit branch/worktree and commit/push/PR permission only when another person
-or agent will act on the task.
+explicit branch/worktree when another person or agent will act on the task.
+Record commit/push/PR permission for every task; `No` grants local changes and
+a report only.
 
 Use an extended plan only when work crosses frontend/backend, changes auth,
 authorization, data, transaction, migration, dependency, external provider,
@@ -120,8 +127,12 @@ state commit/push/PR permission grants local changes and a report only.
 
 ## Working loop
 
-1. Driver writes the brief and checks authority, status, changed paths, and
-   shared locks.
+1. Before any edit, Driver records the brief, checks repository status, active
+   branch, changed paths, and shared locks, then reads the applicable authority
+   in order: Master Spec, Document Register, Decision Register, applicable
+   decision/ADR, runbook, and relevant source/tests. For `docs/**/*.md`, this
+   pre-edit reading gate is mandatory; it remains scoped to the task, not every
+   document in the repository.
 2. Reviewer resolves only task-relevant authority or records a decision
    blocker.
 3. Driver implements the bounded slice; unrelated discoveries become new
