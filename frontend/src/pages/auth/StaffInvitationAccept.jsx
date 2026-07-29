@@ -1,10 +1,15 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { api, formatApiError } from "@/lib/api";
+import {
+  fetchPasswordPolicy,
+  passwordPolicySummary,
+  passwordSatisfiesPolicy,
+} from "@/lib/passwordPolicy";
 
 export default function StaffInvitationAccept() {
   const [searchParams] = useSearchParams();
@@ -14,6 +19,22 @@ export default function StaffInvitationAccept() {
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [passwordPolicy, setPasswordPolicy] = useState(null);
+  const [policyError, setPolicyError] = useState("");
+
+  const loadPasswordPolicy = useCallback(async () => {
+    setPasswordPolicy(null);
+    setPolicyError("");
+    try {
+      setPasswordPolicy(await fetchPasswordPolicy(api));
+    } catch {
+      setPolicyError("Aturan password belum dapat dimuat.");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPasswordPolicy();
+  }, [loadPasswordPolicy]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -23,6 +44,10 @@ export default function StaffInvitationAccept() {
     }
     if (password !== confirmation) {
       setError("Konfirmasi password tidak sama.");
+      return;
+    }
+    if (!passwordSatisfiesPolicy(password, passwordPolicy)) {
+      setError("Password belum memenuhi aturan yang berlaku.");
       return;
     }
     setBusy(true);
@@ -58,32 +83,49 @@ export default function StaffInvitationAccept() {
         {!token && (
           <p className="text-sm text-status-error">Token undangan tidak tersedia.</p>
         )}
+        {policyError && (
+          <div className="space-y-2 text-sm text-status-error" role="alert">
+            <p>{policyError}</p>
+            <Button type="button" variant="outline" onClick={loadPasswordPolicy}>
+              Coba Lagi
+            </Button>
+          </div>
+        )}
         {error && <p className="text-sm text-status-error">{error}</p>}
         <FormField label="Password">
           <Input
             type="password"
+            data-testid="staff-invitation-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            minLength={12}
-            maxLength={72}
             autoComplete="new-password"
+            aria-describedby="staff-password-policy"
           />
+          <p id="staff-password-policy" className="mt-1 text-xs text-text-secondary">
+            {passwordPolicy
+              ? passwordPolicySummary(passwordPolicy)
+              : "Memuat aturan password…"}
+          </p>
         </FormField>
         <FormField label="Konfirmasi password">
           <Input
             type="password"
+            data-testid="staff-invitation-confirmation"
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
-            minLength={12}
-            maxLength={72}
             autoComplete="new-password"
           />
         </FormField>
         <Button
           type="submit"
+          data-testid="staff-invitation-submit"
           className="w-full"
           loading={busy}
-          disabled={!token || password.length < 12 || password !== confirmation}
+          disabled={
+            !token
+            || !passwordSatisfiesPolicy(password, passwordPolicy)
+            || password !== confirmation
+          }
         >
           Aktifkan akun staf
         </Button>

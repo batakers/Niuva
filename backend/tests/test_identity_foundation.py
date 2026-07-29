@@ -886,6 +886,48 @@ def test_runtime_account_creation_never_recreates_legacy_or_owner_authority(
         os.environ["ADMIN_PASSWORD"] = original_admin_password
 
 
+def test_customer_provisioning_uses_only_the_canonical_password_boundaries(
+    monkeypatch, tmp_path
+):
+    configure_password_writes(monkeypatch, tmp_path, enabled=True)
+    database = FakeDatabase([])
+    server.db = database
+
+    async def provision(email, password):
+        return await server.provision_client(
+            server.ClientProvisionReq(
+                name="Boundary Customer",
+                email=email,
+                password=password,
+                phone="",
+                company="",
+            )
+        )
+
+    asyncio.run(provision("minimum@example.com", "x" * 15))
+    asyncio.run(provision("over-bcrypt-boundary@example.com", "x" * 73))
+    asyncio.run(provision("unicode-cap@example.com", "😀" * 128))
+
+    assert len(database.users.items) == 3
+    assert all(
+        user["password_hash"].startswith("$argon2id$") for user in database.users.items
+    )
+
+    with pytest.raises(server.PasswordPolicyError) as too_short:
+        asyncio.run(provision("short@example.com", "x" * 14))
+    assert too_short.value.code == "password_too_short"
+
+    with pytest.raises(server.ValidationError):
+        server.ClientProvisionReq(
+            name="Boundary Customer",
+            email="too-many-code-points@example.com",
+            password=("😀" * 128) + "x",
+            phone="",
+            company="",
+        )
+    assert len(database.users.items) == 3
+
+
 def test_all_runtime_password_writes_fail_closed_when_gate_is_disabled(
     monkeypatch, tmp_path
 ):
