@@ -466,7 +466,7 @@ async def run_security_matrix():
             blocked_login = await api.post(
                 path,
                 json={"email": email, "password": password},
-                headers=ORIGIN if "/admin/" in path else None,
+                headers=ORIGIN,
             )
             assert blocked_login.status_code == 401
             assert blocked_login.json()["detail"] == "Invalid email or password"
@@ -476,6 +476,7 @@ async def run_security_matrix():
         client_login = await api.post(
             "/api/auth/login",
             json={"email": client["email"], "password": "ClientPassword123"},
+            headers=ORIGIN,
         )
         assert client_login.status_code == 200
         assert "token" not in client_login.json()
@@ -484,6 +485,7 @@ async def run_security_matrix():
         other_client_login = await api.post(
             "/api/auth/login",
             json={"email": other_client["email"], "password": "OtherClientPassword123"},
+            headers=ORIGIN,
         )
         assert other_client_login.status_code == 200
         assert "token" not in other_client_login.json()
@@ -1000,7 +1002,7 @@ async def run_login_issuance_contract():
                 response = await api.post(
                     endpoint,
                     json={"email": email, "password": password},
-                    headers=ORIGIN if "/admin/" in endpoint else None,
+                    headers=ORIGIN,
                 )
 
                 assert response.status_code == 401
@@ -1022,6 +1024,7 @@ async def run_login_issuance_contract():
                     "email": "legacy-client@example.com",
                     "password": valid_password,
                 },
+                headers=ORIGIN,
             )
             assert legacy_login.status_code == 200
             assert legacy_login.json()["user"]["roles"] == ["retail_customer"]
@@ -1032,6 +1035,7 @@ async def run_login_issuance_contract():
                     "email": "canonical-customer@example.com",
                     "password": valid_password,
                 },
+                headers=ORIGIN,
             )
             assert canonical_login.status_code == 200
             assert canonical_login.json()["user"]["roles"] == ["retail_customer"]
@@ -1042,6 +1046,7 @@ async def run_login_issuance_contract():
                     "email": "canonical-staff@niuva.com",
                     "password": valid_password,
                 },
+                headers=ORIGIN,
             )
             assert rejected_public_staff.status_code == 401
             assert rejected_public_staff.json()["detail"] == "Invalid email or password"
@@ -1163,7 +1168,7 @@ async def run_superseded_role_cannot_obtain_a_session():
                         "email": "unmigrated-staff@niuva.com",
                         "password": valid_password,
                     },
-                    headers=ORIGIN if "/admin/" in path else None,
+                    headers=ORIGIN,
                 )
                 assert response.status_code == 401, path
                 # Generic, like every other refusal: the response must not

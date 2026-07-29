@@ -419,6 +419,14 @@ async def csrf_cookie_guard(request: Request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def auth_response_cache_guard(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/auth/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 # ----------------------------- Auth utils -----------------------------
 BCRYPT_HASH_PATTERN = re.compile(
     r"^\$2[aby]\$(?:0[4-9]|[12][0-9]|3[01])\$[./A-Za-z0-9]{53}$"
@@ -567,12 +575,16 @@ def _request_origin(request: Request) -> str | None:
     return f"{parsed.scheme}://{parsed.netloc}"
 
 
-def verify_admin_origin(request: Request) -> None:
+def verify_auth_origin(request: Request) -> None:
     if not secrets.compare_digest(
         _request_origin(request) or "invalid",
         _approved_request_origin(),
     ):
         raise RequestVerificationError()
+
+
+def verify_admin_origin(request: Request) -> None:
+    verify_auth_origin(request)
 
 
 async def get_admin_user(request: Request, *, verify_csrf: bool = True) -> dict:
@@ -1040,6 +1052,7 @@ async def _perform_login(
 
 @api.post("/auth/login")
 async def login(req: LoginReq, request: Request, response: Response):
+    verify_auth_origin(request)
     return await _perform_login(
         req,
         request,
