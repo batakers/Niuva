@@ -20,6 +20,23 @@ verification procedure, or accountable owner has been approved.
 The feature therefore remains **blocked by decision** and is not safe to
 implement or describe as production-ready from the current inputs.
 
+## Stage 1 audit status
+
+| Audited area | Status | Current state |
+|---|---|---|
+| Admin authentication route | `SUDAH_SEBAGIAN` | Password, role/access-state checks, generic failure, rate limiting, exact-origin checks, and Admin session issuance exist; password success still creates an ordinary session without MFA. |
+| Admin session service | `SUDAH_SELESAI` for the pre-existing non-MFA scope; `PERLU_REVALIDASI` for MFA integration | Opaque Secure cookies, idle/absolute expiry, rotation, revocation, CSRF, and transaction seams exist. No MFA assurance, pre-auth challenge, or step-up freshness state exists. |
+| Password and account recovery | `SUDAH_SEBAGIAN` | Password reset is atomic, single-use, and revokes sessions. It is not an MFA recovery channel and must not be reused as one by assumption. |
+| Permission middleware | `SUDAH_SEBAGIAN` | Backend permissions and role/access-state boundaries exist. Sensitive permissions are not coupled to an MFA step-up requirement. |
+| User/session schema | `BELUM_DIKERJAKAN` for MFA | No factor status, encrypted TOTP secret, key version, recovery-code hashes, MFA assurance, or step-up fields are declared. |
+| Auth migrations | `BELUM_DIKERJAKAN` for MFA | Migrations 007–009 cover security/session/recovery work but no MFA migration exists. No migration was run by this review. |
+| Frontend AuthContext and Admin login | `SUDAH_SEBAGIAN` | Cookie-session bootstrap, refresh, logout, and protected routing exist. No enrollment, MFA challenge, recovery-code, or step-up flow exists. |
+| Existing auth/session/recovery tests | `SUDAH_SELESAI` for their current bounded contracts; `BELUM_DIKERJAKAN` for MFA | Session replay/concurrency and recovery tests exist; no TOTP, factor replay, recovery-code concurrency, key-outage, MFA recovery, or step-up suite exists. |
+| TOTP/recovery dependency selection | `TERBLOKIR_KEPUTUSAN` | No TOTP/WebAuthn library is selected. Existing `cryptography` availability does not select an MFA encryption design. |
+| Encryption key and secret operations | `TERBLOKIR_KEPUTUSAN` | Provider, custody, versioning, rotation, access, and outage behavior are unapproved. |
+| Support recovery and break-glass | `TERBLOKIR_KEPUTUSAN` | `DEC-AUTH-008` prohibits inventing a support destination or recovery workflow. |
+| Production rollout evidence | `TERBLOKIR_ENVIRONMENT` | No approved key delivery, clock, proxy/TLS, production-like MFA store, monitoring, support drill, or rollout target evidence exists. |
+
 ## Requirement matrix
 
 | Requirement | Current evidence | Result |
