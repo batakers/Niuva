@@ -2,7 +2,6 @@ import re
 from pathlib import Path
 
 import pytest
-
 from permissions import (
     ROLE_LABELS,
     ROLE_PERMISSIONS,
@@ -15,7 +14,7 @@ from permissions import (
 )
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-ROUTE_PERMISSION_PATTERN = re.compile(r'require_permission\("([^"]+)"\)')
+ROUTE_PERMISSION_PATTERN = re.compile(r"""require_permission\(\s*["']([^"']+)["']""")
 
 
 def active(*roles):
@@ -182,7 +181,10 @@ def test_multi_role_permissions_are_additive_and_internal():
 
 def test_route_permission_inventory_is_declared_and_governance_stays_owner_only():
     route_permissions = set()
-    for source_path in BACKEND_DIR.glob("*.py"):
+    for source_path in BACKEND_DIR.rglob("*.py"):
+        relative_parts = source_path.relative_to(BACKEND_DIR).parts
+        if any(part in {"tests", ".venv", "__pycache__"} for part in relative_parts):
+            continue
         route_permissions.update(
             ROUTE_PERMISSION_PATTERN.findall(source_path.read_text(encoding="utf-8"))
         )
@@ -197,6 +199,7 @@ def test_route_permission_inventory_is_declared_and_governance_stays_owner_only(
     owner_only = route_permissions - non_owner_permissions
 
     assert owner_only == {"roles.manage", "settings.write", "users.read"}
+    assert "admin.access" in route_permissions
     assert route_permissions - owner_only <= non_owner_permissions
     for role in ROLE_PERMISSIONS:
         if role != "super_admin":

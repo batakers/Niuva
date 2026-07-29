@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from permissions import ROLE_POLICY_VERSION, canonical_roles
 
 from backend.tests.test_identity_access_migration import (
     FakeCollection,
@@ -13,7 +14,6 @@ from backend.tests.test_identity_access_migration import (
     RecordingGuard,
     user,
 )
-from permissions import ROLE_POLICY_VERSION, canonical_roles
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_PATH = ROOT / "backend" / "migrations" / "006_granular_role_policy.py"
@@ -196,13 +196,13 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
 def test_apply_requires_one_explicit_eligible_bootstrap_owner(tmp_path):
     migration = load_migration()
     database = fake_database(
-        source_users()
-        + [
+        [
+            *source_users(),
             user(
                 "other-historical-owner",
                 roles=["super_admin"],
                 role_policy_version="2026-07-22-v1",
-            )
+            ),
         ]
     )
     guard = RecordingGuard(database)
@@ -291,6 +291,64 @@ def test_rollback_rejects_concurrent_identity_change_atomically(tmp_path):
     assert database.users.items == before
 
 
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [
+        ("role_policy_version", "2026-07-22-v1"),
+        ("roles", ["warehouse"]),
+    ],
+)
+def test_rollback_rechecks_bootstrap_owner_inside_transaction(
+    tmp_path,
+    field,
+    invalid_value,
+):
+    migration = load_migration()
+    database = fake_database(source_users())
+    backup_path = tmp_path / "identity-backup.json"
+    asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            reviewed_mapping=reviewed_mapping(),
+            bootstrap_owner_id="bootstrap-owner",
+            backup_path=backup_path,
+            guard=RecordingGuard(database),
+        )
+    )
+    before = json.loads(json.dumps(database.users.items))
+
+    class OwnerChangingGuard(RecordingGuard):
+        async def run(self, callback, *, operation_name, retry_safe=False):
+            async def change_owner_then_run(session):
+                owner = next(
+                    item
+                    for item in self.database.users.items
+                    if item["id"] == "bootstrap-owner"
+                )
+                owner[field] = invalid_value
+                return await callback(session)
+
+            return await super().run(
+                change_owner_then_run,
+                operation_name=operation_name,
+                retry_safe=retry_safe,
+            )
+
+    with pytest.raises(RuntimeError, match="no longer eligible"):
+        asyncio.run(
+            migration.run(
+                database,
+                rollback=True,
+                bootstrap_owner_id="bootstrap-owner",
+                backup_path=backup_path,
+                guard=OwnerChangingGuard(database),
+            )
+        )
+
+    assert database.users.items == before
+
+
 def test_invalid_or_unreviewed_mapping_fails_before_any_write(tmp_path):
     migration = load_migration()
     database = fake_database(source_users())
@@ -345,9 +403,8 @@ def test_real_replica_set_applies_and_rolls_back_granular_roles_atomically(
     if loaded_motor is not None and getattr(loaded_motor, "__file__", None) is None:
         sys.modules.pop("motor.motor_asyncio", None)
         sys.modules.pop("motor", None)
-    from motor.motor_asyncio import AsyncIOMotorClient
-
     from database_capabilities import DatabaseCapabilities
+    from motor.motor_asyncio import AsyncIOMotorClient
     from transaction_execution import TransactionExecutor
     from transaction_guard import TransactionMutationGuard
 

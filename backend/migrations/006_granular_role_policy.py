@@ -89,11 +89,35 @@ def _validate_mapping(accounts: list[dict], reviewed_mapping: dict | None) -> di
     return {user_id: _mapping_entry(entry) for user_id, entry in mapping.items()}
 
 
+def _bootstrap_owner_ineligibility(
+    account: dict | None,
+    *,
+    require_current_policy: bool,
+) -> str | None:
+    if account is None:
+        return "bootstrap_owner_id does not identify a known user"
+    if account.get("status") != "active":
+        return "bootstrap_owner_id must identify an active user"
+    if _is_customer(account):
+        return "bootstrap_owner_id cannot identify a customer"
+    if account.get("access_state") != "approved":
+        return "bootstrap_owner_id must identify an approved user"
+    if account.get("roles") != ["super_admin"] or "role" in account:
+        return "bootstrap_owner_id must identify a canonical Super Admin candidate"
+    if (
+        require_current_policy
+        and account.get("role_policy_version") != ROLE_POLICY_VERSION
+    ):
+        return "bootstrap_owner_id must use the current role policy"
+    return None
+
+
 def _validate_bootstrap_owner(
     accounts: list[dict],
     bootstrap_owner_id: str | None,
     *,
     required: bool,
+    require_current_policy: bool = False,
 ) -> str | None:
     if bootstrap_owner_id is None:
         if required:
@@ -106,18 +130,12 @@ def _validate_bootstrap_owner(
         (item for item in accounts if item.get("id") == bootstrap_owner_id),
         None,
     )
-    if account is None:
-        raise ValueError("bootstrap_owner_id does not identify a known user")
-    if account.get("status") != "active":
-        raise ValueError("bootstrap_owner_id must identify an active user")
-    if _is_customer(account):
-        raise ValueError("bootstrap_owner_id cannot identify a customer")
-    if account.get("access_state") != "approved":
-        raise ValueError("bootstrap_owner_id must identify an approved user")
-    if account.get("roles") != ["super_admin"] or "role" in account:
-        raise ValueError(
-            "bootstrap_owner_id must identify a canonical Super Admin candidate"
-        )
+    error = _bootstrap_owner_ineligibility(
+        account,
+        require_current_policy=require_current_policy,
+    )
+    if error is not None:
+        raise ValueError(error)
     return bootstrap_owner_id
 
 
@@ -302,13 +320,9 @@ async def _rollback(
             {"id": bootstrap_owner_id},
             session=session,
         )
-        if (
-            not current_owner
-            or current_owner.get("roles") != ["super_admin"]
-            or current_owner.get("status") != "active"
-            or current_owner.get("access_state") != "approved"
-            or current_owner.get("role_policy_version") != ROLE_POLICY_VERSION
-            or "role" in current_owner
+        if _bootstrap_owner_ineligibility(
+            current_owner,
+            require_current_policy=True,
         ):
             raise RuntimeError("Reviewed bootstrap Owner is no longer eligible")
 
@@ -389,6 +403,7 @@ async def run(
             current_accounts,
             bootstrap_owner_id,
             required=True,
+            require_current_policy=True,
         )
         result = await _rollback(
             database,
