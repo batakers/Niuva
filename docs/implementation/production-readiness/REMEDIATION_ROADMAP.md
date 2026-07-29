@@ -2,7 +2,7 @@
 
 Status: Planning and Assignment Context — Not Implementation Authority
 
-Last updated: 2026-07-28 (Asia/Jakarta)
+Last updated: 2026-07-29 (Asia/Jakarta)
 Source audit: `docs/context/production-readiness-audit/` at scored baseline `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
 
 ## Purpose and use
@@ -16,6 +16,20 @@ The canonical authority order remains the Master Specification, the Document
 Register, the Decision Register, the applicable decision/ADR, the applicable
 runbook, and current source/tests. `AGENTS.md` is a subordinate implementation
 guardrail. Audit recommendations and this roadmap are planning evidence only.
+
+## Operating rule: readiness ledger, not daily queue
+
+This roadmap records readiness dependencies and evidence. It is not the order
+in which every authorized code or documentation task must be performed. A
+blocked roadmap phase blocks that phase's exit criteria and any readiness claim
+that consumes them; it does not automatically block a separately authorized
+Delivery task with disjoint paths, a frozen contract, and independent
+verification.
+
+For daily work, use the compact brief and path/contract-lock rules in
+[`AI_AGENT_TEAM_WORKFLOW.md`](../../context/AI_AGENT_TEAM_WORKFLOW.md). Link the
+applicable finding or phase only when it affects the task's authority, contract,
+or evidence. Do not infer a new authorization from that link.
 
 ## Baseline and freshness
 
@@ -297,14 +311,13 @@ approval are also separate human decisions; neither may be inferred below.
 This phase is a verification and decision gate; it does not itself authorize
 go-live.
 
-## Team-assignable phase IDs
+## Readiness traceability IDs
 
-The roadmap phases above are decomposed into stable, team-assignable IDs in
-[TEAM_ASSIGNMENT.md](TEAM_ASSIGNMENT.md). This decomposition changes neither
-the authority nor the exit criteria of the roadmap. It only isolates ownership,
-file boundaries, review, verification, and merge sequencing so that a later
-approved implementation does not put two people in the same module or API
-contract concurrently.
+The roadmap phases above are decomposed into stable IDs in
+[TEAM_ASSIGNMENT.md](TEAM_ASSIGNMENT.md). They preserve finding ownership,
+shared-boundary risks, verification, and merge sequencing. They are not a
+requirement to wait for the entire preceding phase before opening an unrelated,
+separately authorized Delivery task.
 
 | Roadmap group | Team-assignable phase IDs | Decomposition note |
 | --- | --- | --- |
@@ -323,13 +336,17 @@ contract concurrently.
 No proposed branch or worktree in the assignment register is created by this
 roadmap. `PHASE-00A` is the first planning-ready assignment, but it is a human
 baseline-selection and evidence-reconciliation action, not an implementation
-plan or source-change authorization. No implementation subphase is ready until
-the applicable decision, selected SHA, dependency, and verification conditions
-in this roadmap are satisfied.
+plan or source-change authorization. The readiness subphases remain subject to
+their recorded decision, selected-SHA, dependency, and verification conditions.
+Those conditions do not expand the scope of a separately approved task.
 
-## Dependency matrix
+## Readiness dependency matrix
 
-| Phase | Depends on | Blocks | Decision required | Migration required | Rollback risk |
+The table below controls readiness milestones and claims, not the daily
+Delivery queue. A listed dependency is a serial implementation dependency only
+when the active task shares its exact path, contract, or safety invariant.
+
+| Phase | Depends on | Readiness milestone blocked | Decision required | Migration required | Rollback risk |
 | --- | --- | --- | --- | --- | --- |
 | 0 | None | 1-10 | RC baseline; NIV-001 disposition; migration stop conditions | Planning only | High if incident/history action is later approved |
 | 1 | 0 | 3, 4, 7, 10 | Auth, access, privacy, quote/payment boundaries | Some bounded auth/data changes | High |
@@ -343,7 +360,7 @@ in this roadmap are satisfied.
 | 9 | 0-8 evidence | 10 | Documentation/release/dependency policy | No | Low |
 | 10 | 0-9 exit criteria | Go-live decision | Production-readiness and go-live approvers | Dry run/rehearsal only | High |
 
-## Definition of ready for an implementation plan
+## Definition of ready for a roadmap implementation plan
 
 A roadmap subphase may move from planning to a bounded implementation plan only
 when all of the following are evidenced for its exact SHA and scope:
@@ -360,7 +377,8 @@ when all of the following are evidenced for its exact SHA and scope:
 
 If any condition is absent, the subphase remains `decision_blocked`,
 `blocked_by_environment`, or `requires_revalidation`; it is not implementation
-ready.
+ready as a roadmap subphase. This classification does not add requirements to a
+separately authorized Delivery task outside that subphase's scope.
 
 ## Current handoff
 
