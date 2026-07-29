@@ -9,6 +9,7 @@ let adminCsrfToken = null;
 
 export const api = axios.create({
   baseURL: API,
+  timeout: 15_000,
   withCredentials: true,
 });
 
@@ -41,10 +42,27 @@ api.interceptors.request.use((config) => {
 
 let refreshPromise = null;
 
+function shouldRetrySafeRead(error, original) {
+  const method = String(original?.method || "get").toUpperCase();
+  return (
+    Boolean(original) &&
+    !original._networkRetry &&
+    !error.response &&
+    Boolean(error.request) &&
+    !axios.isCancel(error) &&
+    error.code !== "ERR_CANCELED" &&
+    ["GET", "HEAD"].includes(method)
+  );
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
+    if (shouldRetrySafeRead(error, original)) {
+      original._networkRetry = true;
+      return api(original);
+    }
     const path = String(original?.url || "");
     const isAuthOperation =
       path.includes("/auth/login") ||
