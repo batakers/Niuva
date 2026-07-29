@@ -23,8 +23,8 @@ if (
     )
 
 from auth_password import build_password_module  # noqa: E402
-from auth_recovery import (  # noqa: E402
-    MongoRecoveryStore,
+from auth_recovery import MongoRecoveryStore  # noqa: E402
+from auth_recovery import (
     PasswordResetCompletion,
     PublicSiteOrigin,
     build_recovery_module,
@@ -81,6 +81,20 @@ async def run_concurrent_completion(database_name, blocklist_path):
             "token_version": 0,
         }
         await database.users.insert_one(user)
+        await database.admin_sessions.insert_one(
+            {
+                "id": "admin-session",
+                "user_id": user["id"],
+                "revoked_at": None,
+            }
+        )
+        await database.auth_sessions.insert_one(
+            {
+                "id": "customer-session",
+                "user_id": user["id"],
+                "status": "active",
+            }
+        )
         await recovery.request_password_reset(user["email"], {})
         raw_token = delivery.reset_url.split("token=", 1)[1]
 
@@ -110,6 +124,15 @@ async def run_concurrent_completion(database_name, blocklist_path):
         assert len(tokens) == 1
         assert tokens[0]["active"] is False
         assert tokens[0]["invalidation_reason"] == "consumed"
+        admin_session = await database.admin_sessions.find_one({"id": "admin-session"})
+        assert admin_session["revoked_at"] is not None
+        assert admin_session["revocation_reason"] == "password_reset"
+        customer_session = await database.auth_sessions.find_one(
+            {"id": "customer-session"}
+        )
+        assert customer_session["status"] == "revoked"
+        assert customer_session["revoked_at"] is not None
+        assert customer_session["revoke_reason"] == "password_reset"
         assert delivery.changed == [user["email"]]
     finally:
         await client.drop_database(database_name)

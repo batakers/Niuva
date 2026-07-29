@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+LOCAL_EMAIL_ENVIRONMENTS = frozenset({"development", "local", "test"})
 
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
@@ -57,7 +58,11 @@ async def _send_provider_email(
     """Send without persisting payloads or exposing raw provider errors."""
 
     if not RESEND_API_KEY:
-        return {"status": "mock", "to": to_email}
+        environment = os.environ.get("APP_ENV", "production").strip().lower()
+        if environment in LOCAL_EMAIL_ENVIRONMENTS:
+            return {"status": "mock", "to": to_email}
+        logger.error("Email provider configuration is unavailable")
+        return {"status": "error"}
 
     params = {
         "from": SENDER_EMAIL,
@@ -65,9 +70,7 @@ async def _send_provider_email(
         "subject": subject,
         "html": _wrap(title, body_html),
         **(
-            {"headers": {"Idempotency-Key": idempotency_key}}
-            if idempotency_key
-            else {}
+            {"headers": {"Idempotency-Key": idempotency_key}} if idempotency_key else {}
         ),
     }
     try:
