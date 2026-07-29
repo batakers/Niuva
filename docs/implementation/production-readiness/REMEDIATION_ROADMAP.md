@@ -386,11 +386,22 @@ separately authorized Delivery task outside that subphase's scope.
 
 ## Current handoff
 
-The first permitted next action is a human decision on the release-candidate
-baseline and NIV-001 disposition. After it, update the finding freshness matrix
-before drafting any implementation plan. Do not start Phase 0 execution from
-this roadmap.
+The original baseline and NIV-001 handoff has progressed as recorded in
+[REMEDIATION_PROGRESS.md](REMEDIATION_PROGRESS.md); this roadmap remains the
+dependency ledger rather than the live evidence detail. For current frontend
+work, use the current-source frontend register in that progress tracker. It
+separates directly observable open work from candidate evidence,
+decision-blocked Retail/B2B scope, and environment-blocked release/browser
+proof.
 
-Source code, tests, dependencies, configuration, migrations, canonical
-documents, commits, pushes, deployment, and production state were not changed
-while creating this roadmap.
+The progress tracker and phase index reconcile Feature 1.1–1.6 through fetched
+`main` snapshot `af625942cb64e3a4395f44bd57b74e5bacd7f7b1`. Feature 1.4 adds bounded
+password-policy evidence without closing its production/hash-rollout gates;
+Feature 1.5 and Feature 1.6 are revalidation inputs for still-blocked
+PHASE-01D, not authorization to expand limiter or MFA source scope.
+
+At the time this roadmap was originally created, source code, tests,
+dependencies, configuration, migrations, canonical documents, commits, pushes,
+deployment, and production state were not changed. Later Delivery and evidence
+work must be read from the progress tracker and its linked packets; it does not
+retroactively authorize roadmap-wide execution.
