@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { FileTerminal, Package } from "lucide-react";
+import { LayoutDashboard, Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalState } from "@/components/ui/operational-state";
 import { OperationalLayout } from "@/components/layout/Layout";
 import { StatusBadge } from "@/components/operational/StatusStepper";
 import { useAuth } from "@/context/AuthContext";
@@ -15,54 +16,79 @@ export default function ClientDashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const loadRequestRef = useRef(null);
 
-  useEffect(() => {
-    api
+  const loadOrders = useCallback(() => {
+    if (loadRequestRef.current) return loadRequestRef.current;
+
+    setLoading(true);
+    setLoadError(false);
+
+    const request = api
       .get("/orders")
       .then((r) => setOrders(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => setLoadError(true))
+      .finally(() => {
+        if (loadRequestRef.current === request) {
+          loadRequestRef.current = null;
+        }
+        setLoading(false);
+      });
+
+    loadRequestRef.current = request;
+    return request;
   }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   return (
     <OperationalLayout>
       <div className="w-full">
         {/* Dashboard Header */}
-        <div className="border border-border-default bg-surface-default mb-8">
-          <div className="border-b border-border-default bg-surface-muted px-4 py-2 flex items-center justify-between">
+        <section className="mb-8 overflow-hidden rounded-panel border border-border-default bg-surface-default shadow-surface">
+          <div className="flex items-center justify-between border-b border-border-default bg-surface-muted px-5 py-3 sm:px-6">
             <div className="flex items-center gap-2">
-              <FileTerminal className="h-4 w-4 text-text-secondary" />
-              <span className="font-mono text-[10px] text-text-secondary uppercase tracking-widest">
-                {t("dash.headerLabel")} · ID: {user?.id?.substring(0, 8) || "—"}
+              <LayoutDashboard
+                className="h-4 w-4 text-action-primary"
+                aria-hidden="true"
+              />
+              <span className="type-label font-semibold text-text-secondary">
+                {t("dash.headerLabel")}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
-              <span className="text-xs text-text-secondary">
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-status-success"
+                aria-hidden="true"
+              />
+              <span className="type-label text-text-secondary">
                 {t("dash.systemActive")}
               </span>
             </div>
           </div>
-          <div className="p-6 sm:p-8 flex items-center justify-between flex-wrap gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-6 p-6 sm:p-8">
             <div>
-              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-text-primary mb-1 uppercase tracking-tight">
+              <h1 className="mb-2 font-heading text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
                 {t("dash.title")}
               </h1>
-              <p className="text-sm text-text-secondary">
+              <p className="type-body-small text-text-secondary">
                 {t("dash.welcomeBack")}, {user?.name}
               </p>
             </div>
-            <div className="max-w-sm border border-status-warning/40 bg-status-warning/10 p-3 text-sm text-text-secondary">
+            <div className="max-w-sm rounded-card border border-status-warning/40 bg-status-warning/10 px-4 py-3 text-sm leading-6 text-text-secondary">
               Pembuatan pesanan legacy dinonaktifkan. Gunakan katalog Retail
               untuk discovery atau ajukan kebutuhan melalui Contact.
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Order Data Table */}
-        <div className="border border-border-default bg-surface-default">
-          <div className="border-b border-border-default bg-surface-muted px-6 py-3">
-            <span className="font-mono text-[10px] text-text-secondary uppercase tracking-widest">
+        <section className="overflow-hidden rounded-panel border border-border-default bg-surface-default shadow-surface">
+          <div className="border-b border-border-default bg-surface-muted px-5 py-4 sm:px-6">
+            <span className="type-label font-semibold text-text-secondary">
               {t("dash.ordersTotal")} · {orders.length}
             </span>
           </div>
@@ -74,9 +100,18 @@ export default function ClientDashboard() {
             >
               {t("common.loading")}
             </div>
+          ) : loadError ? (
+            <OperationalState
+              state="error"
+              title={t("dash.errorTitle")}
+              description={t("dash.errorDescription")}
+              retryLabel={t("common.retry")}
+              onRetry={loadOrders}
+              className="m-4 rounded-card border-solid bg-surface-page/50 sm:m-6"
+            />
           ) : orders.length === 0 ? (
             <div
-              className="p-20 text-center flex flex-col items-center border-dashed border border-border-default m-4 bg-surface-page/50"
+              className="m-4 flex flex-col items-center rounded-card border border-border-default bg-surface-page/50 p-10 text-center sm:m-6 sm:p-16"
               data-testid="no-orders"
             >
               <Package
@@ -89,7 +124,7 @@ export default function ClientDashboard() {
               <Link to="/retail">
                 <Button
                   variant="outline"
-                  className="font-mono text-xs uppercase tracking-widest"
+                  className="min-h-11"
                 >
                   Lihat katalog Retail
                 </Button>
@@ -102,7 +137,7 @@ export default function ClientDashboard() {
                 data-testid="orders-list"
               >
                 <thead>
-                  <tr className="border-b border-border-default/50 bg-surface-page/50 text-text-secondary font-mono text-[10px] uppercase tracking-widest">
+                  <tr className="border-b border-border-default/50 bg-surface-page/50 text-xs font-semibold text-text-secondary">
                     <th className="font-normal px-6 py-4">{t("dash.orderNo")}</th>
                     <th className="font-normal px-6 py-4">{t("dash.material")}</th>
                     <th className="font-normal px-6 py-4">{t("dash.date")}</th>
@@ -112,19 +147,19 @@ export default function ClientDashboard() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="font-mono text-xs text-text-primary divide-y divide-border-default/50">
+                <tbody className="divide-y divide-border-default/50 text-sm text-text-primary">
                   {orders.map((o) => (
                     <tr
                       key={o.id}
-                      className="hover:bg-surface-muted/50 transition-colors group"
+                      className="group transition-colors duration-fast hover:bg-surface-muted/50"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-action-primary">
+                      <td className="whitespace-nowrap px-6 py-4 font-semibold text-action-primary">
                         {o.order_number}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
                           <span className="uppercase">{o.material_name}</span>
-                          <span className="text-[10px] text-text-secondary truncate max-w-[200px]">
+                          <span className="max-w-[200px] truncate text-xs text-text-secondary">
                             {o.file?.original_filename}
                           </span>
                         </div>
@@ -143,7 +178,7 @@ export default function ClientDashboard() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="border border-transparent group-hover:border-border-default uppercase tracking-widest text-[10px]"
+                            className="min-h-11 border border-transparent group-hover:border-border-default"
                           >
                             {t("dash.colDetails")}
                           </Button>
@@ -155,7 +190,7 @@ export default function ClientDashboard() {
               </table>
             </div>
           )}
-        </div>
+        </section>
       </div>
     </OperationalLayout>
   );
