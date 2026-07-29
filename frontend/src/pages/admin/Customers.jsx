@@ -28,6 +28,11 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { api, formatApiError } from "@/lib/api";
 import { fmtDay } from "@/lib/format";
+import {
+  fetchPasswordPolicy,
+  passwordPolicySummary,
+  passwordSatisfiesPolicy,
+} from "@/lib/passwordPolicy";
 import { hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
 
@@ -164,12 +169,34 @@ function CreateCustomerDialog({ open, onOpenChange, onCreated }) {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const passwordBytes = new TextEncoder().encode(form.password).length;
+  const [passwordPolicy, setPasswordPolicy] = useState(null);
+  const [policyError, setPolicyError] = useState("");
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let active = true;
+    setPasswordPolicy(null);
+    setPolicyError("");
+    fetchPasswordPolicy(api)
+      .then((policy) => {
+        if (active) setPasswordPolicy(policy);
+      })
+      .catch(() => {
+        if (active) {
+          setPolicyError(
+            "Aturan password belum dapat dimuat. Tutup lalu buka kembali untuk mencoba lagi.",
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
   const canSubmit =
     form.name.trim().length >= 2 &&
     form.email.trim() &&
-    passwordBytes >= 12 &&
-    passwordBytes <= 72 &&
+    passwordSatisfiesPolicy(form.password, passwordPolicy) &&
     !busy;
 
   const update = (field) => (event) =>
@@ -210,18 +237,40 @@ function CreateCustomerDialog({ open, onOpenChange, onCreated }) {
           <FormField label="Nama"><Input value={form.name} onChange={update("name")} /></FormField>
           <FormField label="Email"><Input type="email" value={form.email} onChange={update("email")} /></FormField>
           <FormField label="Password">
-            <Input type="password" value={form.password} onChange={update("password")} />
-            <p className="mt-1 text-xs text-text-secondary">12–72 byte; password umum ditolak.</p>
+            <Input
+              type="password"
+              data-testid="customer-create-password"
+              value={form.password}
+              onChange={update("password")}
+              autoComplete="new-password"
+              aria-describedby="customer-password-policy"
+            />
+            <p
+              id="customer-password-policy"
+              className="mt-1 text-xs text-text-secondary"
+            >
+              {passwordPolicy
+                ? passwordPolicySummary(passwordPolicy)
+                : "Memuat aturan password…"}
+            </p>
           </FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Telepon"><Input value={form.phone} onChange={update("phone")} /></FormField>
             <FormField label="Perusahaan"><Input value={form.company} onChange={update("company")} /></FormField>
           </div>
+          {policyError && <Alert>{policyError}</Alert>}
           {error && <Alert>{error}</Alert>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Batal</Button>
-          <Button onClick={submit} disabled={!canSubmit} loading={busy}>Buat customer</Button>
+          <Button
+            data-testid="customer-create-submit"
+            onClick={submit}
+            disabled={!canSubmit}
+            loading={busy}
+          >
+            Buat customer
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

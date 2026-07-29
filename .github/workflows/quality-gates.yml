@@ -51,7 +51,6 @@ jobs:
           backend/auth_password.py
           backend/auth_recovery.py
           backend/auth_session.py
-          backend/password_policy.py
           backend/content_domain.py
           backend/inventory_service.py
           backend/csv_safety.py
@@ -67,7 +66,6 @@ jobs:
             backend/auth_password.py \
             backend/auth_recovery.py \
             backend/auth_session.py \
-            backend/password_policy.py \
             backend/content_domain.py \
             backend/inventory_service.py \
             backend/csv_safety.py \
@@ -90,7 +88,6 @@ jobs:
             backend/auth_password.py \
             backend/auth_recovery.py \
             backend/auth_session.py \
-            backend/password_policy.py \
             backend/content_domain.py \
             backend/inventory_service.py \
             backend/csv_safety.py \

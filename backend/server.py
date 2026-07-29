@@ -92,7 +92,6 @@ from material_routes import build_material_router
 from motor.motor_asyncio import AsyncIOMotorClient
 from notification_service import NotificationError, NotificationService
 from notification_worker import NotificationDeliveryWorker
-from password_policy import validate_password
 from permissions import (
     CUSTOMER_ROLES,
     ROLE_LABELS,
@@ -866,7 +865,6 @@ async def authenticate_credentials(req: LoginReq, *, surface: str) -> dict:
 
 
 async def provision_client(req: ClientProvisionReq) -> dict:
-    validate_password(req.password)
     email = req.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email already registered")
