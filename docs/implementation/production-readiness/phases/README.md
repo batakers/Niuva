@@ -8,14 +8,17 @@ contains no implementation plan in the initial roadmap handoff.
 ## Current Phase 1 evidence index
 
 The following packets were merged after the initial roadmap handoff. Their
-feature numbering is evidence organization within roadmap `PHASE-01A`; it does
-not create three separate roadmap phases.
+feature numbering organizes bounded evidence within roadmap Phase 1; it does
+not create separate roadmap phases or imply a production-readiness exit.
 
 | Feature | Evidence packets | Merged PR | Tracker status |
 | --- | --- | --- | --- |
 | 1.1 Customer Session | [Read-only revalidation](FEATURE-1.1-customer-session-revalidation.md); [remediation](FEATURE-1.1-customer-session-remediation.md) | #79 | Bounded source/local-test evidence merged; Migration 007 and production topology/deployment evidence remain open. |
 | 1.2 Admin Session | [Read-only revalidation](FEATURE-1.2-admin-session-revalidation.md) | #80 | Local revalidation passed; AS-001 production evidence, AS-002 cross-tab policy/browser evidence, Migration 009, and cutover remain open. |
 | 1.3 Password Recovery | [Read-only revalidation](FEATURE-1.3-password-recovery-revalidation.md); [remediation](FEATURE-1.3-password-recovery-remediation.md) | #81 | Bounded remediation evidence merged; PR-002 timing, PR-004 provider delivery, and Migration 008 remain open. |
+| 1.4 Password Policy and Hash Migration | [Read-only revalidation](FEATURE-1.4-password-policy-hash-migration-revalidation.md); [remediation](FEATURE-1.4-password-policy-hash-migration-remediation.md) | #84 | Password boundaries and the disabled-by-default bcrypt-to-Argon2id migration seam were reconciled; production blocklist ownership, benchmark evidence, migration activation, and rollback-floor proof remain open. |
+| 1.5 Authentication Rate Limiter | [Read-only revalidation](FEATURE-1.5-auth-rate-limit-revalidation.md) | #85 | MongoDB/HMAC/account-and-peer/429 contract was revalidated locally; real multi-worker concurrency, outage policy/fault evidence, TTL operations, proxy topology, and operational ownership remain open. |
+| 1.6 Internal MFA | [Read-only revalidation](FEATURE-1.6-internal-mfa-revalidation.md) | #86 | Audit confirms MFA is not implemented. TOTP parameters/library, encryption/key custody, pre-auth/step-up, recovery/support/break-glass, migration, rollout, and production evidence remain `blocked_by_decision`. |
 
 See [REMEDIATION_PROGRESS.md](../REMEDIATION_PROGRESS.md) and
 [TEAM_ASSIGNMENT.md](../TEAM_ASSIGNMENT.md) for the consolidated roadmap
