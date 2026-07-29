@@ -78,6 +78,12 @@ Full backend regression:
 Dependency audit, compile, critical Flake8, MyPy (including the legacy
 projection module), Black, isort, and diff checks also passed.
 
+The first PR workflow crossed a real-time fixed-window boundary while running
+the pre-existing login-limiter test, splitting five failures across two
+buckets. The test now freezes only its limiter clock; production limiter code
+is unchanged. The targeted test passed five consecutive runs and the full
+backend suite passed again.
+
 ## Remaining historical reconciliation
 
 This source remediation does not resolve the operational handling of ambiguous

@@ -1338,6 +1338,10 @@ Baseline: `origin/main` `1ada96a591f607e2dba38013cebb1a20e593b782`.
 - Full backend regression: 620 passed, 12 skipped, 14 subtests passed.
 - Dependency audit, compile, critical Flake8, focused MyPy including
   `retail_domain.py`, Black, isort, and diff checks passed.
+- The first PR workflow exposed a pre-existing real-time fixed-window boundary
+  flake in the login-limiter test. Its test-only clock is now fixed;
+  production limiter behavior is unchanged, five consecutive targeted runs
+  passed, and the full 620-test backend regression passed again.
 - BA-007 is `resolved_for_active_scope`; historical reconciliation, retention,
   proof custody, production inventory, deployment, and go-live remain open.
 
