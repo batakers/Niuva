@@ -23,11 +23,21 @@ resend_module.api_key = ""
 resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"})
 sys.modules.setdefault("resend", resend_module)
 
+import auth_rate_limit  # noqa: E402
 import server  # noqa: E402
 
 from tests.auth_support import AuthCollection  # noqa: E402
 
 ORIGIN = {"Origin": "https://testserver"}
+LIMITER_TEST_NOW = datetime(2026, 7, 29, 12, 5, tzinfo=timezone.utc)
+
+
+class FixedLimiterDatetime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        if tz is None:
+            return LIMITER_TEST_NOW.replace(tzinfo=None)
+        return LIMITER_TEST_NOW.astimezone(tz)
 
 
 class AuthDatabase:
@@ -167,14 +177,14 @@ async def run_login_failure_limiter_contract():
             responses = []
             for _attempt in range(5):
                 responses.append(
-                await api.post(
-                    "/api/auth/login",
-                    json={
-                        "email": customer()["email"],
-                        "password": "WrongPassword123",
-                    },
-                    headers=ORIGIN,
-                )
+                    await api.post(
+                        "/api/auth/login",
+                        json={
+                            "email": customer()["email"],
+                            "password": "WrongPassword123",
+                        },
+                        headers=ORIGIN,
+                    )
                 )
             assert [response.status_code for response in responses[:4]] == [
                 401,
@@ -201,7 +211,8 @@ async def run_login_failure_limiter_contract():
         server.db = original_db
 
 
-def test_login_failure_limiter_is_atomic_and_returns_retry_after():
+def test_login_failure_limiter_is_atomic_and_returns_retry_after(monkeypatch):
+    monkeypatch.setattr(auth_rate_limit, "datetime", FixedLimiterDatetime)
     asyncio.run(run_login_failure_limiter_contract())
 
 

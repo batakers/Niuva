@@ -12,6 +12,7 @@ from retail_domain import (
     RETAIL_STATUSES,
     classify_legacy_order,
     project_customer_legacy_order,
+    project_internal_legacy_order,
 )
 
 LEGACY_ORDER = {
@@ -69,15 +70,27 @@ def test_customer_projection_allowlists_historical_fields_and_withholds_internal
             "file": {
                 "storage_path": "niuva/orders/user-1/design.stl",
                 "original_filename": "design.stl",
+                "content_type": "model/stl",
+                "size": 512,
             },
             "estimate": {
                 "amount": 250000,
                 "currency": "IDR",
+                "estimated_at": "2026-07-01T01:00:00Z",
                 "note": "Internal pricing rationale",
             },
             "payment": {
                 "verified": False,
-                "proof": {"storage_path": "niuva/payments/user-1/proof.png"},
+                "uploaded_at": "2026-07-01T02:00:00Z",
+                "verified_at": None,
+                "bank_account": "never expose",
+                "proof": {
+                    "storage_path": "niuva/payments/user-1/proof.png",
+                    "original_filename": "proof.png",
+                    "content_type": "image/png",
+                    "size": 256,
+                    "provider_payload": {"secret": "never expose"},
+                },
             },
             "status_history": [
                 {
@@ -100,13 +113,136 @@ def test_customer_projection_allowlists_historical_fields_and_withholds_internal
         "canonical_status_equivalent": "in_production",
         "creation_enabled": False,
         "mutations_enabled": False,
-        "file": {"original_filename": "design.stl"},
-        "estimate": {"amount": 250000, "currency": "IDR"},
-        "payment": {"verified": False},
+        "file": {
+            "original_filename": "design.stl",
+            "content_type": "model/stl",
+            "size": 512,
+        },
+        "estimate": {
+            "amount": 250000,
+            "currency": "IDR",
+            "estimated_at": "2026-07-01T01:00:00Z",
+        },
+        "payment": {
+            "verified": False,
+            "uploaded_at": "2026-07-01T02:00:00Z",
+            "proof_recorded": True,
+            "proof": {
+                "original_filename": "proof.png",
+                "content_type": "image/png",
+                "size": 256,
+            },
+        },
         "status_history": [
             {"status": "pending_estimate", "at": "2026-07-01T00:00:00Z"}
         ],
     }
+
+
+def test_internal_projection_requires_payment_permission_and_never_returns_raw_fields():
+    document = {
+        **LEGACY_ORDER,
+        "user_name": "Customer",
+        "user_email": "customer@example.com",
+        "material_id": "material-1",
+        "material_name": "Acrylic",
+        "notes": "Operational note",
+        "file": {
+            "storage_path": "niuva/orders/user-1/design.stl",
+            "original_filename": "design.stl",
+        },
+        "estimate": {
+            "amount": 250000,
+            "currency": "IDR",
+            "estimated_at": "2026-07-01T01:00:00Z",
+            "note": "Internal pricing rationale",
+        },
+        "payment": {
+            "verified": True,
+            "uploaded_at": "2026-07-01T02:00:00Z",
+            "verified_at": "2026-07-01T03:00:00Z",
+            "bank_account": "never expose",
+            "proof": {
+                "storage_path": "niuva/payments/user-1/proof.png",
+                "original_filename": "proof.png",
+                "provider_payload": {"secret": "never expose"},
+            },
+        },
+        "internal_cost": 100000,
+        "margin": 150000,
+        "profit": 150000,
+        "supplier": "never expose",
+        "audit": {"raw": "never expose"},
+        "unexpected_internal_field": "never expose",
+    }
+
+    operational = project_internal_legacy_order(
+        document,
+        include_payment=False,
+        include_operational_notes=True,
+    )
+    assert operational["file"] == {
+        "original_filename": "design.stl",
+        "historical_file_recorded": True,
+    }
+    assert operational["status_history"] == [
+        {"status": "pending_estimate", "at": "t", "note": "Order received"}
+    ]
+    assert "estimate" not in operational
+    assert "payment" not in operational
+
+    finance = project_internal_legacy_order(
+        document,
+        include_payment=True,
+        include_operational_notes=False,
+    )
+    assert finance["estimate"] == {
+        "amount": 250000,
+        "currency": "IDR",
+        "estimated_at": "2026-07-01T01:00:00Z",
+    }
+    assert finance["payment"] == {
+        "verified": True,
+        "uploaded_at": "2026-07-01T02:00:00Z",
+        "verified_at": "2026-07-01T03:00:00Z",
+        "proof_recorded": True,
+        "proof": {"original_filename": "proof.png"},
+    }
+    assert "notes" not in finance
+    assert finance["status_history"] == [{"status": "pending_estimate", "at": "t"}]
+    serialized = repr(finance)
+    for secret in (
+        "storage_path",
+        "bank_account",
+        "provider_payload",
+        "internal_cost",
+        "margin",
+        "profit",
+        "supplier",
+        "audit",
+        "unexpected_internal_field",
+    ):
+        assert secret not in serialized
+
+
+def test_projection_rejects_structured_values_inside_allowlisted_fields():
+    safe = project_customer_legacy_order(
+        {
+            "id": {"secret": "nested"},
+            "status": "pending_estimate",
+            "estimate": {"amount": {"internal_cost": 1}, "currency": ["IDR"]},
+            "payment": {"verified": "false"},
+            "status_history": [
+                {"status": {"secret": "nested"}, "at": "ignored"},
+                {"status": "pending_estimate", "at": {"secret": "nested"}},
+            ],
+        }
+    )
+
+    assert "id" not in safe
+    assert "estimate" not in safe
+    assert "payment" not in safe
+    assert safe["status_history"] == [{"status": "pending_estimate"}]
 
 
 @pytest.mark.parametrize(

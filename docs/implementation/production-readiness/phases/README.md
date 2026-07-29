@@ -5,21 +5,23 @@ Status: Planning and Progress Context — Not Implementation Authority Unless Ex
 This directory is reserved for future bounded phase plans. It intentionally
 contains no implementation plan in the initial roadmap handoff.
 
-## Current Phase 1 evidence index
+## Current backend feature evidence index
 
-The following packets were merged after the initial roadmap handoff. Their
-feature numbering is evidence organization within roadmap `PHASE-01A` and
-`PHASE-01D`; it does not create separate roadmap phases or bypass their
-decision, dependency, environment, or verification gates.
+The following packets were opened or merged after the initial roadmap handoff.
+Their feature numbering organizes bounded backend evidence; it does not create
+separate roadmap phases or bypass decision, dependency, environment, migration,
+deployment, or verification gates.
 
-| Feature | Evidence packets | Merged PR | Tracker status |
+| Feature | Evidence packets | PR state | Tracker status |
 | --- | --- | --- | --- |
-| 1.1 Customer Session | [Read-only revalidation](FEATURE-1.1-customer-session-revalidation.md); [remediation](FEATURE-1.1-customer-session-remediation.md) | #79 | Bounded source/local-test evidence merged; Migration 007 and production topology/deployment evidence remain open. |
-| 1.2 Admin Session | [Read-only revalidation](FEATURE-1.2-admin-session-revalidation.md) | #80 | Local revalidation passed; AS-001 production evidence, AS-002 cross-tab policy/browser evidence, Migration 009, and cutover remain open. |
-| 1.3 Password Recovery | [Read-only revalidation](FEATURE-1.3-password-recovery-revalidation.md); [remediation](FEATURE-1.3-password-recovery-remediation.md) | #81 | Bounded remediation evidence merged; PR-002 timing, PR-004 provider delivery, and Migration 008 remain open. |
-| 1.4 Password Policy and Hash Migration | [Read-only revalidation](FEATURE-1.4-password-policy-hash-migration-revalidation.md); [remediation](FEATURE-1.4-password-policy-hash-migration-remediation.md) | #84 | PP-001/PP-002 bounded local remediation evidence merged. PP-003–PP-006, the `ADR-005`/`DEC-AUTH-004` password-rule clarification, production blocklist operations, target-equivalent Argon2 evidence, activation/migration, and deployed rollback floor remain open. |
-| 1.5 Authentication Rate Limiter | [Read-only revalidation](FEATURE-1.5-auth-rate-limit-revalidation.md) | #85 | Bounded source and isolated-test evidence recorded. Real-MongoDB multi-worker concurrency, store-outage behavior, spoofed-header negatives, TTL-index application, production proxy topology, monitoring, retention operations, and owners remain open under DR-004. |
-| 1.6 Internal MFA | [Read-only revalidation](FEATURE-1.6-internal-mfa-revalidation.md) | #86 | Revalidation confirms MFA is not implemented. TOTP, encryption/key custody, enrollment, pre-auth/session, step-up, recovery, security-event, rollout, and ownership decisions remain blocked under DR-005; no implementation is authorized. |
+| 1.1 Customer Session | [Read-only revalidation](FEATURE-1.1-customer-session-revalidation.md); [remediation](FEATURE-1.1-customer-session-remediation.md) | #79 merged | Bounded source/local-test evidence merged; Migration 007 and production topology/deployment evidence remain open. |
+| 1.2 Admin Session | [Read-only revalidation](FEATURE-1.2-admin-session-revalidation.md) | #80 merged | Local revalidation passed; AS-001 production evidence, AS-002 cross-tab policy/browser evidence, Migration 009, and cutover remain open. |
+| 1.3 Password Recovery | [Read-only revalidation](FEATURE-1.3-password-recovery-revalidation.md); [remediation](FEATURE-1.3-password-recovery-remediation.md) | #81 merged | Bounded remediation evidence merged; PR-002 timing, PR-004 provider delivery, and Migration 008 remain open. |
+| 1.4 Password Policy and Hash Migration | [Read-only revalidation](FEATURE-1.4-password-policy-hash-migration-revalidation.md); [remediation](FEATURE-1.4-password-policy-hash-migration-remediation.md) | #84 merged | PP-001/PP-002 bounded local remediation evidence merged. PP-003–PP-006, the `ADR-005`/`DEC-AUTH-004` password-rule clarification, production blocklist operations, target-equivalent Argon2 evidence, activation/migration, and deployed rollback floor remain open. |
+| 1.5 Authentication Rate Limiter | [Read-only revalidation](FEATURE-1.5-auth-rate-limit-revalidation.md) | #85 merged | Bounded source and isolated-test evidence recorded. Real-MongoDB multi-worker concurrency, store-outage behavior, spoofed-header negatives, TTL-index application, production proxy topology, monitoring, retention operations, and owners remain open under DR-004. |
+| 1.6 Internal MFA | [Read-only revalidation](FEATURE-1.6-internal-mfa-revalidation.md) | #86 merged | Revalidation confirms MFA is not implemented. TOTP, encryption/key custody, enrollment, pre-auth/session, step-up, recovery, security-event, rollout, and ownership decisions remain blocked under DR-005; no implementation is authorized. |
+| 1.7 Authentication Security Events | [Read-only revalidation](FEATURE-1.7-auth-security-events-revalidation.md); [decision inputs](FEATURE-1.7-auth-security-events-decision-inputs.md); [remediation](FEATURE-1.7-auth-security-events-remediation.md) | #90 merged | Bounded disabled-by-default foundation and local-test evidence merged. Migration 010 was not run; named production owners, external HMAC-key custody, cleanup scheduling, alert-provider delivery, isolated rehearsal/rollback, deployment, activation, and go-live remain open. |
+| 2.3 Legacy Order Compatibility | [remediation](FEATURE-2.3-legacy-order-projection-remediation.md) | #92 open | Bounded source and local-test remediation is under review: owner-scoped reads, customer/internal allowlists, safe historical payment metadata, and inactive mutations. Historical reconciliation, retention, proof custody, production inventory, merge/deployment, and go-live remain open. |
 
 See [REMEDIATION_PROGRESS.md](../REMEDIATION_PROGRESS.md) and
 [TEAM_ASSIGNMENT.md](../TEAM_ASSIGNMENT.md) for the consolidated roadmap

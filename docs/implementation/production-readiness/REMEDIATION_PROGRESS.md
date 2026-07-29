@@ -152,15 +152,15 @@ The user-controlled `rs-test` Docker service was left running. Two temporary
 frontend log files remain locked by a pre-existing process; no test runtime,
 database, certificate, PFX, cookie, or token artifact remains.
 
-### Merged Feature 1.1–1.6 evidence update
+### Backend Feature 1.1–1.7 and 2.3 evidence update
 
 The original selected-SHA packet above remains historical evidence for its
 stated password-recovery and Admin-session scope. Customer Session was later
-authorized separately by `DEC-AUTH-010`. The merged packets below extend the
-bounded PHASE-01A evidence record or revalidate the decision-blocked PHASE-01D
-scope; they do not merge those roadmap phases.
+authorized separately by `DEC-AUTH-010`. The records below extend bounded
+feature evidence across the relevant roadmap phases; they do not merge those
+phases or satisfy their production gates.
 
-| Feature | Merged evidence | Bounded outcome | Remaining gate |
+| Feature | Evidence state | Bounded outcome | Remaining gate |
 | --- | --- | --- | --- |
 | [Feature 1.1 — Customer Session](phases/FEATURE-1.1-customer-session-remediation.md) | PR #79; merge `1200340f4eab634d608d331f3a830c7ccb258212` | Decision, logout fallback, no-store handling, exact-origin/host-only cookie enforcement, focused tests, isolated MongoDB evidence, and full backend regression recorded. | Migration 007 was not applied. Shared/staging/production topology, proxy observation, deployment, activation, and go-live evidence remain separately gated. |
 | [Feature 1.2 — Admin Session](phases/FEATURE-1.2-admin-session-revalidation.md) | PR #80; merge `766d50aee2b16a9788040cd268604c0269611fad` | Local source, backend/frontend regression, disposable MongoDB, and build-compile evidence passed without identifying a requested source defect. | AS-001 production HTTPS/proxy/operations evidence and AS-002 cross-tab policy/browser journey remain open. Migration 009 and production cutover were not run. |
@@ -168,11 +168,15 @@ scope; they do not merge those roadmap phases.
 | [Feature 1.4 — Password Policy and Hash Migration](phases/FEATURE-1.4-password-policy-hash-migration-remediation.md) | PR #84; merge `29cfae6aabba13c477c2e6e6b2313961c9c30f63` | PP-001/PP-002 bounded local remediation records one canonical backend policy seam plus shared frontend policy consumers. Current-checkout focused frontend evidence passes 4/4 suites and 11/11 tests. | PP-003–PP-006, the `ADR-005`/`DEC-AUTH-004` password-rule clarification, production blocklist operations, target-equivalent Argon2 benchmark, activation/migration, and deployed rollback floor remain open. Current-main full frontend still has the unrelated CMS static-contract failure. |
 | [Feature 1.5 — Authentication Rate Limiter](phases/FEATURE-1.5-auth-rate-limit-revalidation.md) | PR #85; merge `af625942cb64e3a4395f44bd57b74e5bacd7f7b1` | Revalidation records the bounded `ADR-005` MongoDB/5-account/20-peer/15-minute source contract, HMAC identifiers, generic 429, `Retry-After`, and 23 passing isolated auth tests. | Real-MongoDB multi-worker concurrency, store-outage policy/tests, spoofed-header negatives, TTL-index application, production proxy topology, monitoring, retention operations, and owners remain open under DR-004. |
 | [Feature 1.6 — Internal MFA](phases/FEATURE-1.6-internal-mfa-revalidation.md) | PR #86; merge `b06e60d28be337b199ee1f321fe24d84bb163de6` | Source/decision revalidation confirms password-only Admin sessions and no TOTP, recovery-code, assurance, step-up, or passkey implementation. | DR-005 remains open for TOTP, encryption/key custody, enrollment, pre-auth/session, step-up, recovery, events, rollout, and ownership. No MFA source implementation is authorized. |
+| [Feature 1.7 — Authentication Security Events](phases/FEATURE-1.7-auth-security-events-remediation.md) | PR #90; merge `1ada96a591f607e2dba38013cebb1a20e593b782` | A disabled-by-default dedicated event boundary, strict schema, HMAC pseudonymization, 90-day expiry, cleanup/alert foundations, readiness gating, Migration 010 declaration, and local regression evidence were merged. | Migration 010 was not run. Named production owners, external key custody, cleanup scheduling, alert-provider delivery, real-Mongo/isolated recovery evidence, deployment, activation, and go-live remain open. |
+| [Feature 2.3 — Legacy Order Compatibility](phases/FEATURE-2.3-legacy-order-projection-remediation.md) | PR #92 open; head `1cee28623728f398e3e54f288d516366873fff0a` at tracker update | The review candidate binds customer reads to ownership, separates customer/internal allowlists, exposes only safe historical payment metadata, retains all legacy mutations as inactive, and records 47 focused plus 620 full-backend passing tests. | Review/merge remains open. Historical reconciliation, retention, proof custody, production inventory, deployment, production readiness, and go-live remain separately gated. |
 
-These merge records prove that reviewed source and evidence entered `main`.
-They do not complete roadmap-wide PHASE-01A/01D, resolve grouped MFA,
-abuse-control, access-review, or production-operation findings, or grant
-migration, deployment, production-readiness, release, or go-live authority.
+Merged records prove that reviewed source and evidence entered `main`; the open
+Feature 2.3 record proves only the state of its review candidate. None of these
+records completes a roadmap phase, resolves grouped MFA, abuse-control,
+access-review, historical-reconciliation, or production-operation findings, or
+grants migration, deployment, production-readiness, release, or go-live
+authority.
 
 ## PHASE-01B bounded authorization and privacy revalidation
 
