@@ -33,7 +33,8 @@ Customer-session defaults:
 - CSRF: readable cookie mirrored in `X-CSRF-Token`;
 - `Secure` is enabled outside development/test. Production startup rejects
   `AUTH_COOKIE_SECURE=false`;
-- `AUTH_COOKIE_DOMAIN` is optional and should normally remain unset.
+- `AUTH_COOKIE_DOMAIN` must remain empty. Customer cookies are host-only and
+  startup rejects a configured cookie domain.
 
 The currently approved Admin-specific implementation uses separate
 `__Host-niuva-admin-*` Strict cookies, a 15-minute access secret, a 30-minute
@@ -49,7 +50,8 @@ that overwrites client forwarding headers.
 
 ## Authentication contract
 
-- `POST /api/auth/login`: customer roles only
+- `POST /api/auth/login`: customer roles only, with exact `PUBLIC_SITE_URL`
+  Origin verification
 - `POST /api/auth/admin/login`: internal staff roles only
 - `POST /api/auth/refresh` and `/api/auth/logout`: customer session rotation
   and revocation
@@ -58,6 +60,7 @@ that overwrites client forwarding headers.
 - customer login/refresh responses contain `{user}`; Admin responses additionally
   contain CSRF/expiry metadata; neither surface returns a bearer token
 - blocked/unknown/wrong-surface login returns generic HTTP 401
+- every `/api/auth/*` response includes `Cache-Control: no-store`
 
 State-changing cookie requests must send `X-CSRF-Token` equal to the CSRF
 cookie. Bearer support exists only when `NIUVA_TEST_BEARER_AUTH=true` in

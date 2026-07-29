@@ -57,10 +57,14 @@ def validate_cookie_configuration() -> None:
         raise RuntimeError(
             "AUTH_COOKIE_SECURE must be true outside development, demo, or test"
         )
+    if os.environ.get("AUTH_COOKIE_DOMAIN", "").strip():
+        raise RuntimeError(
+            "AUTH_COOKIE_DOMAIN must be empty; customer cookies are host-only"
+        )
 
 
 def _cookie_domain() -> str | None:
-    return os.environ.get("AUTH_COOKIE_DOMAIN", "").strip() or None
+    return None
 
 
 def _set_cookie(
@@ -259,6 +263,37 @@ class AuthSessionService:
         except jwt.InvalidTokenError as exc:
             raise HTTPException(status_code=401, detail="Session invalid") from exc
 
+    def decode_access_for_logout(self, token: str | None) -> dict[str, Any] | None:
+        """Verify identity while allowing expiry solely for session revocation."""
+        if not token:
+            return None
+        try:
+            payload = jwt.decode(
+                token,
+                self.jwt_secret,
+                algorithms=[self.jwt_algorithm],
+                options={
+                    "require": [
+                        "sub",
+                        "sid",
+                        "jti",
+                        "exp",
+                        "iat",
+                        "type",
+                        "auth_policy_version",
+                    ],
+                    "verify_exp": False,
+                },
+            )
+            if (
+                payload.get("type") != "access"
+                or payload.get("auth_policy_version") != AUTH_POLICY_VERSION
+            ):
+                return None
+            return payload
+        except jwt.InvalidTokenError:
+            return None
+
     @staticmethod
     def _not_expired(value: Any) -> bool:
         if isinstance(value, datetime):
@@ -428,6 +463,7 @@ class AuthSessionService:
         )
 
     async def logout(self, request: Request, response: Response) -> None:
+        family_id = None
         value = request.cookies.get(REFRESH_COOKIE)
         if value:
             try:
@@ -440,10 +476,27 @@ class AuthSessionService:
                     {"_id": 0, "family_id": 1},
                 )
                 if session and session.get("family_id"):
-                    await self.revoke_family(
-                        session["family_id"],
-                        reason="logout",
-                    )
+                    family_id = session["family_id"]
+
+        if family_id is None:
+            payload = self.decode_access_for_logout(request.cookies.get(ACCESS_COOKIE))
+            if payload and not str(payload["sid"]).startswith("test:"):
+                session = await self.db.auth_sessions.find_one(
+                    {
+                        "id": str(payload["sid"]),
+                        "user_id": str(payload["sub"]),
+                        "auth_policy_version": AUTH_POLICY_VERSION,
+                    },
+                    {"_id": 0, "family_id": 1},
+                )
+                if session and session.get("family_id"):
+                    family_id = session["family_id"]
+
+        if family_id is not None:
+            await self.revoke_family(
+                family_id,
+                reason="logout",
+            )
         clear_auth_cookies(response)
 
     async def revoke_user_sessions(

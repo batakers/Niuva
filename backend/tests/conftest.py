@@ -6,6 +6,9 @@ import pytest
 
 os.environ.setdefault("NIUVA_TEST_BEARER_AUTH", "true")
 os.environ.setdefault("AUTH_COOKIE_SECURE", "false")
+os.environ["PUBLIC_SITE_URL"] = "https://testserver"
+os.environ["CORS_ORIGINS"] = "https://testserver"
+os.environ["AUTH_COOKIE_DOMAIN"] = ""
 
 # Bootstrap-style suites (test_auth_security, test_identity_foundation, ...)
 # register a stub motor module through sys.modules.setdefault so importing

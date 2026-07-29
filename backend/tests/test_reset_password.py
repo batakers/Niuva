@@ -29,7 +29,10 @@ sys.modules.setdefault("resend", resend_module)
 
 import emailer  # noqa: E402
 import server  # noqa: E402
+
 from tests.auth_support import AuthCollection  # noqa: E402
+
+ORIGIN = {"Origin": "https://testserver"}
 
 
 class FakeCollection:
@@ -234,7 +237,7 @@ def test_recovery_request_contract_origin_and_policy_routes(monkeypatch, tmp_pat
         with configured_runtime(monkeypatch, tmp_path, users) as (database, provider):
             transport = httpx.ASGITransport(app=server.app)
             async with httpx.AsyncClient(
-                transport=transport, base_url="http://testserver"
+                transport=transport, base_url="https://testserver"
             ) as api:
                 headers = {
                     "host": "attacker.example",
@@ -311,11 +314,12 @@ def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_to
         ):
             transport = httpx.ASGITransport(app=server.app)
             async with httpx.AsyncClient(
-                transport=transport, base_url="http://testserver"
+                transport=transport, base_url="https://testserver"
             ) as api:
                 login_before = await api.post(
                     "/api/auth/login",
                     json={"email": customer["email"], "password": "OldPassword123"},
+                    headers={"Origin": "https://accounts.niuva.example"},
                 )
                 assert login_before.status_code == 200
                 assert "token" not in login_before.json()
@@ -345,10 +349,12 @@ def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_to
                 old_login = await api.post(
                     "/api/auth/login",
                     json={"email": customer["email"], "password": "OldPassword123"},
+                    headers={"Origin": "https://accounts.niuva.example"},
                 )
                 new_login = await api.post(
                     "/api/auth/login",
                     json={"email": customer["email"], "password": new_password},
+                    headers={"Origin": "https://accounts.niuva.example"},
                 )
                 assert old_login.status_code == 401
                 assert new_login.status_code == 200
