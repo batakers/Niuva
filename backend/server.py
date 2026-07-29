@@ -1244,6 +1244,8 @@ async def my_orders(user: dict = Depends(get_current_user)):
 async def download_legacy_order_design_file(
     oid: str, user: dict = Depends(get_current_user)
 ):
+    if has_permission(user, "orders.read"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -1258,6 +1260,8 @@ async def download_legacy_order_design_file(
 
 @api.get("/orders/{oid}")
 async def get_order(oid: str, user: dict = Depends(get_current_user)):
+    if has_permission(user, "orders.read"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     order = await db.orders.find_one({"id": oid}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")

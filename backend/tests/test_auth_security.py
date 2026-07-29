@@ -1175,3 +1175,37 @@ async def run_superseded_role_cannot_obtain_a_session():
 
 def test_a_superseded_role_cannot_obtain_a_session():
     asyncio.run(run_superseded_role_cannot_obtain_a_session())
+
+
+def test_generic_customer_order_routes_deny_orders_read_before_lookup(monkeypatch):
+    class OrdersThatMustNotBeQueried:
+        async def find_one(self, *_args, **_kwargs):
+            raise AssertionError("Internal roles must be denied before order lookup")
+
+    monkeypatch.setattr(
+        server,
+        "db",
+        types.SimpleNamespace(orders=OrdersThatMustNotBeQueried()),
+    )
+    internal_user = {
+        "id": "order-admin-1",
+        "status": "active",
+        "roles": ["order_admin"],
+    }
+
+    async def run():
+        for handler in (
+            server.download_legacy_order_design_file,
+            server.get_order,
+        ):
+            try:
+                await handler("order-1", internal_user)
+            except server.HTTPException as error:
+                assert error.status_code == 403
+                assert error.detail == "Forbidden"
+            else:
+                raise AssertionError(
+                    "Internal role must not reach a customer order route"
+                )
+
+    asyncio.run(run())
