@@ -4,9 +4,9 @@ Status: **Context Only — audit, planning, and progress material; not
 implementation authority.**
 
 This directory preserves the production-readiness audit, its normalization,
-planning, assignment, and verification context. It does not authorize source
-changes, migrations, deployment, provider selection, production activation, or
-go-live.
+planning, assignment, and verification context. It is a readiness ledger, not
+the daily Delivery queue. It does not authorize source changes, migrations,
+deployment, provider selection, production activation, or go-live.
 
 The directory is listed in the [Document Register](../../context/DOCUMENT_REGISTER.md)
 only to make this non-authority boundary discoverable. Individual findings,
@@ -29,7 +29,7 @@ execution approval.
 | `FINDING_TRACEABILITY.md` | Mapping of audit finding IDs and normalization history. |
 | `REMEDIATION_PROGRESS.md` | Planning-progress handoff; progress is not completion or readiness evidence. |
 | `REMEDIATION_ROADMAP.md` | Dependency-ordered remediation planning based on a recorded audit snapshot. |
-| `TEAM_ASSIGNMENT.md` | AI-agent team task coordination and ownership context. |
+| `TEAM_ASSIGNMENT.md` | Active readiness traceability, shared-boundary risk map, and evidence context; use the team workflow for daily Delivery briefs. |
 | `VERIFICATION_MATRIX.md` | Planned verification controls and evidence expectations. |
 | `phases/README.md` | Convention for opening a separately authorized phase plan. |
 

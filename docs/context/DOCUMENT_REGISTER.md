@@ -174,7 +174,7 @@ This register does not upgrade the approval status of any source. Approval evide
 | `frontend/README.md` | Context Only | Create React App boilerplate | Tooling reference only | Basic script discovery, subject to `package.json` | Product architecture or current deployment truth |
 | `frontend/src/assets/brand/README.md` | Active Guardrail | Approved brand-asset directory usage | Local asset guardrail | Adding or referencing approved brand assets | Deciding brand identity or approval status |
 | `docs/archive/implementation-history/test_result.md` | Context Only | Archived legacy testing-agent protocol | No product authority; historical test-workflow evidence only | Understanding historical test workflow | Product, UX, or current verification requirements |
-| `docs/context/AI_AGENT_TEAM_WORKFLOW.md` | Context Only | Three-person AI-agent task, worktree, verification, and handover process | Process guidance only; no product, technical, or approval authority | Coordinating AI-assisted tasks and PR handoff | Product decisions, implementation authorization, provider selection, migration, production-readiness, or go-live |
+| `docs/context/AI_AGENT_TEAM_WORKFLOW.md` | Context Only | AI-agent delivery/readiness lanes, task briefs, worktrees, verification, and handover | Process guidance only; no product, technical, or approval authority | Coordinating AI-assisted tasks, safe parallel work, and PR handoff | Product decisions, implementation authorization, provider selection, migration, production-readiness, or go-live |
 
 ## Reading Order for AI Agents
 

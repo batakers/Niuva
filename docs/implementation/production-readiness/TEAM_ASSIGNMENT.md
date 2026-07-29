@@ -16,12 +16,27 @@ Owner has implementation/evidence responsibility only after authorization. Revie
 
 Task IDs reserve coordination work only, not a complete implementation plan: TASK-xx-01 is scope/handoff and TASK-xx-02 is independent verification/stopping-point.
 
+### Active operating use
+
+This register is a readiness traceability and shared-boundary risk map, not the
+daily task queue. Start ordinary authorized work from the compact Delivery
+brief in [`AI_AGENT_TEAM_WORKFLOW.md`](../../context/AI_AGENT_TEAM_WORKFLOW.md),
+then link a Phase or Finding ID only when it is relevant. Do not copy a whole
+subphase charter into each task.
+
+A blocked status prevents the affected readiness phase from exiting or
+supporting a readiness claim. It does not block a separately authorized task
+whose exact paths, contract, safety invariant, and verification are independent.
+Migration, shared authentication/transaction invariants, a shared API envelope,
+the same `frontend/src/App.js` change, and release-candidate evidence remain
+serial until their owner hands them over.
+
 ### Common file-safety rules
 
 | Code | Files/modules that must not be touched |
 | --- | --- |
 | NT-0 | User work and audit evidence outside this assignment: .coverage; docs/context/production-readiness-audit/**; docs/implementation/specs/active/2026-07-27-admin-auth-phase-1-implementation-authorization-packet.md. |
-| NT-1 | Another active phase's allocated source/test module; stop and request merge-order change rather than duplicate a competing edit. |
+| NT-1 | An active shared path, generated output, test helper, or safety invariant; lock exact paths and request a handoff or merge-order change rather than duplicate a competing edit. |
 | NT-2 | backend/migrations/**, dependency manifests/lockfiles, global configuration, CI workflow, canonical decisions, and runbooks unless expressly assigned and separately authorized. |
 | NT-3 | .env files, credentials, tokens, payment/storage provider adapters, production topology, shared/staging data, and release/go-live controls. |
 
@@ -123,9 +138,14 @@ This is a coordination charter, not a detailed implementation plan. Potential fi
 | PHASE-10D; TASK-10D-01; TASK-10D-02 | Verify exact artifact in approved production-like topology with readiness, headers, alerts, and capacity. Findings: OPS-003/004/007/009; SRE-001 to SRE-010 | Lead / Backend / Frontend. Depends: 10B/10C; DR-012/014 | Verification only. Migration: No unapproved migration. | Deployment evidence; health/probes; monitors/dashboards; browser smoke. No touch: NT-0 to NT-3; no production activation/go-live/secrets/provider activation | evidence/phase-10d-deployment-observability / niuva-phase-10d | Lead: integrated proof; Backend: health/observability; Frontend: client behavior. Accept: Exact artifact, redacted topology, alert delivery, and abort evidence. | M10-04; Large. Next: Complete staging-like topology and telemetry prerequisites. |
 | PHASE-10E; TASK-10E-01; TASK-10E-02 | Prepare separate readiness decision and controlled-rollout proposal. Findings: Residual P0/P1 and accepted risks | Lead / Backend / Frontend. Depends: 10A to 10D; DR-015 | Decision gate only. Migration: None. | Readiness decision record; rollout/abort communications plan. No touch: NT-0 to NT-3; no deploy/go-live/customer communication/implementation | plan/phase-10e-readiness-decision / niuva-phase-10e | Lead: evidence package; Backend/Frontend: challenge residual risk. Accept: Explicit production-readiness approval before separate go-live decision. | M10-05; Medium. Next: Do not schedule until all preceding evidence is current. |
 
-## File ownership table
+## Shared-boundary risk map
 
-A serial conflict means the listed phases must not be opened concurrently, even in separate worktrees.
+This table identifies known collision risks from the audit plan. It does not
+forbid all work in a listed phase from running in parallel. Before starting,
+convert a broad row into the exact paths and contract/invariant in the Delivery
+brief. Work is serial only where those exact boundaries overlap; migrations,
+the same shared API envelope, the same `App.js` edit, and final candidate
+evidence remain strict locks.
 
 | File/Module | Phase | Owner | Parallel Conflict |
 | --- | --- | --- | --- |
@@ -154,9 +174,12 @@ A serial conflict means the listed phases must not be opened concurrently, even 
 | Performance harnesses, frontend budgets, query/load fixtures | 08D | Frontend | Serial with 06D and 10B/10D evidence. |
 | Final candidate, verification, decision evidence | 09C, 10A to 10E | Lead | Strictly serial; do not mix evidence across SHAs. |
 
-## Dependency table
+## Readiness dependency table
 
-Parallel Safe With lists only pairs with no shared source or contract after prerequisites are met. None is deliberate: it prevents a false parallel claim.
+This table preserves readiness sequencing. `Parallel Safe With: None` means no
+pair was pre-reserved in the historical plan; it is not a blanket ban. A new
+Delivery pair is allowed when it meets the workflow's disjoint-path,
+frozen-contract, separate-invariant, and known-integration-order checks.
 
 | Phase | Depends On | Blocks | Parallel Safe With | Merge Order |
 | --- | --- | --- | --- | --- |
@@ -215,18 +238,18 @@ Complexity totals use Small = 1, Medium = 2, Large = 3. They include decision/en
 
 ## Parallel-work and integration rules
 
-- No implementation work is authorized now. Parallel pairs are future reservations and must be rechecked against the selected SHA and actual changed-file list before activation.
+- No source-changing readiness subphase is authorized by this register. A separately authorized Delivery task follows the team workflow and still needs its own authority, scope, and verification.
 - PHASE-00A and PHASE-00B may prepare separate non-secret evidence because neither changes source, tests, or a common document. PHASE-00B cannot close without its independent verifier.
-- PHASE-05A and PHASE-05C are the only planned source pair that may run in parallel, and only after owners lock disjoint files: Navbar/shared controls versus PrivacyPolicyPage. Neither may edit App, shared styles, or a common test helper.
+- PHASE-05A and PHASE-05C are a known disjoint source pair once owners lock Navbar/shared-control paths separately from PrivacyPolicyPage. Other pairs may proceed when they satisfy the same path, contract, invariant, and integration checks; neither task may edit App, shared styles, or a common test helper without a shared handoff.
 - Migration work (00C, 02A to 02C, 07C, 10C) is strictly sequential. It has one Backend owner and one evolving schema, ledger, and rollback contract.
-- API contract work (01A to 01C, 03A to 03C, 04A to 04C) is strictly sequential. Frontend starts only after the corresponding backend/contract boundary merges.
+- API contract definition is serial while semantics are unresolved. Once a small fixture, type, or interface freezes the contract, backend and frontend may implement in separate branches and verify against it; merge order remains producer before consumer integration.
 - frontend App is reserved serially for 04A, 04B, and 04C. Backend server and notification/readiness handlers are serial across 01B, 03B, 08A, and 08C.
-- A blocked phase may produce a decision/evidence packet only. It may not infer provider, Finance, topology, migration-target, telemetry, product-slice, or rollout authority.
-- After every source merge, Lead owns the integration gate: verify ancestry, re-run phase acceptance evidence on merged SHA, update REMEDIATION_PROGRESS.md, and release the next file lock.
+- A blocked readiness phase may produce a decision/evidence packet only. It may not infer provider, Finance, topology, migration-target, telemetry, product-slice, or rollout authority; independent Delivery work remains allowed where separately authorized.
+- Lead owns an integration gate after a shared contract, safety invariant, or readiness-evidence change. Ordinary isolated Delivery merges run their recorded checks and update the readiness tracker at the next relevant milestone.
 
 ## Readiness to create an implementation plan
 
-No source-changing subphase is currently ready for a full implementation plan. PHASE-00A is the first planning-ready phase, but it is a baseline decision and revalidation matrix, not an implementation plan. After DR-001 and DR-002, PHASE-00C may create a non-destructive migration-precondition packet; it still cannot authorize migration execution. Existing Admin-auth authorization packets remain bounded to their stated branch/scope and do not complete roadmap-wide PHASE-01A.
+No source-changing subphase is currently ready for a full implementation plan. PHASE-00A is the first planning-ready phase, but it is a baseline decision and revalidation matrix, not an implementation plan. After DR-001 and DR-002, PHASE-00C may create a non-destructive migration-precondition packet; it still cannot authorize migration execution. Existing Admin-auth authorization packets remain bounded to their stated branch/scope and do not complete roadmap-wide PHASE-01A. This status does not replace or revoke a separately recorded authorization for a different bounded Delivery task.
 
 ## Current blocked phases
 
