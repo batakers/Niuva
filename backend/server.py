@@ -18,7 +18,7 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import bcrypt
 import emailer
@@ -165,6 +165,17 @@ SAFE_FILE_CONTENT_TYPES = {
     "webp": "image/webp",
     "gif": "image/gif",
     "pdf": "application/pdf",
+}
+FILE_SIGNATURE_SAMPLE_SIZE = 4 * 1024
+FILE_SCOPE_PERMISSIONS = {
+    "admin_media": ("media.read",),
+    "order_design": ("orders.read", "design.read"),
+    "payment_proof": ("payments.read",),
+    "project_design": ("projects.read", "design.read"),
+    "project_file": ("projects.read",),
+    "production_file": ("production.read",),
+    "qc_evidence": ("qc.read",),
+    "fulfilment_evidence": ("fulfilment.read",),
 }
 
 ORDER_STATUSES = [
@@ -1031,8 +1042,9 @@ def safe_file_content_type(path: str) -> str:
     return SAFE_FILE_CONTENT_TYPES.get(ext, "application/octet-stream")
 
 
-def safe_original_filename(value: str | None) -> str:
-    candidate = (value or "upload.bin").replace("\\", "/").rsplit("/", 1)[-1]
+def safe_original_filename(value: object) -> str:
+    supplied = value if isinstance(value, str) else "upload.bin"
+    candidate = supplied.replace("\\", "/").rsplit("/", 1)[-1]
     candidate = "".join(
         character
         for character in candidate
@@ -1041,14 +1053,47 @@ def safe_original_filename(value: str | None) -> str:
     return candidate[:255] or "upload.bin"
 
 
+def validate_file_signature(data: bytes, extension: str, size: int) -> bool:
+    """Validate the bounded file prefix against the server-selected type."""
+
+    extension = extension.lower()
+    if extension == "png":
+        return data.startswith(b"\x89PNG\r\n\x1a\n")
+    if extension in {"jpg", "jpeg"}:
+        return data.startswith(b"\xff\xd8\xff")
+    if extension == "webp":
+        return len(data) >= 12 and data.startswith(b"RIFF") and data[8:12] == b"WEBP"
+    if extension == "gif":
+        return data.startswith((b"GIF87a", b"GIF89a"))
+    if extension == "pdf":
+        return data.startswith(b"%PDF-")
+    if extension == "stl":
+        stripped = data.lstrip()
+        if stripped.lower().startswith(b"solid"):
+            lowered = stripped.lower()
+            return b"\nfacet" in lowered or b"\nendsolid" in lowered
+        if len(data) < 84:
+            return False
+        triangle_count = int.from_bytes(data[80:84], "little")
+        return size == 84 + triangle_count * 50
+    if extension == "obj":
+        try:
+            prefix = data.decode("utf-8")
+        except UnicodeDecodeError:
+            return False
+        directives = ("v ", "vn ", "vt ", "f ", "o ", "g ", "s ", "mtllib ")
+        return any(
+            line.lstrip().startswith(directives)
+            for line in prefix.splitlines()
+            if line.strip()
+        )
+    return False
+
+
 def validate_image_signature(data: bytes, extension: str) -> bool:
-    signatures = {
-        "png": data.startswith(b"\x89PNG\r\n\x1a\n"),
-        "jpg": data.startswith(b"\xff\xd8\xff"),
-        "jpeg": data.startswith(b"\xff\xd8\xff"),
-        "webp": len(data) >= 12 and data.startswith(b"RIFF") and data[8:12] == b"WEBP",
-    }
-    return bool(signatures.get(extension, False))
+    """Compatibility wrapper for existing image-only callers and tests."""
+
+    return validate_file_signature(data, extension, len(data))
 
 
 async def store_upload(
@@ -1058,7 +1103,10 @@ async def store_upload(
     *,
     max_size: int = MAX_FILE_SIZE,
     require_image_signature: bool = False,
+    require_content_signature: bool = False,
 ) -> dict:
+    if isinstance(max_size, bool) or not isinstance(max_size, int) or max_size < 1:
+        raise HTTPException(status_code=500, detail="Invalid upload size policy")
     original_filename = safe_original_filename(file.filename)
     ext = (
         original_filename.rsplit(".", 1)[-1] if "." in original_filename else "bin"
@@ -1076,17 +1124,19 @@ async def store_upload(
             size += len(chunk)
             if size > max_size:
                 raise HTTPException(status_code=400, detail="File exceeds size limit")
-            if len(signature) < 16:
-                signature = (signature + chunk)[:16]
+            if len(signature) < FILE_SIGNATURE_SAMPLE_SIZE:
+                signature = (signature + chunk)[:FILE_SIGNATURE_SAMPLE_SIZE]
             spool.write(chunk)
         if size == 0:
             raise HTTPException(status_code=400, detail="File is empty")
-        if require_image_signature and not validate_image_signature(signature, ext):
+        if (
+            require_image_signature or require_content_signature
+        ) and not validate_file_signature(signature, ext, size):
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "code": "media_signature_invalid",
-                    "message": "Isi file tidak sesuai dengan format gambar.",
+                    "code": "file_signature_invalid",
+                    "message": "Isi file tidak sesuai dengan format yang diizinkan.",
                 },
             )
         path = f"{APP_NAME}/{prefix}/{uuid.uuid4()}.{ext}"
@@ -1744,7 +1794,7 @@ async def upload_admin_media(
         f"media/{uuid.uuid4()}",
         {"png", "jpg", "jpeg", "webp"},
         max_size=MAX_MEDIA_FILE_SIZE,
-        require_image_signature=True,
+        require_content_signature=True,
     )
     timestamp = now_iso()
     document = {
@@ -1753,18 +1803,35 @@ async def upload_admin_media(
         "owner_id": user["id"],
         "uploaded_by": user["id"],
         "purpose": "admin_media",
+        "object_type": "admin_media",
         "state": "active",
+        "validation_status": "passed",
+        "signature_validated": True,
+        "validated_at": timestamp,
         "created_at": timestamp,
         "updated_at": timestamp,
     }
     try:
         await db.file_objects.insert_one(dict(document))
-    except Exception:
+    except Exception as metadata_exc:
         try:
             storage.delete_object(metadata["storage_path"])
-        except storage.StorageError:
-            logger.exception("Unable to compensate failed media metadata write")
-        raise
+        except storage.StorageError as compensation_exc:
+            logger.exception("Unable to compensate failed file metadata write")
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "file_storage_compensation_failed",
+                    "message": "Penyimpanan file sementara tidak tersedia.",
+                },
+            ) from compensation_exc
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "file_metadata_unavailable",
+                "message": "Metadata file sementara tidak tersedia.",
+            },
+        ) from metadata_exc
     return document
 
 
@@ -1813,8 +1880,21 @@ async def download_public_media(file_id: str):
     reference = f"media:{file_id}"
     if not metadata or not await _public_media_is_published(reference):
         raise HTTPException(status_code=404, detail="Media not found")
+    storage_path = metadata.get("storage_path")
+    if (
+        not isinstance(storage_path, str)
+        or metadata.get("validation_status") != "passed"
+        or metadata.get("signature_validated") is not True
+    ):
+        raise HTTPException(status_code=404, detail="Media not found")
+    expected_content_type = safe_file_content_type(storage_path)
+    if (
+        expected_content_type not in {"image/png", "image/jpeg", "image/webp"}
+        or metadata.get("content_type") != expected_content_type
+    ):
+        raise HTTPException(status_code=404, detail="Media not found")
     try:
-        chunks, content_type, size = storage.stream_object(metadata["storage_path"])
+        chunks, content_type, size = storage.stream_object(storage_path)
     except (
         storage.InvalidStoragePathError,
         storage.StorageNotFoundError,
@@ -1829,7 +1909,7 @@ async def download_public_media(file_id: str):
         raise HTTPException(
             status_code=500, detail="Media storage unavailable"
         ) from exc
-    if content_type not in {"image/png", "image/jpeg", "image/webp"}:
+    if content_type != expected_content_type:
         raise HTTPException(status_code=404, detail="Media not found")
     return StreamingResponse(
         chunks,
@@ -1844,24 +1924,42 @@ async def download_public_media(file_id: str):
 
 
 # ----------------------------- File download -----------------------------
-@api.get("/files/{path:path}")
-async def download_file(path: str, user: dict = Depends(get_current_user)):
-    metadata = await db.file_objects.find_one(
-        {"storage_path": path},
-        {"_id": 0},
-    )
-    if not metadata or metadata.get("state") in {"deleted", "quarantined"}:
-        raise HTTPException(status_code=404, detail="File not found")
+def _file_scope_permissions(metadata: dict) -> tuple[str, ...]:
+    object_type = metadata.get("object_type") or metadata.get("purpose")
+    if isinstance(object_type, str):
+        permissions = FILE_SCOPE_PERMISSIONS.get(object_type)
+        if permissions:
+            return permissions
+    linked_type = metadata.get("linked_type")
+    if linked_type == "order":
+        return ("orders.read",)
+    if linked_type == "project":
+        return ("projects.read",)
+    return ()
+
+
+def _can_download_file(user: dict, metadata: dict) -> bool:
+    owner_id = metadata.get("owner_id")
     if (
-        not has_permission(user, "files.read")
-        and not has_permission(user, "media.read")
-        and metadata.get("owner_id") != user["id"]
+        not is_internal(user)
+        and isinstance(owner_id, str)
+        and owner_id == user.get("id")
     ):
-        raise HTTPException(status_code=403, detail="Forbidden")
+        return True
+    permissions = _file_scope_permissions(metadata)
+    return bool(permissions) and any(
+        has_permission(user, permission) for permission in permissions
+    )
+
+
+async def _stream_authorized_file(metadata: dict) -> StreamingResponse:
+    path = metadata.get("storage_path")
+    if not isinstance(path, str):
+        raise HTTPException(status_code=404, detail="File not found")
     try:
         chunks, _stored_content_type, size = storage.stream_object(path)
     except storage.InvalidStoragePathError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file path") from exc
+        raise HTTPException(status_code=404, detail="File not found") from exc
     except storage.StorageUnavailableError as exc:
         raise HTTPException(status_code=503, detail="File storage unavailable") from exc
     except storage.StorageNotFoundError as exc:
@@ -1869,15 +1967,45 @@ async def download_file(path: str, user: dict = Depends(get_current_user)):
     except storage.StorageError as exc:
         logger.exception("Unable to read stored file")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
+    filename = safe_original_filename(metadata.get("original_filename"))
     return StreamingResponse(
         chunks,
-        media_type=safe_file_content_type(metadata["storage_path"]),
+        media_type=safe_file_content_type(path),
         headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": (
+                "attachment; filename*=UTF-8''" + quote(filename, safe="")
+            ),
             "X-Content-Type-Options": "nosniff",
             "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
             "Content-Length": str(size),
         },
     )
+
+
+@api.get("/file-objects/{file_id}")
+async def download_file_object(
+    file_id: str,
+    user: dict = Depends(get_current_user),
+):
+    metadata = await db.file_objects.find_one(
+        {"id": file_id, "state": "active"},
+        {"_id": 0},
+    )
+    if not metadata or not _can_download_file(user, metadata):
+        raise HTTPException(status_code=404, detail="File not found")
+    return await _stream_authorized_file(metadata)
+
+
+@api.get("/files/{path:path}")
+async def download_file(path: str, user: dict = Depends(get_current_user)):
+    metadata = await db.file_objects.find_one(
+        {"storage_path": path, "state": "active"},
+        {"_id": 0},
+    )
+    if not metadata or not _can_download_file(user, metadata):
+        raise HTTPException(status_code=404, detail="File not found")
+    return await _stream_authorized_file(metadata)
 
 
 # ----------------------------- Contact -----------------------------

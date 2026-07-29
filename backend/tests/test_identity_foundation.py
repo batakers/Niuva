@@ -773,7 +773,7 @@ async def run_legacy_admin_route_permission_matrix():
             "/api/files/niuva/orders/customer-routes/private.stl",
             headers=bearer(customer_token),
         )
-        assert forbidden_file.status_code == 403
+        assert forbidden_file.status_code == 404
 
 
 def test_legacy_admin_routes_use_exact_backend_permissions():

@@ -4,10 +4,10 @@ Status: **Context Only — Active Audit Tracker — Not Implementation Authority
 Audit date: 24 July 2026
 Last updated: 30 July 2026
 Repository baseline at last update: `origin/main` at
-`7d8d5c90f6440f1276ee4b82c166258514a93cd1`; Quote-line verification ran on
-`fix/backend-quote-line-identity`
-Backend test baseline: 630 passed, 12 skipped, and 14 subtests passed; the full
-real replica-set suite passed 68 tests on the Quote-line working tree
+`850d11a5a297070e62e23db25120cd4ac79b663a`; Feature 2.4 verification ran on
+`fix/backend-file-security` before and after rebasing onto that baseline
+Backend test baseline: 635 passed, 12 skipped, and 14 subtests passed on the
+Feature 2.4 working tree
 
 ## 1. Purpose and Authority
 
@@ -621,24 +621,32 @@ Status vocabulary:
 ### BA-008 — File access, validation, and retention do not meet ADR-002
 
 - Severity: P1
-- Status: `partial`
-- Positive controls already present:
+- Status: `resolved_for_active_development_scope`; production gates remain
+  `blocked_by_decision`.
+- Current bounded controls:
   - storage default `disabled`;
   - local storage hanya diizinkan untuk development/demo/test;
   - path traversal validation tersedia;
   - production local storage ditolak.
-- Open gaps:
-  - customer ownership masih berdasarkan path segment;
-  - belum ada database-backed ownership;
-  - upload hanya memeriksa extension;
-  - seluruh upload dibaca sebelum 50 MB application-level check;
-  - belum ada actual MIME/signature validation;
+  - upload membaca bounded chunks, menerapkan application size limit, dan
+    memvalidasi signature untuk caller yang mengaktifkan content validation;
+  - metadata database memegang owner, domain/object type, validation, dan
+    active/deleted/quarantined state;
+  - download customer memerlukan exact owner; internal download memerlukan
+    domain permission dan tidak memperoleh owner bypass dari uploader identity;
+  - opaque file-object ID dan logical-path compatibility route memakai
+    authorization metadata yang sama;
+  - download memakai streaming, safe server-selected media type, attachment,
+    `nosniff`, restrictive CSP, dan private no-store;
+  - query-string `auth`, `token`, dan `access_token` tidak mengautentikasi file;
+  - partial storage/metadata failure dikompensasi dan error dinormalisasi.
+- Open production/operational gaps:
   - belum ada malware scan/quarantine;
-  - download membaca seluruh objek ke memory;
-  - retention loop hanya menulis `file.deleted=True`;
-  - objek tidak dihapus;
-  - download route tidak memeriksa `file.deleted`;
-  - payment-proof retention tidak ditangani oleh loop yang sama.
+  - provider, retention/quota, backup/restore, RPO/RTO, dan owner belum dipilih;
+  - historical validation/reconciliation evidence belum lengkap;
+  - logical-path compatibility belum dapat dipensiunkan sampai seluruh consumer
+    berpindah ke opaque ID atau domain route;
+  - payment-proof retention/custody tetap menunggu procedure terpisah.
 - Authority:
   - [`docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`](../decisions/architecture/ADR-002-production-file-storage-architecture.md)
 - Production upload remains blocked until ADR readiness gates are satisfied.
@@ -994,9 +1002,11 @@ Exit criteria:
 ### Phase 3 — File, CMS, and shared order/project foundation
 
 - [x] Implement database-backed file ownership.
-- [ ] Implement MIME/signature validation.
+- [x] Implement bounded MIME/signature validation untuk active development
+      upload; production scanner/provider gates tetap terbuka.
 - [ ] Implement malware scanning/quarantine boundary.
-- [ ] Implement streaming and bounded memory behavior.
+- [x] Implement streaming and bounded memory behavior untuk active development
+      adapter.
 - [x] Implement explicit deletion/quarantine state dan metadata/object
       reconciliation untuk adapter development.
 - [x] Implement CMS draft/review/preview/publish/schedule/version/rollback/archive.
@@ -1403,3 +1413,42 @@ Baseline: `origin/main` `7d8d5c90f6440f1276ee4b82c166258514a93cd1`.
 
 No historical-data mutation, inference, automatic backfill, migration,
 deployment, or go-live action was performed.
+
+### 29 July 2026 — Feature 2.4 file authorization and security remediation
+
+Baseline: `origin/main` `7d8d5c90f6440f1276ee4b82c166258514a93cd1`.
+
+- Local/CI uploads enforce bounded application size while reading; the adapter
+  also rejects invalid declared sizes and stops oversized/mismatched sources.
+- Explicit signature validators cover PNG, JPEG, WebP, GIF, PDF, ASCII/binary
+  STL, and OBJ for callers that enable validation.
+- Development media records validation evidence and public media fails closed
+  unless publication, state, signature, path type, metadata type, and stored
+  type agree.
+- Customer file access requires metadata ownership. Internal access requires
+  the file-domain permission; `files.read` alone and uploader identity do not
+  create a universal bypass.
+- Deleted, quarantined, pending, unknown, cross-owner, and cross-domain records
+  are hidden as `404`.
+- An opaque file-object-ID route was added. The retained logical-path route uses
+  the same database-backed policy.
+- Normal runtime authentication remains cookie-based. Query parameters named
+  `auth`, `token`, and `access_token` do not authenticate file downloads.
+- Controlled download headers force safe type handling, attachment,
+  `nosniff`, restrictive CSP, and private no-store.
+- Partial object/sidecar writes are removed. A failed metadata write compensates
+  the just-written development object; metadata and compensation failures
+  return normalized `503` responses.
+- Focused storage, identity/RBAC, legacy projection, and authorization matrix:
+  99 passed.
+- Full backend regression: 635 passed, 12 skipped, 14 subtests passed.
+- Dependency check/audit, compile, critical Flake8, focused storage MyPy,
+  Black, isort, and diff checks passed.
+
+BA-008 remains resolved only for the active development/CI scope. Malware
+scanning, production provider, retention/quota, backup/restore, RPO/RTO,
+operational owners, historical object reconciliation, compatibility-route
+retirement, deployment, and go-live remain open.
+
+No dependency, schema, migration, `.env`, provider, shared database, production
+data, deployment, commit, push, PR, or go-live state was changed.
