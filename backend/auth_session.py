@@ -116,6 +116,10 @@ class SessionStore(Protocol):
 
 
 T = TypeVar("T")
+AdminSessionEventWriter = Callable[
+    [Mapping[str, object], Mapping[str, object], object], Awaitable[None]
+]
+AdminSessionRevocationEventWriter = Callable[[str, str], Awaitable[None]]
 
 
 class TransactionGuard(Protocol):
@@ -142,6 +146,8 @@ class AdminSessionModule:
         transaction_guard: TransactionGuard,
         csrf_key: bytes,
         user_version_provider: UserVersionProvider | None = None,
+        event_writer: AdminSessionEventWriter | None = None,
+        revocation_event_writer: AdminSessionRevocationEventWriter | None = None,
         clock: Clock = lambda: datetime.now(timezone.utc),
         token_factory: TokenFactory = lambda: secrets.token_bytes(32),
     ):
@@ -151,6 +157,8 @@ class AdminSessionModule:
         self.transaction_guard = transaction_guard
         self.csrf_key = csrf_key
         self.user_version_provider = user_version_provider
+        self.event_writer = event_writer
+        self.revocation_event_writer = revocation_event_writer
         self.clock = clock
         self.token_factory = token_factory
 
@@ -186,6 +194,8 @@ class AdminSessionModule:
 
         async def create(session):
             await self.store.create(document, session=session)
+            if self.event_writer is not None:
+                await self.event_writer(user, document, session)
 
         await self.transaction_guard.run(
             create, operation_name="auth.admin_session.create"
@@ -289,6 +299,10 @@ class AdminSessionModule:
         )
         if outcome == "replay":
             await self.revoke_admin_session(record["id"], "session_secret_replay")
+            if self.revocation_event_writer is not None:
+                await self.revocation_event_writer(
+                    record["id"], "session_secret_replay"
+                )
             raise SessionReplayError()
         if outcome != "rotated" or record is None:
             raise SessionExpiredError()
@@ -310,9 +324,12 @@ class AdminSessionModule:
                 session=tx_session,
             )
 
-        return await self.transaction_guard.run(
+        changed = await self.transaction_guard.run(
             revoke, operation_name="auth.admin_session.revoke"
         )
+        if changed and self.revocation_event_writer is not None:
+            await self.revocation_event_writer(session_id, safe_reason)
+        return changed
 
     async def revoke_user_sessions(self, user_id: str, reason: str) -> int:
         if not isinstance(user_id, str) or not user_id:

@@ -118,10 +118,18 @@ def clear_auth_cookies(response: Response) -> None:
 
 
 class AuthSessionService:
-    def __init__(self, *, db, jwt_secret: str, jwt_algorithm: str):
+    def __init__(
+        self,
+        *,
+        db,
+        jwt_secret: str,
+        jwt_algorithm: str,
+        revocation_event_writer=None,
+    ):
         self.db = db
         self.jwt_secret = jwt_secret
         self.jwt_algorithm = jwt_algorithm
+        self.revocation_event_writer = revocation_event_writer
 
     def _encode_access(self, user: dict, session_id: str) -> str:
         now = utc_now()
@@ -461,6 +469,8 @@ class AuthSessionService:
                 }
             },
         )
+        if self.revocation_event_writer is not None:
+            await self.revocation_event_writer(family_id, reason)
 
     async def logout(self, request: Request, response: Response) -> None:
         family_id = None

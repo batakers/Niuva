@@ -81,6 +81,30 @@ def test_liveness_does_not_depend_on_transaction_capability():
     assert response.json() == {"status": "ok"}
 
 
+def test_enabled_auth_security_events_fail_readiness_without_key_and_migration(
+    monkeypatch,
+):
+    previous_service = server.app.state.auth_security_event_service
+    previous_status = server.app.state.auth_security_event_status
+    monkeypatch.setenv("AUTH_SECURITY_EVENTS_ENABLED", "true")
+    monkeypatch.delenv("AUTH_EVENT_HMAC_KEY", raising=False)
+    server.app.state.auth_security_event_service = None
+    try:
+        response = asyncio.run(get("/api/health/ready", available_capabilities()))
+        assert response.status_code == 503
+        capability = response.json()["capabilities"][
+            "authentication_security_events"
+        ]
+        assert capability == {
+            "status": "unavailable",
+            "required": True,
+            "migration_010": False,
+        }
+    finally:
+        server.app.state.auth_security_event_service = previous_service
+        server.app.state.auth_security_event_status = previous_status
+
+
 def test_readiness_reports_transaction_capability_when_available():
     response = asyncio.run(get("/api/health/ready", available_capabilities()))
     assert response.status_code == 200
@@ -124,6 +148,11 @@ def test_readiness_reports_transaction_capability_when_available():
             "email_delivery": {
                 "status": "inactive",
                 "required": False,
+            },
+            "authentication_security_events": {
+                "status": "ready",
+                "required": False,
+                "migration_010": False,
             },
         },
     }
@@ -172,6 +201,11 @@ def test_readiness_is_degraded_without_disabling_public_liveness():
             "email_delivery": {
                 "status": "inactive",
                 "required": False,
+            },
+            "authentication_security_events": {
+                "status": "ready",
+                "required": False,
+                "migration_010": False,
             },
         },
     }

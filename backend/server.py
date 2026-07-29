@@ -31,6 +31,12 @@ from auth_password import (
     build_password_module,
 )
 from auth_rate_limit import LoginRateLimiter, PublicRateLimiter
+from auth_security_events import (
+    AuthenticationSecurityEventService,
+    EventPseudonymizer,
+    MongoSecurityEventStore,
+    SecurityEventDependencyError,
+)
 from auth_recovery import (
     MongoRecoveryStore,
     PublicSiteOrigin,
@@ -217,6 +223,12 @@ app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
     get_database=lambda: db,
 )
 app.state.admin_session_module = None
+app.state.auth_security_event_service = None
+app.state.auth_security_event_status = {
+    "enabled": False,
+    "ready": False,
+    "last_error": None,
+}
 app.add_exception_handler(
     TransactionUnavailableError,
     transaction_unavailable_handler,
@@ -452,6 +464,49 @@ def _environment_flag(name: str) -> bool:
     return os.environ.get(name, "false").strip().lower() == "true"
 
 
+def get_auth_security_event_service():
+    if app.state.auth_security_event_service is not None:
+        return app.state.auth_security_event_service
+    if not _environment_flag("AUTH_SECURITY_EVENTS_ENABLED"):
+        return None
+    key = os.environ.get("AUTH_EVENT_HMAC_KEY", "").encode("utf-8")
+    key_version = os.environ.get("AUTH_EVENT_HMAC_KEY_VERSION", "v1")
+    service = AuthenticationSecurityEventService(
+        store=MongoSecurityEventStore(db.authentication_security_events),
+        pseudonymizer=EventPseudonymizer(key=key, key_version=key_version),
+    )
+    app.state.auth_security_event_status = {
+        "enabled": True,
+        "ready": True,
+        "last_error": None,
+    }
+    return service
+
+
+async def _emit_auth_security_event(*, required: bool = False, **event):
+    try:
+        service = get_auth_security_event_service()
+        if service is None:
+            return None
+        result = await service.emit(**event)
+        app.state.auth_security_event_status = {
+            "enabled": True,
+            "ready": True,
+            "last_error": None,
+        }
+        return result
+    except SecurityEventDependencyError:
+        app.state.auth_security_event_status = {
+            "enabled": _environment_flag("AUTH_SECURITY_EVENTS_ENABLED"),
+            "ready": False,
+            "last_error": "dependency_unavailable",
+        }
+        if required:
+            raise
+        logger.error("Authentication security-event dependency unavailable")
+        return None
+
+
 def get_password_module():
     configured_blocklist = os.environ.get("AUTH_PASSWORD_BLOCKLIST_PATH")
     blocklist_path = (
@@ -497,12 +552,30 @@ def _public_site_origin():
 
 
 def get_recovery_module():
+    event_service = get_auth_security_event_service()
+
+    async def write_completion_event(user, _completed_at, session):
+        if event_service is None:
+            return
+        await event_service.emit(
+            event_type="auth.reset_completed",
+            outcome="success",
+            reason_code="reset_completed",
+            subject_kind="known_user",
+            known_subject_id=user["id"],
+            surface="recovery",
+            session=session,
+        )
+
     return build_recovery_module(
         store=MongoRecoveryStore(db),
         transaction_guard=app.state.transaction_guard,
         passwords=get_password_module(),
         delivery=app.state.password_recovery_delivery,
         public_site_origin=_public_site_origin(),
+        completion_event_writer=(
+            write_completion_event if event_service is not None else None
+        ),
     )
 
 
@@ -546,11 +619,47 @@ def get_admin_session_module():
         )
         return user.get("token_version", 0) if user else None
 
+    event_service = get_auth_security_event_service()
+
+    async def write_login_event(user, document, session):
+        if event_service is None:
+            return
+        await event_service.emit(
+            event_type="auth.login_succeeded",
+            outcome="success",
+            reason_code="credentials_verified",
+            subject_kind="known_user",
+            known_subject_id=user["id"],
+            surface="admin",
+            session_ref=document["id"],
+            session=session,
+        )
+
+    async def write_revocation_event(session_ref, reason):
+        await _emit_auth_security_event(
+            event_type=(
+                "auth.session_replay_detected"
+                if reason == "session_secret_replay"
+                else "auth.session_revoked"
+            ),
+            outcome=("blocked" if reason == "session_secret_replay" else "success"),
+            reason_code=(
+                "session_replay"
+                if reason == "session_secret_replay"
+                else "session_revoked"
+            ),
+            subject_kind="system",
+            surface="admin",
+            session_ref=session_ref,
+        )
+
     return AdminSessionModule(
         store=MongoSessionStore(db),
         transaction_guard=app.state.transaction_guard,
         csrf_key=csrf_key,
         user_version_provider=current_token_version,
+        event_writer=write_login_event if event_service is not None else None,
+        revocation_event_writer=write_revocation_event,
     )
 
 
@@ -1012,10 +1121,27 @@ async def register():
 
 
 def _session_service() -> AuthSessionService:
+    async def write_revocation_event(session_ref, reason):
+        await _emit_auth_security_event(
+            event_type=(
+                "auth.session_replay_detected"
+                if reason == "refresh_replay"
+                else "auth.session_revoked"
+            ),
+            outcome="blocked" if reason == "refresh_replay" else "success",
+            reason_code=(
+                "session_replay" if reason == "refresh_replay" else "session_revoked"
+            ),
+            subject_kind="system",
+            surface="customer",
+            session_ref=session_ref,
+        )
+
     return AuthSessionService(
         db=db,
         jwt_secret=JWT_SECRET,
         jwt_algorithm=JWT_ALGO,
+        revocation_event_writer=write_revocation_event,
     )
 
 
@@ -1036,15 +1162,59 @@ async def _perform_login(
     account = req.email.lower()
     peer_ip = client_ip(request)
     limiter = _login_limiter()
-    await limiter.enforce(account=account, peer_ip=peer_ip)
+    try:
+        await limiter.enforce(account=account, peer_ip=peer_ip)
+    except HTTPException as exc:
+        if exc.status_code == 429:
+            await _emit_auth_security_event(
+                event_type="auth.login_blocked",
+                outcome="blocked",
+                reason_code="rate_limit_exceeded",
+                subject_kind="unknown_identifier",
+                unknown_identifier=account,
+                surface=surface,
+                peer_identifier=peer_ip,
+            )
+        raise
     try:
         user = await authenticate_credentials(req, surface=surface)
     except HTTPException as exc:
         if exc.status_code == 401:
-            await limiter.record_failure(account=account, peer_ip=peer_ip)
+            try:
+                await limiter.record_failure(account=account, peer_ip=peer_ip)
+            except HTTPException as limited:
+                if limited.status_code == 429:
+                    await _emit_auth_security_event(
+                        event_type="auth.login_blocked",
+                        outcome="blocked",
+                        reason_code="rate_limit_exceeded",
+                        subject_kind="unknown_identifier",
+                        unknown_identifier=account,
+                        surface=surface,
+                        peer_identifier=peer_ip,
+                    )
+                raise
+            await _emit_auth_security_event(
+                event_type="auth.login_failed",
+                outcome="denied",
+                reason_code="credentials_invalid",
+                subject_kind="unknown_identifier",
+                unknown_identifier=account,
+                surface=surface,
+                peer_identifier=peer_ip,
+            )
         raise
     await limiter.clear_account(account=account)
     await _session_service().issue(user, response)
+    await _emit_auth_security_event(
+        event_type="auth.login_succeeded",
+        outcome="success",
+        reason_code="credentials_verified",
+        subject_kind="known_user",
+        known_subject_id=user["id"],
+        surface="customer",
+        peer_identifier=peer_ip,
+    )
     return {"user": safe_user(user)}
 
 
@@ -1065,19 +1235,60 @@ async def admin_login(req: AdminLoginReq, request: Request):
     account = req.email.lower()
     peer_ip = client_ip(request)
     limiter = _login_limiter()
-    await limiter.enforce(account=account, peer_ip=peer_ip)
+    try:
+        await limiter.enforce(account=account, peer_ip=peer_ip)
+    except HTTPException as exc:
+        if exc.status_code == 429:
+            await _emit_auth_security_event(
+                event_type="auth.login_blocked",
+                outcome="blocked",
+                reason_code="rate_limit_exceeded",
+                subject_kind="unknown_identifier",
+                unknown_identifier=account,
+                surface="admin",
+                peer_identifier=peer_ip,
+            )
+        raise
     try:
         user = await authenticate_credentials(req, surface="staff")
     except HTTPException as exc:
         if exc.status_code == 401:
-            await limiter.record_failure(account=account, peer_ip=peer_ip)
+            try:
+                await limiter.record_failure(account=account, peer_ip=peer_ip)
+            except HTTPException as limited:
+                if limited.status_code == 429:
+                    await _emit_auth_security_event(
+                        event_type="auth.login_blocked",
+                        outcome="blocked",
+                        reason_code="rate_limit_exceeded",
+                        subject_kind="unknown_identifier",
+                        unknown_identifier=account,
+                        surface="admin",
+                        peer_identifier=peer_ip,
+                    )
+                raise
+            await _emit_auth_security_event(
+                event_type="auth.login_failed",
+                outcome="denied",
+                reason_code="credentials_invalid",
+                subject_kind="unknown_identifier",
+                unknown_identifier=account,
+                surface="admin",
+                peer_identifier=peer_ip,
+            )
         raise
     await limiter.clear_account(account=account)
-    grant = await get_admin_session_module().create_admin_session(
-        user,
-        req.remember_me,
-        {},
-    )
+    try:
+        grant = await get_admin_session_module().create_admin_session(
+            user,
+            req.remember_me,
+            {},
+        )
+    except SecurityEventDependencyError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "admin_authentication_unavailable"},
+        ) from exc
     return _admin_session_response(user, grant)
 
 
@@ -1165,10 +1376,20 @@ async def forgot_password(req: ForgotPasswordReq, request: Request):
     await rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
     await rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
 
-    return await get_recovery_module().request_password_reset(
+    result = await get_recovery_module().request_password_reset(
         req.email.lower(),
         {"client_ip": client_host},
     )
+    await _emit_auth_security_event(
+        event_type="auth.reset_requested",
+        outcome="success",
+        reason_code="reset_processed",
+        subject_kind="unknown_identifier",
+        unknown_identifier=req.email,
+        surface="recovery",
+        peer_identifier=client_host,
+    )
+    return result
 
 
 @api.get("/auth/password-policy")
@@ -1187,10 +1408,16 @@ async def validate_reset_password(req: ValidatePasswordResetReq):
 
 @api.post("/auth/reset-password")
 async def reset_password(req: ResetPasswordReq):
-    result = await get_recovery_module().complete_password_reset(
-        req.token,
-        req.new_password,
-    )
+    try:
+        result = await get_recovery_module().complete_password_reset(
+            req.token,
+            req.new_password,
+        )
+    except SecurityEventDependencyError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "password_recovery_unavailable"},
+        ) from exc
     if not result.ok:
         raise HTTPException(
             status_code=400,
@@ -2265,12 +2492,29 @@ async def health_ready():
         os.environ.get("EMAIL_DELIVERY_REQUIRED", "false").lower() == "true"
     )
     email_ready = bool(not email_required or emailer.RESEND_API_KEY)
+    auth_events_required = _environment_flag("AUTH_SECURITY_EVENTS_ENABLED")
+    auth_events_ready = not auth_events_required
+    auth_event_marker = False
+    if auth_events_required and database_available:
+        try:
+            get_auth_security_event_service()
+            marker = await db.migration_state.find_one(
+                {"_id": "010_auth_security_events"},
+                {"_id": 1},
+            )
+            auth_event_marker = marker is not None
+            auth_events_ready = bool(
+                app.state.auth_security_event_status.get("ready") and auth_event_marker
+            )
+        except Exception:
+            auth_events_ready = False
     ready = bool(
         database_available
         and capabilities.transactions
         and schema_status.get("ready")
         and worker_ready
         and email_ready
+        and auth_events_ready
     )
     payload = {
         "status": "ready" if ready else "not_ready",
@@ -2293,6 +2537,11 @@ async def health_ready():
             "email_delivery": {
                 "status": ("ready" if emailer.RESEND_API_KEY else "inactive"),
                 "required": email_required,
+            },
+            "authentication_security_events": {
+                "status": "ready" if auth_events_ready else "unavailable",
+                "required": auth_events_required,
+                "migration_010": auth_event_marker,
             },
         },
     }

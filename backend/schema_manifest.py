@@ -7,6 +7,7 @@ from catalog_inventory_indexes import INDEX_DECLARATIONS as CATALOG_INDEX_DECLAR
 MIGRATION_007_VERSION = "007_security_publication_schema"
 AUTH_RECOVERY_MIGRATION_VERSION = "008_auth_recovery_safety"
 ADMIN_SESSION_MIGRATION_VERSION = "009_admin_session_safety"
+AUTH_SECURITY_EVENT_MIGRATION_VERSION = "010_auth_security_events"
 REQUIRED_SCHEMA_VERSIONS = (
     MIGRATION_007_VERSION,
     AUTH_RECOVERY_MIGRATION_VERSION,
@@ -454,6 +455,51 @@ ADMIN_SESSION_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
         "collection": "admin_sessions",
         "keys": "absolute_expires_at",
         "options": {"name": "admin_session_absolute_retention"},
+    },
+)
+
+# Migration 010 remains staged and is intentionally excluded from
+# REQUIRED_SCHEMA_VERSIONS/INDEX_DECLARATIONS until isolated rehearsal and
+# activation are separately approved.
+AUTH_SECURITY_EVENT_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
+    {
+        "collection": "authentication_security_events",
+        "keys": "id",
+        "options": {
+            "name": "unique_auth_security_event_id",
+            "unique": True,
+        },
+    },
+    {
+        "collection": "authentication_security_events",
+        "keys": [("event_type", 1), ("occurred_at", -1)],
+        "options": {"name": "auth_security_event_type_time"},
+    },
+    {
+        "collection": "authentication_security_events",
+        "keys": [("subject_ref", 1), ("occurred_at", -1)],
+        "options": {"name": "auth_security_event_subject_time"},
+    },
+    {
+        "collection": "authentication_security_events",
+        "keys": "expires_at",
+        "options": {
+            "name": "ttl_auth_security_event_expiry",
+            "expireAfterSeconds": 0,
+        },
+    },
+    {
+        "collection": "authentication_security_alert_outbox",
+        "keys": "fingerprint",
+        "options": {
+            "name": "unique_auth_security_alert_fingerprint",
+            "unique": True,
+        },
+    },
+    {
+        "collection": "authentication_security_alert_outbox",
+        "keys": [("status", 1), ("next_attempt_at", 1)],
+        "options": {"name": "auth_security_alert_delivery_due"},
     },
 )
 

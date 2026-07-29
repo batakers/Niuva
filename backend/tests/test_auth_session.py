@@ -124,12 +124,13 @@ class AtomicGuard:
                 raise
 
 
-def subject():
+def subject(*, revocation_event_writer=None):
     clock, tokens, store = Clock(), Tokens(), MemoryStore()
     module = AdminSessionModule(
         store=store,
         transaction_guard=AtomicGuard(store),
         csrf_key=b"k" * 32,
+        revocation_event_writer=revocation_event_writer,
         clock=clock,
         token_factory=tokens,
     )
@@ -173,6 +174,42 @@ def test_storage_contains_hashes_only_and_token_version_snapshot():
     assert row["token_version"] == 7
     assert "ip" not in serialized
     assert len(grant.access_secret) >= 43 and len(grant.session_secret) >= 43
+
+
+def test_login_event_writer_shares_transaction_and_failure_rolls_back_session():
+    clock, tokens, store = Clock(), Tokens(), MemoryStore()
+    observed = []
+
+    async def writer(user, document, session):
+        observed.append((user["id"], document["id"], session))
+
+    module = AdminSessionModule(
+        store=store,
+        transaction_guard=AtomicGuard(store),
+        csrf_key=b"k" * 32,
+        event_writer=writer,
+        clock=clock,
+        token_factory=tokens,
+    )
+    grant = create(module)
+    assert observed[0][0:2] == (USER["id"], grant.session_id)
+    assert observed[0][2] is not None
+
+    async def failing_writer(_user, _document, _session):
+        raise RuntimeError("event persistence unavailable")
+
+    failing = AdminSessionModule(
+        store=store,
+        transaction_guard=AtomicGuard(store),
+        csrf_key=b"k" * 32,
+        event_writer=failing_writer,
+        clock=clock,
+        token_factory=tokens,
+    )
+    before = copy.deepcopy(store.records)
+    with pytest.raises(RuntimeError, match="event persistence unavailable"):
+        create(failing)
+    assert store.records == before
 
 
 def test_cookie_contract_is_secure_host_only_and_remember_controls_persistence():
@@ -253,7 +290,12 @@ def test_rotation_replaces_all_browser_material_without_extending_absolute():
 
 
 def test_replayed_rotated_secret_revokes_the_family_with_generic_public_code():
-    module, store, _clock = subject()
+    events = []
+
+    async def writer(session_id, reason):
+        events.append((session_id, reason))
+
+    module, store, _clock = subject(revocation_event_writer=writer)
     first = create(module)
     second = run(
         module.rotate_admin_session(
@@ -269,6 +311,7 @@ def test_replayed_rotated_secret_revokes_the_family_with_generic_public_code():
         )
     assert error.value.code == "admin_session_expired"
     assert store.records[0]["revocation_reason"] == "session_secret_replay"
+    assert events == [(first.session_id, "session_secret_replay")]
     with pytest.raises(SessionExpiredError):
         run(
             module.authenticate_admin_session(
@@ -360,7 +403,12 @@ def test_invalid_csrf_does_not_extend_idle_timeout():
 
 
 def test_revoke_one_and_revoke_user_invalidate_server_state():
-    module, store, _clock = subject()
+    events = []
+
+    async def writer(session_id, reason):
+        events.append((session_id, reason))
+
+    module, store, _clock = subject(revocation_event_writer=writer)
     first = create(module)
     second = create(module, remember=True)
 
@@ -370,6 +418,7 @@ def test_revoke_one_and_revoke_user_invalidate_server_state():
         "logout",
         "password_reset",
     }
+    assert events == [(first.session_id, "logout")]
     for grant in (first, second):
         with pytest.raises(SessionExpiredError):
             run(

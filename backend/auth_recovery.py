@@ -156,6 +156,9 @@ class TransactionGuard(Protocol):
 EligibilityPolicy = Callable[[Mapping[str, object]], bool]
 Clock = Callable[[], datetime]
 TokenFactory = Callable[[], str]
+RecoveryCompletionEventWriter = Callable[
+    [Mapping[str, object], datetime, object], Awaitable[None]
+]
 
 
 class AuthRecovery:
@@ -170,6 +173,7 @@ class AuthRecovery:
         eligibility: EligibilityPolicy,
         clock: Clock,
         token_factory: TokenFactory,
+        completion_event_writer: RecoveryCompletionEventWriter | None = None,
     ):
         self.store = store
         self.transaction_guard = transaction_guard
@@ -179,6 +183,7 @@ class AuthRecovery:
         self.eligibility = eligibility
         self.clock = clock
         self.token_factory = token_factory
+        self.completion_event_writer = completion_event_writer
 
     async def request_password_reset(
         self,
@@ -310,6 +315,8 @@ class AuthRecovery:
             )
             if not changed:
                 return _invalid_completion(), None
+            if self.completion_event_writer is not None:
+                await self.completion_event_writer(user, now, session)
             return (
                 PasswordResetCompletion(
                     ok=True,
@@ -496,6 +503,7 @@ def build_recovery_module(
     eligibility: EligibilityPolicy = default_recovery_eligibility,
     clock: Clock = lambda: datetime.now(timezone.utc),
     token_factory: TokenFactory = lambda: secrets.token_urlsafe(32),
+    completion_event_writer: RecoveryCompletionEventWriter | None = None,
 ) -> AuthRecovery:
     return AuthRecovery(
         store=store,
@@ -506,6 +514,7 @@ def build_recovery_module(
         eligibility=eligibility,
         clock=clock,
         token_factory=token_factory,
+        completion_event_writer=completion_event_writer,
     )
 
 

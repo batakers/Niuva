@@ -42,6 +42,15 @@ class AuthDatabase:
         self.login_rate_limits = AuthCollection()
 
 
+class CapturingSecurityEvents:
+    def __init__(self):
+        self.events = []
+
+    async def emit(self, **event):
+        self.events.append(event)
+        return event
+
+
 def customer():
     return {
         "id": "customer-cookie-1",
@@ -194,6 +203,56 @@ async def run_login_failure_limiter_contract():
 
 def test_login_failure_limiter_is_atomic_and_returns_retry_after():
     asyncio.run(run_login_failure_limiter_contract())
+
+
+async def run_customer_login_security_event_contract():
+    original_db = server.db
+    original_events = server.app.state.auth_security_event_service
+    events = CapturingSecurityEvents()
+    server.db = AuthDatabase([customer()])
+    server.app.state.auth_security_event_service = events
+    try:
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="https://testserver",
+        ) as api:
+            failed = await api.post(
+                "/api/auth/login",
+                json={
+                    "email": customer()["email"],
+                    "password": "WrongPassword123",
+                },
+                headers=ORIGIN,
+            )
+            succeeded = await api.post(
+                "/api/auth/login",
+                json={
+                    "email": customer()["email"],
+                    "password": "CookiePassword123",
+                },
+                headers=ORIGIN,
+            )
+            assert failed.status_code == 401
+            assert succeeded.status_code == 200
+            assert [event["event_type"] for event in events.events] == [
+                "auth.login_failed",
+                "auth.login_succeeded",
+            ]
+            failure = events.events[0]
+            assert failure["subject_kind"] == "unknown_identifier"
+            assert failure["unknown_identifier"] == customer()["email"]
+            assert "password" not in failure
+            success = events.events[1]
+            assert success["known_subject_id"] == customer()["id"]
+            assert "unknown_identifier" not in success
+    finally:
+        server.app.state.auth_security_event_service = original_events
+        server.db = original_db
+
+
+def test_customer_login_emits_classified_events_without_credentials():
+    asyncio.run(run_customer_login_security_event_contract())
 
 
 async def run_logout_fallback_contract(refresh_value):

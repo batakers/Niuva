@@ -165,7 +165,14 @@ class CapturingDelivery:
         self.changed_messages.append({"email": email})
 
 
-def build_subject(tmp_path, *, delivery=None, unavailable=False, origin=None):
+def build_subject(
+    tmp_path,
+    *,
+    delivery=None,
+    unavailable=False,
+    origin=None,
+    completion_event_writer=None,
+):
     blocklist = tmp_path / "blocked.txt"
     blocklist.write_text("known compromised phrase\n", encoding="utf-8")
     passwords = build_password_module(
@@ -182,6 +189,7 @@ def build_subject(tmp_path, *, delivery=None, unavailable=False, origin=None):
         delivery=delivery,
         public_site_origin=origin or PublicSiteOrigin.parse("https://niuva.com"),
         clock=lambda: NOW,
+        completion_event_writer=completion_event_writer,
     )
     return recovery, store, delivery
 
@@ -306,6 +314,46 @@ def test_successful_completion_is_atomic_revokes_sessions_and_returns_no_login_t
     assert store.users["active-admin"]["token_version"] == original_version + 1
     assert not any(token["active"] for token in store.tokens)
     assert delivery.changed_messages == [{"email": "admin@niuva.com"}]
+
+
+def test_completion_event_writer_shares_transaction_and_failure_rolls_back(tmp_path):
+    observed = []
+
+    async def writer(user, completed_at, session):
+        observed.append((user["id"], completed_at, session))
+
+    recovery, store, delivery = build_subject(
+        tmp_path,
+        completion_event_writer=writer,
+    )
+    request(recovery, "admin@niuva.com")
+    result = asyncio.run(
+        recovery.complete_password_reset(
+            raw_token_from(delivery),
+            "a fresh unique password",
+        )
+    )
+    assert result.ok is True
+    assert observed[0][0:2] == ("active-admin", NOW)
+    assert observed[0][2] is not None
+
+    async def failing_writer(_user, _completed_at, _session):
+        raise RuntimeError("event persistence unavailable")
+
+    recovery, store, delivery = build_subject(
+        tmp_path,
+        completion_event_writer=failing_writer,
+    )
+    request(recovery, "admin@niuva.com")
+    token = raw_token_from(delivery)
+    users_before = copy.deepcopy(store.users)
+    tokens_before = copy.deepcopy(store.tokens)
+    with pytest.raises(RuntimeError, match="event persistence unavailable"):
+        asyncio.run(
+            recovery.complete_password_reset(token, "a fresh unique password")
+        )
+    assert store.users == users_before
+    assert store.tokens == tokens_before
 
 
 def test_post_reset_notification_failure_does_not_rollback_completion(tmp_path):
