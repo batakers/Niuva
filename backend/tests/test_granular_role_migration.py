@@ -15,7 +15,6 @@ from backend.tests.test_identity_access_migration import (
 )
 from permissions import ROLE_POLICY_VERSION, canonical_roles
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_PATH = ROOT / "backend" / "migrations" / "006_granular_role_policy.py"
 
@@ -93,6 +92,7 @@ def test_dry_run_is_read_only_and_reports_reviewed_and_blocked_accounts(tmp_path
         migration.run(
             database,
             reviewed_mapping=reviewed_mapping(),
+            bootstrap_owner_id="bootstrap-owner",
             backup_path=tmp_path / "identity-backup.json",
         )
     )
@@ -121,6 +121,7 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
                 database,
                 apply=True,
                 reviewed_mapping=reviewed_mapping(),
+                bootstrap_owner_id="bootstrap-owner",
                 guard=guard,
             )
         )
@@ -130,6 +131,7 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
             database,
             apply=True,
             reviewed_mapping=reviewed_mapping(),
+            bootstrap_owner_id="bootstrap-owner",
             backup_path=backup_path,
             guard=guard,
         )
@@ -145,14 +147,12 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
     )
     assert canonical_roles(by_id["aggregate-commercial"]) == ("finance",)
     assert by_id["legacy-granular-marker"]["roles"] == []
-    assert (
-        by_id["legacy-granular-marker"]["access_state"]
-        == "access_review_required"
-    )
+    assert by_id["legacy-granular-marker"]["access_state"] == "access_review_required"
     assert len(database.audit_events.items) == 4
 
     backup = json.loads(backup_path.read_text(encoding="utf-8"))
     assert backup["migration"] == "006_granular_role_policy"
+    assert backup["bootstrap_owner_id"] == "bootstrap-owner"
     assert len(backup["accounts"]) == 4
     assert all("password_hash" not in record for record in backup["accounts"])
 
@@ -161,6 +161,7 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
             database,
             apply=True,
             reviewed_mapping=reviewed_mapping(),
+            bootstrap_owner_id="bootstrap-owner",
             backup_path=backup_path,
             guard=guard,
         )
@@ -172,15 +173,16 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
         migration.run(
             database,
             rollback=True,
+            bootstrap_owner_id="bootstrap-owner",
             backup_path=backup_path,
             guard=guard,
         )
     )
     restored = {record["id"]: record for record in database.users.items}
     original_by_id = {record["id"]: record for record in original}
-    assert rolled_back["restored"] == 4
+    assert rolled_back["restored"] == 3
+    assert rolled_back["bootstrap_owner_preserved"] == 1
     for user_id in (
-        "bootstrap-owner",
         "aggregate-operations",
         "aggregate-commercial",
         "legacy-granular-marker",
@@ -188,6 +190,105 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
         for field in migration.MUTATED_FIELDS:
             assert restored[user_id].get(field) == original_by_id[user_id].get(field)
     assert canonical_roles(restored["aggregate-operations"]) == ()
+    assert canonical_roles(restored["bootstrap-owner"]) == ("super_admin",)
+
+
+def test_apply_requires_one_explicit_eligible_bootstrap_owner(tmp_path):
+    migration = load_migration()
+    database = fake_database(
+        source_users()
+        + [
+            user(
+                "other-historical-owner",
+                roles=["super_admin"],
+                role_policy_version="2026-07-22-v1",
+            )
+        ]
+    )
+    guard = RecordingGuard(database)
+
+    for bootstrap_owner_id, message in (
+        (None, "required"),
+        ("unknown-owner", "known user"),
+        ("customer", "customer"),
+        ("aggregate-operations", "Super Admin candidate"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            asyncio.run(
+                migration.run(
+                    database,
+                    apply=True,
+                    reviewed_mapping=reviewed_mapping(),
+                    bootstrap_owner_id=bootstrap_owner_id,
+                    backup_path=tmp_path / f"{bootstrap_owner_id}.json",
+                    guard=guard,
+                )
+            )
+
+    report = asyncio.run(
+        migration.run(
+            database,
+            reviewed_mapping=reviewed_mapping(),
+            bootstrap_owner_id="bootstrap-owner",
+        )
+    )
+    assert report["categories"] == {
+        "bootstrap_super_admin_preserved": 1,
+        "reviewed_mapping_applied": 2,
+        "access_review_required": 2,
+    }
+    assert guard.calls == []
+
+    applied = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            reviewed_mapping=reviewed_mapping(),
+            bootstrap_owner_id="bootstrap-owner",
+            backup_path=tmp_path / "selected-owner.json",
+            guard=guard,
+        )
+    )
+    by_id = {record["id"]: record for record in database.users.items}
+    assert applied["updated"] == 5
+    assert canonical_roles(by_id["bootstrap-owner"]) == ("super_admin",)
+    assert canonical_roles(by_id["other-historical-owner"]) == ()
+    assert by_id["other-historical-owner"]["access_state"] == "access_review_required"
+
+
+def test_rollback_rejects_concurrent_identity_change_atomically(tmp_path):
+    migration = load_migration()
+    database = fake_database(source_users())
+    guard = RecordingGuard(database)
+    backup_path = tmp_path / "identity-backup.json"
+    asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            reviewed_mapping=reviewed_mapping(),
+            bootstrap_owner_id="bootstrap-owner",
+            backup_path=backup_path,
+            guard=guard,
+        )
+    )
+    changed = next(
+        item for item in database.users.items if item["id"] == "aggregate-commercial"
+    )
+    changed["version"] += 1
+    before = json.loads(json.dumps(database.users.items))
+
+    with pytest.raises(RuntimeError, match="Concurrent identity change"):
+        asyncio.run(
+            migration.run(
+                database,
+                rollback=True,
+                bootstrap_owner_id="bootstrap-owner",
+                backup_path=backup_path,
+                guard=guard,
+            )
+        )
+
+    assert database.users.items == before
 
 
 def test_invalid_or_unreviewed_mapping_fails_before_any_write(tmp_path):
@@ -206,6 +307,7 @@ def test_invalid_or_unreviewed_mapping_fails_before_any_write(tmp_path):
                         "reason": "Invalid mapping target",
                     }
                 },
+                bootstrap_owner_id="bootstrap-owner",
                 backup_path=tmp_path / "backup.json",
                 guard=guard,
             )
@@ -222,6 +324,7 @@ def test_invalid_or_unreviewed_mapping_fails_before_any_write(tmp_path):
                         "reason": "Invalid customer elevation",
                     }
                 },
+                bootstrap_owner_id="bootstrap-owner",
                 backup_path=tmp_path / "backup.json",
                 guard=guard,
             )
@@ -285,6 +388,7 @@ def test_real_replica_set_applies_and_rolls_back_granular_roles_atomically(
                         "reason": "Reviewed real transaction assignment",
                     }
                 },
+                bootstrap_owner_id="real-owner",
                 backup_path=backup_path,
                 guard=guard,
             )
@@ -297,6 +401,7 @@ def test_real_replica_set_applies_and_rolls_back_granular_roles_atomically(
                 database,
                 apply=True,
                 reviewed_mapping={},
+                bootstrap_owner_id="real-owner",
                 backup_path=backup_path,
                 guard=guard,
             )
@@ -305,13 +410,15 @@ def test_real_replica_set_applies_and_rolls_back_granular_roles_atomically(
             rolled_back = await migration.run(
                 database,
                 rollback=True,
+                bootstrap_owner_id="real-owner",
                 backup_path=backup_path,
                 guard=guard,
             )
-            assert rolled_back["restored"] == 2
+            assert rolled_back["restored"] == 1
+            assert rolled_back["bootstrap_owner_preserved"] == 1
             restored = await database.users.find_one({"id": "real-operations"})
             assert canonical_roles(restored) == ()
-            assert await database.audit_events.count_documents({}) == 4
+            assert await database.audit_events.count_documents({}) == 3
         finally:
             await client.drop_database(transaction_database_name)
             client.close()

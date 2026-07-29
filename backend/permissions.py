@@ -213,10 +213,12 @@ def validate_roles(roles: object) -> tuple[str, ...]:
 def canonical_roles(user: dict) -> tuple[str, ...]:
     """Resolve active, reviewed users without legacy internal fallback."""
     legacy_role = user.get("role")
-    if user.get("access_state", "approved") == "access_review_required":
-        return ()
     if user.get("status") != "active":
-        if user.get("status") is None and legacy_role == "client" and "roles" not in user:
+        if (
+            user.get("status") is None
+            and legacy_role == "client"
+            and "roles" not in user
+        ):
             return ("retail_customer",)
         return ()
 
@@ -227,10 +229,22 @@ def canonical_roles(user: dict) -> tuple[str, ...]:
             return ()
         if "roles" not in user:
             return ("retail_customer",)
+        return ()
 
     if "roles" not in user:
         return ()
-    return validate_roles(user["roles"])
+    roles = validate_roles(user["roles"])
+    if not roles:
+        return ()
+    if any(role in INTERNAL_ROLES for role in roles):
+        if (
+            user.get("access_state") != "approved"
+            or user.get("role_policy_version") != ROLE_POLICY_VERSION
+        ):
+            return ()
+    elif user.get("access_state") == "access_review_required":
+        return ()
+    return roles
 
 
 def permissions_for(user: dict) -> frozenset[str]:

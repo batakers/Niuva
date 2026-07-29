@@ -78,23 +78,67 @@ def _validate_mapping(accounts: list[dict], reviewed_mapping: dict | None) -> di
     unknown = sorted(set(mapping) - known_ids)
     if unknown:
         raise ValueError(f"Reviewed mapping contains unknown user ID: {unknown[0]}")
+    accounts_by_id = {account.get("id"): account for account in accounts}
+    customer_ids = sorted(
+        user_id for user_id in mapping if _is_customer(accounts_by_id[user_id])
+    )
+    if customer_ids:
+        raise ValueError(
+            f"Reviewed mapping targets a customer account: {customer_ids[0]}"
+        )
     return {user_id: _mapping_entry(entry) for user_id, entry in mapping.items()}
 
 
-def _plan(account: dict, mapping: dict) -> dict | None:
+def _validate_bootstrap_owner(
+    accounts: list[dict],
+    bootstrap_owner_id: str | None,
+    *,
+    required: bool,
+) -> str | None:
+    if bootstrap_owner_id is None:
+        if required:
+            raise ValueError("bootstrap_owner_id is required")
+        return None
+    if not isinstance(bootstrap_owner_id, str) or not bootstrap_owner_id.strip():
+        raise ValueError("bootstrap_owner_id must be an opaque user ID")
+    bootstrap_owner_id = bootstrap_owner_id.strip()
+    account = next(
+        (item for item in accounts if item.get("id") == bootstrap_owner_id),
+        None,
+    )
+    if account is None:
+        raise ValueError("bootstrap_owner_id does not identify a known user")
+    if account.get("status") != "active":
+        raise ValueError("bootstrap_owner_id must identify an active user")
+    if _is_customer(account):
+        raise ValueError("bootstrap_owner_id cannot identify a customer")
+    if account.get("access_state") != "approved":
+        raise ValueError("bootstrap_owner_id must identify an approved user")
+    if account.get("roles") != ["super_admin"] or "role" in account:
+        raise ValueError(
+            "bootstrap_owner_id must identify a canonical Super Admin candidate"
+        )
+    return bootstrap_owner_id
+
+
+def _plan(
+    account: dict,
+    mapping: dict,
+    bootstrap_owner_id: str | None,
+) -> dict | None:
     if _is_customer(account):
         return None
     if (
         account.get("role_policy_version") == ROLE_POLICY_VERSION
         and validate_roles(account.get("roles"))
-        and account.get("access_state", "approved") == "approved"
+        and account.get("access_state") == "approved"
     ):
         return None
 
     account_id = account["id"]
     roles = account.get("roles") if isinstance(account.get("roles"), list) else []
     legacy_role = account.get("role")
-    if roles == ["super_admin"] and legacy_role is None:
+    if account_id == bootstrap_owner_id:
         category = "bootstrap_super_admin_preserved"
         next_roles = ["super_admin"]
         access_state = "approved"
@@ -136,10 +180,11 @@ def _plan(account: dict, mapping: dict) -> dict | None:
     }
 
 
-def _backup_document(plans: list[dict]) -> dict:
+def _backup_document(plans: list[dict], bootstrap_owner_id: str) -> dict:
     return {
         "migration": MIGRATION_ID,
         "policy_version": ROLE_POLICY_VERSION,
+        "bootstrap_owner_id": bootstrap_owner_id,
         "created_at": now_iso(),
         "accounts": [
             {
@@ -155,12 +200,20 @@ def _backup_document(plans: list[dict]) -> dict:
     }
 
 
-def _write_backup(path: Path, plans: list[dict]) -> None:
+def _write_backup(
+    path: Path,
+    plans: list[dict],
+    bootstrap_owner_id: str,
+) -> None:
     if path.exists():
         raise ValueError("backup_path already exists; refusing to overwrite")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(_backup_document(plans), indent=2, sort_keys=True),
+        json.dumps(
+            _backup_document(plans, bootstrap_owner_id),
+            indent=2,
+            sort_keys=True,
+        ),
         encoding="utf-8",
     )
 
@@ -182,9 +235,7 @@ async def _apply_plans(database, guard, plans: list[dict]) -> None:
             before = plan["before"]
             after = plan["after"]
             expected_version = (
-                before["version"]
-                if "version" in before
-                else {"$exists": False}
+                before["version"] if "version" in before else {"$exists": False}
             )
             result = await database.users.update_one(
                 {"id": plan["id"], "version": expected_version},
@@ -229,30 +280,63 @@ def _load_backup(path: Path) -> dict:
     return backup
 
 
-async def _rollback(database, guard, backup: dict) -> int:
+async def _rollback(
+    database,
+    guard,
+    backup: dict,
+    bootstrap_owner_id: str,
+) -> dict:
     accounts = backup.get("accounts")
     if not isinstance(accounts, list):
         raise ValueError("Migration backup accounts are invalid")
+    if backup.get("bootstrap_owner_id") != bootstrap_owner_id:
+        raise ValueError("bootstrap_owner_id does not match the migration backup")
+    account_ids = [entry.get("id") for entry in accounts]
+    if any(not isinstance(account_id, str) for account_id in account_ids):
+        raise ValueError("Migration backup contains an invalid account ID")
+    if len(set(account_ids)) != len(account_ids):
+        raise ValueError("Migration backup contains duplicate account IDs")
 
     async def mutate(session):
+        current_owner = await database.users.find_one(
+            {"id": bootstrap_owner_id},
+            session=session,
+        )
+        if (
+            not current_owner
+            or current_owner.get("roles") != ["super_admin"]
+            or current_owner.get("status") != "active"
+            or current_owner.get("access_state") != "approved"
+            or current_owner.get("role_policy_version") != ROLE_POLICY_VERSION
+            or "role" in current_owner
+        ):
+            raise RuntimeError("Reviewed bootstrap Owner is no longer eligible")
+
         for entry in accounts:
             account_id = entry["id"]
-            current = await database.users.find_one(
-                {"id": account_id}, session=session
-            )
+            current = await database.users.find_one({"id": account_id}, session=session)
             if not current:
                 raise RuntimeError(f"Rollback user is missing: {account_id}")
+            if account_id == bootstrap_owner_id:
+                continue
             fields = entry.get("fields") or {}
-            unset = {
-                field: ""
-                for field in MUTATED_FIELDS
-                if field not in fields
-            }
-            await database.users.update_one(
-                {"id": account_id},
+            if not isinstance(fields, dict):
+                raise ValueError("Migration backup fields are invalid")
+            expected_migrated_version = fields.get("version", 1) + 1
+            unset = {field: "" for field in MUTATED_FIELDS if field not in fields}
+            result = await database.users.update_one(
+                {
+                    "id": account_id,
+                    "version": expected_migrated_version,
+                    MIGRATION_MARKER: ROLE_POLICY_VERSION,
+                },
                 {"$set": fields, "$unset": unset},
                 session=session,
             )
+            if result.matched_count == 0:
+                raise RuntimeError(
+                    f"Concurrent identity change detected for {account_id}"
+                )
             restored = {**current, **fields}
             for field in unset:
                 restored.pop(field, None)
@@ -272,7 +356,10 @@ async def _rollback(database, guard, backup: dict) -> int:
         mutate,
         operation_name="identity.granular_role_migration.rollback",
     )
-    return len(accounts)
+    return {
+        "restored": len(accounts) - int(bootstrap_owner_id in account_ids),
+        "bootstrap_owner_preserved": int(bootstrap_owner_id in account_ids),
+    }
 
 
 async def run(
@@ -281,6 +368,7 @@ async def run(
     apply: bool = False,
     rollback: bool = False,
     reviewed_mapping: dict | None = None,
+    bootstrap_owner_id: str | None = None,
     backup_path: str | Path | None = None,
     guard=None,
 ) -> dict:
@@ -294,18 +382,35 @@ async def run(
     path = Path(backup_path) if backup_path is not None else None
     if rollback:
         backup = _load_backup(path)
-        restored = await _rollback(database, guard, backup)
-        return {"rollback": True, "restored": restored}
+        current_accounts = [
+            account async for account in database.users.find({}, {"_id": 0})
+        ]
+        reviewed_owner_id = _validate_bootstrap_owner(
+            current_accounts,
+            bootstrap_owner_id,
+            required=True,
+        )
+        result = await _rollback(
+            database,
+            guard,
+            backup,
+            reviewed_owner_id,
+        )
+        return {"rollback": True, **result}
 
-    accounts = [
-        account
-        async for account in database.users.find({}, {"_id": 0})
-    ]
+    accounts = [account async for account in database.users.find({}, {"_id": 0})]
     mapping = _validate_mapping(accounts, reviewed_mapping)
+    reviewed_owner_id = _validate_bootstrap_owner(
+        accounts,
+        bootstrap_owner_id,
+        required=apply,
+    )
+    if reviewed_owner_id in mapping:
+        raise ValueError("bootstrap_owner_id must not also appear in reviewed_mapping")
     plans = [
         plan
         for account in accounts
-        if (plan := _plan(account, mapping)) is not None
+        if (plan := _plan(account, mapping, reviewed_owner_id)) is not None
     ]
     categories = Counter(plan["category"] for plan in plans)
     report = {
@@ -319,7 +424,7 @@ async def run(
     if not apply or not plans:
         return report
 
-    _write_backup(path, plans)
+    _write_backup(path, plans, reviewed_owner_id)
     await _ensure_indexes(database)
     await _apply_plans(database, guard, plans)
     return report
@@ -354,6 +459,7 @@ async def run_cli(args) -> dict:
             apply=args.apply,
             rollback=args.rollback,
             reviewed_mapping=_load_mapping(args.mapping),
+            bootstrap_owner_id=args.bootstrap_owner_id,
             backup_path=args.backup,
             guard=guard,
         )
@@ -369,6 +475,7 @@ def build_parser() -> argparse.ArgumentParser:
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--rollback", action="store_true")
     parser.add_argument("--mapping", metavar="REVIEWED_MAPPING_JSON")
+    parser.add_argument("--bootstrap-owner-id", metavar="OPAQUE_USER_ID")
     parser.add_argument("--backup", metavar="BACKUP_JSON")
     return parser
 

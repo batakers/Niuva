@@ -1190,6 +1190,8 @@ def test_generic_customer_order_routes_deny_orders_read_before_lookup(monkeypatc
     internal_user = {
         "id": "order-admin-1",
         "status": "active",
+        "access_state": "approved",
+        "role_policy_version": server.ROLE_POLICY_VERSION,
         "roles": ["order_admin"],
     }
 

@@ -13,6 +13,7 @@ from auth_recovery import (
     PublicSiteOriginError,
     build_recovery_module,
 )
+from permissions import ROLE_POLICY_VERSION
 
 NOW = datetime(2026, 7, 27, 8, 0, tzinfo=timezone.utc)
 
@@ -45,6 +46,7 @@ class InMemoryRecoveryStore:
                 "roles": ["super_admin"],
                 "status": "active",
                 "access_state": "approved",
+                "role_policy_version": ROLE_POLICY_VERSION,
                 "password_hash": "legacy",
                 "token_version": 4,
             },
@@ -54,6 +56,7 @@ class InMemoryRecoveryStore:
                 "roles": ["super_admin"],
                 "status": "active",
                 "access_state": "access_review_required",
+                "role_policy_version": ROLE_POLICY_VERSION,
                 "password_hash": "legacy",
                 "token_version": 1,
             },

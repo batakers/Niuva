@@ -60,6 +60,12 @@ no effective permissions. Runtime account creation writes canonical `roles`,
 review-required candidate until migration explicitly selects that account as
 bootstrap Owner.
 
+Runtime internal authority requires all four current fields: canonical internal
+`roles`, `status: active`, `access_state: approved`, and the exact current
+`role_policy_version`. A missing or stale access/policy field is fail-closed.
+The narrow legacy `role: client` resolver remains customer-only and never grants
+an Admin Studio permission.
+
 ## 3. Change control and prerequisites
 
 Before any apply or rollback:
@@ -275,12 +281,21 @@ aggregate or historical internal markers become `access_review_required`.
 ```powershell
 python migrations\006_granular_role_policy.py `
   --mapping "<reviewed-mapping.json>" `
+  --bootstrap-owner-id "<reviewed-opaque-user-id>" `
   --backup "<unused-backup-path.json>"
 ```
 
 Dry run is read-only and does not create the backup file or indexes. Review the
 aggregate category counts and the mapping through the approved two-person
-access-review process.
+access-review process. A preliminary dry run may omit
+`--bootstrap-owner-id`; in that case every historical Super Admin candidate is
+reported in the review-required category. Apply never permits that omission.
+
+The bootstrap ID must identify one active, canonical historical Super Admin
+candidate and must not also appear in the reviewed mapping. A mapping cannot
+target a customer. Every other historical Super Admin candidate is
+review-required unless a separate reviewed mapping assigns a non-bootstrap
+granular role.
 
 ### Apply and second-run validation
 
@@ -291,15 +306,17 @@ $env:TRANSACTION_MUTATIONS_ENABLED = "true"
 python migrations\006_granular_role_policy.py `
   --apply `
   --mapping "<reviewed-mapping.json>" `
+  --bootstrap-owner-id "<reviewed-opaque-user-id>" `
   --backup "<new-identity-fields-backup.json>"
 ```
 
 The backup path must not already exist. The file contains only opaque IDs and
 fields owned by migration 006; it excludes password hashes and tokens. Store it
-in the approved encrypted operational backup location, not Git. Apply creates
-the invitation uniqueness indexes, then changes all planned accounts and their
-audit events in one fail-closed transaction. A transaction or concurrency
-failure leaves account changes uncommitted.
+in the approved encrypted operational backup location, not Git. The backup is
+bound to the reviewed bootstrap ID. Apply creates the invitation uniqueness
+indexes, then changes all planned accounts and their audit events in one
+fail-closed transaction. A transaction or concurrency failure leaves account
+changes uncommitted.
 
 Run the same apply command a second time with the existing backup path. Expected
 result: `updated: 0` and `second_run_noop: true`. Validate role resolution,
@@ -312,11 +329,16 @@ and the absence of customer/internal role combinations.
 $env:TRANSACTION_MUTATIONS_ENABLED = "true"
 python migrations\006_granular_role_policy.py `
   --rollback `
+  --bootstrap-owner-id "<current-reviewed-owner-id>" `
   --backup "<identity-fields-backup.json>"
 ```
 
+Rollback requires the same active current-policy Owner recorded by the backup
+and preserves that Owner rather than restoring stale authority. Every other
+account update requires the expected migration-owned version and marker.
 Rollback restores only fields captured before apply and appends rollback audit
-events in the same transaction. Because aggregate roles are no longer runtime
-authority under policy v2, restoring an old aggregate value remains
+events in the same transaction; a concurrent identity change aborts the full
+rollback. Because stale policy versions, aggregate roles, and missing review
+state are no longer runtime authority, restored historical assignments remain
 fail-closed. Re-run dry-run and role/data-boundary verification after rollback.
 Disable the temporary mutation flag when the approved window closes.

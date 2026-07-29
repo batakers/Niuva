@@ -328,6 +328,7 @@ def test_file_download_requires_authorization_header_and_safe_media_type(
                 "roles": ["super_admin"],
                 "status": "active",
                 "access_state": "approved",
+                "role_policy_version": server.ROLE_POLICY_VERSION,
             },
         }
         return users[token]
@@ -347,6 +348,7 @@ def test_file_download_requires_authorization_header_and_safe_media_type(
                 "roles": ["super_admin"],
                 "status": "active",
                 "access_state": "approved",
+                "role_policy_version": server.ROLE_POLICY_VERSION,
             }
 
     server.app.state.admin_session_module = FakeAdminSessions()

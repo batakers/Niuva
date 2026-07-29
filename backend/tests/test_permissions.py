@@ -1,7 +1,11 @@
+import re
+from pathlib import Path
+
 import pytest
 
 from permissions import (
     ROLE_LABELS,
+    ROLE_PERMISSIONS,
     ROLE_POLICY_VERSION,
     canonical_roles,
     has_permission,
@@ -10,9 +14,17 @@ from permissions import (
     validate_roles,
 )
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+ROUTE_PERMISSION_PATTERN = re.compile(r'require_permission\("([^"]+)"\)')
+
 
 def active(*roles):
-    return {"roles": list(roles), "status": "active", "access_state": "approved"}
+    return {
+        "roles": list(roles),
+        "status": "active",
+        "access_state": "approved",
+        "role_policy_version": ROLE_POLICY_VERSION,
+    }
 
 
 @pytest.mark.parametrize(
@@ -106,12 +118,56 @@ def test_canonical_roles_fail_closed_for_legacy_blocked_and_invalid_assignments(
 def test_legacy_client_stays_low_privilege_but_empty_roles_are_authoritative():
     assert canonical_roles({"role": "client"}) == ("retail_customer",)
     assert canonical_roles({"role": "client", "roles": []}) == ()
+    assert (
+        canonical_roles(
+            {
+                "role": "client",
+                "roles": ["warehouse"],
+                "status": "active",
+                "access_state": "approved",
+                "role_policy_version": ROLE_POLICY_VERSION,
+            }
+        )
+        == ()
+    )
     assert not is_internal({"role": "client"})
     assert not has_permission({"role": "client"}, "orders.read")
 
 
 def test_missing_status_never_grants_internal_authority():
-    user = {"roles": ["warehouse"], "access_state": "approved"}
+    user = {
+        "roles": ["warehouse"],
+        "access_state": "approved",
+        "role_policy_version": ROLE_POLICY_VERSION,
+    }
+    assert canonical_roles(user) == ()
+    assert not has_permission(user, "inventory.write")
+
+
+@pytest.mark.parametrize(
+    "user",
+    [
+        {"roles": ["warehouse"], "status": "active"},
+        {
+            "roles": ["warehouse"],
+            "status": "active",
+            "access_state": "approved",
+        },
+        {
+            "roles": ["warehouse"],
+            "status": "active",
+            "access_state": "approved",
+            "role_policy_version": "2026-07-22-v1",
+        },
+        {
+            "roles": ["warehouse"],
+            "status": "active",
+            "access_state": "access_review_required",
+            "role_policy_version": ROLE_POLICY_VERSION,
+        },
+    ],
+)
+def test_internal_authority_requires_current_explicit_review(user):
     assert canonical_roles(user) == ()
     assert not has_permission(user, "inventory.write")
 
@@ -122,3 +178,28 @@ def test_multi_role_permissions_are_additive_and_internal():
     assert has_permission(user, "orders.write")
     assert has_permission(user, "quotes.write")
     assert is_internal(user)
+
+
+def test_route_permission_inventory_is_declared_and_governance_stays_owner_only():
+    route_permissions = set()
+    for source_path in BACKEND_DIR.glob("*.py"):
+        route_permissions.update(
+            ROUTE_PERMISSION_PATTERN.findall(source_path.read_text(encoding="utf-8"))
+        )
+
+    non_owner_permissions = set().union(
+        *(
+            permissions
+            for role, permissions in ROLE_PERMISSIONS.items()
+            if role != "super_admin"
+        )
+    )
+    owner_only = route_permissions - non_owner_permissions
+
+    assert owner_only == {"roles.manage", "settings.write", "users.read"}
+    assert route_permissions - owner_only <= non_owner_permissions
+    for role in ROLE_PERMISSIONS:
+        if role != "super_admin":
+            user = active(role)
+            for permission in owner_only:
+                assert not has_permission(user, permission)

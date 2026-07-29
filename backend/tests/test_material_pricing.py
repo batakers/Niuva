@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 
 from material_pricing import resolve_effective_price
 from material_routes import MaterialService, build_material_router
-from permissions import has_permission
+from permissions import ROLE_POLICY_VERSION, has_permission
 
 
 class FakeCursor:
@@ -362,7 +362,14 @@ def test_supplier_reference_requires_explicit_read_and_write_capabilities():
 
 def role_require_permission(permission):
     async def dependency(x_role: str = Header(default="warehouse")):
-        actor = {"id": f"actor-{x_role}", "email": f"{x_role}@niuva.example.com", "roles": [x_role], "status": "active", "access_state": "approved"}
+        actor = {
+            "id": f"actor-{x_role}",
+            "email": f"{x_role}@niuva.example.com",
+            "roles": [x_role],
+            "status": "active",
+            "access_state": "approved",
+            "role_policy_version": ROLE_POLICY_VERSION,
+        }
         if not has_permission(actor, permission):
             raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
         return actor
