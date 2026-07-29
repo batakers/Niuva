@@ -148,6 +148,9 @@ const translations = {
     "dash.ordersTotal": "Pesanan",
     "dash.createFirstOrder": "Buat Pesanan Pertama",
     "dash.colDetails": "Detail",
+    "dash.errorTitle": "Riwayat pesanan belum dapat dimuat",
+    "dash.errorDescription":
+      "Periksa koneksi Anda, lalu coba muat kembali riwayat pesanan.",
 
     "order.title": "Buat Pesanan 3D Printing",
     "order.step1": "Upload File",
@@ -826,6 +829,9 @@ const translations = {
     "dash.ordersTotal": "Orders",
     "dash.createFirstOrder": "Create First Order",
     "dash.colDetails": "Details",
+    "dash.errorTitle": "Your order history could not be loaded",
+    "dash.errorDescription":
+      "Check your connection, then try loading your order history again.",
 
     "order.title": "Create 3D Printing Order",
     "order.step1": "Upload File",
