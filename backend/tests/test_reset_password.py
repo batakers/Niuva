@@ -128,7 +128,8 @@ class AtomicGuard:
                 {
                     "users": self.database.users.items,
                     "tokens": self.database.password_reset_tokens.items,
-                    "sessions": self.database.admin_sessions.items,
+                    "admin_sessions": self.database.admin_sessions.items,
+                    "auth_sessions": self.database.auth_sessions.items,
                     "notifications": self.database.notifications.items,
                 }
             )
@@ -137,7 +138,8 @@ class AtomicGuard:
             except BaseException:
                 self.database.users.items = snapshot["users"]
                 self.database.password_reset_tokens.items = snapshot["tokens"]
-                self.database.admin_sessions.items = snapshot["sessions"]
+                self.database.admin_sessions.items = snapshot["admin_sessions"]
+                self.database.auth_sessions.items = snapshot["auth_sessions"]
                 self.database.notifications.items = snapshot["notifications"]
                 raise
 
@@ -488,6 +490,64 @@ def test_dedicated_delivery_invalidates_failed_token_without_general_notificatio
                 assert database.notifications.items == []
 
     asyncio.run(scenario())
+
+
+def test_missing_provider_configuration_invalidates_token_outside_local_mode(
+    monkeypatch, tmp_path
+):
+    async def scenario():
+        customer = build_customer()
+        with configured_runtime(monkeypatch, tmp_path, [customer]) as (
+            database,
+            _provider,
+        ):
+            monkeypatch.setenv("APP_ENV", "production")
+            monkeypatch.setattr(emailer, "RESEND_API_KEY", "")
+            server.app.state.password_recovery_delivery = (
+                emailer.PasswordRecoveryDelivery(get_database=lambda: server.db)
+            )
+            transport = httpx.ASGITransport(app=server.app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="https://testserver"
+            ) as api:
+                response = await api.post(
+                    "/api/auth/forgot-password", json={"email": customer["email"]}
+                )
+
+                assert response.status_code == 200
+                assert response.json() == {
+                    "ok": True,
+                    "message": (
+                        "Jika email terdaftar, instruksi reset password "
+                        "telah dikirim."
+                    ),
+                }
+                assert len(database.password_reset_tokens.items) == 1
+                assert database.password_reset_tokens.items[0]["active"] is False
+                assert (
+                    database.password_reset_tokens.items[0]["invalidation_reason"]
+                    == "delivery_failed"
+                )
+
+    asyncio.run(scenario())
+
+
+def test_missing_provider_configuration_remains_mocked_in_local_test_mode(
+    monkeypatch,
+):
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setattr(emailer, "RESEND_API_KEY", "")
+
+    result = asyncio.run(
+        emailer._send_provider_email(
+            to_email="local@example.com",
+            subject="Local",
+            title="Local",
+            body_html="<p>Local only</p>",
+        )
+    )
+
+    assert result == {"status": "mock", "to": "local@example.com"}
 
 
 def test_unknown_expired_and_used_tokens_keep_one_public_invalid_contract(

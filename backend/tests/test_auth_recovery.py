@@ -19,13 +19,20 @@ NOW = datetime(2026, 7, 27, 8, 0, tzinfo=timezone.utc)
 
 
 class AtomicGuard:
-    def __init__(self, store, *, unavailable: bool = False):
+    def __init__(
+        self,
+        store,
+        *,
+        unavailable: bool = False,
+        unavailable_operations: set[str] | None = None,
+    ):
         self.store = store
         self.unavailable = unavailable
+        self.unavailable_operations = unavailable_operations or set()
         self._lock = asyncio.Lock()
 
     async def run(self, callback, *, operation_name, **_kwargs):
-        if self.unavailable:
+        if self.unavailable or operation_name in self.unavailable_operations:
             raise RuntimeError("transaction unavailable")
         async with self._lock:
             snapshot = copy.deepcopy((self.store.users, self.store.tokens))
@@ -139,8 +146,9 @@ class InMemoryRecoveryStore:
 
 
 class CapturingDelivery:
-    def __init__(self, *, fail_reset: bool = False):
+    def __init__(self, *, fail_reset: bool = False, fail_changed: bool = False):
         self.fail_reset = fail_reset
+        self.fail_changed = fail_changed
         self.reset_messages = []
         self.changed_messages = []
 
@@ -152,6 +160,8 @@ class CapturingDelivery:
         )
 
     async def send_password_changed(self, *, email):
+        if self.fail_changed:
+            raise RuntimeError("provider payload is private")
         self.changed_messages.append({"email": email})
 
 
@@ -236,6 +246,20 @@ def test_delivery_failure_is_generic_and_invalidates_undelivered_token(tmp_path)
     assert store.tokens[0]["invalidation_reason"] == "delivery_failed"
 
 
+def test_delivery_and_invalidation_failure_remains_generic(tmp_path):
+    delivery = CapturingDelivery(fail_reset=True)
+    recovery, store, _delivery = build_subject(tmp_path, delivery=delivery)
+    recovery.transaction_guard.unavailable_operations.add(
+        "auth.password_recovery.invalidate_undelivered"
+    )
+
+    result = request(recovery, "admin@niuva.com")
+
+    assert result == GENERIC_PASSWORD_RESET_REQUEST
+    assert len(store.tokens) == 1
+    assert store.tokens[0]["active"] is True
+
+
 def test_persistence_failure_is_generic_and_sends_nothing(tmp_path):
     recovery, store, delivery = build_subject(tmp_path, unavailable=True)
 
@@ -282,6 +306,21 @@ def test_successful_completion_is_atomic_revokes_sessions_and_returns_no_login_t
     assert store.users["active-admin"]["token_version"] == original_version + 1
     assert not any(token["active"] for token in store.tokens)
     assert delivery.changed_messages == [{"email": "admin@niuva.com"}]
+
+
+def test_post_reset_notification_failure_does_not_rollback_completion(tmp_path):
+    delivery = CapturingDelivery(fail_changed=True)
+    recovery, store, _delivery = build_subject(tmp_path, delivery=delivery)
+    request(recovery, "admin@niuva.com")
+    raw_token = raw_token_from(delivery)
+
+    result = asyncio.run(
+        recovery.complete_password_reset(raw_token, "a fresh unique password")
+    )
+
+    assert result.ok is True
+    assert store.users["active-admin"]["password_hash"].startswith("$argon2id$")
+    assert not any(token["active"] for token in store.tokens)
 
 
 def test_replay_and_two_concurrent_completions_yield_exactly_one_success(tmp_path):
