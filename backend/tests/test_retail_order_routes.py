@@ -12,7 +12,7 @@ import httpx
 import pytest
 from fastapi import APIRouter, FastAPI, Header, HTTPException
 
-from permissions import has_permission
+from permissions import ROLE_POLICY_VERSION, has_permission
 from retail_routes import build_retail_router
 from retail_service import RetailOrderService
 from tests.test_b2b_quote_conversion import EnabledGuard
@@ -32,6 +32,7 @@ def permission_dependency(permission):
             "roles": [x_role],
             "status": "active",
             "access_state": "approved",
+            "role_policy_version": ROLE_POLICY_VERSION,
         }
         if not has_permission(actor, permission):
             raise HTTPException(status_code=403, detail="Permission denied")

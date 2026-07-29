@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 from database_capabilities import DatabaseCapabilities
 from inventory_service import InventoryError, InventoryService
+from permissions import ROLE_POLICY_VERSION
 from restock import shortage_triggers
 from transaction_execution import TransactionExecutor
 from transaction_guard import TransactionMutationGuard
@@ -138,6 +139,7 @@ class FakeDatabase:
                     "roles": ["warehouse"],
                     "status": "active",
                     "access_state": "approved",
+                    "role_policy_version": ROLE_POLICY_VERSION,
                 },
                 {
                     "id": "manager-1",
@@ -145,6 +147,7 @@ class FakeDatabase:
                     "roles": ["manager_approver"],
                     "status": "active",
                     "access_state": "approved",
+                    "role_policy_version": ROLE_POLICY_VERSION,
                 },
                 {
                     "id": "admin-1",
@@ -152,6 +155,7 @@ class FakeDatabase:
                     "roles": ["super_admin"],
                     "status": "active",
                     "access_state": "approved",
+                    "role_policy_version": ROLE_POLICY_VERSION,
                 },
                 {
                     "id": "customer-1",
@@ -159,6 +163,7 @@ class FakeDatabase:
                     "roles": ["retail_customer"],
                     "status": "active",
                     "access_state": "approved",
+                    "role_policy_version": ROLE_POLICY_VERSION,
                 },
                 {
                     "id": "disabled-1",
@@ -166,6 +171,7 @@ class FakeDatabase:
                     "roles": ["warehouse"],
                     "status": "disabled",
                     "access_state": "approved",
+                    "role_policy_version": ROLE_POLICY_VERSION,
                 },
             ]
         )
@@ -642,6 +648,7 @@ async def run_restock_recipients_follow_capability_and_access_state():
             "roles": ["warehouse"],
             "status": "active",
             "access_state": "approved",
+            "role_policy_version": ROLE_POLICY_VERSION,
         },
         {
             "id": "ops-review",
@@ -649,6 +656,7 @@ async def run_restock_recipients_follow_capability_and_access_state():
             "roles": ["warehouse"],
             "status": "active",
             "access_state": "access_review_required",
+            "role_policy_version": ROLE_POLICY_VERSION,
         },
         {
             "id": "ops-disabled",
@@ -656,6 +664,7 @@ async def run_restock_recipients_follow_capability_and_access_state():
             "roles": ["warehouse"],
             "status": "disabled",
             "access_state": "approved",
+            "role_policy_version": ROLE_POLICY_VERSION,
         },
     ]
     actor = {
@@ -663,6 +672,7 @@ async def run_restock_recipients_follow_capability_and_access_state():
         "roles": ["warehouse"],
         "status": "active",
         "access_state": "approved",
+        "role_policy_version": ROLE_POLICY_VERSION,
     }
     await service.apply_operation(
         actor=actor, payload=operation("71111111-1111-1111-1111-111111111111")

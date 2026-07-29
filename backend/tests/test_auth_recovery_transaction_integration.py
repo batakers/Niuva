@@ -31,6 +31,7 @@ from auth_recovery import (  # noqa: E402
 )
 from database_capabilities import probe_database_capabilities  # noqa: E402
 from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
+from permissions import ROLE_POLICY_VERSION  # noqa: E402
 from transaction_execution import TransactionExecutor  # noqa: E402
 from transaction_guard import TransactionMutationGuard  # noqa: E402
 
@@ -75,6 +76,7 @@ async def run_concurrent_completion(database_name, blocklist_path):
             "roles": ["super_admin"],
             "status": "active",
             "access_state": "approved",
+            "role_policy_version": ROLE_POLICY_VERSION,
             "password_hash": "legacy-fixture",
             "token_version": 0,
         }

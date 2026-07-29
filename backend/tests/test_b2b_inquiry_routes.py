@@ -7,7 +7,7 @@ from fastapi import APIRouter, FastAPI, Header, HTTPException
 from fastapi.exceptions import RequestValidationError
 
 from b2b_routes import build_b2b_router
-from permissions import has_permission
+from permissions import ROLE_POLICY_VERSION, has_permission
 from tests.test_identity_foundation import server
 
 
@@ -70,6 +70,7 @@ def permission_dependency(permission):
             "roles": [x_role],
             "status": "active",
             "access_state": "approved",
+            "role_policy_version": ROLE_POLICY_VERSION,
         }
         if not has_permission(actor, permission):
             raise HTTPException(status_code=403, detail="Permission denied")
@@ -325,4 +326,7 @@ def test_server_wires_the_public_intake_guards():
 
     assert "throttle_intake=throttle_inquiry_intake" in build_call
     assert "notify_inquiry=notify_new_inquiry" in build_call
-    assert 'await rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)' in source
+    assert (
+        'await rate_limit(f"inquiry:{client_ip(request)}", limit=5, window=600)'
+        in source
+    )
