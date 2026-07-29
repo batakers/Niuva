@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { OperationalLayout } from "@/components/layout/Layout";
 import { StatusBadge, StatusStepper } from "@/components/operational/StatusStepper";
 import { useI18n } from "@/i18n";
-import { api, downloadFile } from "@/lib/api";
+import { api, downloadApiFile } from "@/lib/api";
 import { fmtDate, rupiah } from "@/lib/format";
 
 export default function OrderDetail() {
@@ -39,7 +39,10 @@ export default function OrderDetail() {
 
   const downloadDesign = async () => {
     try {
-      await downloadFile(order.file?.storage_path, order.file?.original_filename);
+      await downloadApiFile(
+        `/orders/${order.id}/design-file`,
+        order.file?.original_filename
+      );
     } catch {
       toast.error("File tidak dapat diunduh");
     }

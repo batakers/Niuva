@@ -10,7 +10,6 @@ from unittest.mock import patch
 import httpx
 import jwt
 
-
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
@@ -20,7 +19,9 @@ os.environ.setdefault("JWT_SECRET", "security-test-secret-at-least-32-characters
 os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
 os.environ.setdefault("PUBLIC_SITE_URL", "https://testserver")
-os.environ.setdefault("AUTH_SESSION_CSRF_KEY", "security-test-csrf-key-at-least-32-bytes")
+os.environ.setdefault(
+    "AUTH_SESSION_CSRF_KEY", "security-test-csrf-key-at-least-32-bytes"
+)
 
 
 resend_module = types.ModuleType("resend")
@@ -29,8 +30,8 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
-from tests.auth_support import AuthCollection  # noqa: E402
 
+from tests.auth_support import AuthCollection  # noqa: E402
 
 ORIGIN = {"Origin": "https://testserver"}
 
@@ -171,7 +172,9 @@ class FakeCollection:
     def _matches(item, query):
         for key, expected in query.items():
             if key == "$or":
-                if not any(FakeCollection._matches(item, clause) for clause in expected):
+                if not any(
+                    FakeCollection._matches(item, clause) for clause in expected
+                ):
                     return False
                 continue
             actual = item.get(key)
@@ -352,6 +355,30 @@ async def run_security_matrix():
             "user_id": client["id"],
             "user_email": client["email"],
             "user_name": client["name"],
+            "material_name": "Acrylic",
+            "file": {
+                "storage_path": "niuva/orders/client-1/design.stl",
+                "original_filename": "design.stl",
+            },
+            "notes": "Internal fulfilment note",
+            "internal_price": 150000,
+            "supplier": "Internal supplier",
+            "estimate": {
+                "amount": 250000,
+                "currency": "IDR",
+                "note": "Internal pricing rationale",
+            },
+            "payment": {
+                "verified": False,
+                "proof": {"storage_path": "niuva/payments/client-1/proof.png"},
+            },
+            "status_history": [
+                {
+                    "status": "pending_estimate",
+                    "at": "2026-07-01T00:00:00Z",
+                    "note": "Internal status note",
+                }
+            ],
             "status": "pending_estimate",
         }
     )
@@ -365,15 +392,23 @@ async def run_security_matrix():
     ):
         registration = await api.post(
             "/api/auth/register",
-            json={"name": "Public User", "email": "public@example.com", "password": "Password123"},
+            json={
+                "name": "Public User",
+                "email": "public@example.com",
+                "password": "Password123",
+            },
         )
         assert registration.status_code == 403
-        assert registration.json()["detail"].startswith("Public registration is disabled")
+        assert registration.json()["detail"].startswith(
+            "Public registration is disabled"
+        )
         assert await server.db.users.find_one({"email": "public@example.com"}) is None
 
         malformed_registration = await api.post("/api/auth/register", json={})
         assert malformed_registration.status_code == 403
-        assert malformed_registration.json()["detail"].startswith("Public registration is disabled")
+        assert malformed_registration.json()["detail"].startswith(
+            "Public registration is disabled"
+        )
 
         missing_origin = await api.post(
             "/api/auth/admin/login",
@@ -495,26 +530,65 @@ async def run_security_matrix():
 
         api.cookies.clear()
         assert (await api.get("/api/admin/users")).status_code == 401
-        assert (await api.get("/api/admin/users", headers=bearer(client_token))).status_code == 403
-        internal_bearer = server.create_token(admin["id"], admin["email"], "super_admin")
+        assert (
+            await api.get("/api/admin/users", headers=bearer(client_token))
+        ).status_code == 403
+        internal_bearer = server.create_token(
+            admin["id"], admin["email"], "super_admin"
+        )
         rejected = await api.get("/api/admin/users", headers=bearer(internal_bearer))
         assert rejected.status_code == 401
         assert rejected.json()["detail"]["code"] == "admin_session_expired"
         assert (await admin_api.request("GET", "/api/admin/users")).status_code == 200
-        assert (await commercial_api.request("GET", "/api/admin/users")).status_code == 403
+        assert (
+            await commercial_api.request("GET", "/api/admin/users")
+        ).status_code == 403
 
         assert (await api.get("/api/orders")).status_code == 401
-        assert (await api.get("/api/orders", headers=bearer(client_token))).status_code == 200
-        assert (await admin_api.request("GET", "/api/orders")).status_code == 200
+        customer_orders = await api.get("/api/orders", headers=bearer(client_token))
+        assert customer_orders.status_code == 200
+        customer_order = customer_orders.json()[0]
+        assert customer_order["file"] == {"original_filename": "design.stl"}
+        assert customer_order["estimate"] == {"amount": 250000, "currency": "IDR"}
+        assert customer_order["payment"] == {"verified": False}
+        assert customer_order["status_history"] == [
+            {"status": "pending_estimate", "at": "2026-07-01T00:00:00Z"}
+        ]
+        assert not {
+            "user_id",
+            "user_email",
+            "user_name",
+            "notes",
+            "internal_price",
+            "supplier",
+        }.intersection(customer_order)
+        assert "storage_path" not in customer_order["file"]
+        assert "note" not in customer_order["estimate"]
+        assert "proof" not in customer_order["payment"]
+        assert (await admin_api.request("GET", "/api/orders")).status_code == 403
 
         assert (await api.get("/api/orders/order-1")).status_code == 401
-        assert (await api.get("/api/orders/order-1", headers=bearer(client_token))).status_code == 200
+        customer_detail = await api.get(
+            "/api/orders/order-1", headers=bearer(client_token)
+        )
+        assert customer_detail.status_code == 200
+        assert customer_detail.json() == customer_order
         assert (
             await api.get("/api/orders/order-1", headers=bearer(other_client_token))
         ).status_code == 403
-        assert (await admin_api.request("GET", "/api/orders/order-1")).status_code == 200
+        assert (
+            await admin_api.request("GET", "/api/orders/order-1")
+        ).status_code == 403
+        assert (
+            await api.get(
+                "/api/orders/order-1/design-file",
+                headers=bearer(other_client_token),
+            )
+        ).status_code == 403
 
-        assert (await api.get("/api/files/niuva/orders/client-2/private.stl")).status_code == 401
+        assert (
+            await api.get("/api/files/niuva/orders/client-2/private.stl")
+        ).status_code == 401
         assert (
             await api.get(
                 "/api/files/niuva/orders/client-2/private.stl",
@@ -527,7 +601,9 @@ async def run_security_matrix():
             "email": "provisioned@example.com",
             "password": "ProvisionedPassword123",
         }
-        assert (await api.post("/api/admin/customers", json=new_client_payload)).status_code == 401
+        assert (
+            await api.post("/api/admin/customers", json=new_client_payload)
+        ).status_code == 401
         assert (
             await api.post(
                 "/api/admin/customers",
@@ -550,7 +626,9 @@ async def run_security_matrix():
         assert provisioned_user["password_hash"].startswith("$argon2id$")
 
         assert (await api.get("/api/admin/customers")).status_code == 401
-        assert (await api.get("/api/admin/customers", headers=bearer(client_token))).status_code == 403
+        assert (
+            await api.get("/api/admin/customers", headers=bearer(client_token))
+        ).status_code == 403
 
         commercial_customers = await commercial_api.request(
             "GET", "/api/admin/customers"
@@ -562,7 +640,9 @@ async def run_security_matrix():
             disabled_client["email"],
             new_client_payload["email"],
         }
-        assert all("password_hash" not in customer for customer in commercial_customers.json())
+        assert all(
+            "password_hash" not in customer for customer in commercial_customers.json()
+        )
 
         invalid = await api.get("/api/auth/me", headers=bearer("not-a-token"))
         assert invalid.status_code == 401
@@ -584,15 +664,22 @@ async def run_security_matrix():
         assert expired.json()["detail"] == "Session invalid"
 
         missing_claim_token = jwt.encode(
-            {"type": "access", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)},
+            {
+                "type": "access",
+                "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+            },
             server.JWT_SECRET,
             algorithm=server.JWT_ALGO,
         )
-        missing_claim = await api.get("/api/auth/me", headers=bearer(missing_claim_token))
+        missing_claim = await api.get(
+            "/api/auth/me", headers=bearer(missing_claim_token)
+        )
         assert missing_claim.status_code == 401
         assert missing_claim.json()["detail"] == "Session invalid"
 
-        stale_token = server.create_token("deleted-user", "deleted@example.com", "admin")
+        stale_token = server.create_token(
+            "deleted-user", "deleted@example.com", "admin"
+        )
         stale = await api.get("/api/auth/me", headers=bearer(stale_token))
         assert stale.status_code == 401
         assert stale.json()["detail"] == "Session invalid"
@@ -605,7 +692,9 @@ async def run_security_matrix():
         assert disabled.json()["detail"] == "Session invalid"
 
         forged_role_token = server.create_token(client["id"], client["email"], "admin")
-        role_mismatch = await api.get("/api/admin/users", headers=bearer(forged_role_token))
+        role_mismatch = await api.get(
+            "/api/admin/users", headers=bearer(forged_role_token)
+        )
         assert role_mismatch.status_code == 403
 
         missing_csrf = await admin_api.api.post(
@@ -647,7 +736,9 @@ async def run_security_matrix():
         assert blocked_refresh.status_code == 401
         assert session_module.sessions[blocked_session_id]["revoked"] is True
         stored_admin["status"] = "active"
-        assert (await admin_api.login(admin["email"], "AdminPassword123")).status_code == 200
+        assert (
+            await admin_api.login(admin["email"], "AdminPassword123")
+        ).status_code == 200
         old_access = admin_api.api.cookies.get(server.ACCESS_COOKIE_NAME)
         old_session = admin_api.api.cookies.get(server.SESSION_COOKIE_NAME)
         refresh = await admin_api.api.post(
@@ -666,9 +757,9 @@ async def run_security_matrix():
             if value["grant"].access_secret
             == admin_api.api.cookies.get(server.ACCESS_COOKIE_NAME)
         )
-        session_module.sessions[session_id]["grant"].access_secret = (
-            "expired-access-secret"
-        )
+        session_module.sessions[session_id][
+            "grant"
+        ].access_secret = "expired-access-secret"
         logout = await admin_api.request("POST", "/api/auth/admin/logout")
         assert logout.status_code == 200
         assert logout.headers["cache-control"] == "no-store"
@@ -680,12 +771,62 @@ async def run_security_matrix():
 
 async def run_admin_boundary_projections_and_capability_gates():
     users = [
-        {"id": "owner-1", "name": "Owner", "email": "owner@niuva.example.com", "password_hash": server.hash_password("OwnerPassword123"), "roles": ["super_admin"], "status": "active", "access_state": "approved"},
-        {"id": "operations-1", "name": "Order Admin", "email": "operations@niuva.example.com", "password_hash": server.hash_password("OperationsPassword123"), "roles": ["order_admin"], "status": "active", "access_state": "approved"},
-        {"id": "commercial-1", "name": "Finance", "email": "commercial@niuva.example.com", "password_hash": server.hash_password("CommercialPassword123"), "roles": ["finance"], "status": "active", "access_state": "approved"},
+        {
+            "id": "owner-1",
+            "name": "Owner",
+            "email": "owner@niuva.example.com",
+            "password_hash": server.hash_password("OwnerPassword123"),
+            "roles": ["super_admin"],
+            "status": "active",
+            "access_state": "approved",
+        },
+        {
+            "id": "operations-1",
+            "name": "Order Admin",
+            "email": "operations@niuva.example.com",
+            "password_hash": server.hash_password("OperationsPassword123"),
+            "roles": ["order_admin"],
+            "status": "active",
+            "access_state": "approved",
+        },
+        {
+            "id": "commercial-1",
+            "name": "Finance",
+            "email": "commercial@niuva.example.com",
+            "password_hash": server.hash_password("CommercialPassword123"),
+            "roles": ["finance"],
+            "status": "active",
+            "access_state": "approved",
+        },
     ]
     database = FakeDatabase(users)
-    database.orders.items.append({"id": "order-safe-1", "order_number": "NIV-TEST-0001", "user_id": "customer-1", "user_name": "Customer", "user_email": "customer@niuva.test", "material_id": "material-1", "material_name": "Acrylic", "file": {"storage_path": "orders/customer-1/design.pdf"}, "notes": "Fulfil before Friday", "status": "awaiting_payment", "status_history": [{"status": "pending_estimate", "at": "2026-07-22T00:00:00Z", "note": "Received"}], "estimate": {"amount": 950000, "currency": "IDR", "note": "Internal quote"}, "payment": {"proof": {"storage_path": "payments/proof.png"}, "verified": False}, "internal_price": 600000})
+    database.orders.items.append(
+        {
+            "id": "order-safe-1",
+            "order_number": "NIV-TEST-0001",
+            "user_id": "customer-1",
+            "user_name": "Customer",
+            "user_email": "customer@niuva.test",
+            "material_id": "material-1",
+            "material_name": "Acrylic",
+            "file": {"storage_path": "orders/customer-1/design.pdf"},
+            "notes": "Fulfil before Friday",
+            "status": "awaiting_payment",
+            "status_history": [
+                {
+                    "status": "pending_estimate",
+                    "at": "2026-07-22T00:00:00Z",
+                    "note": "Received",
+                }
+            ],
+            "estimate": {"amount": 950000, "currency": "IDR", "note": "Internal quote"},
+            "payment": {
+                "proof": {"storage_path": "payments/proof.png"},
+                "verified": False,
+            },
+            "internal_price": 600000,
+        }
+    )
     server.db = database
     install_fake_admin_sessions()
 
@@ -706,17 +847,33 @@ async def run_admin_boundary_projections_and_capability_gates():
         operations_orders = await operations_api.request("GET", "/api/admin/orders")
         assert operations_orders.status_code == 200
         safe_order = operations_orders.json()[0]
-        assert {"id", "order_number", "user_name", "user_email", "material_id", "material_name", "file", "notes", "status", "status_history"}.issubset(safe_order)
+        assert {
+            "id",
+            "order_number",
+            "user_name",
+            "user_email",
+            "material_id",
+            "material_name",
+            "file",
+            "notes",
+            "status",
+            "status_history",
+        }.issubset(safe_order)
         assert not {"estimate", "payment", "internal_price"}.intersection(safe_order)
         commercial_orders = await commercial_api.request("GET", "/api/admin/orders")
         assert commercial_orders.status_code == 200
         assert commercial_orders.json()[0]["payment"]["verified"] is False
-        assert (await operations_api.request("GET", "/api/admin/stats")).status_code == 200
-        assert (await commercial_api.request("GET", "/api/admin/stats")).status_code == 200
+        assert (
+            await operations_api.request("GET", "/api/admin/stats")
+        ).status_code == 200
+        assert (
+            await commercial_api.request("GET", "/api/admin/stats")
+        ).status_code == 200
 
 
 def test_admin_boundary_projections_and_capability_gates():
     asyncio.run(run_admin_boundary_projections_and_capability_gates())
+
 
 def test_authentication_and_authorization_security_matrix(monkeypatch, tmp_path):
     blocklist = tmp_path / "password-blocklist.txt"
@@ -805,7 +962,12 @@ async def run_login_issuance_contract():
         ("/api/auth/login", "unknown@example.com", valid_password, True),
         ("/api/auth/admin/login", "unknown@example.com", valid_password, True),
         ("/api/auth/login", "legacy-client@example.com", "WrongPassword123", False),
-        ("/api/auth/admin/login", "legacy-client@example.com", "WrongPassword123", False),
+        (
+            "/api/auth/admin/login",
+            "legacy-client@example.com",
+            "WrongPassword123",
+            False,
+        ),
         ("/api/auth/login", "disabled-customer@example.com", valid_password, False),
         ("/api/auth/admin/login", "disabled-staff@niuva.com", valid_password, False),
         ("/api/auth/login", "review-blocked@example.com", valid_password, False),
@@ -918,12 +1080,32 @@ async def run_admin_stats_counts_canonical_customer_roles():
     original_db = server.db
     try:
         registered = "2026-07-10T00:00:00+00:00"
-        server.db = FakeDatabase([
-            {"id": "legacy-client", "role": "client", "created_at": registered},
-            {"id": "retail-customer", "roles": ["retail_customer"], "status": "active", "access_state": "approved", "created_at": registered},
-            {"id": "organization-customer", "roles": ["organization_customer"], "status": "active", "access_state": "approved", "created_at": registered},
-            {"id": "outside-range", "roles": ["retail_customer"], "status": "active", "access_state": "approved", "created_at": "2026-06-01T00:00:00+00:00"},
-        ])
+        server.db = FakeDatabase(
+            [
+                {"id": "legacy-client", "role": "client", "created_at": registered},
+                {
+                    "id": "retail-customer",
+                    "roles": ["retail_customer"],
+                    "status": "active",
+                    "access_state": "approved",
+                    "created_at": registered,
+                },
+                {
+                    "id": "organization-customer",
+                    "roles": ["organization_customer"],
+                    "status": "active",
+                    "access_state": "approved",
+                    "created_at": registered,
+                },
+                {
+                    "id": "outside-range",
+                    "roles": ["retail_customer"],
+                    "status": "active",
+                    "access_state": "approved",
+                    "created_at": "2026-06-01T00:00:00+00:00",
+                },
+            ]
+        )
         stats = await server.admin_stats(
             date_from="2026-07-01",
             date_to="2026-07-31",

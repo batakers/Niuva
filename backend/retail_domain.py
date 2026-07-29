@@ -153,6 +153,56 @@ def classify_legacy_order(document: dict) -> dict:
     return value
 
 
+def project_customer_legacy_order(document: dict) -> dict:
+    """Return the read-only legacy history a customer is allowed to see.
+
+    Legacy records predate the current data boundary, so a projection must not
+    inherit every stored field. In particular, free-text notes have no reliable
+    customer-authored provenance and file storage locations are never returned.
+    """
+    fields = (
+        "id",
+        "order_number",
+        "material_name",
+        "status",
+        "created_at",
+        "updated_at",
+    )
+    value = {key: document[key] for key in fields if key in document}
+    status = value.get("status")
+    value["record_class"] = "legacy_order"
+    value["canonical_status_equivalent"] = LEGACY_STATUS_EQUIVALENT.get(status)
+    value["creation_enabled"] = False
+    value["mutations_enabled"] = False
+
+    file = document.get("file")
+    if isinstance(file, dict) and isinstance(file.get("original_filename"), str):
+        value["file"] = {"original_filename": file["original_filename"]}
+
+    estimate = document.get("estimate")
+    if isinstance(estimate, dict) and "amount" in estimate:
+        value["estimate"] = {"amount": estimate["amount"]}
+        if isinstance(estimate.get("currency"), str):
+            value["estimate"]["currency"] = estimate["currency"]
+
+    payment = document.get("payment")
+    if isinstance(payment, dict):
+        value["payment"] = {"verified": bool(payment.get("verified"))}
+
+    history = document.get("status_history")
+    value["status_history"] = (
+        [
+            {key: event[key] for key in ("status", "at") if key in event}
+            for event in history
+            if isinstance(event, dict) and "status" in event
+        ]
+        if isinstance(history, list)
+        else []
+    )
+
+    return value
+
+
 def project_retail_order(document: dict) -> dict:
     value = {key: item for key, item in document.items() if key != "_id"}
     value["record_class"] = "retail_order"

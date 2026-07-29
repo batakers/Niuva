@@ -158,6 +158,14 @@ export async function downloadFile(path, filename = "download") {
   triggerBlobDownload(await fetchFile(path), filename);
 }
 
+export async function downloadApiFile(apiPath, filename = "download") {
+  const response = await fetch(`${API}${apiPath}`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error(`File request failed (${response.status})`);
+  triggerBlobDownload(await response.blob(), filename);
+}
+
 export async function downloadCsv(apiPath, filename = "export.csv") {
   const headers = new Headers();
   if (adminCsrfToken) headers.set(CSRF_HEADER, adminCsrfToken);
