@@ -4,9 +4,11 @@ from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, FastAPI, Header, HTTPException
+from fastapi.exceptions import RequestValidationError
 
 from b2b_routes import build_b2b_router
 from permissions import has_permission
+from tests.test_identity_foundation import server
 
 
 class FakeCursor:
@@ -79,6 +81,11 @@ def permission_dependency(permission):
 def build_context(throttle_intake=None, notify_inquiry=None):
     db = FakeDatabase()
     app = FastAPI()
+    app.add_exception_handler(HTTPException, server.http_error_envelope)
+    app.add_exception_handler(
+        RequestValidationError,
+        server.validation_error_envelope,
+    )
     api = APIRouter(prefix="/api")
     api.include_router(
         build_b2b_router(
@@ -157,6 +164,96 @@ def test_public_intake_and_permission_scoped_triage():
             )
             assert listed.status_code == 200
             assert listed.json()[0]["id"] == inquiry["id"]
+
+    asyncio.run(scenario())
+
+
+def test_b2b_route_errors_follow_the_shared_http_envelope():
+    async def scenario():
+        app = build_context()
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            denied = await api.get(
+                "/api/admin/inquiries",
+                headers={"X-Role": "warehouse"},
+            )
+            assert denied.status_code == 403
+            denied_body = denied.json()
+            assert denied_body["detail"] == "Permission denied"
+            assert denied_body["error"] == {
+                "code": "http_403",
+                "message": "Permission denied",
+            }
+            assert denied_body["request_id"]
+
+            malformed = await api.post(
+                "/api/admin/inquiries/not-used/transitions",
+                headers={"X-Role": "sales_estimator"},
+                json={
+                    "target_status": "reviewed",
+                    "expected_version": 0,
+                    "operation_id": "0860ca2b-bd13-4bb3-ad7e-a47958aaa939",
+                    "reason": "Brief awal lengkap",
+                },
+            )
+            assert malformed.status_code == 422
+            malformed_body = malformed.json()
+            assert malformed_body["detail"]["code"] == "request_validation_failed"
+            assert malformed_body["error"]["code"] == "request_validation_failed"
+            assert malformed_body["request_id"]
+
+    asyncio.run(scenario())
+
+
+def test_b2b_command_replay_and_conflict_follow_the_shared_http_envelope():
+    async def scenario():
+        app = build_context()
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            created = await api.post("/api/inquiries", json=INTAKE_SUBMISSION)
+            inquiry_id = created.json()["id"]
+            command = {
+                "target_status": "reviewed",
+                "expected_version": 1,
+                "operation_id": "0860ca2b-bd13-4bb3-ad7e-a47958aaa939",
+                "reason": "Brief awal lengkap",
+            }
+            first = await api.post(
+                f"/api/admin/inquiries/{inquiry_id}/transitions",
+                headers={"X-Role": "sales_estimator"},
+                json=command,
+            )
+            assert first.status_code == 200
+
+            replay = await api.post(
+                f"/api/admin/inquiries/{inquiry_id}/transitions",
+                headers={"X-Role": "sales_estimator"},
+                json=command,
+            )
+            assert replay.status_code == 200
+            assert replay.json()["version"] == first.json()["version"] == 2
+
+            stale = await api.post(
+                f"/api/admin/inquiries/{inquiry_id}/transitions",
+                headers={"X-Role": "sales_estimator"},
+                json={
+                    **command,
+                    "target_status": "contacted",
+                    "operation_id": "1260ca2b-bd13-4bb3-ad7e-a47958aaa939",
+                },
+            )
+            assert stale.status_code == 409
+            stale_body = stale.json()
+            assert stale_body["detail"]["code"] == "version_conflict"
+            assert stale_body["error"]["code"] == "version_conflict"
+            assert stale_body["error"]["details"]["current_version"] == 2
+            assert stale_body["request_id"]
 
     asyncio.run(scenario())
 
