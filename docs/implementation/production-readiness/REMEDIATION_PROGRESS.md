@@ -52,18 +52,21 @@ branches or worktrees has been created.
 
 This register inventories frontend work that is still open, only partially
 evidenced, decision-blocked, or environment-blocked. It uses the existing
-roadmap task IDs rather than creating a second backlog namespace. The evidence
-snapshot is `e6d7e451208c5ef45e0f723c5fdb4645802a27fb`, which matched fetched
-`origin/main` after PRs #88–#89. The selected release candidate
-remains `d04e3f0`; this current-source snapshot does not replace selected-SHA or
-production-like revalidation.
+roadmap task IDs rather than creating a second backlog namespace. Immediately
+after `git fetch origin main` on 2026-07-29 at 20:03 Asia/Jakarta, the exact
+`refs/remotes/origin/main` snapshot was
+`e6d7e451208c5ef45e0f723c5fdb4645802a27fb`, including PRs #88–#89. This
+records that fetch only; it does not retroactively establish remote freshness
+for the selected release candidate `d04e3f0`, guarantee future remote
+freshness, or replace selected-SHA or production-like revalidation.
 
 `Partial` means current source or focused tests contain a candidate correction;
 it is not finding closure. `Merged evidence` means the bounded source slice is
-on current `main`, but selected-RC, release, and production gates remain.
-`Open` means the gap is still directly observable in current source or tests.
-`Blocked` means the next result depends on a named owner decision or controlled
-environment; it is not a pass.
+an ancestor of the recorded current-main snapshot; it does not establish
+selected-RC or future remote freshness, release, production-readiness, or
+go-live. `Open` means the gap is still directly observable in current source or
+tests. `Blocked` means the next result depends on a named owner decision or
+controlled environment; it is not a pass.
 
 | Order | Existing phase / task IDs | Finding or gap | Current evidence | Exact remaining task and acceptance boundary | State / gate |
 | ---: | --- | --- | --- | --- | --- |
