@@ -2,7 +2,7 @@
 
 Status: **revalidated — remediation required before Migration 006**
 Phase / feature: `PHASE-01B` / Granular RBAC
-Baseline: `97bbdaf1b2b6f630c3f23cb3189b5476165f7023`
+Baseline: `7f47bbcb4f599410714e32d3acd6d362878f3d28`
 Branch: `audit/backend-granular-rbac`
 Revalidation date: 29 July 2026
 
