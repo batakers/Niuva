@@ -63,8 +63,8 @@ npm test -- --watchAll=false --runInBand \
 
 Result: 2 suites and 14 tests passed. The full frontend regression also passed
 with 36 suites and 239 tests; the rebased full backend regression passed with
-646 tests,
-12 explicit skips, and 14 subtests.
+650 tests, 13 explicit skips, and 14 subtests after the latest `origin/main`
+merge.
 
 ## Remaining production gates
 
