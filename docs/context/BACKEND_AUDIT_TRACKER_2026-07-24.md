@@ -643,11 +643,11 @@ Status vocabulary:
   - [`docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`](../decisions/architecture/ADR-002-production-file-storage-architecture.md)
 - Production upload remains blocked until ADR readiness gates are satisfied.
 
-### BA-009 — Transaction and audit boundary adoption is incomplete
+### BA-009 — Transaction and audit boundary adoption
 
 - Severity: P1
-- Status: `partial`
-- Evidence date: 27 July 2026
+- Status: `resolved_in_source`
+- Evidence date: 30 July 2026
 - Positive controls:
   - transaction capability probe tersedia;
   - central executor dan mutation guard tersedia;
@@ -663,23 +663,21 @@ Status vocabulary:
     menempatkan mutation dan audit pada callback/session yang sama;
   - injected audit failure regression membuktikan keempat material mutation
     tidak meninggalkan partial document.
-- Open gaps after reconciliation:
-  - multi-material work-order inventory operation masih memakai
-    `start_session()` langsung;
-  - CMS `transition_block` masih memakai direct transaction block;
-  - CMS create/update/archive masih menulis mutation dan audit secara terpisah;
-  - catalog archive menulis product lalu audit secara terpisah;
-  - concurrent catalog publish menghitung next revision sebelum transaksi;
-  - direct blocks baru dari 52 upstream commits belum seluruhnya memakai
-    central unknown-commit reconciliation boundary.
-- Impact:
-  - mutation yang tersisa dapat berhasil tanpa audit jika audit write gagal;
-  - concurrent publication dapat menghasilkan raw conflict;
-  - ambiguous transaction outcome tidak diproyeksikan secara seragam.
-- Environment limitation:
-  - real replica-set foundation pernah direproduksi 26 July 2026;
-  - reconciled 27 July suite menjalankan 445 internal tests, tetapi tujuh
-    real-replica-set modules di-skip karena explicit opt-in/URL tidak tersedia.
+  - catalog CRUD/archive dan audit sekarang berada dalam callback/session yang
+    sama;
+  - seluruh content mutation dan multi-material inventory memakai shared guard;
+  - local `_require_transactions()` pada catalog/content/inventory dihapus,
+    sehingga shared `transaction_rejected` dan wire contract menjadi satu jalur;
+  - catalog publish/rollback memilih revision di dalam transaksi dan memakai
+    compare-and-set untuk memproyeksikan contention sebagai domain `409`;
+  - real replica-set suite 30 July 2026: 70 passed, 0 skipped, termasuk injected
+    catalog audit failure, fail-closed rejection, concurrent publication, dan
+    bulk inventory observability.
+- Remaining boundary:
+  - migration 007 tetap memiliki transaction block sendiri karena migration
+    execution dan production data mutation digate terpisah;
+  - production topology, rollout, monitoring ownership, dan go-live tetap open
+    dan tidak diotorisasi oleh penyelesaian finding source ini.
 
 ### BA-010 — Authentication and public-input hardening is incomplete
 
@@ -1382,24 +1380,44 @@ Baseline: `origin/main` `1ada96a591f607e2dba38013cebb1a20e593b782`.
 No migration, historical rewrite/deletion, provider activation, production data
 access, deployment, or go-live was performed.
 
-### 30 July 2026 — Transaction and Quote-line integrity review candidates
+### 30 July 2026 — Transaction and Quote-line integrity status
 
-Baseline: `origin/main` `7d8d5c90f6440f1276ee4b82c166258514a93cd1`.
+Feature 3.1 baseline: `origin/main`
+`7d8d5c90f6440f1276ee4b82c166258514a93cd1`.
 
-- Feature 3.1 Shared transaction executor is represented by PR #95
-  (`21cc57b`). Its CI is green, but actionable review findings remain and the
-  feature is not marked accepted or merged.
-- Feature 3.2 Quote-line identity is represented by PR #96 (`3eccbd6`). Exact
-  line/version references, per-line quantity, fail-closed ambiguity, and the
-  no-backfill boundary are complete in the source candidate.
-- Feature 3.2 local verification: 40 focused tests; 630 full backend tests with
-  12 skipped and 14 subtests; 9 focused and 68 full real replica-set tests.
-- Feature 3.2 GitHub backend, frontend, secret-scan, and transaction-tests jobs
-  passed. Substantive CodeRabbit review was unavailable because of rate
-  limiting, so review remains an explicit merge gate.
-- Historical Quote-line report execution, mapping, backup, dry run,
-  validation, rollback/restore, migration, shared/production data access,
-  deployment, and go-live remain separately gated.
+- PR #95 (`21cc57b`) routes catalog, content, and inventory mutations through
+  the shared fail-closed transaction boundary.
+- Catalog category/product create, update, and archive commit business and
+  audit writes in one shared-guard transaction.
+- Catalog publish/rollback allocate revisions in-session and use
+  compare-and-set conflict handling; concurrent publication has one winner and
+  one domain conflict.
+- Corrective commit `1cde373` addresses the three valid CodeRabbit findings:
+  documented real-test opt-in, slug-race conflict translation, and
+  optimistic-concurrency protection for category/product update and archive.
+- Feature 3.1 verification before `origin/main` integration: 40 focused tests;
+  622 full backend tests with 13 skipped and 14 subtests; 70 mandatory local
+  MongoDB 7.0.37 replica-set tests with no skips. Corrective regression:
+  14 catalog tests and 624 full backend tests with 13 skipped and 14 subtests.
+- Post-integration local regression: 44 focused catalog/Quote-line tests and
+  634 full backend tests with 13 skipped and 14 subtests.
+- PR #95 remains unmerged. Its corrective and integration commits require
+  GitHub revalidation after push; this record does not mark the feature
+  accepted or merged.
 
-No historical-data mutation, inference, automatic backfill, migration,
-deployment, or go-live action was performed.
+Feature 3.2 merged baseline: PR #96, merge commit
+`850d11a5a297070e62e23db25120cd4ac79b663a`.
+
+- Exact line/version references, per-line quantity, fail-closed ambiguity, and
+  the no-backfill boundary are present on `origin/main`.
+- Feature 3.2 local verification recorded 40 focused tests; 630 full backend
+  tests with 12 skipped and 14 subtests; 9 focused and 68 full real replica-set
+  tests.
+- GitHub backend, frontend, secret-scan, and transaction-tests jobs passed
+  before merge. Substantive CodeRabbit review was unavailable because of rate
+  limiting, so the merge is not independent readiness verification.
+
+Migration 007, historical Quote-line report execution or mapping, backup, dry
+run, validation, rollback/restore, migration, shared/production data access,
+provider activation, deployment, production readiness, and go-live remain
+separately gated and were not performed.

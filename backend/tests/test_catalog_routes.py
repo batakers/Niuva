@@ -2,11 +2,15 @@ import asyncio
 import types
 
 import httpx
+import pytest
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from catalog_routes import build_catalog_router
+from catalog_service import CatalogError, CatalogService
 from permissions import ROLE_POLICY_VERSION, has_permission
-from transaction_execution import TransactionExecutor
+from transaction_api import transaction_unavailable_handler
+from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
 
 
@@ -74,7 +78,7 @@ class FakeCollection:
                 return self.project(item, projection)
         return None
 
-    def find(self, query, projection=None):
+    def find(self, query, projection=None, **_options):
         return FakeCursor(
             self.project(item, projection)
             for item in self.items
@@ -194,6 +198,10 @@ def build_test_context():
     )
     app = FastAPI()
     app.state.transaction_guard = guard
+    app.state.transaction_events = sink.events
+    app.add_exception_handler(
+        TransactionUnavailableError, transaction_unavailable_handler
+    )
     api = APIRouter(prefix="/api")
     api.include_router(
         build_catalog_router(
@@ -206,6 +214,16 @@ def build_test_context():
     )
     app.include_router(api)
     return app, db, capabilities
+
+
+def build_catalog_service():
+    db = FakeDatabase()
+    client = FakeClient()
+    capabilities = types.SimpleNamespace(transactions=True)
+    guard = TransactionMutationGuard(
+        TransactionExecutor(client, lambda: capabilities)
+    )
+    return CatalogService(db, client, capabilities, guard), db
 
 
 def headers(role="super_admin"):
@@ -324,6 +342,46 @@ def test_catalog_publish_and_public_boundary():
     asyncio.run(run_publish_and_public_boundary())
 
 
+async def run_catalog_crud_uses_shared_transaction_boundary():
+    app, db, capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
+        created = await api.post(
+            "/api/admin/categories",
+            json={"name": "Atomic", "slug": "atomic"},
+            headers=headers(),
+        )
+        assert created.status_code == 201
+        assert (
+            "transaction_start",
+            "catalog.create_category",
+        ) in app.state.transaction_events
+        assert (
+            "transaction_commit",
+            "catalog.create_category",
+        ) in app.state.transaction_events
+
+        capabilities.transactions = False
+        rejected = await api.post(
+            "/api/admin/categories",
+            json={"name": "Rejected", "slug": "rejected"},
+            headers=headers(),
+        )
+        assert rejected.status_code == 503
+        assert rejected.json()["detail"]["code"] == "transaction_unavailable"
+        assert not any(item["slug"] == "rejected" for item in db.categories.items)
+        assert (
+            "transaction_rejected",
+            "catalog.create_category",
+        ) in app.state.transaction_events
+
+
+def test_catalog_crud_uses_shared_transaction_boundary_and_fails_closed():
+    asyncio.run(run_catalog_crud_uses_shared_transaction_boundary())
+
+
 async def run_permission_validation_and_conflicts():
     app, _db, capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
@@ -385,6 +443,161 @@ async def run_permission_validation_and_conflicts():
 
 def test_catalog_permissions_validation_conflicts_and_transaction_gate():
     asyncio.run(run_permission_validation_and_conflicts())
+
+
+async def run_concurrent_slug_insert_conflicts_are_translated():
+    actor = {"id": "actor-super_admin"}
+
+    category_service, category_db = build_catalog_service()
+
+    async def duplicate_slug(*_args, **_kwargs):
+        raise DuplicateKeyError(
+            "duplicate slug",
+            11000,
+            {"keyPattern": {"slug": 1}, "keyValue": {"slug": "concurrent"}},
+        )
+
+    category_db.categories.insert_one = duplicate_slug
+    with pytest.raises(CatalogError) as category_conflict:
+        await category_service.create_category(
+            {"name": "Concurrent", "slug": "concurrent"},
+            actor,
+        )
+    assert category_conflict.value.status_code == 409
+    assert category_conflict.value.code == "slug_conflict"
+
+    product_service, product_db = build_catalog_service()
+    product_db.categories.items.append(
+        {
+            "id": "category-1",
+            "name": "Catalog",
+            "slug": "catalog",
+            "updated_at": "2026-07-30T00:00:00+00:00",
+        }
+    )
+    product_db.products.insert_one = duplicate_slug
+    with pytest.raises(CatalogError) as product_conflict:
+        await product_service.create_product(
+            {
+                "category_id": "category-1",
+                "name": "Concurrent Product",
+                "slug": "concurrent-product",
+            },
+            actor,
+        )
+    assert product_conflict.value.status_code == 409
+    assert product_conflict.value.code == "slug_conflict"
+
+    unrelated_service, unrelated_db = build_catalog_service()
+
+    async def duplicate_id(*_args, **_kwargs):
+        raise DuplicateKeyError(
+            "duplicate id",
+            11000,
+            {"keyPattern": {"_id": 1}, "keyValue": {"_id": "duplicate"}},
+        )
+
+    unrelated_db.categories.insert_one = duplicate_id
+    with pytest.raises(DuplicateKeyError):
+        await unrelated_service.create_category(
+            {"name": "Duplicate ID", "slug": "duplicate-id"},
+            actor,
+        )
+
+    database_service, database_db = build_catalog_service()
+
+    async def database_failure(*_args, **_kwargs):
+        raise PyMongoError("database unavailable")
+
+    database_db.categories.insert_one = database_failure
+    with pytest.raises(PyMongoError):
+        await database_service.create_category(
+            {"name": "Database Failure", "slug": "database-failure"},
+            actor,
+        )
+
+
+def test_concurrent_slug_insert_conflicts_are_translated():
+    asyncio.run(run_concurrent_slug_insert_conflicts_are_translated())
+
+
+async def run_catalog_updates_reject_stale_pre_transaction_reads():
+    actor = {"id": "actor-super_admin"}
+
+    async def missed_compare_and_swap(*_args, **_kwargs):
+        return types.SimpleNamespace(matched_count=0, modified_count=0)
+
+    category_service, category_db = build_catalog_service()
+    category_db.categories.items.append(
+        {
+            "id": "category-1",
+            "name": "Catalog",
+            "slug": "catalog",
+            "status": "active",
+            "updated_at": "2026-07-30T00:00:00+00:00",
+        }
+    )
+    category_db.categories.update_one = missed_compare_and_swap
+    with pytest.raises(CatalogError) as category_update_conflict:
+        await category_service.update_category(
+            "category-1",
+            {"name": "Updated Catalog", "slug": "updated-catalog"},
+            actor,
+        )
+    assert category_update_conflict.value.code == "version_conflict"
+
+    with pytest.raises(CatalogError) as category_archive_conflict:
+        await category_service.archive_category(
+            "category-1",
+            actor,
+            "Concurrent archive",
+        )
+    assert category_archive_conflict.value.code == "version_conflict"
+
+    product_service, product_db = build_catalog_service()
+    product_db.categories.items.append(
+        {
+            "id": "category-1",
+            "name": "Catalog",
+            "slug": "catalog",
+            "updated_at": "2026-07-30T00:00:00+00:00",
+        }
+    )
+    product_db.products.items.append(
+        {
+            "id": "product-1",
+            "category_id": "category-1",
+            "name": "Product",
+            "slug": "product",
+            "workflow_status": "published",
+            "active_publication_id": "publication-1",
+            "updated_at": "2026-07-30T00:00:00+00:00",
+        }
+    )
+    product_db.products.update_one = missed_compare_and_swap
+    with pytest.raises(CatalogError) as product_update_conflict:
+        await product_service.update_product(
+            "product-1",
+            {
+                "category_id": "category-1",
+                "name": "Updated Product",
+                "slug": "updated-product",
+            },
+            actor,
+        )
+    assert product_update_conflict.value.code == "version_conflict"
+
+    with pytest.raises(CatalogError) as product_archive_conflict:
+        await product_service.archive_product(
+            "product-1",
+            actor,
+            "Concurrent archive",
+        )
+    assert product_archive_conflict.value.code == "version_conflict"
+
+
+def test_catalog_updates_reject_stale_pre_transaction_reads():
+    asyncio.run(run_catalog_updates_reject_stale_pre_transaction_reads())
 
 
 async def run_draft_isolation_and_rollback():

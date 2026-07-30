@@ -89,7 +89,8 @@ Start the ephemeral test topology:
 ```powershell
 docker compose -f docker-compose.transaction-test.yml up -d
 $env:MONGO_TRANSACTION_TEST_URL = "mongodb://127.0.0.1:27018/?replicaSet=rs-test&directConnection=true"
-.\backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_integration.py backend\tests\test_b2b_transaction_integration.py backend\tests\test_work_order_allocation_integration.py backend\tests\test_inventory_transactions.py
+$env:NIUVA_RUN_REAL_TRANSACTION_TESTS = "1"
+.\backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_integration.py backend\tests\test_commercial_transaction_integration.py backend\tests\test_b2b_transaction_integration.py backend\tests\test_work_order_allocation_integration.py backend\tests\test_inventory_transactions.py
 ```
 
 Always clean it after the test:
@@ -97,6 +98,7 @@ Always clean it after the test:
 ```powershell
 docker compose -f docker-compose.transaction-test.yml down --volumes --remove-orphans
 Remove-Item Env:MONGO_TRANSACTION_TEST_URL -ErrorAction SilentlyContinue
+Remove-Item Env:NIUVA_RUN_REAL_TRANSACTION_TESTS -ErrorAction SilentlyContinue
 ```
 
 The test initializer sidecar uses
@@ -148,9 +150,9 @@ volume and must never be used against staging or production data.
 
 ## Known Limitations
 
-- Existing catalog and inventory services still own their current transaction
-  code. Their later migration to the shared guard requires a separate
-  behavior-preserving review; this foundation does not silently rewrite them.
+- Catalog, content, and inventory runtime mutations use the shared guard.
+  Direct session ownership is limited to the shared executor, the read-only
+  capability probe, and separately gated migration code.
 - The repository has no established metrics subsystem or request-ID
   middleware. This foundation emits allowlisted structured log records; most
   transaction calls therefore use `correlation_id=None`. A correlation ID is
@@ -450,8 +452,7 @@ Then verify:
 5. No writer switches to direct non-transactional collection calls.
 
 The flag applies only to consumers that explicitly adopted the guard.
-Existing catalog and inventory transaction code remains under its current
-capability gate until a separate behavior-preserving adoption review.
-Runtime disablement does not enable a non-atomic fallback. Keep guarded
-mutation disabled until capability, tests, review, and operational approval
-are restored.
+Catalog, content, inventory, material, B2B, identity, portfolio, and settings
+mutation owners are current consumers. Runtime disablement does not enable a non-atomic fallback.
+Keep guarded mutation disabled until capability, tests, review, and
+operational approval are restored.

@@ -89,14 +89,6 @@ class InventoryService:
         self.capabilities = capabilities
         self.guard = guard
 
-    def _require_transactions(self):
-        if not self.capabilities.transactions:
-            raise InventoryError(
-                503,
-                "transaction_unavailable",
-                "Operasi inventory aman tidak tersedia karena database belum mendukung transaksi.",
-            )
-
     async def _subject(self, subject_type: str, subject_id: str, session=None) -> dict:
         collection = (
             self.db.materials
@@ -202,7 +194,6 @@ class InventoryService:
         actor: dict,
         payload: dict,
     ) -> dict:
-        self._require_transactions()
         delta = _decimal(payload.get("on_hand_delta"))
         if delta == 0:
             raise InventoryError(
@@ -304,7 +295,6 @@ class InventoryService:
         reason: str,
         actor: dict,
     ) -> dict:
-        self._require_transactions()
         request = await self.db.inventory_adjustment_requests.find_one(
             {"id": request_id},
             {"_id": 0},
@@ -444,7 +434,6 @@ class InventoryService:
         reason: str,
         actor: dict,
     ) -> dict:
-        self._require_transactions()
         request = await self.db.inventory_adjustment_requests.find_one(
             {"id": request_id},
             {"_id": 0},
@@ -513,7 +502,6 @@ class InventoryService:
         reservation_create: dict | None = None,
         reservation_transition: dict | None = None,
     ) -> dict:
-        self._require_transactions()
         fingerprint = operation_fingerprint(payload)
         existing = await self._find_existing_operation(
             payload["operation_id"], fingerprint
@@ -790,7 +778,6 @@ class InventoryService:
         ``extra_mutation`` runs inside the same transaction, which is how the
         owning aggregate is updated without a second, unprotected write.
         """
-        self._require_transactions()
         if not operations:
             raise InventoryError(
                 422, "inventory_operations_empty", "Tidak ada operasi inventory."
@@ -810,33 +797,31 @@ class InventoryService:
         if all(replayed):
             return replayed
 
+        async def mutation(session):
+            results = []
+            for prepared_operation in prepared:
+                result, _recipients = await self._apply_operation_in_transaction(
+                    actor=actor,
+                    payload=prepared_operation["payload"],
+                    fingerprint=prepared_operation["fingerprint"],
+                    session=session,
+                    reservation_create=prepared_operation.get("reservation_create"),
+                    reservation_transition=prepared_operation.get(
+                        "reservation_transition"
+                    ),
+                )
+                results.append(result)
+            if extra_mutation is not None:
+                await extra_mutation(session, results)
+            return results
+
         for attempt in range(3):
-            email_recipients: list = []
             try:
-                session = await self.client.start_session()
-                async with session:
-                    async with session.start_transaction():
-                        results = []
-                        for operation in prepared:
-                            result, recipients = (
-                                await self._apply_operation_in_transaction(
-                                    actor=actor,
-                                    payload=operation["payload"],
-                                    fingerprint=operation["fingerprint"],
-                                    session=session,
-                                    reservation_create=operation.get(
-                                        "reservation_create"
-                                    ),
-                                    reservation_transition=operation.get(
-                                        "reservation_transition"
-                                    ),
-                                )
-                            )
-                            results.append(result)
-                            email_recipients.extend(recipients)
-                        if extra_mutation is not None:
-                            await extra_mutation(session, results)
-                return results
+                return await self.guard.run(
+                    mutation,
+                    operation_name="inventory.apply_bulk_operations",
+                    retry_safe=True,
+                )
             except _StaleBalance:
                 if attempt == 2:
                     raise InventoryError(
@@ -856,15 +841,13 @@ class InventoryService:
                         "Saldo inventory berubah bersamaan; silakan ulangi operasi.",
                     )
             except PyMongoError as exc:
-                if not exc.has_error_label("TransientTransactionError"):
-                    raise
-                if attempt == 2:
+                if exc.has_error_label("TransientTransactionError"):
                     raise InventoryError(
                         409,
                         "balance_version_conflict",
                         "Transaksi inventory terus berbenturan; silakan ulangi operasi.",
                     ) from exc
-                continue
+                raise
         raise AssertionError("inventory bulk retry loop exited unexpectedly")
 
     async def create_reservation(self, *, actor: dict, payload: dict) -> dict:
@@ -1217,8 +1200,6 @@ class InventoryService:
         return serialize_inventory(values)
 
     async def resolve_alert(self, *, alert_id: str, actor: dict, reason: str) -> dict:
-        self._require_transactions()
-
         async def mutation(session):
             before = await self.db.restock_alerts.find_one(
                 {"id": alert_id}, {"_id": 0}, **_write_options(session)

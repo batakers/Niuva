@@ -57,14 +57,6 @@ class ContentService:
         self.capabilities = capabilities
         self.guard = guard
 
-    def _require_transactions(self):
-        if not self.capabilities.transactions:
-            raise ContentError(
-                503,
-                "transaction_unavailable",
-                "Operasi konten aman tidak tersedia karena database belum mendukung transaksi.",
-            )
-
     async def _get_block(self, block_id: str) -> dict:
         block = clean_document(await self.db.content_blocks.find_one({"id": block_id}, {"_id": 0}))
         if not block:
@@ -113,7 +105,6 @@ class ContentService:
         actor: dict,
         reason: str,
     ) -> dict:
-        self._require_transactions()
         if content_type not in CONTENT_TYPES:
             raise ContentError(400, "unknown_content_type", "Jenis konten tidak dikenal.")
         normalized_slug = normalize_slug(slug) or str(uuid.uuid4())[:8]
@@ -163,7 +154,6 @@ class ContentService:
         actor: dict,
         reason: str,
     ) -> dict:
-        self._require_transactions()
         block = await self._get_block(block_id)
         if block.get("version", 1) != expected_version:
             self._conflict(block)
@@ -217,7 +207,6 @@ class ContentService:
         expected_version: int,
         scheduled_at: datetime | None = None,
     ) -> dict:
-        self._require_transactions()
         block = await self._get_block(block_id)
         if block.get("version", 1) != expected_version:
             self._conflict(block)
@@ -292,7 +281,6 @@ class ContentService:
         reason: str,
         expected_version: int,
     ) -> dict:
-        self._require_transactions()
         block = await self._get_block(block_id)
         if block.get("version", 1) != expected_version:
             self._conflict(block)
@@ -361,7 +349,6 @@ class ContentService:
         reason: str,
         expected_version: int,
     ) -> dict:
-        self._require_transactions()
         block = await self._get_block(block_id)
         if block.get("version", 1) != expected_version:
             self._conflict(block)
@@ -426,7 +413,6 @@ class ContentService:
         can_publish: bool,
     ) -> dict:
         """Move a block along the review lifecycle."""
-        self._require_transactions()
         block = await self._get_block(block_id)
         if block.get("version", 1) != expected_version:
             self._conflict(block)

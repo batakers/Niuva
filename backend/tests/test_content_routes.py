@@ -6,7 +6,8 @@ from fastapi import APIRouter, FastAPI, Header, HTTPException
 
 from content_routes import build_content_router
 from permissions import ROLE_POLICY_VERSION, has_permission
-from transaction_execution import TransactionExecutor
+from transaction_api import transaction_unavailable_handler
+from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
 
 
@@ -178,6 +179,9 @@ def build_test_context():
     )
     app = FastAPI()
     app.state.transaction_guard = guard
+    app.add_exception_handler(
+        TransactionUnavailableError, transaction_unavailable_handler
+    )
     api = APIRouter(prefix="/api")
     api.include_router(
         build_content_router(

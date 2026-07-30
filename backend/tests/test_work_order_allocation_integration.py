@@ -90,7 +90,14 @@ class Context:
     def __init__(self, client, database_name, capabilities):
         self.client = client
         self.database = client[database_name]
-        executor = TransactionExecutor(client, lambda: capabilities)
+        self.transaction_events = []
+        executor = TransactionExecutor(
+            client,
+            lambda: capabilities,
+            event_sink=lambda event, fields: self.transaction_events.append(
+                (event, fields["operation_name"])
+            ),
+        )
         guard = TransactionMutationGuard(executor, lambda: True)
         self.b2b = B2BService(
             db=self.database,
@@ -250,6 +257,14 @@ async def run_allocation_reserves_the_whole_bill(database_name):
         assert current["mat-ink"]["reserved"] == Decimal("4")
         # Reserving makes stock unavailable; it does not remove it.
         assert current["mat-ply"]["on_hand"] == Decimal("10")
+        assert (
+            "transaction_start",
+            "inventory.apply_bulk_operations",
+        ) in context.transaction_events
+        assert (
+            "transaction_commit",
+            "inventory.apply_bulk_operations",
+        ) in context.transaction_events
     finally:
         await client.drop_database(database_name)
         client.close()
