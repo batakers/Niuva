@@ -1,9 +1,9 @@
+import io
 import json
 import sys
 from pathlib import Path
 
 import pytest
-
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
@@ -142,7 +142,10 @@ def test_missing_metadata_uses_extension_fallback(local_root):
     target.parent.mkdir(parents=True)
     target.write_bytes(b"png")
 
-    assert storage.get_object("niuva/payments/user-1/proof.png") == (b"png", "image/png")
+    assert storage.get_object("niuva/payments/user-1/proof.png") == (
+        b"png",
+        "image/png",
+    )
 
 
 @pytest.mark.parametrize(
@@ -208,6 +211,54 @@ def test_metadata_write_failure_removes_partial_object(local_root, monkeypatch):
 
     assert not (local_root / "niuva/orders/user-1/model.stl").exists()
     assert not list(local_root.rglob("*.tmp"))
+
+
+def test_unexpected_metadata_write_failure_removes_partial_object(
+    local_root,
+    monkeypatch,
+):
+    def fail_metadata(_target, _payload):
+        raise RuntimeError("simulated adapter failure")
+
+    monkeypatch.setattr(storage, "_atomic_write", fail_metadata)
+
+    with pytest.raises(storage.StorageError, match="Unable to store object"):
+        storage.put_object(
+            "niuva/orders/user-1/model.stl",
+            b"solid niuva",
+            "model/stl",
+        )
+
+    assert not (local_root / "niuva/orders/user-1/model.stl").exists()
+    assert not list(local_root.rglob("*.tmp"))
+
+
+def test_declared_size_mismatch_stops_and_removes_partial_object(local_root):
+    path = "niuva/orders/user-1/model.stl"
+
+    with pytest.raises(storage.StorageError, match="size mismatch"):
+        storage.put_file_object(
+            path,
+            io.BytesIO(b"larger than declared"),
+            1,
+            "model/stl",
+        )
+
+    assert not (local_root / path).exists()
+    assert not list(local_root.rglob("*.upload"))
+
+
+@pytest.mark.parametrize("size", [-1, True, "12"])
+def test_rejects_invalid_declared_object_size_without_writing(local_root, size):
+    with pytest.raises(storage.StorageError, match="Invalid stored object size"):
+        storage.put_file_object(
+            "niuva/orders/user-1/model.stl",
+            io.BytesIO(b"solid niuva"),
+            size,
+            "model/stl",
+        )
+
+    assert not list(local_root.rglob("*"))
 
 
 def test_exposes_typed_storage_environment_errors():

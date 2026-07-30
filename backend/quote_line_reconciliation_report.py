@@ -10,6 +10,32 @@ from typing import Any, TypeGuard
 
 REPORT_VERSION = 1
 SCAN_LIMIT = 10_000
+COLLECTION_PROJECTIONS = {
+    "b2b_quote_versions": {
+        "_id": 0,
+        "id": 1,
+        "quote_id": 1,
+        "items.quote_line_id": 1,
+        "items.quantity": 1,
+    },
+    "b2b_projects": {
+        "_id": 0,
+        "id": 1,
+        "quote_id": 1,
+        "source_quote_version_id": 1,
+        "quote_snapshot.id": 1,
+    },
+    "work_orders": {
+        "_id": 0,
+        "id": 1,
+        "project_id": 1,
+        "quote_id": 1,
+        "source_quote_version_id": 1,
+        "quote_line_id": 1,
+        "quantity": 1,
+        "status": 1,
+    },
+}
 
 
 def _identity(value: Any) -> TypeGuard[str]:
@@ -22,7 +48,10 @@ def _duplicate_groups(values) -> int:
 
 
 async def _read_documents(database, collection_name: str) -> tuple[list[dict], bool]:
-    cursor = getattr(database, collection_name).find({}, {"_id": 0})
+    cursor = getattr(database, collection_name).find(
+        {},
+        COLLECTION_PROJECTIONS[collection_name],
+    )
     if hasattr(cursor, "limit"):
         cursor = cursor.limit(SCAN_LIMIT + 1)
     documents = await cursor.to_list(SCAN_LIMIT + 1)

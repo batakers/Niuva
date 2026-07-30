@@ -139,15 +139,17 @@ jobs:
         run: npm run build
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-      - name: Run hermetic Retail browser contract
+      - name: Run hermetic browser contracts
         env:
           PLAYWRIGHT_START_SERVER: "true"
           PLAYWRIGHT_BASE_URL: "http://127.0.0.1:3000"
           REACT_APP_BACKEND_URL: "http://127.0.0.1:8000"
-        run: >-
-          npx playwright test e2e/retail-discovery.spec.js
-          --project=mobile
-          --project=desktop
+        run: |
+          npx playwright test e2e/retail-discovery.spec.js \
+            --project=mobile \
+            --project=desktop
+          npx playwright test e2e/admin-session-cross-tab.spec.js \
+            --project=desktop
 
   secret-scan:
     runs-on: ubuntu-latest

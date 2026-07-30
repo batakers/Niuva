@@ -631,7 +631,7 @@ async def run_security_matrix():
                 "/api/files/niuva/orders/client-2/private.stl",
                 headers=bearer(client_token),
             )
-        ).status_code == 403
+        ).status_code == 404
 
         new_client_payload = {
             "name": "Provisioned Client",

@@ -56,20 +56,20 @@ Do not bypass this check or change `.env` for audit evidence. Close AS-001 only
 with an approved target, operator, window, exact public origin, proxy/TLS
 evidence, monitoring ownership, and deployment authorization.
 
-### AS-002 — Cross-tab behavior is secure but has no browser-level journey
+### AS-002 — Cross-tab forced re-login contract is closed in bounded evidence
 
-Severity: evidence/UX gap; not an authorization bypass.
+Status: `closed_in_bounded_source_and_browser_evidence`.
 
 The backend concurrency contract is deterministic: two uses of the same
 rotating session secret yield one rotation winner, then replay detection revokes
-the family. This is fail-closed, but simultaneous refresh from separate browser
-tabs can therefore force all tabs to re-authenticate. React StrictMode
-deduplication is tested only within one provider instance; there is no
-multi-tab/browser coordination journey.
+the family. `DEC-AUTH-012` explicitly accepts forced re-login as the cross-tab
+policy. The bounded Playwright journey proves a terminal refresh `401`
+redirects the replaying tab and the original tab to Admin login without adding
+a browser-readable credential or cross-tab credential channel.
 
-Before production acceptance, explicitly accept forced re-login as the
-cross-tab policy or authorize a separate frontend coordination design and
-browser test. Do not weaken replay-family revocation.
+AS-001 and production HTTPS/proxy, monitoring, migration, restore, deployment,
+cutover, and observation gates remain open. Do not weaken replay-family
+revocation.
 
 ## Verification Evidence
 
@@ -170,13 +170,10 @@ release artifact was unavailable and the gate was not bypassed.
 
 ## Recommended Next Action
 
-The next authorized Admin Session action should be a separate remediation or
-evidence branch only after choosing one of these scopes:
+The bounded AS-002 follow-up is recorded in
+[Feature 1.2 — Admin Session Bounded Completion](FEATURE-1.2-admin-session-completion.md).
+`DEC-AUTH-012` approves forced cross-tab re-login and a Migration 009 drill only
+on a disposable replica set. AS-001 and every production gate remain open.
 
-1. local source/test work for the AS-002 cross-tab policy; or
-2. production/staging evidence work after target, exact origin, proxy/TLS
-   topology, monitoring owner, maintenance window, backup custody, operator,
-   reviewer, and explicit execution permission are available.
-
-Migration 009, cleanup, cutover, forced re-login, deployment, and production
-activation remain unauthorized by this audit.
+Deployment, production migration/cutover, and production activation remain
+unauthorized by this audit.
