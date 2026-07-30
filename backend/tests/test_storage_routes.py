@@ -131,6 +131,22 @@ def test_store_upload_accepts_allowlisted_content_signatures(
     assert storage.get_object(metadata["storage_path"])[0] == payload
 
 
+def test_obj_signature_allows_only_a_truncated_trailing_utf8_sequence():
+    valid_prefix_with_truncated_comment = b"v 0 0 0\n# caf\xc3"
+    invalid_utf8_before_directive = b"# caf\xc3(\nv 0 0 0\n"
+
+    assert server.validate_file_signature(
+        valid_prefix_with_truncated_comment,
+        "obj",
+        len(valid_prefix_with_truncated_comment),
+    )
+    assert not server.validate_file_signature(
+        invalid_utf8_before_directive,
+        "obj",
+        len(invalid_utf8_before_directive),
+    )
+
+
 @pytest.mark.parametrize(
     ("filename", "payload"),
     [

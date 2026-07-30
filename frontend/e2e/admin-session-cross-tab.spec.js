@@ -1,10 +1,12 @@
 const { test, expect } = require("@playwright/test");
+const { randomUUID } = require("node:crypto");
 
-test("replayed rotation forces every tab to authenticate again", async ({
+test("terminal refresh 401 forces every tab to authenticate again", async ({
   context,
   page,
 }) => {
   let refreshAttempts = 0;
+  const csrfToken = randomUUID();
 
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -16,7 +18,7 @@ test("replayed rotation forces every tab to authenticate again", async ({
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            csrf_token: "browser-evidence-csrf",
+            csrf_token: csrfToken,
             access_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
             user: {
               id: "admin-browser-evidence",
@@ -47,11 +49,34 @@ test("replayed rotation forces every tab to authenticate again", async ({
       return;
     }
 
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({}),
-    });
+    if (path === "/api/admin/stats") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
+      return;
+    }
+
+    if (path === "/api/notifications") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+      return;
+    }
+
+    if (path === "/api/notifications/unread-count") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ unread: 0 }),
+      });
+      return;
+    }
+
+    throw new Error(`Unexpected API request in terminal-401 UI contract: ${path}`);
   });
 
   await page.goto("/admin");

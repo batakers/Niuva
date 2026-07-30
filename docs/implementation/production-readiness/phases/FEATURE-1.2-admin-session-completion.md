@@ -30,6 +30,7 @@ deployment, and observation evidence is outside this authorization.
 Browser journey:
 
 ```bash
+cd frontend
 PLAYWRIGHT_START_SERVER=true \
 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3105 \
 PORT=3105 \
@@ -55,12 +56,14 @@ apply/cleanup/rollback and concurrent rotation/replay revocation.
 Focused frontend auth regression:
 
 ```bash
+cd frontend
 npm test -- --watchAll=false --runInBand \
   --testPathPattern='AuthContext.test.jsx|ProtectedRoute.test.jsx'
 ```
 
 Result: 2 suites and 14 tests passed. The full frontend regression also passed
-with 36 suites and 239 tests; the full backend regression passed with 635 tests,
+with 36 suites and 239 tests; the rebased full backend regression passed with
+646 tests,
 12 explicit skips, and 14 subtests.
 
 ## Remaining production gates

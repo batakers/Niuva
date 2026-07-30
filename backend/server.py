@@ -1079,8 +1079,10 @@ def validate_file_signature(data: bytes, extension: str, size: int) -> bool:
     if extension == "obj":
         try:
             prefix = data.decode("utf-8")
-        except UnicodeDecodeError:
-            return False
+        except UnicodeDecodeError as exc:
+            if exc.reason != "unexpected end of data" or exc.end != len(data):
+                return False
+            prefix = data[: exc.start].decode("utf-8")
         directives = ("v ", "vn ", "vt ", "f ", "o ", "g ", "s ", "mtllib ")
         return any(
             line.lstrip().startswith(directives)

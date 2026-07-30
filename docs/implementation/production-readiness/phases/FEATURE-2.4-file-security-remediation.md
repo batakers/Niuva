@@ -60,7 +60,7 @@ projection regression.
 Full backend regression:
 
 ```text
-635 passed, 12 skipped, 14 subtests passed
+646 passed, 12 skipped, 14 subtests passed after rebasing onto the PR #96 merge
 ```
 
 Repository quality checks passed:
