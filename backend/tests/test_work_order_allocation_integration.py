@@ -203,7 +203,7 @@ async def seed_planned_work_order(context, stock):
         expected_version=project["version"],
         operation_id=operation_id(),
         reason="Produksi batch",
-        variant_id="var-1",
+        quote_line_id=project["quote_snapshot"]["items"][0]["quote_line_id"],
         quantity=2,
         actor=ACTOR,
     )

@@ -7,9 +7,11 @@ sold, and the catalog is free to move on afterwards.
 """
 
 import asyncio
+from copy import deepcopy
 from datetime import datetime, timezone
 
 import pytest
+from pydantic import ValidationError
 
 from b2b_domain import (
     B2BDomainError,
@@ -18,6 +20,7 @@ from b2b_domain import (
     work_order_next_actions,
 )
 from b2b_service import B2BService
+from b2b_routes import WorkOrderCreatePayload
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeDatabase
 from tests.test_b2b_quote_lifecycle import converted_quote
 
@@ -40,6 +43,25 @@ MATERIALS = [
 ]
 
 ACTOR = {"id": "prod-1-user", "email": "production@niuva.test"}
+
+
+def test_work_order_command_requires_exact_quote_line_identity():
+    command = {
+        "expected_version": 1,
+        "operation_id": "11111111-1111-1111-1111-111111111111",
+        "reason": "Create exact quoted run",
+        "quantity": 1,
+    }
+    with pytest.raises(ValidationError):
+        WorkOrderCreatePayload.model_validate(
+            {**command, "variant_id": "var-1"}
+        )
+
+    parsed = WorkOrderCreatePayload.model_validate(
+        {**command, "quote_line_id": "line-1"}
+    )
+    assert parsed.quote_line_id == "line-1"
+    assert "variant_id" not in type(parsed).model_fields
 
 
 def test_requirements_scale_per_unit_figures_to_the_run():
@@ -157,6 +179,10 @@ async def active_project(db, service, *, quote_items=None):
     return created["project"], actor
 
 
+def first_quote_line_id(project):
+    return project["quote_snapshot"]["items"][0]["quote_line_id"]
+
+
 async def run_work_order_draws_requirements_from_the_accepted_quote():
     db = FakeDatabase()
     service = B2BService(db=db, transaction_guard=EnabledGuard())
@@ -167,7 +193,7 @@ async def run_work_order_draws_requirements_from_the_accepted_quote():
         expected_version=project["version"],
         operation_id="op-wo-1",
         reason="Produksi batch pertama",
-        variant_id="var-1",
+        quote_line_id=first_quote_line_id(project),
         quantity=2,
         actor=actor,
     )
@@ -207,7 +233,7 @@ async def run_replayed_creation_returns_the_same_work_order():
         expected_version=project["version"],
         operation_id="op-wo-replay",
         reason="Produksi batch pertama",
-        variant_id="var-1",
+        quote_line_id=first_quote_line_id(project),
         quantity=2,
         actor=actor,
     )
@@ -216,7 +242,7 @@ async def run_replayed_creation_returns_the_same_work_order():
         expected_version=project["version"],
         operation_id="op-wo-replay",
         reason="Produksi batch pertama",
-        variant_id="var-1",
+        quote_line_id=first_quote_line_id(project),
         quantity=2,
         actor=actor,
     )
@@ -239,7 +265,7 @@ def test_cumulative_work_orders_cannot_exceed_accepted_quantity():
             expected_version=project["version"],
             operation_id="op-cap-first",
             reason="Batch pertama",
-            variant_id="var-1",
+            quote_line_id=first_quote_line_id(project),
             quantity=3,
             actor=actor,
         )
@@ -250,7 +276,7 @@ def test_cumulative_work_orders_cannot_exceed_accepted_quantity():
                 expected_version=current_project["version"],
                 operation_id="op-cap-over",
                 reason="Melebihi accepted quantity",
-                variant_id="var-1",
+                quote_line_id=first_quote_line_id(project),
                 quantity=2,
                 actor=actor,
             )
@@ -329,17 +355,139 @@ def test_duplicate_variant_lines_have_independent_work_order_caps():
         assert rejected.value.code == "work_order_quote_quantity_exceeded"
         assert rejected.value.details["remaining_quantity"] == 0
 
-        with pytest.raises(B2BDomainError) as ambiguous:
+    asyncio.run(scenario())
+
+
+def test_historical_missing_line_identity_requires_reconciliation():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        project, actor = await active_project(db, service)
+        version = await db.b2b_quote_versions.find_one(
+            {"id": project["source_quote_version_id"]}
+        )
+        items = deepcopy(version["items"])
+        items[0].pop("quote_line_id")
+        await db.b2b_quote_versions.update_one(
+            {"id": version["id"]}, {"$set": {"items": items}}
+        )
+
+        with pytest.raises(B2BDomainError) as rejected:
             await service.create_work_order(
                 project["id"],
-                expected_version=latest_project["version"],
-                operation_id="op-duplicate-variant-ambiguous",
-                reason="Legacy variant lookup is ambiguous",
-                variant_id="var-1",
+                expected_version=project["version"],
+                operation_id="op-historical-missing-line",
+                reason="Historical quote must stop",
+                quote_line_id="unknown-historical-line",
                 quantity=1,
                 actor=actor,
             )
-        assert ambiguous.value.code == "work_order_quote_line_ambiguous"
+
+        assert rejected.value.status_code == 409
+        assert rejected.value.code == "quote_line_reconciliation_required"
+        assert rejected.value.details["reason"] == "missing_quote_line_identity"
+        assert db.work_orders.items == []
+
+    asyncio.run(scenario())
+
+
+def test_historical_duplicate_line_identity_requires_reconciliation():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        project, actor = await active_project(
+            db,
+            service,
+            quote_items=[
+                {
+                    "description": "Desk sign A",
+                    "quantity": 1,
+                    "unit_price_minor": 750000,
+                    "variant_id": "var-1",
+                },
+                {
+                    "description": "Desk sign B",
+                    "quantity": 1,
+                    "unit_price_minor": 750000,
+                    "variant_id": "var-1",
+                },
+            ],
+        )
+        version = await db.b2b_quote_versions.find_one(
+            {"id": project["source_quote_version_id"]}
+        )
+        items = deepcopy(version["items"])
+        items[1]["quote_line_id"] = items[0]["quote_line_id"]
+        await db.b2b_quote_versions.update_one(
+            {"id": version["id"]}, {"$set": {"items": items}}
+        )
+
+        with pytest.raises(B2BDomainError) as rejected:
+            await service.create_work_order(
+                project["id"],
+                expected_version=project["version"],
+                operation_id="op-historical-duplicate-line",
+                reason="Ambiguous historical quote must stop",
+                quote_line_id=items[0]["quote_line_id"],
+                quantity=1,
+                actor=actor,
+            )
+
+        assert rejected.value.code == "quote_line_reconciliation_required"
+        assert rejected.value.details["reason"] == "duplicate_quote_line_identity"
+        assert db.work_orders.items == []
+
+    asyncio.run(scenario())
+
+
+def test_project_quote_version_mismatch_requires_reconciliation():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        project, actor = await active_project(db, service)
+        snapshot = deepcopy(project["quote_snapshot"])
+        snapshot["id"] = "different-version"
+        await db.b2b_projects.update_one(
+            {"id": project["id"]}, {"$set": {"quote_snapshot": snapshot}}
+        )
+
+        with pytest.raises(B2BDomainError) as rejected:
+            await service.create_work_order(
+                project["id"],
+                expected_version=project["version"],
+                operation_id="op-mismatched-source-version",
+                reason="Mismatched source must stop",
+                quote_line_id=first_quote_line_id(project),
+                quantity=1,
+                actor=actor,
+            )
+
+        assert rejected.value.code == "quote_line_reconciliation_required"
+        assert rejected.value.details["reason"] == "source_quote_version_mismatch"
+        assert db.work_orders.items == []
+
+        await db.b2b_projects.update_one(
+            {"id": project["id"]},
+            {
+                "$set": {
+                    "quote_id": "different-quote",
+                    "quote_snapshot": project["quote_snapshot"],
+                }
+            },
+        )
+        with pytest.raises(B2BDomainError) as quote_mismatch:
+            await service.create_work_order(
+                project["id"],
+                expected_version=project["version"],
+                operation_id="op-mismatched-source-quote",
+                reason="Mismatched Quote must stop",
+                quote_line_id=first_quote_line_id(project),
+                quantity=1,
+                actor=actor,
+            )
+        assert quote_mismatch.value.code == "quote_line_reconciliation_required"
+        assert quote_mismatch.value.details["reason"] == "source_quote_mismatch"
+        assert db.work_orders.items == []
 
     asyncio.run(scenario())
 
@@ -355,7 +503,7 @@ async def run_unquoted_variant_is_refused():
             expected_version=project["version"],
             operation_id="op-wo-ghost",
             reason="Produksi varian yang tidak dijual",
-            variant_id="var-ghost",
+            quote_line_id="quote-line-ghost",
             quantity=1,
             actor=actor,
         )
@@ -380,7 +528,7 @@ async def run_stale_version_is_refused():
             expected_version=project["version"] + 5,
             operation_id="op-wo-stale",
             reason="Produksi dengan versi basi",
-            variant_id="var-1",
+            quote_line_id=first_quote_line_id(project),
             quantity=1,
             actor=actor,
         )
@@ -412,7 +560,7 @@ async def run_closed_project_refuses_new_work():
             expected_version=cancelled["version"],
             operation_id="op-wo-after-cancel",
             reason="Produksi setelah pembatalan",
-            variant_id="var-1",
+            quote_line_id=first_quote_line_id(project),
             quantity=1,
             actor=actor,
         )
