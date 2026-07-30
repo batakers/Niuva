@@ -66,7 +66,7 @@ async def planned_work_order(db, service):
         expected_version=project["version"],
         operation_id="op-wo",
         reason="Produksi batch",
-        variant_id="var-1",
+        quote_line_id=project["quote_snapshot"]["items"][0]["quote_line_id"],
         quantity=2,
         actor=actor,
     )

@@ -57,6 +57,30 @@ def test_line_total_is_derived_never_accepted():
     assert snapshot["line_total_minor"] == 3000
 
 
+def test_quote_line_identity_is_generated_server_side_and_unique():
+    supplied = "caller-controlled-line"
+    first = build_quote_item_snapshot(
+        {
+            "quote_line_id": supplied,
+            "description": "Enclosure A",
+            "quantity": 1,
+            "unit_price_minor": 1000,
+        }
+    )
+    second = build_quote_item_snapshot(
+        {
+            "quote_line_id": supplied,
+            "description": "Enclosure B",
+            "quantity": 1,
+            "unit_price_minor": 1000,
+        }
+    )
+
+    assert first["quote_line_id"] != supplied
+    assert second["quote_line_id"] != supplied
+    assert first["quote_line_id"] != second["quote_line_id"]
+
+
 def test_a_line_without_a_catalog_reference_carries_no_snapshot():
     snapshot = build_quote_item_snapshot(
         {"description": "Jasa konsultasi", "quantity": 1, "unit_price_minor": 500}

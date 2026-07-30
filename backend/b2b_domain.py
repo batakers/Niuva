@@ -342,6 +342,7 @@ def validate_quote_readiness(version: dict) -> None:
         if not str(scope.get(field) or "").strip()
     ]
     items = version.get("items") or []
+    require_exact_quote_line_identities(items)
     invalid_items = [
         index
         for index, item in enumerate(items)
@@ -373,6 +374,25 @@ def validate_quote_readiness(version: dict) -> None:
                     not isinstance(total_minor, int) or total_minor <= 0
                 ),
             },
+        )
+
+
+def require_exact_quote_line_identities(items: list[dict]) -> None:
+    """Reject legacy or corrupt line identity without inferring a replacement."""
+    identities = [item.get("quote_line_id") for item in items]
+    if any(not isinstance(identity, str) or not identity.strip() for identity in identities):
+        raise B2BDomainError(
+            409,
+            "quote_line_reconciliation_required",
+            "Quote historis tidak memiliki identitas line yang lengkap.",
+            details={"reason": "missing_quote_line_identity"},
+        )
+    if len(identities) != len(set(identities)):
+        raise B2BDomainError(
+            409,
+            "quote_line_reconciliation_required",
+            "Quote historis memiliki identitas line yang ambigu.",
+            details={"reason": "duplicate_quote_line_identity"},
         )
 
 

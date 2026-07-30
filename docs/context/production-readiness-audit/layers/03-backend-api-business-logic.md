@@ -111,18 +111,18 @@ state invariants remain.
 | Recommendation / acceptance | Separate payment-confirmation permission/state from order status; enforce fulfilment-specific transition graphs; validate purchasability and inventory reservation atomically; add negative transition tests. |
 | First / last verified | `c28684d` / `c28684d` |
 
-### BE-004 — B2B quote line identity and quantity invariants are incomplete
+### BE-004 — B2B quote line identity and quantity invariants
 
 | Field | Value |
 | --- | --- |
-| Severity / status | `P1` / `still_open` |
-| Confidence | 96% |
+| Severity / status | `P1` / `resolved_in_source` |
+| Confidence | 100% |
 | Expected behavior | Duplicate quote variants remain distinct by `quote_line_id`; accepted line quantity and source version are preserved into Work Orders. |
-| Actual behavior | `_accepted_line_for_variant()` matches only `variant_id` and returns the first accepted line. `WorkOrderCreatePayload` accepts only `variant_id` and `quantity`; the created work order has no `quote_line_id`, and no line-level accepted-quantity check is enforced. |
-| Evidence | `backend/b2b_service.py:447-458,511-543`; `backend/b2b_domain.py` quote/version models; `backend/b2b_routes.py` work-order payload. |
-| Impact | Duplicate variants can resolve to the wrong commercial line and Work Orders can exceed the accepted quote quantity, breaking traceability and commercial history. |
-| Recommendation / acceptance | Require `quote_line_id` in work-order commands and source records; validate quantity against that exact accepted line; add duplicate-variant and over-quantity tests. |
-| First / last verified | `c28684d` / `c28684d` |
+| Actual behavior | Quote lines receive server-owned immutable identities. Work Order API/service commands require exact `quote_line_id`, retain the Project's exact source version, and enforce cumulative quantity per line. Missing/duplicate historical identity and source-version mismatch fail with `quote_line_reconciliation_required`; no variant fallback remains. |
+| Evidence | `backend/b2b_domain.py`; `backend/b2b_service.py`; `backend/b2b_routes.py`; `backend/tests/test_b2b_work_orders.py`; `backend/tests/test_b2b_transaction_integration.py`. |
+| Impact | The original wrong-line and overcommit paths are closed in source. Historical records remain unchanged; an ambiguous record blocks dependent mutation. |
+| Recommendation / acceptance | Source acceptance is complete. Any execution against historical data remains separately gated by `DEC-DATA-002` and `docs/runbooks/QUOTE_LINE_RECONCILIATION_RUNBOOK.md`. |
+| First / last verified | `c28684d` / 30 July 2026 source branch |
 
 ### BE-005 — Legacy order API retains unsafe integrity and projection behavior
 
