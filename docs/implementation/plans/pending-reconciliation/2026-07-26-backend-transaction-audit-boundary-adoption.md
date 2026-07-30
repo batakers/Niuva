@@ -1,17 +1,19 @@
 # Niuva Backend Transaction and Audit Boundary Adoption Plan
 
-Status: **Context Only — Partially Implemented — Original Slice A and Material Slice B Complete; Remaining Work Open**
+Status: **Context Only — Implementation Completed on Feature Branch; Review/Merge Pending**
 Prepared: 26 July 2026
 Scope: BA-009 — central transaction boundary adoption, mutation/audit
 atomicity, and catalog revision conflict behavior
 
-Implementation reconciliation: 27 July 2026. The eight direct transaction
-blocks originally listed in Slice A use the shared guard. Material create,
-update, archive, and price-version from Slice B now place mutation and audit in
-one guard callback/session, with injected audit-failure rollback regression.
-CMS create/update/archive, the newer CMS transition and multi-material
-inventory direct blocks, catalog archive atomicity, catalog revision conflict,
-and Slice D cleanup remain open. This status grants no production rollout
+Implementation reconciliation: 30 July 2026. All catalog, content, and
+inventory runtime mutation owners now use the shared guard; catalog CRUD and
+audit writes are atomic; multi-material inventory no longer opens its own
+session; duplicated local capability checks were removed; and catalog
+publication/rollback revision selection and compare-and-set conflict handling
+run inside the transaction. Real replica-set regression covers fail-closed
+rejection, injected audit failure rollback, publication contention, and
+multi-material bulk observability. Migration 007 remains separately gated and
+out of this runtime-adoption slice. This status grants no production rollout
 authority.
 
 ## 1. Authority and Gate
@@ -291,3 +293,27 @@ On approval and completion, update
   plan;
 - record which Phase 2 checkboxes the completed slices satisfy;
 - append a dated update-log entry with commands and result counts.
+
+## 14. 30 July 2026 Completion Reconciliation
+
+The owner approved the remaining runtime-adoption work and delivery. The
+implementation:
+
+- routes the catalog CRUD/audit pairs and inventory bulk operation through
+  `TransactionMutationGuard`;
+- removes catalog, content, and inventory `_require_transactions()` prechecks,
+  making shared rejection and observability the single fail-closed path;
+- keeps catalog revision allocation inside the transaction and uses
+  compare-and-set updates so concurrent publish/rollback attempts return a
+  domain `409` instead of leaking a driver conflict;
+- adds `test_commercial_transaction_integration.py` to the mandatory
+  replica-set workflow;
+- leaves migration 007 and all production topology, migration execution,
+  rollout, provider, and go-live work outside this branch.
+
+Local evidence on 30 July 2026:
+
+- affected fake/unit suites: 40 passed, 2 explicit real-topology skips;
+- mandatory real replica-set suite: 70 passed, 0 skipped;
+- direct runtime `start_session`/`start_transaction` ownership is confined to
+  `transaction_execution.py` and the read-only capability probe.

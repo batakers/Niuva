@@ -47,6 +47,7 @@ jobs:
         run: >-
           python -m pytest -n 0 -q
           backend/tests/test_transaction_integration.py
+          backend/tests/test_commercial_transaction_integration.py
           backend/tests/test_b2b_transaction_integration.py
           backend/tests/test_work_order_allocation_integration.py
           backend/tests/test_inventory_transactions.py

@@ -8,7 +8,7 @@ from database_capabilities import DatabaseCapabilities
 from inventory_service import InventoryError, InventoryService
 from permissions import ROLE_POLICY_VERSION
 from restock import shortage_triggers
-from transaction_execution import TransactionExecutor
+from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
 
 
@@ -627,14 +627,52 @@ def test_stock_movements_run_through_the_central_transaction_boundary():
 
 def test_transaction_capability_is_required():
     async def run():
-        service, _db = build_service(transactions=False)
-        with pytest.raises(InventoryError) as unavailable:
+        service, db = build_service(transactions=False)
+        with pytest.raises(TransactionUnavailableError) as unavailable:
             await service.apply_operation(
                 actor=WAREHOUSE,
                 payload=operation("61111111-1111-1111-1111-111111111111"),
             )
         assert unavailable.value.status_code == 503
         assert unavailable.value.code == "transaction_unavailable"
+        assert db.stock_movements.items == []
+        assert (
+            "transaction_rejected",
+            "inventory.apply_operation",
+        ) in service.guard.executor.event_sink.events
+
+    asyncio.run(run())
+
+
+def test_bulk_operations_use_shared_boundary_and_fail_closed():
+    async def run():
+        service, _db = build_service()
+        await service.apply_bulk_operations(
+            actor=WAREHOUSE,
+            operations=[{"payload": operation("63333333-3333-3333-3333-333333333333")}],
+        )
+        assert (
+            "transaction_start",
+            "inventory.apply_bulk_operations",
+        ) in service.guard.executor.event_sink.events
+        assert (
+            "transaction_commit",
+            "inventory.apply_bulk_operations",
+        ) in service.guard.executor.event_sink.events
+
+        unavailable_service, unavailable_db = build_service(transactions=False)
+        with pytest.raises(TransactionUnavailableError):
+            await unavailable_service.apply_bulk_operations(
+                actor=WAREHOUSE,
+                operations=[
+                    {"payload": operation("64444444-4444-4444-4444-444444444444")}
+                ],
+            )
+        assert unavailable_db.stock_movements.items == []
+        assert (
+            "transaction_rejected",
+            "inventory.apply_bulk_operations",
+        ) in unavailable_service.guard.executor.event_sink.events
 
     asyncio.run(run())
 
