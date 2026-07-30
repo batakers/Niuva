@@ -89,6 +89,7 @@ Start the ephemeral test topology:
 ```powershell
 docker compose -f docker-compose.transaction-test.yml up -d
 $env:MONGO_TRANSACTION_TEST_URL = "mongodb://127.0.0.1:27018/?replicaSet=rs-test&directConnection=true"
+$env:NIUVA_RUN_REAL_TRANSACTION_TESTS = "1"
 .\backend\.venv\Scripts\python.exe -m pytest -n 0 -q backend\tests\test_transaction_integration.py backend\tests\test_commercial_transaction_integration.py backend\tests\test_b2b_transaction_integration.py backend\tests\test_work_order_allocation_integration.py backend\tests\test_inventory_transactions.py
 ```
 
@@ -97,6 +98,7 @@ Always clean it after the test:
 ```powershell
 docker compose -f docker-compose.transaction-test.yml down --volumes --remove-orphans
 Remove-Item Env:MONGO_TRANSACTION_TEST_URL -ErrorAction SilentlyContinue
+Remove-Item Env:NIUVA_RUN_REAL_TRANSACTION_TESTS -ErrorAction SilentlyContinue
 ```
 
 The test initializer sidecar uses

@@ -57,6 +57,12 @@ def _write_options(session=None) -> dict:
     return {"session": session} if session is not None else {}
 
 
+def _is_slug_duplicate(exc: DuplicateKeyError, index_name: str) -> bool:
+    details = exc.details or {}
+    key_pattern = details.get("keyPattern") or {}
+    return set(key_pattern) == {"slug"} or f"index: {index_name}" in str(exc)
+
+
 class CatalogService:
     def __init__(self, db, client, capabilities, guard):
         self.db = db
@@ -103,11 +109,20 @@ class CatalogService:
                 session=session,
             )
 
-        await self.guard.run(
-            mutation,
-            operation_name="catalog.create_category",
-            retry_safe=True,
-        )
+        try:
+            await self.guard.run(
+                mutation,
+                operation_name="catalog.create_category",
+                retry_safe=True,
+            )
+        except DuplicateKeyError as exc:
+            if not _is_slug_duplicate(exc, "uq_category_slug"):
+                raise
+            raise CatalogError(
+                409,
+                "slug_conflict",
+                "Slug kategori sudah digunakan.",
+            ) from exc
         return clean_document(category)
 
     async def update_category(
@@ -129,9 +144,20 @@ class CatalogService:
         after = {**before, **changes}
 
         async def mutation(session):
-            await self.db.categories.update_one(
-                {"id": category_id}, {"$set": changes}, **_write_options(session)
+            result = await self.db.categories.update_one(
+                {
+                    "id": category_id,
+                    "updated_at": before.get("updated_at"),
+                },
+                {"$set": changes},
+                **_write_options(session),
             )
+            if not getattr(result, "matched_count", 0):
+                raise CatalogError(
+                    409,
+                    "version_conflict",
+                    "Kategori berubah sebelum pembaruan selesai.",
+                )
             await append_audit_event(
                 self.db,
                 actor=actor,
@@ -162,9 +188,20 @@ class CatalogService:
         after = {**before, **changes}
 
         async def mutation(session):
-            await self.db.categories.update_one(
-                {"id": category_id}, {"$set": changes}, **_write_options(session)
+            result = await self.db.categories.update_one(
+                {
+                    "id": category_id,
+                    "updated_at": before.get("updated_at"),
+                },
+                {"$set": changes},
+                **_write_options(session),
             )
+            if not getattr(result, "matched_count", 0):
+                raise CatalogError(
+                    409,
+                    "version_conflict",
+                    "Kategori berubah sebelum pengarsipan selesai.",
+                )
             await append_audit_event(
                 self.db,
                 actor=actor,
@@ -286,11 +323,20 @@ class CatalogService:
                 session=session,
             )
 
-        await self.guard.run(
-            mutation,
-            operation_name="catalog.create_product",
-            retry_safe=True,
-        )
+        try:
+            await self.guard.run(
+                mutation,
+                operation_name="catalog.create_product",
+                retry_safe=True,
+            )
+        except DuplicateKeyError as exc:
+            if not _is_slug_duplicate(exc, "uq_product_slug"):
+                raise
+            raise CatalogError(
+                409,
+                "slug_conflict",
+                "Slug produk sudah digunakan.",
+            ) from exc
         return clean_document(product)
 
     async def update_product(
@@ -313,9 +359,22 @@ class CatalogService:
         after = {**before, **changes}
 
         async def mutation(session):
-            await self.db.products.update_one(
-                {"id": product_id}, {"$set": changes}, **_write_options(session)
+            result = await self.db.products.update_one(
+                {
+                    "id": product_id,
+                    "updated_at": before.get("updated_at"),
+                    "workflow_status": before.get("workflow_status"),
+                    "active_publication_id": before.get("active_publication_id"),
+                },
+                {"$set": changes},
+                **_write_options(session),
             )
+            if not getattr(result, "matched_count", 0):
+                raise CatalogError(
+                    409,
+                    "version_conflict",
+                    "Produk berubah sebelum pembaruan selesai.",
+                )
             await append_audit_event(
                 self.db,
                 actor=actor,
@@ -874,9 +933,22 @@ class CatalogService:
         after = {**before, **changes}
 
         async def mutation(session):
-            await self.db.products.update_one(
-                {"id": product_id}, {"$set": changes}, **_write_options(session)
+            result = await self.db.products.update_one(
+                {
+                    "id": product_id,
+                    "updated_at": before.get("updated_at"),
+                    "workflow_status": before.get("workflow_status"),
+                    "active_publication_id": before.get("active_publication_id"),
+                },
+                {"$set": changes},
+                **_write_options(session),
             )
+            if not getattr(result, "matched_count", 0):
+                raise CatalogError(
+                    409,
+                    "version_conflict",
+                    "Produk berubah sebelum pengarsipan selesai.",
+                )
             await append_audit_event(
                 self.db,
                 actor=actor,
