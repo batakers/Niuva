@@ -355,7 +355,9 @@ Release blockers remain:
 
 - live schemas, indexes, duplicates, types and orphans are unknown;
 - notification persistence has incompatible writers;
-- exact quote-line identity and cross-collection references are incomplete;
+- exact quote-line identity and cross-collection references are resolved in the
+  PR #96 source candidate; historical-data execution and broader retention
+  evidence remain separately gated;
 - migrations 001–006 have uneven partial-failure, scale, ledger and rollback
   behavior;
 - migration 005 conflicts with the retained organization-data boundary;
