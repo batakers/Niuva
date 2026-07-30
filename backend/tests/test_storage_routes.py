@@ -31,15 +31,46 @@ class FileDatabase:
 
 
 class MediaObjects:
-    def __init__(self, *, fail=False):
+    def __init__(
+        self,
+        *,
+        fail=False,
+        commit_then_fail=False,
+        conflicting_commit=False,
+        resolution_fail=False,
+    ):
         self.rows = []
         self.fail = fail
+        self.commit_then_fail = commit_then_fail
+        self.conflicting_commit = conflicting_commit
+        self.resolution_fail = resolution_fail
 
     async def insert_one(self, document):
         if self.fail:
             raise RuntimeError("injected metadata failure")
-        self.rows.append(dict(document))
+        persisted = dict(document)
+        if self.conflicting_commit:
+            persisted["storage_path"] = "media/conflicting.webp"
+        self.rows.append(persisted)
+        if self.commit_then_fail or self.conflicting_commit:
+            raise RuntimeError("injected unknown metadata outcome")
         return types.SimpleNamespace(inserted_id=document["id"])
+
+    async def find_one(self, query, _projection=None):
+        if self.resolution_fail:
+            raise RuntimeError("injected metadata resolution failure")
+        identities = {
+            condition.get("id") or condition.get("reference")
+            for condition in query.get("$or", [])
+        }
+        return next(
+            (
+                dict(row)
+                for row in self.rows
+                if row.get("id") in identities or row.get("reference") in identities
+            ),
+            None,
+        )
 
 
 @pytest.fixture
@@ -344,6 +375,93 @@ def test_development_media_upload_compensates_failed_metadata_write(
     assert [path for path in local_storage_root.rglob("*") if path.is_file()] == []
 
 
+def test_development_media_upload_accepts_resolved_metadata_commit(
+    local_storage_root,
+    monkeypatch,
+):
+    objects = MediaObjects(commit_then_fail=True)
+    monkeypatch.setattr(
+        server,
+        "db",
+        types.SimpleNamespace(file_objects=objects),
+    )
+
+    async def run():
+        upload = UploadFile(
+            filename="cover.webp",
+            file=io.BytesIO(b"RIFF\x04\x00\x00\x00WEBPdata"),
+        )
+        return await server.upload_admin_media(
+            upload,
+            {"id": "staff-content", "roles": ["content_editor"]},
+        )
+
+    result = asyncio.run(run())
+    assert objects.rows == [result]
+    assert (local_storage_root / result["storage_path"]).is_file()
+
+
+def test_development_media_upload_preserves_object_when_outcome_is_unknown(
+    local_storage_root,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        server,
+        "db",
+        types.SimpleNamespace(
+            file_objects=MediaObjects(fail=True, resolution_fail=True)
+        ),
+    )
+
+    async def run():
+        upload = UploadFile(
+            filename="cover.webp",
+            file=io.BytesIO(b"RIFF\x04\x00\x00\x00WEBPdata"),
+        )
+        return await server.upload_admin_media(
+            upload,
+            {"id": "staff-content", "roles": ["content_editor"]},
+        )
+
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(run())
+    assert caught.value.status_code == 503
+    assert caught.value.detail["code"] == "file_metadata_outcome_unknown"
+    assert caught.value.detail["retryable"] is True
+    assert caught.value.detail["file_id"]
+    assert [path for path in local_storage_root.rglob("*") if path.is_file()]
+
+
+def test_development_media_upload_preserves_object_on_conflicting_resolution(
+    local_storage_root,
+    monkeypatch,
+):
+    objects = MediaObjects(conflicting_commit=True)
+    monkeypatch.setattr(
+        server,
+        "db",
+        types.SimpleNamespace(file_objects=objects),
+    )
+
+    async def run():
+        upload = UploadFile(
+            filename="cover.webp",
+            file=io.BytesIO(b"RIFF\x04\x00\x00\x00WEBPdata"),
+        )
+        return await server.upload_admin_media(
+            upload,
+            {"id": "staff-content", "roles": ["content_editor"]},
+        )
+
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(run())
+    assert caught.value.status_code == 503
+    assert caught.value.detail["code"] == "file_metadata_outcome_unknown"
+    assert caught.value.detail["retryable"] is True
+    assert caught.value.detail["file_id"] == objects.rows[0]["id"]
+    assert [path for path in local_storage_root.rglob("*") if path.is_file()]
+
+
 def test_development_media_upload_reports_failed_compensation(
     local_storage_root,
     monkeypatch,
@@ -373,6 +491,8 @@ def test_development_media_upload_reports_failed_compensation(
         asyncio.run(run())
     assert caught.value.status_code == 503
     assert caught.value.detail["code"] == "file_storage_compensation_failed"
+    assert caught.value.detail["retryable"] is True
+    assert caught.value.detail["file_id"]
 
 
 def test_development_media_upload_stays_disabled_in_production(monkeypatch):

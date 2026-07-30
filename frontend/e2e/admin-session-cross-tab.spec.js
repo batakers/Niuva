@@ -10,8 +10,9 @@ test("terminal refresh 401 forces every tab to authenticate again", async ({
 
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
+    const method = route.request().method();
 
-    if (path === "/api/auth/admin/session/refresh") {
+    if (method === "POST" && path === "/api/auth/admin/session/refresh") {
       refreshAttempts += 1;
       if (refreshAttempts === 1) {
         await route.fulfill({
@@ -40,7 +41,7 @@ test("terminal refresh 401 forces every tab to authenticate again", async ({
       return;
     }
 
-    if (path === "/api/admin/stats/timeseries") {
+    if (method === "GET" && path === "/api/admin/stats/timeseries") {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -49,7 +50,7 @@ test("terminal refresh 401 forces every tab to authenticate again", async ({
       return;
     }
 
-    if (path === "/api/admin/stats") {
+    if (method === "GET" && path === "/api/admin/stats") {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -58,7 +59,7 @@ test("terminal refresh 401 forces every tab to authenticate again", async ({
       return;
     }
 
-    if (path === "/api/notifications") {
+    if (method === "GET" && path === "/api/notifications") {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -67,7 +68,7 @@ test("terminal refresh 401 forces every tab to authenticate again", async ({
       return;
     }
 
-    if (path === "/api/notifications/unread-count") {
+    if (method === "GET" && path === "/api/notifications/unread-count") {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -76,7 +77,9 @@ test("terminal refresh 401 forces every tab to authenticate again", async ({
       return;
     }
 
-    throw new Error(`Unexpected API request in terminal-401 UI contract: ${path}`);
+    throw new Error(
+      `Unexpected API request in terminal-401 UI contract: ${method} ${path}`,
+    );
   });
 
   await page.goto("/admin");

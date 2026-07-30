@@ -166,6 +166,7 @@ async def run_double_conversion(database_name):
         assert len(rejected) == 1
         assert isinstance(rejected[0], B2BDomainError)
         assert rejected[0].status_code == 409
+        assert rejected[0].code == "version_conflict"
 
         # The losing branch must leave nothing behind: exactly one quote, one
         # version, and a single conversion recorded on the inquiry.

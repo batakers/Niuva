@@ -22,9 +22,11 @@ class ReadOnlyCollection:
     def __init__(self, items=()):
         self.items = [dict(item) for item in items]
         self.reads = 0
+        self.projections = []
 
-    def find(self, _query, _projection=None):
+    def find(self, _query, projection=None):
         self.reads += 1
+        self.projections.append(dict(projection or {}))
         return Cursor(self.items)
 
 
@@ -100,6 +102,36 @@ def test_report_is_aggregate_only_and_ready_for_exact_references():
     assert report["disposition"] == "ready_for_review"
     assert report["issues"] == {}
     assert report["collections"]["work_orders"]["shape_counts"] == {"canonical": 1}
+    assert database.b2b_quote_versions.projections == [
+        {
+            "_id": 0,
+            "id": 1,
+            "quote_id": 1,
+            "items.quote_line_id": 1,
+            "items.quantity": 1,
+        }
+    ]
+    assert database.b2b_projects.projections == [
+        {
+            "_id": 0,
+            "id": 1,
+            "quote_id": 1,
+            "source_quote_version_id": 1,
+            "quote_snapshot.id": 1,
+        }
+    ]
+    assert database.work_orders.projections == [
+        {
+            "_id": 0,
+            "id": 1,
+            "project_id": 1,
+            "quote_id": 1,
+            "source_quote_version_id": 1,
+            "quote_line_id": 1,
+            "quantity": 1,
+            "status": 1,
+        }
+    ]
     rendered = json.dumps(report)
     for secret in (
         "version-secret-1",

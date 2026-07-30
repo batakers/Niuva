@@ -11,11 +11,14 @@ authorization on 29 July 2026
 
 ## Outcome
 
-AS-002 is closed for the approved forced re-login policy. A real-browser
-journey proves that the first tab can establish an Admin session, replay from a
-second tab receives a terminal `401`, and the original tab is also redirected
-to Admin login when it next refreshes. No browser-readable Admin credential or
-cross-tab credential channel was introduced.
+AS-002 is closed for the approved forced re-login policy. A stubbed
+real-browser journey proves that the first tab can establish the projected
+Admin UI state, a terminal refresh `401` redirects the second tab to Admin
+login, and the original tab is also redirected when its next refresh receives
+the same terminal response. Credential rotation/replay revocation itself is
+proved separately by the disposable real-Mongo concurrency tests below. No
+browser-readable Admin credential or cross-tab credential channel was
+introduced.
 
 Migration 009 apply, bounded 90-day cleanup, rollback, and Admin rotation/replay
 behavior were exercised on a local disposable MongoDB replica set. Each real
@@ -37,8 +40,8 @@ PORT=3105 \
 npx playwright test e2e/admin-session-cross-tab.spec.js --project=desktop
 ```
 
-Result: `1 passed` in 16.0 seconds. The desktop Chromium journey passed
-without retry.
+Result: `1 passed` without retry. This is terminal-401 redirect evidence, not a
+browser credential-replay simulation.
 
 Disposable replica-set drill:
 
@@ -63,7 +66,7 @@ npm test -- --watchAll=false --runInBand \
 
 Result: 2 suites and 14 tests passed. The full frontend regression also passed
 with 36 suites and 239 tests; the rebased full backend regression passed with
-650 tests, 13 explicit skips, and 14 subtests after the latest `origin/main`
+653 tests, 15 explicit skips, and 14 subtests after the latest `origin/main`
 merge.
 
 ## Remaining production gates

@@ -1817,6 +1817,60 @@ async def upload_admin_media(
         await db.file_objects.insert_one(dict(document))
     except Exception as metadata_exc:
         try:
+            persisted = await db.file_objects.find_one(
+                {
+                    "$or": [
+                        {"id": document["id"]},
+                        {"reference": document["reference"]},
+                    ]
+                },
+                {
+                    "_id": 0,
+                    "id": 1,
+                    "reference": 1,
+                    "storage_path": 1,
+                    "state": 1,
+                },
+            )
+        except Exception as resolution_exc:
+            logger.exception("Unable to resolve file metadata write outcome")
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "file_metadata_outcome_unknown",
+                    "message": "Status metadata file belum dapat dipastikan.",
+                    "retryable": True,
+                    "file_id": document["id"],
+                },
+            ) from resolution_exc
+
+        if persisted:
+            expected_identity = {
+                "id": document["id"],
+                "reference": document["reference"],
+                "storage_path": document["storage_path"],
+                "state": "active",
+            }
+            if all(
+                persisted.get(field) == expected
+                for field, expected in expected_identity.items()
+            ):
+                return document
+            logger.error(
+                "File metadata write resolved to a conflicting record",
+                extra={"file_id": document["id"]},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "file_metadata_outcome_unknown",
+                    "message": "Status metadata file belum dapat dipastikan.",
+                    "retryable": True,
+                    "file_id": document["id"],
+                },
+            ) from metadata_exc
+
+        try:
             storage.delete_object(metadata["storage_path"])
         except storage.StorageError as compensation_exc:
             logger.exception("Unable to compensate failed file metadata write")
@@ -1825,6 +1879,8 @@ async def upload_admin_media(
                 detail={
                     "code": "file_storage_compensation_failed",
                     "message": "Penyimpanan file sementara tidak tersedia.",
+                    "retryable": True,
+                    "file_id": document["id"],
                 },
             ) from compensation_exc
         raise HTTPException(

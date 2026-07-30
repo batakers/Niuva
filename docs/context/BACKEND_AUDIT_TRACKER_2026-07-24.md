@@ -6,7 +6,7 @@ Last updated: 30 July 2026
 Repository baseline at last update: `origin/main` at
 `84f2ece`; Feature 2.4 verification ran on
 `fix/backend-file-security` before and after merging that baseline
-Backend test baseline: 650 passed, 13 skipped, and 14 subtests passed on the
+Backend test baseline: 653 passed, 15 skipped, and 14 subtests passed on the
 Feature 2.4 working tree
 
 ## 1. Purpose and Authority
@@ -1443,10 +1443,15 @@ Baseline: `origin/main` `7d8d5c90f6440f1276ee4b82c166258514a93cd1`.
 - Partial object/sidecar writes are removed. A failed metadata write compensates
   the just-written development object; metadata and compensation failures
   return normalized `503` responses.
+- An ambiguous metadata-write outcome is resolved by opaque file ID/reference
+  before compensation. A confirmed active record is accepted; an unresolved or
+  conflicting outcome preserves the object and returns a retryable `503` with
+  the stable file ID instead of risking an active metadata record that points to
+  a deleted object.
 - Focused storage, identity/RBAC, legacy projection, and authorization matrix:
   99 passed.
-- Full backend regression after merging the PR #95/#96 baseline: 650 passed,
-  13 skipped, and 14 subtests passed. The mandatory real replica-set suite
+- Full backend regression after merging the PR #95/#96 baseline: 653 passed,
+  15 skipped, and 14 subtests passed. The mandatory real replica-set suite
   passed 71 tests without skips.
 - Dependency check/audit, compile, critical Flake8, focused storage MyPy,
   Black, isort, and diff checks passed.

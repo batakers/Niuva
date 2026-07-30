@@ -60,8 +60,14 @@ projection regression.
 Full backend regression:
 
 ```text
-650 passed, 13 skipped, 14 subtests passed after merging the PR #95/#96 baseline
+653 passed, 15 skipped, 14 subtests passed after merging the PR #95/#96 baseline
 ```
+
+Unknown metadata commit outcomes are resolved by opaque file ID/reference
+before storage compensation. Confirmed active metadata is accepted; unresolved
+or conflicting outcomes preserve the stored object and return a retryable
+`503` with the stable file ID. This prevents compensation from deleting an
+object that a committed metadata record may already reference.
 
 Repository quality checks passed:
 
