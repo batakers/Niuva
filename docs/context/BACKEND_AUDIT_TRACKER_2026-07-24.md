@@ -615,11 +615,11 @@ Status vocabulary:
   - [`docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`](../decisions/architecture/ADR-002-production-file-storage-architecture.md)
 - Production upload remains blocked until ADR readiness gates are satisfied.
 
-### BA-009 — Transaction and audit boundary adoption is incomplete
+### BA-009 — Transaction and audit boundary adoption
 
 - Severity: P1
-- Status: `partial`
-- Evidence date: 27 July 2026
+- Status: `resolved_in_source`
+- Evidence date: 30 July 2026
 - Positive controls:
   - transaction capability probe tersedia;
   - central executor dan mutation guard tersedia;
@@ -635,23 +635,21 @@ Status vocabulary:
     menempatkan mutation dan audit pada callback/session yang sama;
   - injected audit failure regression membuktikan keempat material mutation
     tidak meninggalkan partial document.
-- Open gaps after reconciliation:
-  - multi-material work-order inventory operation masih memakai
-    `start_session()` langsung;
-  - CMS `transition_block` masih memakai direct transaction block;
-  - CMS create/update/archive masih menulis mutation dan audit secara terpisah;
-  - catalog archive menulis product lalu audit secara terpisah;
-  - concurrent catalog publish menghitung next revision sebelum transaksi;
-  - direct blocks baru dari 52 upstream commits belum seluruhnya memakai
-    central unknown-commit reconciliation boundary.
-- Impact:
-  - mutation yang tersisa dapat berhasil tanpa audit jika audit write gagal;
-  - concurrent publication dapat menghasilkan raw conflict;
-  - ambiguous transaction outcome tidak diproyeksikan secara seragam.
-- Environment limitation:
-  - real replica-set foundation pernah direproduksi 26 July 2026;
-  - reconciled 27 July suite menjalankan 445 internal tests, tetapi tujuh
-    real-replica-set modules di-skip karena explicit opt-in/URL tidak tersedia.
+  - catalog CRUD/archive dan audit sekarang berada dalam callback/session yang
+    sama;
+  - seluruh content mutation dan multi-material inventory memakai shared guard;
+  - local `_require_transactions()` pada catalog/content/inventory dihapus,
+    sehingga shared `transaction_rejected` dan wire contract menjadi satu jalur;
+  - catalog publish/rollback memilih revision di dalam transaksi dan memakai
+    compare-and-set untuk memproyeksikan contention sebagai domain `409`;
+  - real replica-set suite 30 July 2026: 70 passed, 0 skipped, termasuk injected
+    catalog audit failure, fail-closed rejection, concurrent publication, dan
+    bulk inventory observability.
+- Remaining boundary:
+  - migration 007 tetap memiliki transaction block sendiri karena migration
+    execution dan production data mutation digate terpisah;
+  - production topology, rollout, monitoring ownership, dan go-live tetap open
+    dan tidak diotorisasi oleh penyelesaian finding source ini.
 
 ### BA-010 — Authentication and public-input hardening is incomplete
 
@@ -1347,3 +1345,26 @@ Baseline: `origin/main` `1ada96a591f607e2dba38013cebb1a20e593b782`.
 
 No migration, historical rewrite/deletion, provider activation, production data
 access, deployment, or go-live was performed.
+
+### 30 July 2026 — Shared transaction boundary completion
+
+Baseline: `origin/main` `7d8d5c90f6440f1276ee4b82c166258514a93cd1`.
+
+- Catalog category/product create, update, and archive now commit business and
+  audit writes in one shared-guard transaction.
+- Content and inventory local capability prechecks were removed; the shared
+  executor is the single fail-closed and observability boundary.
+- Multi-material inventory no longer owns a direct session and emits the shared
+  bulk-operation transaction lifecycle.
+- Catalog publish/rollback allocate revisions in-session and use compare-and-set
+  conflict handling; concurrent publication has one winner and one domain
+  conflict.
+- Focused affected suites: 40 passed.
+- Full backend regression: 622 passed, 13 skipped, 14 subtests passed.
+- Mandatory local MongoDB 7.0.37 replica-set suite: 70 passed, 0 skipped.
+- Dependency health/audit, compile, critical Flake8, focused MyPy, Black,
+  isort, and diff checks passed.
+
+Migration 007, production migration/data mutation, deployment, provider
+activation, production readiness, and go-live remain separately gated and were
+not performed.

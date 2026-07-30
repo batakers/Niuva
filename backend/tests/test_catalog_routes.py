@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 
 from catalog_routes import build_catalog_router
 from permissions import ROLE_POLICY_VERSION, has_permission
-from transaction_execution import TransactionExecutor
+from transaction_api import transaction_unavailable_handler
+from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
 
 
@@ -74,7 +75,7 @@ class FakeCollection:
                 return self.project(item, projection)
         return None
 
-    def find(self, query, projection=None):
+    def find(self, query, projection=None, **_options):
         return FakeCursor(
             self.project(item, projection)
             for item in self.items
@@ -194,6 +195,10 @@ def build_test_context():
     )
     app = FastAPI()
     app.state.transaction_guard = guard
+    app.state.transaction_events = sink.events
+    app.add_exception_handler(
+        TransactionUnavailableError, transaction_unavailable_handler
+    )
     api = APIRouter(prefix="/api")
     api.include_router(
         build_catalog_router(
@@ -322,6 +327,46 @@ async def run_publish_and_public_boundary():
 
 def test_catalog_publish_and_public_boundary():
     asyncio.run(run_publish_and_public_boundary())
+
+
+async def run_catalog_crud_uses_shared_transaction_boundary():
+    app, db, capabilities = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
+        created = await api.post(
+            "/api/admin/categories",
+            json={"name": "Atomic", "slug": "atomic"},
+            headers=headers(),
+        )
+        assert created.status_code == 201
+        assert (
+            "transaction_start",
+            "catalog.create_category",
+        ) in app.state.transaction_events
+        assert (
+            "transaction_commit",
+            "catalog.create_category",
+        ) in app.state.transaction_events
+
+        capabilities.transactions = False
+        rejected = await api.post(
+            "/api/admin/categories",
+            json={"name": "Rejected", "slug": "rejected"},
+            headers=headers(),
+        )
+        assert rejected.status_code == 503
+        assert rejected.json()["detail"]["code"] == "transaction_unavailable"
+        assert not any(item["slug"] == "rejected" for item in db.categories.items)
+        assert (
+            "transaction_rejected",
+            "catalog.create_category",
+        ) in app.state.transaction_events
+
+
+def test_catalog_crud_uses_shared_transaction_boundary_and_fails_closed():
+    asyncio.run(run_catalog_crud_uses_shared_transaction_boundary())
 
 
 async def run_permission_validation_and_conflicts():

@@ -13,6 +13,7 @@ from catalog_domain import (
     validate_bill_of_materials,
     validate_catalog_aggregate,
 )
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 
 class CatalogError(Exception):
@@ -90,14 +91,22 @@ class CatalogService:
             "updated_at": timestamp,
             "updated_by": actor.get("id"),
         }
-        await self.db.categories.insert_one(category)
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="catalog.category_created",
-            target_type="category",
-            target_id=category["id"],
-            after=category,
+        async def mutation(session):
+            await self.db.categories.insert_one(category, **_write_options(session))
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.category_created",
+                target_type="category",
+                target_id=category["id"],
+                after=category,
+                session=session,
+            )
+
+        await self.guard.run(
+            mutation,
+            operation_name="catalog.create_category",
+            retry_safe=True,
         )
         return clean_document(category)
 
@@ -117,16 +126,27 @@ class CatalogService:
             "updated_at": now_iso(),
             "updated_by": actor.get("id"),
         }
-        await self.db.categories.update_one({"id": category_id}, {"$set": changes})
         after = {**before, **changes}
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="catalog.category_updated",
-            target_type="category",
-            target_id=category_id,
-            before=before,
-            after=after,
+
+        async def mutation(session):
+            await self.db.categories.update_one(
+                {"id": category_id}, {"$set": changes}, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.category_updated",
+                target_type="category",
+                target_id=category_id,
+                before=before,
+                after=after,
+                session=session,
+            )
+
+        await self.guard.run(
+            mutation,
+            operation_name="catalog.update_category",
+            retry_safe=True,
         )
         return after
 
@@ -139,17 +159,28 @@ class CatalogService:
             "updated_at": now_iso(),
             "updated_by": actor.get("id"),
         }
-        await self.db.categories.update_one({"id": category_id}, {"$set": changes})
         after = {**before, **changes}
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="catalog.category_archived",
-            target_type="category",
-            target_id=category_id,
-            before=before,
-            after=after,
-            reason=reason,
+
+        async def mutation(session):
+            await self.db.categories.update_one(
+                {"id": category_id}, {"$set": changes}, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.category_archived",
+                target_type="category",
+                target_id=category_id,
+                before=before,
+                after=after,
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(
+            mutation,
+            operation_name="catalog.archive_category",
+            retry_safe=True,
         )
         return after
 
@@ -243,14 +274,22 @@ class CatalogService:
             "updated_at": timestamp,
             "updated_by": actor.get("id"),
         }
-        await self.db.products.insert_one(product)
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="catalog.product_created",
-            target_type="product",
-            target_id=product["id"],
-            after=product,
+        async def mutation(session):
+            await self.db.products.insert_one(product, **_write_options(session))
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.product_created",
+                target_type="product",
+                target_id=product["id"],
+                after=product,
+                session=session,
+            )
+
+        await self.guard.run(
+            mutation,
+            operation_name="catalog.create_product",
+            retry_safe=True,
         )
         return clean_document(product)
 
@@ -271,16 +310,27 @@ class CatalogService:
             "updated_at": now_iso(),
             "updated_by": actor.get("id"),
         }
-        await self.db.products.update_one({"id": product_id}, {"$set": changes})
         after = {**before, **changes}
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="catalog.product_updated",
-            target_type="product",
-            target_id=product_id,
-            before=before,
-            after=after,
+
+        async def mutation(session):
+            await self.db.products.update_one(
+                {"id": product_id}, {"$set": changes}, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.product_updated",
+                target_type="product",
+                target_id=product_id,
+                before=before,
+                after=after,
+                session=session,
+            )
+
+        await self.guard.run(
+            mutation,
+            operation_name="catalog.update_product",
+            retry_safe=True,
         )
         return after
 
@@ -322,7 +372,6 @@ class CatalogService:
     async def replace_variants(
         self, product_id: str, variants: list[dict], actor: dict
     ) -> list[dict]:
-        self._require_transactions()
         product = await self._product_document(product_id)
         incoming_skus = [item["sku"].strip().upper() for item in variants]
         if len(incoming_skus) != len(set(incoming_skus)):
@@ -439,7 +488,6 @@ class CatalogService:
     async def replace_options(
         self, product_id: str, options: list[dict], actor: dict
     ) -> list[dict]:
-        self._require_transactions()
         product = await self._product_document(product_id)
         incoming_codes = [item["code"].strip().lower() for item in options]
         if len(incoming_codes) != len(set(incoming_codes)):
@@ -578,7 +626,6 @@ class CatalogService:
         actor: dict,
         reason: str,
     ) -> dict:
-        self._require_transactions()
         aggregate = await self._load_aggregate(product_id)
         errors = validate_catalog_aggregate(aggregate)
         if errors:
@@ -637,24 +684,30 @@ class CatalogService:
         )
         return after
 
-    def _require_transactions(self):
-        if not self.capabilities.transactions:
-            raise CatalogError(
-                503,
-                "transaction_unavailable",
-                "Operasi katalog aman tidak tersedia karena database belum mendukung transaksi.",
-            )
-
-    async def _next_revision(self, product_id: str) -> int:
+    async def _next_revision(self, product_id: str, session=None) -> int:
         latest = await self.db.catalog_publications.find(
-            {"product_id": product_id}, {"_id": 0}
+            {"product_id": product_id},
+            {"_id": 0},
+            **_write_options(session),
         ).sort("revision", -1).limit(1).to_list(1)
         return (latest[0]["revision"] if latest else 0) + 1
+
+    @staticmethod
+    def _publication_conflict(exc: PyMongoError) -> CatalogError | None:
+        transient = getattr(exc, "has_error_label", lambda _label: False)(
+            "TransientTransactionError"
+        )
+        if isinstance(exc, DuplicateKeyError) or transient:
+            return CatalogError(
+                409,
+                "catalog_publication_conflict",
+                "Publikasi katalog berubah bersamaan; muat ulang sebelum mencoba lagi.",
+            )
+        return None
 
     async def publish_product(
         self, product_id: str, actor: dict, reason: str
     ) -> dict:
-        self._require_transactions()
         aggregate = await self._load_aggregate(product_id)
         errors = validate_catalog_aggregate(aggregate)
         if errors:
@@ -670,15 +723,14 @@ class CatalogService:
                 "catalog_candidate_required",
                 "Produk harus diajukan sebagai kandidat publikasi setelah perubahan terakhir.",
             )
-        publication = build_publication_snapshot(
-            aggregate,
-            revision=await self._next_revision(product_id),
-            actor_id=actor.get("id"),
-            reason=reason,
-            published_at=now_iso(),
-        )
-
         async def mutation(session):
+            publication = build_publication_snapshot(
+                aggregate,
+                revision=await self._next_revision(product_id, session=session),
+                actor_id=actor.get("id"),
+                reason=reason,
+                published_at=now_iso(),
+            )
             await self.db.catalog_publications.insert_one(
                 publication, **_write_options(session)
             )
@@ -713,8 +765,19 @@ class CatalogService:
                 reason=reason,
                 session=session,
             )
+            return publication
 
-        await self.guard.run(mutation, operation_name="catalog.publish_product")
+        try:
+            publication = await self.guard.run(
+                mutation,
+                operation_name="catalog.publish_product",
+                retry_safe=True,
+            )
+        except PyMongoError as exc:
+            conflict = self._publication_conflict(exc)
+            if conflict is not None:
+                raise conflict from exc
+            raise
         return clean_document(publication)
 
     async def rollback_product(
@@ -724,8 +787,7 @@ class CatalogService:
         actor: dict,
         reason: str,
     ) -> dict:
-        self._require_transactions()
-        await self._product_document(product_id)
+        product = await self._product_document(product_id)
         selected = clean_document(
             await self.db.catalog_publications.find_one(
                 {"id": publication_id, "product_id": product_id}, {"_id": 0}
@@ -735,24 +797,29 @@ class CatalogService:
             raise CatalogError(
                 404, "publication_not_found", "Revisi publikasi tidak ditemukan."
             )
-        publication = deepcopy(selected)
-        publication.update(
-            {
-                "id": str(uuid.uuid4()),
-                "revision": await self._next_revision(product_id),
-                "published_at": now_iso(),
-                "published_by": actor.get("id"),
-                "publish_reason": reason,
-                "rollback_source_publication_id": publication_id,
-            }
-        )
-
         async def mutation(session):
+            publication = deepcopy(selected)
+            publication.update(
+                {
+                    "id": str(uuid.uuid4()),
+                    "revision": await self._next_revision(
+                        product_id, session=session
+                    ),
+                    "published_at": now_iso(),
+                    "published_by": actor.get("id"),
+                    "publish_reason": reason,
+                    "rollback_source_publication_id": publication_id,
+                }
+            )
             await self.db.catalog_publications.insert_one(
                 publication, **_write_options(session)
             )
-            await self.db.products.update_one(
-                {"id": product_id},
+            result = await self.db.products.update_one(
+                {
+                    "id": product_id,
+                    "active_publication_id": product.get("active_publication_id"),
+                    "updated_at": product.get("updated_at"),
+                },
                 {
                     "$set": {
                         "active_publication_id": publication["id"],
@@ -762,6 +829,12 @@ class CatalogService:
                 },
                 **_write_options(session),
             )
+            if not getattr(result, "matched_count", 0):
+                raise CatalogError(
+                    409,
+                    "catalog_publication_conflict",
+                    "Publikasi aktif berubah sebelum rollback selesai.",
+                )
             await append_audit_event(
                 self.db,
                 actor=actor,
@@ -773,8 +846,19 @@ class CatalogService:
                 reason=reason,
                 session=session,
             )
+            return publication
 
-        await self.guard.run(mutation, operation_name="catalog.rollback_product")
+        try:
+            publication = await self.guard.run(
+                mutation,
+                operation_name="catalog.rollback_product",
+                retry_safe=True,
+            )
+        except PyMongoError as exc:
+            conflict = self._publication_conflict(exc)
+            if conflict is not None:
+                raise conflict from exc
+            raise
         return clean_document(publication)
 
     async def archive_product(
@@ -787,17 +871,28 @@ class CatalogService:
             "updated_at": now_iso(),
             "updated_by": actor.get("id"),
         }
-        await self.db.products.update_one({"id": product_id}, {"$set": changes})
         after = {**before, **changes}
-        await append_audit_event(
-            self.db,
-            actor=actor,
-            action="catalog.product_archived",
-            target_type="product",
-            target_id=product_id,
-            before=before,
-            after=after,
-            reason=reason,
+
+        async def mutation(session):
+            await self.db.products.update_one(
+                {"id": product_id}, {"$set": changes}, **_write_options(session)
+            )
+            await append_audit_event(
+                self.db,
+                actor=actor,
+                action="catalog.product_archived",
+                target_type="product",
+                target_id=product_id,
+                before=before,
+                after=after,
+                reason=reason,
+                session=session,
+            )
+
+        await self.guard.run(
+            mutation,
+            operation_name="catalog.archive_product",
+            retry_safe=True,
         )
         return after
 
