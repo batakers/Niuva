@@ -1,4 +1,5 @@
 import asyncio
+from copy import deepcopy
 from datetime import datetime, timezone
 
 import pytest
@@ -91,6 +92,37 @@ def test_accepted_quote_creates_exactly_one_project():
                 actor=actor,
             )
         assert duplicate.value.code == "project_already_created"
+
+    asyncio.run(scenario())
+
+
+def test_historical_quote_without_line_identity_cannot_create_project():
+    async def scenario():
+        db = FakeDatabase()
+        db.b2b_projects = type(db.b2b_quotes)()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        quote, actor = await accepted_quote(service)
+        version = await db.b2b_quote_versions.find_one(
+            {"id": quote["accepted_version_id"]}
+        )
+        items = deepcopy(version["items"])
+        items[0].pop("quote_line_id")
+        await db.b2b_quote_versions.update_one(
+            {"id": version["id"]}, {"$set": {"items": items}}
+        )
+
+        with pytest.raises(B2BDomainError) as rejected:
+            await service.create_project_from_quote(
+                quote["id"],
+                expected_version=quote["version"],
+                operation_id="op-historical-project",
+                reason="Historical quote requires reconciliation",
+                actor=actor,
+            )
+
+        assert rejected.value.code == "quote_line_reconciliation_required"
+        assert rejected.value.details["reason"] == "missing_quote_line_identity"
+        assert db.b2b_projects.items == []
 
     asyncio.run(scenario())
 

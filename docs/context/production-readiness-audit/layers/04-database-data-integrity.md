@@ -325,25 +325,26 @@ later shared-guard adoption for catalog/inventory remains pending.
 - Human decision required: guard-adoption implementation approval.
 - First/last SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`.
 
-### DB-004 — Cross-collection references and quote-line identity are not enforced
+### DB-004 — Cross-collection Quote-line references
 
-- Severity: `P1`; status: `open`; confidence: 91%; category: referential integrity.
+- Severity: `P1`; status: `resolved_in_source`; confidence: 100%; category:
+  referential integrity.
 - Expected: every reference resolves to the intended immutable parent/version and
   an operation identifies the exact quoted line.
-- Actual: references are checked in services only; no database constraints or
-  orphan scans exist. Work-order lookup matches the first item by
-  `variant_id` only (`b2b_service.py:447-458`).
-- Impact: duplicate quote lines or deleted/archived parents can cause the wrong
-  price/material requirement or orphaned operational records.
-- Recommendation: add stable line identity/reference, parent/version
-  consistency checks, and non-destructive orphan reporting before migration.
-- Acceptance: duplicate-line test, cross-collection consistency report, and
-  no work order can resolve an ambiguous line.
-- Dependencies/decision: approved B2B quotation/version policy; do not invent
-  line semantics in a migration.
-- Human decision required: confirm canonical line identifier and remediation
-  policy for existing ambiguous data.
-- First/last SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`.
+- Actual: Work Orders require exact line identity, derive the accepted source
+  version from the Project, persist both references, and reject missing,
+  duplicate, orphaned, or mismatched identity without inference. An
+  aggregate-only report classifies Quote-version, Project, Work Order, and
+  quantity-reference issues without exposing row data.
+- Impact: ambiguous history can no longer create a dependent Work Order.
+- Acceptance: duplicate-line, missing-line, version-mismatch, over-quantity,
+  aggregate-report, and real-concurrency tests are present.
+- Dependencies/decision: `DEC-DATA-002`; isolated historical report execution
+  and any reviewed mapping remain separately approved.
+- Human decision required: only for later isolated/shared historical execution,
+  never for the completed source contract.
+- First/last SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba` / 30 July
+  2026 source branch.
 
 ### DB-005 — Migration 005 targets collections explicitly retained by current authority
 
@@ -520,6 +521,10 @@ later shared-guard adoption for catalog/inventory remains pending.
 - Human decision: retention durations, legal hold, deletion owner, and
   backup interaction.
 - First/last SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`.
+- Reconciliation update, 30 July 2026: the Quote-line portion is resolved in
+  source through exact references and the aggregate-only historical preflight.
+  DB-013 remains open for unrelated collection-wide uniqueness and retention
+  ownership.
 
 ### DB-014 — Live schema, production topology, and test-database evidence are unverified
 

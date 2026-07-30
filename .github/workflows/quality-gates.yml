@@ -57,6 +57,7 @@ jobs:
           backend/schema_manifest.py
           backend/schema_readiness.py
           backend/notification_worker.py
+          backend/quote_line_reconciliation_report.py
           backend/storage.py
       - name: Check remediation formatting
         run: |
@@ -72,6 +73,7 @@ jobs:
             backend/schema_manifest.py \
             backend/schema_readiness.py \
             backend/notification_worker.py \
+            backend/quote_line_reconciliation_report.py \
             backend/storage.py \
             backend/server.py \
             backend/migrations/007_security_publication_schema.py \
@@ -80,6 +82,7 @@ jobs:
             backend/tests/test_admin_notifications.py \
             backend/tests/test_readonly_load_probe.py \
             backend/tests/test_inventory_service.py \
+            backend/tests/test_quote_line_reconciliation_report.py \
             backend/tests/test_work_order_allocation_integration.py \
             scripts/load_readonly_api.py
           python -m isort --profile black --check-only \
@@ -94,6 +97,7 @@ jobs:
             backend/schema_manifest.py \
             backend/schema_readiness.py \
             backend/notification_worker.py \
+            backend/quote_line_reconciliation_report.py \
             backend/storage.py \
             backend/migrations/007_security_publication_schema.py \
             backend/migrations/008_auth_recovery_safety.py \
@@ -101,6 +105,7 @@ jobs:
             backend/tests/test_admin_notifications.py \
             backend/tests/test_readonly_load_probe.py \
             backend/tests/test_inventory_service.py \
+            backend/tests/test_quote_line_reconciliation_report.py \
             backend/tests/test_work_order_allocation_integration.py \
             scripts/load_readonly_api.py
       - name: Run complete backend suite

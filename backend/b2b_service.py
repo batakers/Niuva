@@ -14,6 +14,7 @@ from b2b_domain import (
     build_material_requirements,
     build_quote_item_snapshot,
     project_work_order,
+    require_exact_quote_line_identities,
     validate_work_order_transition,
     project_inquiry,
     project_b2b_project,
@@ -570,41 +571,43 @@ class B2BService:
         self,
         project: dict,
         *,
-        quote_line_id: str | None,
-        variant_id: str | None,
+        quote_line_id: str,
     ) -> dict:
-        """Resolve one immutable accepted line, never merely the first variant."""
-        version = await self._get_quote_version(project["source_quote_version_id"])
-        if quote_line_id:
-            for item in version.get("items") or []:
-                if item.get("quote_line_id") == quote_line_id:
-                    return item
-            raise B2BDomainError(
-                422,
-                "work_order_line_not_quoted",
-                "Baris penawaran tidak ada pada Quote yang diterima.",
-                details={"quote_line_id": quote_line_id},
-            )
-        # Internal compatibility for historical callers. It is safe only when
-        # one line matches; the HTTP contract always requires quote_line_id.
-        matches = [
-            item
-            for item in version.get("items") or []
-            if item.get("variant_id") == variant_id
-        ]
-        if len(matches) == 1:
-            return matches[0]
-        if len(matches) > 1:
+        """Resolve exactly one immutable accepted line; never infer by variant."""
+        source_version_id = project.get("source_quote_version_id")
+        if not isinstance(source_version_id, str) or not source_version_id:
             raise B2BDomainError(
                 409,
-                "work_order_quote_line_ambiguous",
-                "Variant muncul pada beberapa baris; quote_line_id wajib dipilih.",
+                "quote_line_reconciliation_required",
+                "Project historis tidak memiliki referensi versi Quote.",
+                details={"reason": "missing_source_quote_version"},
             )
+        version = await self._get_quote_version(source_version_id)
+        if version.get("quote_id") != project.get("quote_id"):
+            raise B2BDomainError(
+                409,
+                "quote_line_reconciliation_required",
+                "Referensi Quote pada Project dan versi sumber tidak konsisten.",
+                details={"reason": "source_quote_mismatch"},
+            )
+        snapshot = project.get("quote_snapshot")
+        if snapshot and snapshot.get("id") != source_version_id:
+            raise B2BDomainError(
+                409,
+                "quote_line_reconciliation_required",
+                "Referensi versi Quote pada Project tidak konsisten.",
+                details={"reason": "source_quote_version_mismatch"},
+            )
+        items = version.get("items") or []
+        require_exact_quote_line_identities(items)
+        for item in items:
+            if item["quote_line_id"] == quote_line_id:
+                return item
         raise B2BDomainError(
             422,
             "work_order_line_not_quoted",
-            "Varian tidak ada pada penawaran yang diterima untuk Project ini.",
-            details={"variant_id": variant_id},
+            "Baris penawaran tidak ada pada versi Quote yang diterima.",
+            details={"quote_line_id": quote_line_id},
         )
 
     async def create_work_order(
@@ -614,8 +617,7 @@ class B2BService:
         expected_version: int,
         operation_id: str,
         reason: str,
-        quote_line_id: str | None = None,
-        variant_id: str | None = None,
+        quote_line_id: str,
         quantity: int,
         actor: dict,
     ) -> dict:
@@ -662,15 +664,8 @@ class B2BService:
         line = await self._accepted_line(
             project,
             quote_line_id=quote_line_id,
-            variant_id=variant_id,
         )
-        resolved_line_id = line.get("quote_line_id")
-        if not resolved_line_id:
-            raise B2BDomainError(
-                409,
-                "work_order_quote_line_identity_missing",
-                "Quote historis tidak memiliki quote_line_id dan harus direkonsiliasi.",
-            )
+        resolved_line_id = line["quote_line_id"]
         resolved_variant_id = line.get("variant_id")
         if not resolved_variant_id:
             raise B2BDomainError(
@@ -681,6 +676,7 @@ class B2BService:
         active_work_orders = await self.db.work_orders.find(
             {
                 "project_id": project_id,
+                "source_quote_version_id": project["source_quote_version_id"],
                 "quote_line_id": resolved_line_id,
                 "status": {"$ne": "cancelled"},
             },
@@ -1490,6 +1486,7 @@ class B2BService:
             raise B2BDomainError(422, "reason_required", "Alasan pembuatan Project wajib diisi.")
 
         accepted_version = await self._get_quote_version(quote["accepted_version_id"])
+        require_exact_quote_line_identities(accepted_version.get("items") or [])
         timestamp = now_iso()
         project_id = str(uuid.uuid4())
         project = {

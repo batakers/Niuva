@@ -100,7 +100,7 @@ async def seed_contacted_inquiry(service):
     return inquiry["id"]
 
 
-async def accept_quote(service, quote_id):
+async def accept_quote(service, quote_id, *, variant_id=None, quantity=1):
     """Drive a draft quote to accepted so a project may be created from it."""
     quote = await service.get_quote(quote_id)
     quote = await service.create_quote_revision(
@@ -112,9 +112,9 @@ async def accept_quote(service, quote_id):
         items=[
             {
                 "description": "Engineering service",
-                "quantity": 1,
+                "quantity": quantity,
                 "unit_price_minor": 1000000,
-                "variant_id": None,
+                "variant_id": variant_id,
             }
         ],
         total_minor=None,
@@ -303,6 +303,89 @@ async def run_conversion_rollback(database_name):
         client.close()
 
 
+async def run_concurrent_work_order_quantity_cap(database_name):
+    client = AsyncIOMotorClient(MONGO_TRANSACTION_TEST_URL)
+    try:
+        service = await build_service(client, database_name)
+        database = client[database_name]
+        inquiry_id = await seed_contacted_inquiry(service)
+        converted = await service.convert_inquiry(
+            inquiry_id,
+            expected_version=3,
+            operation_id=operation_id(),
+            reason="Konversi ke penawaran",
+            actor=ACTOR,
+        )
+        await database.products.insert_one(
+            {"id": "product-1", "name": "Prototype", "slug": "prototype"}
+        )
+        await database.product_variants.insert_one(
+            {
+                "id": "variant-1",
+                "product_id": "product-1",
+                "sku": "PROTO-1",
+                "name": "Prototype",
+                "production_type": "made_to_order",
+                "bill_of_materials": [],
+            }
+        )
+        accepted = await accept_quote(
+            service,
+            converted["quote"]["id"],
+            variant_id="variant-1",
+            quantity=3,
+        )
+        created = await service.create_project_from_quote(
+            accepted["id"],
+            expected_version=accepted["version"],
+            operation_id=operation_id(),
+            reason="Mulai eksekusi proyek",
+            actor=ACTOR,
+        )
+        project = created["project"]
+        line_id = project["quote_snapshot"]["items"][0]["quote_line_id"]
+
+        async def create():
+            return await service.create_work_order(
+                project["id"],
+                expected_version=project["version"],
+                operation_id=operation_id(),
+                reason="Concurrent production run",
+                quote_line_id=line_id,
+                quantity=2,
+                actor=ACTOR,
+            )
+
+        results = await asyncio.gather(create(), create(), return_exceptions=True)
+        succeeded = [item for item in results if not isinstance(item, Exception)]
+        rejected = [item for item in results if isinstance(item, Exception)]
+        assert len(succeeded) == 1, results
+        assert len(rejected) == 1
+        assert isinstance(rejected[0], B2BDomainError)
+        assert rejected[0].status_code == 409
+        assert await database.work_orders.count_documents({}) == 1
+        stored = await database.work_orders.find_one({})
+        assert stored["source_quote_version_id"] == project["source_quote_version_id"]
+        assert stored["quote_line_id"] == line_id
+        assert stored["quantity"] == 2
+
+        current_project = await service.get_project(project["id"])
+        with pytest.raises(B2BDomainError) as overcommitted:
+            await service.create_work_order(
+                project["id"],
+                expected_version=current_project["version"],
+                operation_id=operation_id(),
+                reason="Exceed exact accepted line",
+                quote_line_id=line_id,
+                quantity=2,
+                actor=ACTOR,
+            )
+        assert overcommitted.value.code == "work_order_quote_quantity_exceeded"
+    finally:
+        await client.drop_database(database_name)
+        client.close()
+
+
 def test_concurrent_conversion_yields_exactly_one_quote(transaction_database_name):
     asyncio.run(run_double_conversion(transaction_database_name))
 
@@ -317,3 +400,9 @@ def test_concurrent_acceptance_yields_exactly_one_project(transaction_database_n
 
 def test_failed_conversion_leaves_no_partial_state(transaction_database_name):
     asyncio.run(run_conversion_rollback(transaction_database_name))
+
+
+def test_concurrent_work_orders_cannot_overcommit_one_quote_line(
+    transaction_database_name,
+):
+    asyncio.run(run_concurrent_work_order_quantity_cap(transaction_database_name))
