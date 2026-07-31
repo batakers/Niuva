@@ -64,6 +64,15 @@ specific defect. Its historical-data gate belongs to later PHASE-02/PHASE-07/
 PHASE-10 execution and must not be represented as unfinished automatic
 backfill work.
 
+## B2B operational lifecycle feature register — 31 July 2026
+
+This register distinguishes bounded internal Admin lifecycle hardening from
+the still-open customer Organization Portal decision under DR-010.
+
+| Feature | Branch / baseline | Completed source scope | Verification | Important notes and exact next step | State |
+| --- | --- | --- | --- | --- | --- |
+| 4.2 Quote lifecycle | `fix/backend-quote-lifecycle`; baseline `7662a37`; local delivery pending | Existing lifecycle, immutable revisions, exact sent/accepted version, acceptance evidence, permissions, and history revalidated. Quote transition, revision, and acceptance events now bind each `operation_id` to an exact canonical command fingerprint; materially different reuse fails `409 operation_id_conflict`. Quote routes declare the shared HTTP error envelope, including fail-closed `503` for revision creation. | Focused backend `66 passed, 1 skipped`; full backend `666 passed, 13 skipped, 14 subtests passed`; real local replica-set B2B integration `5 passed`; adjacent frontend `2` suites and `29` tests passed; critical lint and diff check passed. | Obtain commit/push/PR authorization and independent review. Quote-to-Project remains Feature 4.3; customer Quote access/self-acceptance remains blocked by DR-010; no historical migration, deployment, production-readiness, or go-live is implied. | `source_complete_delivery_pending`; local candidate only. |
+
 ## Frontend work register — current-source reconciliation
 
 This register inventories frontend work that is still open, only partially

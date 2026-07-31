@@ -65,6 +65,7 @@ def test_quote_acceptance_locks_the_accepted_version():
     async def scenario():
         service = B2BService(db=FakeDatabase(), transaction_guard=EnabledGuard())
         quote, actor = await converted_quote(service)
+        accepted_at = datetime.now(timezone.utc)
 
         for target in ["internal_review", "sent"]:
             quote = await service.transition_quote(
@@ -81,7 +82,7 @@ def test_quote_acceptance_locks_the_accepted_version():
             operation_id="op-accepted",
             reason="Customer approval recorded",
             approver={"name": "Ayu", "identity": "ayu@example.com"},
-            accepted_at=datetime.now(timezone.utc),
+            accepted_at=accepted_at,
             channel="email",
             evidence_reference="email-thread-001",
             actor=actor,
@@ -97,13 +98,168 @@ def test_quote_acceptance_locks_the_accepted_version():
             operation_id="op-accepted",
             reason="Customer approval recorded",
             approver={"name": "Ayu", "identity": "ayu@example.com"},
-            accepted_at=datetime.now(timezone.utc),
+            accepted_at=accepted_at,
             channel="email",
             evidence_reference="email-thread-001",
             actor=actor,
         )
         assert replay["version"] == quote["version"]
         assert len(replay["history"]) == len(quote["history"])
+
+    asyncio.run(scenario())
+
+
+def test_quote_operation_id_replay_requires_the_exact_transition_command():
+    async def scenario():
+        service = B2BService(db=FakeDatabase(), transaction_guard=EnabledGuard())
+        quote, actor = await converted_quote(service)
+        expected_version = quote["version"]
+
+        first = await service.transition_quote(
+            quote["id"],
+            target_status="internal_review",
+            expected_version=expected_version,
+            operation_id="op-review-exact",
+            reason="Ready for internal review",
+            actor=actor,
+        )
+        replay = await service.transition_quote(
+            quote["id"],
+            target_status="internal_review",
+            expected_version=expected_version,
+            operation_id="op-review-exact",
+            reason="Ready for internal review",
+            actor=actor,
+        )
+
+        assert replay["version"] == first["version"]
+        assert len(replay["history"]) == len(first["history"])
+
+        conflicting_commands = [
+            {
+                "expected_version": expected_version,
+                "reason": "Different review reason",
+                "actor": actor,
+            },
+            {
+                "expected_version": expected_version,
+                "reason": "Ready for internal review",
+                "actor": {"id": "sales-2"},
+            },
+            {
+                "expected_version": expected_version + 1,
+                "reason": "Ready for internal review",
+                "actor": actor,
+            },
+        ]
+        for command in conflicting_commands:
+            with pytest.raises(B2BDomainError) as conflict:
+                await service.transition_quote(
+                    quote["id"],
+                    target_status="internal_review",
+                    expected_version=command["expected_version"],
+                    operation_id="op-review-exact",
+                    reason=command["reason"],
+                    actor=command["actor"],
+                )
+            assert conflict.value.code == "operation_id_conflict"
+
+    asyncio.run(scenario())
+
+
+def test_acceptance_operation_id_cannot_represent_different_evidence():
+    async def scenario():
+        service = B2BService(db=FakeDatabase(), transaction_guard=EnabledGuard())
+        quote, actor = await converted_quote(service)
+        for target in ["internal_review", "sent"]:
+            quote = await service.transition_quote(
+                quote["id"],
+                target_status=target,
+                expected_version=quote["version"],
+                operation_id=f"op-evidence-{target}",
+                reason=f"Move to {target}",
+                actor=actor,
+            )
+        expected_version = quote["version"]
+        accepted_at = datetime.now(timezone.utc)
+        await service.accept_quote(
+            quote["id"],
+            expected_version=expected_version,
+            operation_id="op-accept-evidence",
+            reason="Customer approval recorded",
+            approver={"name": "Ayu", "identity": "ayu@example.com"},
+            accepted_at=accepted_at,
+            channel="email",
+            evidence_reference="email-thread-001",
+            actor=actor,
+        )
+
+        with pytest.raises(B2BDomainError) as conflict:
+            await service.accept_quote(
+                quote["id"],
+                expected_version=expected_version,
+                operation_id="op-accept-evidence",
+                reason="Customer approval recorded",
+                approver={"name": "Ayu", "identity": "ayu@example.com"},
+                accepted_at=accepted_at,
+                channel="email",
+                evidence_reference="different-evidence",
+                actor=actor,
+            )
+        assert conflict.value.code == "operation_id_conflict"
+
+    asyncio.run(scenario())
+
+
+def test_revision_operation_id_cannot_represent_different_commercial_content():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        quote, actor = await converted_quote(service)
+        payload = {
+            "scope_snapshot": quote["current_version"]["scope_snapshot"],
+            "items": [
+                {
+                    "description": "Second engineering phase",
+                    "quantity": 1,
+                    "unit_price_minor": 2000000,
+                    "variant_id": None,
+                }
+            ],
+            "total_minor": None,
+        }
+        expected_version = quote["version"]
+        first = await service.create_quote_revision(
+            quote["id"],
+            expected_version=expected_version,
+            operation_id="op-revision-exact",
+            reason="Second commercial draft",
+            actor=actor,
+            **payload,
+        )
+        replay = await service.create_quote_revision(
+            quote["id"],
+            expected_version=expected_version,
+            operation_id="op-revision-exact",
+            reason="Second commercial draft",
+            actor=actor,
+            **payload,
+        )
+        assert replay["current_version"]["id"] == first["current_version"]["id"]
+        assert len(db.b2b_quote_versions.items) == 3
+
+        with pytest.raises(B2BDomainError) as conflict:
+            await service.create_quote_revision(
+                quote["id"],
+                expected_version=expected_version,
+                operation_id="op-revision-exact",
+                reason="Second commercial draft",
+                scope_snapshot=payload["scope_snapshot"],
+                items=[{**payload["items"][0], "quantity": 2}],
+                total_minor=None,
+                actor=actor,
+            )
+        assert conflict.value.code == "operation_id_conflict"
 
     asyncio.run(scenario())
 

@@ -104,7 +104,7 @@ class InquiryConversionResponse(BaseModel):
 B2B_ERROR_RESPONSES = {
     401: {"model": ErrorEnvelope, "description": "Authentication required"},
     403: {"model": ErrorEnvelope, "description": "Permission denied"},
-    404: {"model": ErrorEnvelope, "description": "Inquiry not found"},
+    404: {"model": ErrorEnvelope, "description": "Resource not found"},
     409: {"model": ErrorEnvelope, "description": "Command conflict"},
     422: {"model": ErrorEnvelope, "description": "Request validation failed"},
     429: {"model": ErrorEnvelope, "description": "Rate limit exceeded"},
@@ -339,21 +339,35 @@ def build_b2b_router(
             )
         )
 
-    @router.get("/admin/b2b/quotes")
+    @router.get(
+        "/admin/b2b/quotes",
+        response_model=list[dict[str, Any]],
+        responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 422, 500)},
+    )
     async def list_quotes(
         status_filter: str | None = None,
         _actor: dict = Depends(require_permission("quotes.read")),
     ):
         return await invoke(service().list_quotes(status=status_filter))
 
-    @router.get("/admin/b2b/quotes/{quote_id}")
+    @router.get(
+        "/admin/b2b/quotes/{quote_id}",
+        response_model=dict[str, Any],
+        responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 404, 500)},
+    )
     async def get_quote(
         quote_id: str,
         _actor: dict = Depends(require_permission("quotes.read")),
     ):
         return await invoke(service().get_quote(quote_id))
 
-    @router.post("/admin/b2b/quotes/{quote_id}/transitions")
+    @router.post(
+        "/admin/b2b/quotes/{quote_id}/transitions",
+        response_model=dict[str, Any],
+        responses={
+            code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 404, 409, 422, 500)
+        },
+    )
     async def transition_quote(
         quote_id: str,
         payload: QuoteTransitionPayload,
@@ -370,7 +384,14 @@ def build_b2b_router(
             )
         )
 
-    @router.post("/admin/b2b/quotes/{quote_id}/versions")
+    @router.post(
+        "/admin/b2b/quotes/{quote_id}/versions",
+        response_model=dict[str, Any],
+        responses={
+            code: B2B_ERROR_RESPONSES[code]
+            for code in (401, 403, 404, 409, 422, 500, 503)
+        },
+    )
     async def create_quote_revision(
         quote_id: str,
         payload: QuoteRevisionPayload,
@@ -389,7 +410,13 @@ def build_b2b_router(
             )
         )
 
-    @router.post("/admin/b2b/quotes/{quote_id}/acceptance")
+    @router.post(
+        "/admin/b2b/quotes/{quote_id}/acceptance",
+        response_model=dict[str, Any],
+        responses={
+            code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 404, 409, 422, 500)
+        },
+    )
     async def accept_quote(
         quote_id: str,
         payload: QuoteAcceptancePayload,
