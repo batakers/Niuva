@@ -3,12 +3,15 @@ import types
 from pathlib import Path
 
 import httpx
+import pytest
 from fastapi import APIRouter, FastAPI, Header, HTTPException
 from fastapi.exceptions import RequestValidationError
 
+from auth_rate_limit import PublicRateLimiter
 from b2b_routes import build_b2b_router
 from permissions import ROLE_POLICY_VERSION, has_permission
 from tests.test_identity_foundation import server
+from transaction_execution import TransactionUnavailableError
 
 
 class FakeCursor:
@@ -60,6 +63,38 @@ class FakeCollection:
 class FakeDatabase:
     def __init__(self):
         self.inquiries = FakeCollection()
+        self.b2b_quotes = FakeCollection()
+        self.b2b_quote_versions = FakeCollection()
+
+
+class FakeRateLimitCollection:
+    def __init__(self):
+        self.items = {}
+
+    async def update_one(self, query, update, upsert=False):
+        key = query["_id"]
+        item = self.items.get(key)
+        if item is None:
+            assert upsert is True
+            item = {"_id": key, **update.get("$setOnInsert", {})}
+            self.items[key] = item
+        for field, amount in update.get("$inc", {}).items():
+            item[field] = item.get(field, 0) + amount
+        return types.SimpleNamespace(matched_count=1)
+
+    async def find_one(self, query, projection=None):
+        item = self.items.get(query["_id"])
+        return dict(item) if item else None
+
+
+class DisabledGuard:
+    async def run(self, _callback, **_options):
+        raise TransactionUnavailableError()
+
+
+class EnabledGuard:
+    async def run(self, callback, **_options):
+        return await callback(object())
 
 
 def permission_dependency(permission):
@@ -79,8 +114,19 @@ def permission_dependency(permission):
     return dependency
 
 
-def build_context(throttle_intake=None, notify_inquiry=None):
-    db = FakeDatabase()
+async def allow_intake(_request):
+    return None
+
+
+def build_context(
+    throttle_intake=allow_intake,
+    notify_inquiry=None,
+    *,
+    db=None,
+    transaction_guard=None,
+    permission_factory=permission_dependency,
+):
+    db = db or FakeDatabase()
     app = FastAPI()
     app.add_exception_handler(HTTPException, server.http_error_envelope)
     app.add_exception_handler(
@@ -91,8 +137,8 @@ def build_context(throttle_intake=None, notify_inquiry=None):
     api.include_router(
         build_b2b_router(
             get_db=lambda: db,
-            get_transaction_guard=lambda: None,
-            require_permission=permission_dependency,
+            get_transaction_guard=lambda: transaction_guard,
+            require_permission=permission_factory,
             throttle_intake=throttle_intake,
             notify_inquiry=notify_inquiry,
         )
@@ -259,6 +305,37 @@ def test_b2b_command_replay_and_conflict_follow_the_shared_http_envelope():
     asyncio.run(scenario())
 
 
+def test_inquiry_openapi_declares_success_and_error_contracts():
+    schema = build_context().openapi()
+
+    intake = schema["paths"]["/api/inquiries"]["post"]["responses"]
+    assert intake["201"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/PublicInquiryResponse"
+    }
+    assert intake["429"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ErrorEnvelope"
+    }
+
+    inquiry_list = schema["paths"]["/api/admin/inquiries"]["get"]["responses"]
+    list_schema = inquiry_list["200"]["content"]["application/json"]["schema"]
+    assert list_schema["type"] == "array"
+    assert list_schema["items"] == {"$ref": "#/components/schemas/AdminInquiryResponse"}
+    assert inquiry_list["403"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ErrorEnvelope"
+    }
+
+    conversion = schema["paths"]["/api/admin/inquiries/{inquiry_id}/convert"]["post"][
+        "responses"
+    ]
+    assert conversion["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/InquiryConversionResponse"
+    }
+    for status_code in ("401", "403", "404", "409", "422", "500", "503"):
+        assert conversion[status_code]["content"]["application/json"]["schema"] == {
+            "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+
+
 def test_public_intake_is_throttled_and_announced():
     """The anonymous intake edge must be rate limited and must raise a lead."""
     throttled = []
@@ -289,6 +366,200 @@ def test_public_intake_is_throttled_and_announced():
     assert announced[0]["id"]
     assert announced[0]["status"] == "new"
     assert announced[0]["company"] == "PT Contoh Industri"
+
+
+def test_router_refuses_to_mount_without_an_intake_limiter():
+    with pytest.raises(ValueError, match="requires a rate limiter"):
+        build_b2b_router(
+            get_db=FakeDatabase,
+            get_transaction_guard=lambda: None,
+            require_permission=permission_dependency,
+            throttle_intake=None,
+        )
+
+
+def test_public_intake_limit_returns_429_retry_after_and_shared_envelope():
+    collection = FakeRateLimitCollection()
+    limiter = PublicRateLimiter(collection=collection, secret="test-secret")
+
+    async def throttle(request):
+        await limiter.consume(
+            scope="inquiry",
+            identifier=request.client.host,
+            limit=5,
+            window_seconds=600,
+        )
+
+    async def scenario():
+        app = build_context(throttle_intake=throttle)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            responses = [
+                await api.post("/api/inquiries", json=INTAKE_SUBMISSION)
+                for _attempt in range(6)
+            ]
+
+        assert [response.status_code for response in responses[:5]] == [201] * 5
+        limited = responses[5]
+        assert limited.status_code == 429
+        assert int(limited.headers["Retry-After"]) >= 1
+        body = limited.json()
+        assert body["error"]["code"] == "http_429"
+        assert body["request_id"]
+        assert all("127.0.0.1" not in key for key in collection.items)
+
+    asyncio.run(scenario())
+
+
+def test_conversion_requires_inquiry_and_quote_write_permissions():
+    async def request_with_denied_permission(denied_permission):
+        def selective_permission(permission):
+            async def dependency():
+                if permission == denied_permission:
+                    raise HTTPException(status_code=403, detail="Permission denied")
+                return {"id": "bounded-writer", "roles": ["test_writer"]}
+
+            return dependency
+
+        app = build_context(permission_factory=selective_permission)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            response = await api.post(
+                "/api/admin/inquiries/known-id/convert",
+                json={
+                    "expected_version": 3,
+                    "operation_id": "0860ca2b-bd13-4bb3-ad7e-a47958aaa939",
+                    "reason": "Scope qualified",
+                },
+            )
+        return response
+
+    for denied_permission in ("inquiries.write", "quotes.write"):
+        response = asyncio.run(request_with_denied_permission(denied_permission))
+        assert response.status_code == 403, denied_permission
+        assert response.json()["error"]["code"] == "http_403", denied_permission
+
+
+def test_conversion_replay_and_conflicting_reuse_follow_http_contract():
+    async def scenario():
+        app = build_context(transaction_guard=EnabledGuard())
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            created = await api.post("/api/inquiries", json=INTAKE_SUBMISSION)
+            inquiry = (
+                await api.get(
+                    f"/api/admin/inquiries/{created.json()['id']}",
+                    headers={"X-Role": "sales_estimator"},
+                )
+            ).json()
+            for target, operation_id in (
+                ("reviewed", "0860ca2b-bd13-4bb3-ad7e-a47958aaa939"),
+                ("contacted", "1860ca2b-bd13-4bb3-ad7e-a47958aaa939"),
+            ):
+                inquiry = (
+                    await api.post(
+                        f"/api/admin/inquiries/{inquiry['id']}/transitions",
+                        headers={"X-Role": "sales_estimator"},
+                        json={
+                            "target_status": target,
+                            "expected_version": inquiry["version"],
+                            "operation_id": operation_id,
+                            "reason": f"Move to {target}",
+                        },
+                    )
+                ).json()
+
+            command = {
+                "expected_version": inquiry["version"],
+                "operation_id": "2860ca2b-bd13-4bb3-ad7e-a47958aaa939",
+                "reason": "Scope qualified",
+            }
+            first = await api.post(
+                f"/api/admin/inquiries/{inquiry['id']}/convert",
+                headers={"X-Role": "sales_estimator"},
+                json=command,
+            )
+            replay = await api.post(
+                f"/api/admin/inquiries/{inquiry['id']}/convert",
+                headers={"X-Role": "sales_estimator"},
+                json=command,
+            )
+            conflict = await api.post(
+                f"/api/admin/inquiries/{inquiry['id']}/convert",
+                headers={"X-Role": "sales_estimator"},
+                json={**command, "reason": "Changed scope"},
+            )
+
+        assert first.status_code == replay.status_code == 200
+        assert first.json()["quote"]["id"] == replay.json()["quote"]["id"]
+        assert conflict.status_code == 409
+        body = conflict.json()
+        assert body["error"]["code"] == "operation_id_conflict"
+        assert body["request_id"]
+
+    asyncio.run(scenario())
+
+
+def test_conversion_transaction_unavailable_uses_shared_http_envelope():
+    async def scenario():
+        app = build_context(transaction_guard=DisabledGuard())
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            created = await api.post("/api/inquiries", json=INTAKE_SUBMISSION)
+            inquiry_id = created.json()["id"]
+            inquiry = (
+                await api.get(
+                    f"/api/admin/inquiries/{inquiry_id}",
+                    headers={"X-Role": "sales_estimator"},
+                )
+            ).json()
+            for target in ("reviewed", "contacted"):
+                transitioned = await api.post(
+                    f"/api/admin/inquiries/{inquiry['id']}/transitions",
+                    headers={"X-Role": "sales_estimator"},
+                    json={
+                        "target_status": target,
+                        "expected_version": inquiry["version"],
+                        "operation_id": (
+                            "0860ca2b-bd13-4bb3-ad7e-a47958aaa939"
+                            if target == "reviewed"
+                            else "1860ca2b-bd13-4bb3-ad7e-a47958aaa939"
+                        ),
+                        "reason": f"Move to {target}",
+                    },
+                )
+                assert transitioned.status_code == 200
+                inquiry = transitioned.json()
+
+            unavailable = await api.post(
+                f"/api/admin/inquiries/{inquiry['id']}/convert",
+                headers={"X-Role": "sales_estimator"},
+                json={
+                    "expected_version": inquiry["version"],
+                    "operation_id": "2860ca2b-bd13-4bb3-ad7e-a47958aaa939",
+                    "reason": "Scope qualified",
+                },
+            )
+
+        assert unavailable.status_code == 503
+        body = unavailable.json()
+        assert body["detail"]["code"] == "transaction_unavailable"
+        assert body["error"]["code"] == "transaction_unavailable"
+        assert body["request_id"]
+
+    asyncio.run(scenario())
 
 
 def test_lead_notification_failure_never_costs_the_lead():

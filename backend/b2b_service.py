@@ -1668,23 +1668,46 @@ class B2BService:
         actor: dict,
     ) -> dict:
         inquiry = await self._get_inquiry(inquiry_id)
+        prior_operation = next(
+            (
+                event
+                for event in inquiry.get("history", [])
+                if event.get("operation_id") == operation_id
+            ),
+            None,
+        )
         if inquiry["status"] == "converted":
-            replay = next(
-                (
-                    event
-                    for event in inquiry.get("history", [])
-                    if event.get("operation_id") == operation_id
-                    and event.get("to_status") == "converted"
-                ),
-                None,
-            )
-            if replay:
+            if prior_operation and prior_operation.get("to_status") == "converted":
+                replay_matches = (
+                    prior_operation.get("from_status") == "contacted"
+                    and prior_operation.get("reason") == reason.strip()
+                    and prior_operation.get("actor_user_id") == actor.get("id")
+                    and inquiry["version"] == expected_version + 1
+                )
+                if not replay_matches:
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk conversion berbeda.",
+                    )
                 return await self._conversion_result(inquiry)
+            if prior_operation:
+                raise B2BDomainError(
+                    409,
+                    "operation_id_conflict",
+                    "Operation ID sudah digunakan untuk aksi Inquiry berbeda.",
+                )
             raise B2BDomainError(
                 409,
                 "inquiry_already_converted",
                 "Inquiry sudah memiliki Quote.",
                 details={"converted_quote_id": inquiry.get("converted_quote_id")},
+            )
+        if prior_operation:
+            raise B2BDomainError(
+                409,
+                "operation_id_conflict",
+                "Operation ID sudah digunakan untuk aksi Inquiry berbeda.",
             )
         if inquiry["version"] != expected_version:
             raise B2BDomainError(
