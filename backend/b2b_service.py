@@ -1,3 +1,5 @@
+import hashlib
+import json
 import logging
 import uuid
 from copy import deepcopy
@@ -44,6 +46,38 @@ def decimal_string(value) -> str:
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def quote_command_fingerprint(
+    command: str,
+    *,
+    expected_version: int,
+    reason: str,
+    actor_user_id: str | None,
+    payload: dict,
+) -> str:
+    """Bind a Quote operation ID to the exact command it represents.
+
+    Operation IDs make retries safe only when a reused ID cannot silently stand
+    for different commercial input. The fingerprint is kept on the append-only
+    lifecycle event; raw acceptance evidence and revision content remain in
+    their canonical records rather than being duplicated into the event.
+    """
+    canonical = {
+        "command": command,
+        "expected_version": expected_version,
+        "reason": reason.strip(),
+        "actor_user_id": actor_user_id,
+        "payload": payload,
+    }
+    encoded = json.dumps(
+        canonical,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 class B2BService:
@@ -244,9 +278,16 @@ class B2BService:
         actor: dict,
     ) -> dict:
         quote = await self._get_quote(quote_id)
+        command_fingerprint = quote_command_fingerprint(
+            "quote.transition",
+            expected_version=expected_version,
+            reason=reason,
+            actor_user_id=actor.get("id"),
+            payload={"target_status": target_status},
+        )
         for event in quote.get("history", []):
             if event.get("operation_id") == operation_id:
-                if event.get("to_status") != target_status:
+                if event.get("command_fingerprint") != command_fingerprint:
                     raise B2BDomainError(
                         409,
                         "operation_id_conflict",
@@ -283,6 +324,7 @@ class B2BService:
             "actor_user_id": actor.get("id"),
             "reason": reason.strip(),
             "operation_id": operation_id,
+            "command_fingerprint": command_fingerprint,
             "timestamp": timestamp,
         }
         changes = {
@@ -327,9 +369,28 @@ class B2BService:
         actor: dict,
     ) -> dict:
         quote = await self._get_quote(quote_id)
+        command_fingerprint = quote_command_fingerprint(
+            "quote.accept",
+            expected_version=expected_version,
+            reason=reason,
+            actor_user_id=actor.get("id"),
+            payload={
+                "approver": {
+                    "name": str(approver.get("name") or "").strip(),
+                    "identity": str(approver.get("identity") or "").strip(),
+                },
+                "accepted_at": (
+                    accepted_at.astimezone(timezone.utc).isoformat()
+                    if accepted_at.tzinfo is not None
+                    else accepted_at.isoformat()
+                ),
+                "channel": channel,
+                "evidence_reference": evidence_reference.strip(),
+            },
+        )
         for event in quote.get("history", []):
             if event.get("operation_id") == operation_id:
-                if event.get("event") != "quote_accepted_with_evidence":
+                if event.get("command_fingerprint") != command_fingerprint:
                     raise B2BDomainError(
                         409,
                         "operation_id_conflict",
@@ -397,6 +458,7 @@ class B2BService:
             "actor_user_id": actor.get("id"),
             "reason": reason.strip(),
             "operation_id": operation_id,
+            "command_fingerprint": command_fingerprint,
             "timestamp": timestamp,
             "acceptance": deepcopy(acceptance),
         }
@@ -439,9 +501,20 @@ class B2BService:
         actor: dict,
     ) -> dict:
         quote = await self._get_quote(quote_id)
+        command_fingerprint = quote_command_fingerprint(
+            "quote.create_revision",
+            expected_version=expected_version,
+            reason=reason,
+            actor_user_id=actor.get("id"),
+            payload={
+                "scope_snapshot": scope_snapshot,
+                "items": items,
+                "total_minor": total_minor,
+            },
+        )
         for event in quote.get("history", []):
             if event.get("operation_id") == operation_id:
-                if event.get("event") != "revision_created":
+                if event.get("command_fingerprint") != command_fingerprint:
                     raise B2BDomainError(
                         409,
                         "operation_id_conflict",
@@ -496,6 +569,7 @@ class B2BService:
             "actor_user_id": actor.get("id"),
             "reason": reason.strip(),
             "operation_id": operation_id,
+            "command_fingerprint": command_fingerprint,
             "timestamp": timestamp,
         }
         changes = {
