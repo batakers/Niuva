@@ -1,8 +1,10 @@
 # Feature 4.2 — B2B Quote Lifecycle Task Card
 
-Status: **bounded source complete — pull-request delivery authorized**
+Status: **bounded source complete — PR #100 open for review**
 
 Branch: `fix/backend-quote-lifecycle`
+
+Pull request: `#100`
 
 Baseline: `735674b72c10a4da52d1539cd1d16c924e15662b`
 (`origin/main`, fetched 31 July 2026)

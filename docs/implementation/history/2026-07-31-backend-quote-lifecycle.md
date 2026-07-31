@@ -5,7 +5,8 @@ Branch: `fix/backend-quote-lifecycle`
 Baseline: `735674b72c10a4da52d1539cd1d16c924e15662b`
 
 Delivery state: bounded source candidate rebased onto the current `main` after
-Feature 5.1 merged; commit, push, and pull-request creation are authorized.
+Feature 5.1 merged; implementation commit `571cdb9`; PR #100 is open for
+independent review.
 
 ## Implemented
 
