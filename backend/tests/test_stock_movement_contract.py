@@ -38,6 +38,7 @@ def build_routers():
         get_db=lambda: None,
         get_transaction_guard=lambda: None,
         require_permission=permission_dependency,
+        throttle_intake=lambda _request: None,
     )
     return inventory, b2b
 

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 import inspect
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from b2b_domain import B2BDomainError, project_customer_inquiry
 from b2b_service import B2BService
+from transaction_execution import TransactionUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,76 @@ class InquiryConversionPayload(BaseModel):
     expected_version: int = Field(ge=1)
     operation_id: UUID
     reason: str = Field(min_length=3, max_length=500)
+
+
+class ErrorBody(BaseModel):
+    code: str
+    message: str
+    details: dict[str, Any] | None = None
+
+
+class ErrorEnvelope(BaseModel):
+    detail: Any
+    error: ErrorBody
+    request_id: str
+
+
+class InquiryHistoryResponse(BaseModel):
+    from_status: str | None
+    to_status: str
+    actor_user_id: str | None
+    reason: str
+    operation_id: str | None
+    timestamp: str
+
+
+class PublicInquiryResponse(BaseModel):
+    id: str
+    company: str
+    pic_name: str
+    pic_email: EmailStr
+    pic_phone: str
+    need: str
+    timeline: str
+    brief: str
+    status: Literal["new"]
+    created_at: str
+    updated_at: str
+
+
+class AdminInquiryResponse(BaseModel):
+    id: str
+    company: str
+    pic_name: str
+    pic_email: EmailStr
+    pic_phone: str
+    need: str
+    timeline: str
+    brief: str
+    status: Literal["new", "reviewed", "contacted", "converted", "rejected"]
+    version: int
+    converted_quote_id: str | None
+    history: list[InquiryHistoryResponse]
+    created_at: str
+    updated_at: str
+    permitted_next_actions: list[str]
+
+
+class InquiryConversionResponse(BaseModel):
+    inquiry: AdminInquiryResponse
+    quote: dict[str, Any]
+
+
+B2B_ERROR_RESPONSES = {
+    401: {"model": ErrorEnvelope, "description": "Authentication required"},
+    403: {"model": ErrorEnvelope, "description": "Permission denied"},
+    404: {"model": ErrorEnvelope, "description": "Inquiry not found"},
+    409: {"model": ErrorEnvelope, "description": "Command conflict"},
+    422: {"model": ErrorEnvelope, "description": "Request validation failed"},
+    429: {"model": ErrorEnvelope, "description": "Rate limit exceeded"},
+    500: {"model": ErrorEnvelope, "description": "Unexpected safe failure"},
+    503: {"model": ErrorEnvelope, "description": "Required transaction unavailable"},
+}
 
 
 class QuoteTransitionPayload(BaseModel):
@@ -135,18 +206,20 @@ def build_b2b_router(
     get_db,
     get_transaction_guard,
     require_permission,
-    throttle_intake=None,
+    throttle_intake,
     notify_inquiry=None,
     get_inventory_service=None,
 ) -> APIRouter:
     """Build the B2B router.
 
-    ``throttle_intake`` and ``notify_inquiry`` cover the public intake edge:
-    the first throttles anonymous submissions, the second announces a new lead.
-    Both are injected so the router stays free of transport and mail concerns;
-    a mount that omits them gets an unthrottled, silent intake, so
-    ``test_public_intake_is_throttled_and_announced`` pins the server wiring.
+    ``throttle_intake`` and ``notify_inquiry`` cover the public intake edge.
+    The limiter is mandatory so a new mount cannot silently expose unthrottled
+    anonymous writes. Notification remains best effort after the lead is
+    persisted.
     """
+    if throttle_intake is None:
+        raise ValueError("B2B Inquiry intake requires a rate limiter")
+
     router = APIRouter(tags=["b2b"])
 
     def service() -> B2BService:
@@ -163,13 +236,25 @@ def build_b2b_router(
                 status_code=exc.status_code,
                 detail=exc.payload(),
             ) from exc
+        except TransactionUnavailableError as exc:
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail={
+                    "code": exc.code,
+                    "message": exc.message,
+                },
+            ) from exc
 
-    @router.post("/inquiries", status_code=status.HTTP_201_CREATED)
+    @router.post(
+        "/inquiries",
+        status_code=status.HTTP_201_CREATED,
+        response_model=PublicInquiryResponse,
+        responses={code: B2B_ERROR_RESPONSES[code] for code in (422, 429, 500)},
+    )
     async def create_inquiry(payload: InquiryPayload, request: Request):
-        if throttle_intake is not None:
-            throttle_result = throttle_intake(request)
-            if inspect.isawaitable(throttle_result):
-                await throttle_result
+        throttle_result = throttle_intake(request)
+        if inspect.isawaitable(throttle_result):
+            await throttle_result
         inquiry = await invoke(service().create_inquiry(payload.model_dump()))
         # A lead is captured the moment it is persisted. Announcing it is a
         # best-effort side effect: a broken mailer must never cost us the lead.
@@ -185,21 +270,35 @@ def build_b2b_router(
         # the triage state, version, or audit history the admin projection adds.
         return project_customer_inquiry(inquiry)
 
-    @router.get("/admin/inquiries")
+    @router.get(
+        "/admin/inquiries",
+        response_model=list[AdminInquiryResponse],
+        responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 422, 500)},
+    )
     async def list_inquiries(
         status_filter: str | None = None,
         _actor: dict = Depends(require_permission("inquiries.read")),
     ):
         return await invoke(service().list_inquiries(status=status_filter))
 
-    @router.get("/admin/inquiries/{inquiry_id}")
+    @router.get(
+        "/admin/inquiries/{inquiry_id}",
+        response_model=AdminInquiryResponse,
+        responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 404, 500)},
+    )
     async def get_inquiry(
         inquiry_id: str,
         _actor: dict = Depends(require_permission("inquiries.read")),
     ):
         return await invoke(service().get_inquiry(inquiry_id))
 
-    @router.post("/admin/inquiries/{inquiry_id}/transitions")
+    @router.post(
+        "/admin/inquiries/{inquiry_id}/transitions",
+        response_model=AdminInquiryResponse,
+        responses={
+            code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 404, 409, 422, 500)
+        },
+    )
     async def transition_inquiry(
         inquiry_id: str,
         payload: InquiryTransitionPayload,
@@ -216,10 +315,18 @@ def build_b2b_router(
             )
         )
 
-    @router.post("/admin/inquiries/{inquiry_id}/convert")
+    @router.post(
+        "/admin/inquiries/{inquiry_id}/convert",
+        response_model=InquiryConversionResponse,
+        responses={
+            code: B2B_ERROR_RESPONSES[code]
+            for code in (401, 403, 404, 409, 422, 500, 503)
+        },
+    )
     async def convert_inquiry(
         inquiry_id: str,
         payload: InquiryConversionPayload,
+        _inquiry_actor: dict = Depends(require_permission("inquiries.write")),
         actor: dict = Depends(require_permission("quotes.write")),
     ):
         return await invoke(

@@ -167,6 +167,52 @@ def test_conversion_creates_exactly_one_quote_and_immutable_revision():
             )
         assert duplicate.value.code == "inquiry_already_converted"
 
+        for changed_request in (
+            {
+                "expected_version": inquiry["version"],
+                "operation_id": "op-convert-1",
+                "reason": "Different conversion reason",
+                "actor": actor,
+            },
+            {
+                "expected_version": inquiry["version"] + 1,
+                "operation_id": "op-convert-1",
+                "reason": "Scope qualified for quotation",
+                "actor": actor,
+            },
+            {
+                "expected_version": inquiry["version"],
+                "operation_id": "op-convert-1",
+                "reason": "Scope qualified for quotation",
+                "actor": {"id": "sales-2", "email": "other@niuva.test"},
+            },
+        ):
+            with pytest.raises(B2BDomainError) as conflict:
+                await service.convert_inquiry(inquiry["id"], **changed_request)
+            assert conflict.value.code == "operation_id_conflict"
+
+    asyncio.run(scenario())
+
+
+def test_conversion_rejects_operation_id_used_by_an_earlier_inquiry_command():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        inquiry, actor = await qualified_inquiry(service)
+
+        with pytest.raises(B2BDomainError) as conflict:
+            await service.convert_inquiry(
+                inquiry["id"],
+                expected_version=inquiry["version"],
+                operation_id="op-contact",
+                reason="Scope qualified for quotation",
+                actor=actor,
+            )
+
+        assert conflict.value.code == "operation_id_conflict"
+        assert db.b2b_quotes.items == []
+        assert db.b2b_quote_versions.items == []
+
     asyncio.run(scenario())
 
 
