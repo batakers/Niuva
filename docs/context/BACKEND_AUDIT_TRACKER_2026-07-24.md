@@ -1613,8 +1613,10 @@ Verification at the branch baseline:
 - full backend: 662 passed, 14 skipped, 14 subtests passed; and
 - full frontend: 36 suites and 239 tests passed.
 
-The real transaction run used the existing local `rs0` listener on port 27019
-because Docker is unavailable. The PR workflow remains responsible for the
-tracked disposable `rs-test` evidence. No migration was executed, no shared or
+PR #99 then passed the GitHub backend, frontend, secret-scan, and disposable
+`rs-test` transaction jobs.
+
+The local transaction run used the existing `rs0` listener on port 27019
+because Docker is unavailable. No migration was executed, no shared or
 production data was accessed, and no schema, provider, deployment,
 production-readiness, or go-live state was changed.

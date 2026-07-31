@@ -69,10 +69,10 @@ backend: 662 passed, 14 skipped, 14 subtests passed
 frontend: 36 suites passed, 239 tests passed
 ```
 
-The real tests used the existing local MongoDB `rs0` listener on port 27019
-because Docker is unavailable on the host. The test file is also added to the
-mandatory disposable `rs-test` CI workflow; local `rs0` evidence does not
-replace that PR check.
+The real local tests used the existing MongoDB `rs0` listener on port 27019
+because Docker is unavailable on the host. PR #99 then passed the tracked
+disposable `rs-test` transaction job together with the backend, frontend, and
+secret-scan jobs.
 
 ## Remaining gates
 
