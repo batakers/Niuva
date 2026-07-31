@@ -68,8 +68,8 @@ async def _state(database):
     if marker and marker != {"_id": MARKER_ID, "migration": MIGRATION_ID}:
         raise ValueError("ambiguous auth-security-event migration marker")
     event_count = await database.authentication_security_events.count_documents({})
-    outbox_count = (
-        await database.authentication_security_alert_outbox.count_documents({})
+    outbox_count = await database.authentication_security_alert_outbox.count_documents(
+        {}
     )
     return marker, present, event_count, outbox_count
 
@@ -153,10 +153,9 @@ async def _apply(database, guard):
 
 
 async def _rollback(database, guard):
-    if (
-        await database.authentication_security_events.count_documents({})
-        or await database.authentication_security_alert_outbox.count_documents({})
-    ):
+    if await database.authentication_security_events.count_documents(
+        {}
+    ) or await database.authentication_security_alert_outbox.count_documents({}):
         raise ValueError("rollback refuses non-empty auth-security collections")
     await _drop_owned_indexes(database)
 
@@ -238,13 +237,17 @@ async def main():
     from motor.motor_asyncio import AsyncIOMotorClient
 
     client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-    database = client[os.environ["DB_NAME"]]
-    capabilities = await probe_database_capabilities(client, database)
-    guard = TransactionMutationGuard(
-        TransactionExecutor(client, lambda: capabilities),
-        lambda: False,
-    )
-    print(json.dumps(await run(database, guard=guard), default=str))
+    try:
+        database_name = os.environ["DB_NAME"]
+        database = client[database_name]
+        capabilities = await probe_database_capabilities(client, database_name)
+        guard = TransactionMutationGuard(
+            TransactionExecutor(client, lambda: capabilities),
+            lambda: False,
+        )
+        print(json.dumps(await run(database, guard=guard), default=str))
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":
