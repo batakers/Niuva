@@ -4,19 +4,27 @@ from datetime import datetime, timezone
 
 from audit import append_audit_event
 from content_domain import (
-    ContentTransitionError,
-    content_requires_publish_authority,
-    validate_content_transition,
     CONTENT_TYPES,
-    build_version_snapshot,
+    ContentTransitionError,
     build_publication_snapshot,
+    build_version_snapshot,
+    content_requires_publish_authority,
     normalize_slug,
     validate_content_fields,
+    validate_content_transition,
 )
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 
 class ContentError(Exception):
-    def __init__(self, status_code: int, code: str, message: str, *, errors: list[dict] | None = None):
+    def __init__(
+        self,
+        status_code: int,
+        code: str,
+        message: str,
+        *,
+        errors: list[dict] | None = None,
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.code = code
@@ -58,9 +66,13 @@ class ContentService:
         self.guard = guard
 
     async def _get_block(self, block_id: str) -> dict:
-        block = clean_document(await self.db.content_blocks.find_one({"id": block_id}, {"_id": 0}))
+        block = clean_document(
+            await self.db.content_blocks.find_one({"id": block_id}, {"_id": 0})
+        )
         if not block:
-            raise ContentError(404, "content_block_not_found", "Blok konten tidak ditemukan.")
+            raise ContentError(
+                404, "content_block_not_found", "Blok konten tidak ditemukan."
+            )
         return block
 
     @staticmethod
@@ -78,6 +90,34 @@ class ContentService:
         )
 
     @staticmethod
+    def _is_concurrency_conflict(exc: PyMongoError) -> bool:
+        return bool(
+            isinstance(exc, DuplicateKeyError)
+            or getattr(exc, "code", None) in {11000, 112}
+            or getattr(exc, "has_error_label", lambda _label: False)(
+                "TransientTransactionError"
+            )
+        )
+
+    async def _run_versioned_mutation(
+        self,
+        mutation,
+        *,
+        block_id: str,
+        expected_version: int,
+        operation_name: str,
+    ) -> None:
+        try:
+            await self.guard.run(mutation, operation_name=operation_name)
+        except PyMongoError as exc:
+            if not self._is_concurrency_conflict(exc):
+                raise
+            current = await self._get_block(block_id)
+            if current.get("version", 1) == expected_version:
+                raise
+            self._conflict(current)
+
+    @staticmethod
     def _aware_utc(value: datetime | None) -> datetime | None:
         if value is None:
             return None
@@ -91,7 +131,11 @@ class ContentService:
 
     async def list_blocks(self, *, content_type: str | None = None) -> list[dict]:
         query = {"content_type": content_type} if content_type else {}
-        return await self.db.content_blocks.find(query, {"_id": 0}).sort("updated_at", -1).to_list(500)
+        return (
+            await self.db.content_blocks.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .to_list(500)
+        )
 
     async def get_block(self, block_id: str) -> dict:
         return await self._get_block(block_id)
@@ -106,13 +150,17 @@ class ContentService:
         reason: str,
     ) -> dict:
         if content_type not in CONTENT_TYPES:
-            raise ContentError(400, "unknown_content_type", "Jenis konten tidak dikenal.")
+            raise ContentError(
+                400, "unknown_content_type", "Jenis konten tidak dikenal."
+            )
         normalized_slug = normalize_slug(slug) or str(uuid.uuid4())[:8]
         existing = await self.db.content_blocks.find_one(
             {"content_type": content_type, "slug": normalized_slug}, {"_id": 0}
         )
         if existing:
-            raise ContentError(409, "slug_conflict", "Slug sudah dipakai untuk jenis konten ini.")
+            raise ContentError(
+                409, "slug_conflict", "Slug sudah dipakai untuk jenis konten ini."
+            )
         timestamp = now_iso()
         block = {
             "id": str(uuid.uuid4()),
@@ -127,6 +175,7 @@ class ContentService:
             "created_at": timestamp,
             "updated_at": timestamp,
         }
+
         async def mutation(session):
             await self.db.content_blocks.insert_one(
                 dict(block), **_write_options(session)
@@ -142,7 +191,12 @@ class ContentService:
                 session=session,
             )
 
-        await self.guard.run(mutation, operation_name="content.create_block")
+        try:
+            await self.guard.run(mutation, operation_name="content.create_block")
+        except DuplicateKeyError as exc:
+            raise ContentError(
+                409, "slug_conflict", "Slug sudah dipakai untuk jenis konten ini."
+            ) from exc
         return block
 
     async def update_block(
@@ -191,7 +245,12 @@ class ContentService:
                 session=session,
             )
 
-        await self.guard.run(mutation, operation_name="content.update_block")
+        await self._run_versioned_mutation(
+            mutation,
+            block_id=block_id,
+            expected_version=expected_version,
+            operation_name="content.update_block",
+        )
         return after
 
     async def validate_block(self, block_id: str) -> list[dict]:
@@ -218,7 +277,12 @@ class ContentService:
             )
         errors = validate_content_fields(block["content_type"], block["fields"])
         if errors:
-            raise ContentError(400, "content_invalid", "Konten belum memenuhi syarat publikasi.", errors=errors)
+            raise ContentError(
+                400,
+                "content_invalid",
+                "Konten belum memenuhi syarat publikasi.",
+                errors=errors,
+            )
 
         activation = self._aware_utc(scheduled_at) or utc_now()
         if scheduled_at is not None and activation <= utc_now():
@@ -236,7 +300,9 @@ class ContentService:
             "updated_at": timestamp,
         }
         after = {**block, **changes}
-        version_snapshot = build_version_snapshot(after, actor_id=actor.get("id"), reason=reason, event=new_status)
+        version_snapshot = build_version_snapshot(
+            after, actor_id=actor.get("id"), reason=reason, event=new_status
+        )
         changes["published_version_id"] = version_snapshot["id"]
         after["published_version_id"] = version_snapshot["id"]
         publication = build_publication_snapshot(
@@ -261,15 +327,27 @@ class ContentService:
             if not getattr(result, "matched_count", 0):
                 self._conflict(block)
             await append_audit_event(
-                self.db, actor=actor, action="content.block_published",
-                target_type="content_block", target_id=block_id,
+                self.db,
+                actor=actor,
+                action="content.block_published",
+                target_type="content_block",
+                target_id=block_id,
                 before={"status": block["status"], "version": block["version"]},
-                after={"status": new_status, "version": after["version"], "published_version_id": version_snapshot["id"]},
+                after={
+                    "status": new_status,
+                    "version": after["version"],
+                    "published_version_id": version_snapshot["id"],
+                },
                 reason=reason,
                 session=session,
             )
 
-        await self.guard.run(mutation, operation_name="content.publish_block")
+        await self._run_versioned_mutation(
+            mutation,
+            block_id=block_id,
+            expected_version=expected_version,
+            operation_name="content.publish_block",
+        )
         return after
 
     async def rollback_block(
@@ -290,7 +368,9 @@ class ContentService:
             )
         )
         if not selected:
-            raise ContentError(404, "content_version_not_found", "Versi konten tidak ditemukan.")
+            raise ContentError(
+                404, "content_version_not_found", "Versi konten tidak ditemukan."
+            )
 
         timestamp = now_iso()
         changes = {
@@ -301,8 +381,11 @@ class ContentService:
             "updated_at": timestamp,
         }
         after = {**block, **changes}
-        version_snapshot = build_version_snapshot(after, actor_id=actor.get("id"), reason=reason, event="rollback")
+        version_snapshot = build_version_snapshot(
+            after, actor_id=actor.get("id"), reason=reason, event="rollback"
+        )
         version_snapshot["rollback_source_version_id"] = version_id
+
         async def mutation(session):
             await self.db.content_block_versions.insert_one(
                 dict(version_snapshot), **_write_options(session)
@@ -326,9 +409,15 @@ class ContentService:
                     **_write_options(session),
                 )
             await append_audit_event(
-                self.db, actor=actor, action="content.block_rolled_back",
-                target_type="content_block", target_id=block_id,
-                before={"version": block["version"], "published_version_id": block.get("published_version_id")},
+                self.db,
+                actor=actor,
+                action="content.block_rolled_back",
+                target_type="content_block",
+                target_id=block_id,
+                before={
+                    "version": block["version"],
+                    "published_version_id": block.get("published_version_id"),
+                },
                 after={
                     "version": after["version"],
                     "status": "draft",
@@ -338,7 +427,12 @@ class ContentService:
                 session=session,
             )
 
-        await self.guard.run(mutation, operation_name="content.rollback_block")
+        await self._run_versioned_mutation(
+            mutation,
+            block_id=block_id,
+            expected_version=expected_version,
+            operation_name="content.rollback_block",
+        )
         return after
 
     async def archive_block(
@@ -376,27 +470,46 @@ class ContentService:
                 **_write_options(session),
             )
             await append_audit_event(
-                self.db, actor=actor, action="content.block_archived",
-                target_type="content_block", target_id=block_id,
-                before=before, after=after, reason=reason, session=session,
+                self.db,
+                actor=actor,
+                action="content.block_archived",
+                target_type="content_block",
+                target_id=block_id,
+                before=before,
+                after=after,
+                reason=reason,
+                session=session,
             )
 
-        await self.guard.run(mutation, operation_name="content.archive_block")
+        await self._run_versioned_mutation(
+            mutation,
+            block_id=block_id,
+            expected_version=expected_version,
+            operation_name="content.archive_block",
+        )
         return after
 
     async def list_versions(self, block_id: str) -> list[dict]:
-        return await self.db.content_block_versions.find(
-            {"content_block_id": block_id}, {"_id": 0}
-        ).sort("created_at", -1).to_list(200)
+        return (
+            await self.db.content_block_versions.find(
+                {"content_block_id": block_id}, {"_id": 0}
+            )
+            .sort("created_at", -1)
+            .to_list(200)
+        )
 
-    async def list_public_blocks(self, *, content_type: str | None = None) -> list[dict]:
+    async def list_public_blocks(
+        self, *, content_type: str | None = None
+    ) -> list[dict]:
         """Return latest active immutable publication for each content block."""
         query = {"retired_at": None, "activates_at": {"$lte": utc_now()}}
         if content_type:
             query["content_type"] = content_type
-        publications = await self.db.content_publications.find(
-            query, {"_id": 0}
-        ).sort("activates_at", -1).to_list(500)
+        publications = (
+            await self.db.content_publications.find(query, {"_id": 0})
+            .sort("activates_at", -1)
+            .to_list(500)
+        )
         latest = {}
         for publication in publications:
             latest.setdefault(publication["content_block_id"], publication)
@@ -486,5 +599,10 @@ class ContentService:
                 session=session,
             )
 
-        await self.guard.run(mutation, operation_name="content.transition_block")
+        await self._run_versioned_mutation(
+            mutation,
+            block_id=block_id,
+            expected_version=expected_version,
+            operation_name="content.transition_block",
+        )
         return after

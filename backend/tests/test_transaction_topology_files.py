@@ -63,6 +63,7 @@ def test_ci_replica_set_is_ephemeral_mandatory_and_isolated():
     assert "replicaSet=rs-test&directConnection=true" in workflow
     assert "replicaSet=rs-test&directConnection=true" in env_example
     assert "test_transaction_integration.py" in workflow
+    assert "test_content_transaction_integration.py" in workflow
     assert "test_inventory_transactions.py" in workflow
     assert 'python-version: "3.14.3"' in workflow
     assert "continue-on-error" not in workflow
