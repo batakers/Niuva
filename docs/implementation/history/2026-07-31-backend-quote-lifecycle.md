@@ -2,10 +2,10 @@
 
 Branch: `fix/backend-quote-lifecycle`
 
-Baseline: `7662a378c3acae6ecc9645b9c471dbb683aac80d`
+Baseline: `735674b72c10a4da52d1539cd1d16c924e15662b`
 
-Delivery state: local bounded source candidate; commit, push, and pull request
-are not authorized by the current request.
+Delivery state: bounded source candidate rebased onto the current `main` after
+Feature 5.1 merged; commit, push, and pull-request creation are authorized.
 
 ## Implemented
 
@@ -36,7 +36,7 @@ are not authorized by the current request.
 ## Verification
 
 - Focused backend: `66 passed, 1 skipped`.
-- Full backend: `666 passed, 13 skipped, 14 subtests passed`.
+- Full backend: `667 passed, 14 skipped, 14 subtests passed`.
 - Real local replica-set B2B transaction integration: `5 passed`.
 - Adjacent frontend: `2` suites and `29` tests passed from the
   dependency-installed main checkout; no frontend source changed.

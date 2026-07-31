@@ -1,10 +1,10 @@
 # Feature 4.2 — B2B Quote Lifecycle Task Card
 
-Status: **bounded source complete — commit/PR delivery not authorized**
+Status: **bounded source complete — pull-request delivery authorized**
 
 Branch: `fix/backend-quote-lifecycle`
 
-Baseline: `7662a378c3acae6ecc9645b9c471dbb683aac80d`
+Baseline: `735674b72c10a4da52d1539cd1d16c924e15662b`
 (`origin/main`, fetched 31 July 2026)
 
 ## Objective
@@ -77,8 +77,8 @@ customer-facing Quote consumer.
 
 ## Delivery authorization
 
-Implementation and verification are authorized by the Project Owner on
-31 July 2026. Commit, push, pull request, merge, migration, deployment,
+Implementation, verification, commit, push, and pull-request creation were
+authorized by the Project Owner on 31 July 2026. Merge, migration, deployment,
 production-readiness, and go-live are not authorized by the current request.
 
 ## Verification evidence
@@ -88,7 +88,7 @@ Executed from the isolated task worktree against the selected branch source:
 - Focused Quote lifecycle, route, snapshot, conversion, transaction, and
   permission matrix: `66 passed, 1 skipped`; the skip was the explicit real
   transaction opt-in.
-- Full backend regression: `666 passed, 13 skipped, 14 subtests passed`.
+- Full backend regression: `667 passed, 14 skipped, 14 subtests passed`.
 - Real local replica-set B2B transaction integration on `rs0` port `27019`:
   `5 passed` without migration execution.
 - Adjacent frontend Admin workbench and Quote revision contracts: `2` suites,
