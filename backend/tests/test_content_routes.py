@@ -2,9 +2,8 @@ import asyncio
 import types
 
 import httpx
-from fastapi import APIRouter, FastAPI, Header, HTTPException
-
 from content_routes import build_content_router
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 from permissions import ROLE_POLICY_VERSION, has_permission
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
@@ -122,7 +121,11 @@ class FakeCollection:
         return None
 
     def find(self, query, projection=None):
-        return FakeCursor(self.project(item, projection) for item in self.items if self.matches(item, query))
+        return FakeCursor(
+            self.project(item, projection)
+            for item in self.items
+            if self.matches(item, query)
+        )
 
     async def insert_one(self, item, **_options):
         self.items.append(dict(item))
@@ -201,10 +204,15 @@ def headers(role="super_admin"):
     return {"X-Role": role}
 
 
-VALID_FAQ_FIELDS = {"question": "Apa itu Niuva?", "answer": "Mitra R&D dan prototyping."}
+VALID_FAQ_FIELDS = {
+    "question": "Apa itu Niuva?",
+    "answer": "Mitra R&D dan prototyping.",
+}
 
 
-async def transition(api, block_id, target_status, expected_version, reason="Lifecycle review"):
+async def transition(
+    api, block_id, target_status, expected_version, reason="Lifecycle review"
+):
     return await api.post(
         f"/api/admin/content/{block_id}/transitions",
         json={
@@ -219,17 +227,29 @@ async def transition(api, block_id, target_status, expected_version, reason="Lif
 async def run_lifecycle_and_public_boundary():
     app, db = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         forbidden = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "forbidden", "fields": VALID_FAQ_FIELDS, "reason": "Create forbidden fixture"},
+            json={
+                "content_type": "faq",
+                "slug": "forbidden",
+                "fields": VALID_FAQ_FIELDS,
+                "reason": "Create forbidden fixture",
+            },
             headers=headers("warehouse"),
         )
         assert forbidden.status_code == 403
 
         created = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "shipping", "fields": VALID_FAQ_FIELDS, "reason": "Create shipping FAQ"},
+            json={
+                "content_type": "faq",
+                "slug": "shipping",
+                "fields": VALID_FAQ_FIELDS,
+                "reason": "Create shipping FAQ",
+            },
             headers=headers(),
         )
         assert created.status_code == 201
@@ -250,10 +270,16 @@ async def run_lifecycle_and_public_boundary():
         assert reviewed.status_code == 200
         previewed = await transition(api, block_id, "preview", 2)
         assert previewed.status_code == 200
+        denied_publish = await api.post(
+            f"/api/admin/content/{block_id}/publish",
+            json={"reason": "Editor must not approve", "expected_version": 3},
+            headers=headers("content_editor"),
+        )
+        assert denied_publish.status_code == 403
         published = await api.post(
             f"/api/admin/content/{block_id}/publish",
             json={"reason": "Initial publish", "expected_version": 3},
-            headers=headers(),
+            headers=headers("manager_approver"),
         )
         assert published.status_code == 200
         assert published.json()["status"] == "published"
@@ -307,7 +333,9 @@ async def run_lifecycle_and_public_boundary():
             == "Mitra R&D dan prototyping."
         )
 
-        versions = await api.get(f"/api/admin/content/{block_id}/versions", headers=headers())
+        versions = await api.get(
+            f"/api/admin/content/{block_id}/versions", headers=headers()
+        )
         assert versions.status_code == 200
         first_version_id = next(
             version["id"]
@@ -323,7 +351,9 @@ async def run_lifecycle_and_public_boundary():
             headers=headers(),
         )
         assert republished.status_code == 200
-        assert republished.json()["fields"]["answer"] == "Jawaban baru yang lebih lengkap."
+        assert (
+            republished.json()["fields"]["answer"] == "Jawaban baru yang lebih lengkap."
+        )
 
         rolled_back = await api.post(
             f"/api/admin/content/{block_id}/rollback",
@@ -332,7 +362,7 @@ async def run_lifecycle_and_public_boundary():
                 "reason": "Revert to original answer",
                 "expected_version": 9,
             },
-            headers=headers(),
+            headers=headers("manager_approver"),
         )
         assert rolled_back.status_code == 200
         assert rolled_back.json()["status"] == "draft"
@@ -369,10 +399,17 @@ def test_content_lifecycle_and_public_boundary():
 async def run_publish_validation_and_conflicts():
     app, _db = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         incomplete = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "incomplete", "fields": {"question": ""}, "reason": "Create incomplete fixture"},
+            json={
+                "content_type": "faq",
+                "slug": "incomplete",
+                "fields": {"question": ""},
+                "reason": "Create incomplete fixture",
+            },
             headers=headers(),
         )
         assert incomplete.status_code == 201
@@ -392,7 +429,12 @@ async def run_publish_validation_and_conflicts():
 
         duplicate = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "incomplete", "fields": VALID_FAQ_FIELDS, "reason": "Check duplicate slug"},
+            json={
+                "content_type": "faq",
+                "slug": "incomplete",
+                "fields": VALID_FAQ_FIELDS,
+                "reason": "Check duplicate slug",
+            },
             headers=headers(),
         )
         assert duplicate.status_code == 409
@@ -401,8 +443,15 @@ async def run_publish_validation_and_conflicts():
         capability_missing_priority = await api.post(
             "/api/admin/content",
             json={
-                "content_type": "capability", "slug": "rnd",
-                "fields": {"title": "R&D", "body": "x", "output": "x", "targetUsers": "x", "cta": "x"},
+                "content_type": "capability",
+                "slug": "rnd",
+                "fields": {
+                    "title": "R&D",
+                    "body": "x",
+                    "output": "x",
+                    "targetUsers": "x",
+                    "cta": "x",
+                },
                 "reason": "Create capability fixture",
             },
             headers=headers(),
@@ -423,10 +472,17 @@ def test_content_publish_validation_and_slug_conflicts():
 async def run_scheduled_publish_sets_scheduled_status():
     app, _db = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         created = await api.post(
             "/api/admin/content",
-            json={"content_type": "faq", "slug": "scheduled-item", "fields": VALID_FAQ_FIELDS, "reason": "Create scheduled FAQ"},
+            json={
+                "content_type": "faq",
+                "slug": "scheduled-item",
+                "fields": VALID_FAQ_FIELDS,
+                "reason": "Create scheduled FAQ",
+            },
             headers=headers(),
         )
         block_id = created.json()["id"]
@@ -450,3 +506,64 @@ async def run_scheduled_publish_sets_scheduled_status():
 
 def test_scheduled_publish_is_not_publicly_visible():
     asyncio.run(run_scheduled_publish_sets_scheduled_status())
+
+
+async def run_scheduled_publish_requires_future_timezone_and_normalizes_utc():
+    app, _db = build_test_context()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
+        created = await api.post(
+            "/api/admin/content",
+            json={
+                "content_type": "faq",
+                "slug": "scheduled-timezone",
+                "fields": VALID_FAQ_FIELDS,
+                "reason": "Create timezone fixture",
+            },
+            headers=headers(),
+        )
+        block_id = created.json()["id"]
+        assert (await transition(api, block_id, "review", 1)).status_code == 200
+        assert (await transition(api, block_id, "preview", 2)).status_code == 200
+
+        naive = await api.post(
+            f"/api/admin/content/{block_id}/publish",
+            json={
+                "reason": "Reject timezone-free schedule",
+                "expected_version": 3,
+                "scheduled_at": "2030-01-01T00:00:00",
+            },
+            headers=headers("manager_approver"),
+        )
+        assert naive.status_code == 422
+        assert naive.json()["detail"]["code"] == "scheduled_at_timezone_required"
+
+        past = await api.post(
+            f"/api/admin/content/{block_id}/publish",
+            json={
+                "reason": "Reject past schedule",
+                "expected_version": 3,
+                "scheduled_at": "2020-01-01T00:00:00+00:00",
+            },
+            headers=headers("manager_approver"),
+        )
+        assert past.status_code == 422
+        assert past.json()["detail"]["code"] == "scheduled_at_must_be_future"
+
+        scheduled = await api.post(
+            f"/api/admin/content/{block_id}/publish",
+            json={
+                "reason": "Normalize approved schedule",
+                "expected_version": 3,
+                "scheduled_at": "2030-01-01T00:00:00+07:00",
+            },
+            headers=headers("manager_approver"),
+        )
+        assert scheduled.status_code == 200
+        assert scheduled.json()["scheduled_at"] == "2029-12-31T17:00:00+00:00"
+
+
+def test_scheduled_publish_requires_future_timezone_and_normalizes_utc():
+    asyncio.run(run_scheduled_publish_requires_future_timezone_and_normalizes_utc())

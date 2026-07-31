@@ -728,7 +728,7 @@ Status vocabulary:
 
 - Severity: P2
 - Status: `resolved`
-- Resolution evidence date: 27 July 2026
+- Resolution evidence date: 31 July 2026
 - Terimplementasi pada
   [`backend/content_service.py`](../../backend/content_service.py) dan
   [`backend/content_domain.py`](../../backend/content_domain.py):
@@ -743,7 +743,18 @@ Status vocabulary:
   - public projection hanya mengekspos allowlisted published-safe fields;
   - portfolio memiliki reviewed publication lifecycle dan archive terpisah.
 - Verification:
-  - content route/lifecycle suites lulus setelah reconciliation;
+  - concurrent publish dan rollback pada real local replica set masing-masing
+    menghasilkan satu winner dan satu domain `409 version_conflict`;
+  - injected audit failure membuktikan version snapshot, publication snapshot,
+    aggregate update, dan audit tetap atomic;
+  - scheduled datetime tanpa timezone dan waktu lampau ditolak, sedangkan
+    offset yang valid dinormalisasi ke UTC;
+  - Content Editor dapat author tetapi tidak dapat publish/rollback;
+    Manager/Approver mempertahankan approval boundary;
+  - focused CMS/permission/topology contracts: 65 passed;
+  - real CMS replica-set contracts: 3 passed;
+  - full backend: 662 passed, 14 skipped, 14 subtests passed;
+  - full frontend: 36 suites dan 239 tests passed;
   - source-level resolution tidak menyatakan browser, staging, atau production
     rollout selesai.
 - Runtime evidence 24 July 2026 (historis):
@@ -761,7 +772,8 @@ Status vocabulary:
   - auditable rollback;
   - archive/soft delete.
 - Atomic adoption pada content create/update/archive dan transition tetap
-  dicatat terpisah pada BA-009.
+  mengikuti shared transaction guard pada BA-009. Migration 007, production
+  topology, deployment, monitoring, dan go-live tetap open.
 
 ### BA-012 — Notification, background task, and readiness boundaries are weak
 
@@ -1564,3 +1576,44 @@ backfill, and no second-run no-op. Before/after snapshots remained identical:
 the marker was absent, both dedicated collections remained empty, and no owned
 index appeared. No apply, rollback, backup, migration marker, application-data
 mutation, deployment, or activation occurred.
+
+### 31 July 2026 — Feature 5.1 CMS publication concurrency remediation
+
+Baseline: `origin/main`
+`7662a378c3acae6ecc9645b9c471dbb683aac80d`.
+
+The source audit reproduced one remaining CMS publication defect on a real
+local MongoDB replica set: two publish requests using the same expected version
+produced one successful publication and one raw MongoDB
+`OperationFailure`. The losing request did not satisfy the documented domain
+conflict contract.
+
+The bounded remediation on `fix/backend-cms-publication`:
+
+- translates real MongoDB duplicate/write/transient transaction contention on
+  versioned content mutations into `409 version_conflict` after reading the
+  current aggregate version;
+- applies the same boundary to update, transition, publish, rollback, and
+  archive without replaying the business callback;
+- maps a concurrent unique-slug insert to the retained `409 slug_conflict`;
+- adds real replica-set concurrent publish, concurrent rollback, and injected
+  audit-failure rollback tests to the mandatory transaction workflow;
+- verifies the Content Editor versus Manager/Approver publication boundary;
+  and
+- verifies future/timezone validation and UTC normalization for scheduled
+  publication.
+
+Verification at the branch baseline:
+
+- CMS/permission/topology focus: 65 passed;
+- real local CMS transaction suite: 3 passed using unique generated databases
+  that were dropped in cleanup;
+- complete mandatory local transaction matrix: 74 passed;
+- full backend: 662 passed, 14 skipped, 14 subtests passed; and
+- full frontend: 36 suites and 239 tests passed.
+
+The real transaction run used the existing local `rs0` listener on port 27019
+because Docker is unavailable. The PR workflow remains responsible for the
+tracked disposable `rs-test` evidence. No migration was executed, no shared or
+production data was accessed, and no schema, provider, deployment,
+production-readiness, or go-live state was changed.
