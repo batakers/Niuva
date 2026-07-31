@@ -6,7 +6,7 @@ Baseline: `735674b72c10a4da52d1539cd1d16c924e15662b`
 
 Delivery state: bounded source candidate rebased onto the current `main` after
 Feature 5.1 merged; implementation commit `571cdb9`; PR #100 is open for
-independent review.
+independent review with required CI green.
 
 ## Implemented
 
@@ -42,7 +42,8 @@ independent review.
 - Adjacent frontend: `2` suites and `29` tests passed from the
   dependency-installed main checkout; no frontend source changed.
 - Critical backend lint (`E9,F63,F7,F82`) and `git diff --check`: passed.
-- Local Gitleaks was unavailable; secret-scan CI remains required before merge.
+- PR #100 backend, frontend, transaction-tests, and secret-scan checks passed.
+- CodeRabbit was rate-limited and did not provide substantive review.
 
 The local replica set is disposable development evidence, not shared or
 production topology evidence.

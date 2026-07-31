@@ -1,6 +1,6 @@
 # Feature 4.2 — B2B Quote Lifecycle Task Card
 
-Status: **bounded source complete — PR #100 open for review**
+Status: **bounded source complete — PR #100 CI green, review pending**
 
 Branch: `fix/backend-quote-lifecycle`
 
@@ -100,7 +100,10 @@ Executed from the isolated task worktree against the selected branch source:
   installed in worktrees.
 - Critical backend lint (`E9,F63,F7,F82`) and `git diff --check`: passed.
 - Local Gitleaks was unavailable; the repository secret-scan CI gate remains
-  required if pull-request delivery is later authorized.
+  authoritative and passed on PR #100 together with backend, frontend, and
+  transaction-tests.
+- CodeRabbit reported a rate limit and did not provide substantive review;
+  independent review remains required before merge.
 
 These are local source and disposable replica-set results. They do not prove a
 customer Organization Portal contract, migration, deployment, production
