@@ -2,7 +2,7 @@
 
 Date: 31 July 2026
 Branch: `fix/backend-cms-publication`
-PR: pending
+PR: `#99`
 Baseline: `7662a378c3acae6ecc9645b9c471dbb683aac80d` (`origin/main`)
 Authority: `docs/NIUVA_MASTER_SPEC.md` section 10 and `ADR-005`
 

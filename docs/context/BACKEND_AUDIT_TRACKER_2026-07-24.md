@@ -1588,7 +1588,8 @@ produced one successful publication and one raw MongoDB
 `OperationFailure`. The losing request did not satisfy the documented domain
 conflict contract.
 
-The bounded remediation on `fix/backend-cms-publication`:
+The bounded remediation on `fix/backend-cms-publication`, published for review
+as PR #99:
 
 - translates real MongoDB duplicate/write/transient transaction contention on
   versioned content mutations into `409 version_conflict` after reading the
