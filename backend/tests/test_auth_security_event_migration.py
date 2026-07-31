@@ -2,6 +2,7 @@ import asyncio
 import copy
 import importlib.util
 import json
+import sys
 import types
 from pathlib import Path
 
@@ -87,6 +88,20 @@ class Guard:
         return await callback(object())
 
 
+class Client:
+    def __init__(self, database):
+        self.database = database
+        self.requested_names = []
+        self.closed = False
+
+    def __getitem__(self, name):
+        self.requested_names.append(name)
+        return self.database
+
+    def close(self):
+        self.closed = True
+
+
 def test_dry_run_is_read_only_and_declares_no_backfill():
     migration = load_migration()
     database = Database()
@@ -105,6 +120,48 @@ def test_dry_run_is_read_only_and_declares_no_backfill():
         before["authentication_security_events"].indexes
     )
     assert database.migration_state.items == []
+
+
+def test_cli_dry_run_probes_by_database_name_and_closes_client(
+    monkeypatch,
+    capsys,
+):
+    migration = load_migration()
+    database = Database()
+    client = Client(database)
+    probe_names = []
+
+    async def probe(candidate_client, database_name):
+        assert candidate_client is client
+        probe_names.append(database_name)
+        return types.SimpleNamespace(transactions=True)
+
+    import motor.motor_asyncio
+
+    monkeypatch.setattr(
+        motor.motor_asyncio,
+        "AsyncIOMotorClient",
+        lambda _url: client,
+    )
+    monkeypatch.setattr(migration, "probe_database_capabilities", probe)
+    monkeypatch.setenv("MONGO_URL", "mongodb://migration-010.test")
+    monkeypatch.setenv("DB_NAME", "migration_010_test")
+    monkeypatch.setattr(sys, "argv", [str(MIGRATION_PATH)])
+
+    asyncio.run(migration.main())
+
+    assert probe_names == ["migration_010_test"]
+    assert client.requested_names == ["migration_010_test"]
+    assert client.closed is True
+    assert json.loads(capsys.readouterr().out) == {
+        "dry_run": True,
+        "applied": False,
+        "owned_indexes": 0,
+        "event_count": 0,
+        "outbox_count": 0,
+        "historical_backfill": False,
+        "second_run_noop": False,
+    }
 
 
 def test_apply_requires_guard_backup_and_encrypted_confirmation(tmp_path):

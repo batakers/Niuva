@@ -211,15 +211,18 @@ inventory, deployment, and go-live remain separate operational gates.
 
 ### 3.3 Transaction and commercial integrity update — 30 July 2026
 
-This update records review candidates from the `origin/main` baseline
-`7d8d5c9`. It does not treat an open PR as merged evidence.
+This subsection preserves the pre-merge review snapshot from the `origin/main`
+baseline `7d8d5c9`. It is superseded for current PR state by the 31 July 2026
+revalidation below.
 
-- Feature 3.1 Shared transaction executor is open in PR #95 at `21cc57b`.
+- At that snapshot, Feature 3.1 Shared transaction executor was open in PR #95
+  at `21cc57b`.
   Backend, frontend, secret-scan, transaction-tests, and CodeRabbit status
   checks are green. CodeRabbit nevertheless recorded actionable runbook and
   catalog concurrency/slug-race review findings; those must be verified and
   resolved before Feature 3.1 can be marked accepted.
-- Feature 3.2 Quote-line identity is open in PR #96 at `3eccbd6`. It enforces
+- At that snapshot, Feature 3.2 Quote-line identity was open in PR #96 at
+  `3eccbd6`. It enforces
   immutable server-owned line identity, exact accepted Quote-version and Work
   Order references, cumulative quantity per exact line, historical-ambiguity
   rejection, and no variant fallback or automatic backfill.
@@ -828,8 +831,8 @@ baru dan bukan production-rollout approval.
 | Admin Content Editor and Module Audit | `implemented` | Structured CMS, review/preview/schedule/version/rollback/archive dan UI tersedia; atomic adoption gap dicatat pada BA-009 |
 | Reporting, Bulk, Notifications, Dashboard | `implemented` | CSV export, per-item bulk actions, admin notifications, dan role-aware dashboard tersedia |
 | Backend Transaction/Audit Boundary Adoption | `implemented_in_source` | Shared guard/CAS/publication adoption mencakup content, settings, portfolio, identity, Work Order, material/inventory, dan migration manifest; production migration tetap belum dijalankan |
-| Transaction and Commercial Integrity — Feature 3.1 | `review_changes_required` | PR #95 is open with green CI, but still-valid actionable review findings must be resolved and reverified before acceptance or merge |
-| B2B Quote-line Identity — Feature 3.2 | `source_complete_review_pending` | PR #96 is open with green CI and exact identity/version/quantity enforcement; substantive review remains pending, while historical-data execution is a separate gated operation |
+| Transaction and Commercial Integrity — Feature 3.1 | `merged_evidence` | PR #95 merged as `84f2ece` after corrective findings and CI; current-main regression passed, while production topology/migration/readiness remain separate |
+| B2B Quote-line Identity — Feature 3.2 | `merged_evidence` | PR #96 merged as `850d11a`; exact identity/version/quantity enforcement is present, while historical-data execution remains a separate gated operation |
 | Amend Identity Access Model | `context only` + superseded role direction | Three-role target superseded; granular replacement implementation exists under DEC-ACCESS-002, production migration/rollout remains open |
 | Foundation Transaction Capability | recorded complete | 120/120 checklist selesai; real local verification sudah direproduksi 26 July 2026 |
 | Catalog/Material/Inventory Foundation | `partial` | Real transaction verification sudah terpenuhi 26 July 2026; browser permission/workflow QA masih unchecked |
@@ -1461,9 +1464,9 @@ scanning, production provider, retention/quota, backup/restore, RPO/RTO,
 operational owners, historical object reconciliation, compatibility-route
 retirement, deployment, and go-live remain open.
 
-Implementation commit `6e6da02` was pushed for review in PR #93. No dependency,
-schema, migration, `.env`, provider, shared database, production data,
-deployment, or go-live state was changed.
+Implementation lineage beginning at `6e6da02` merged through PR #93 as
+`57de1f3`. No dependency, schema, migration, `.env`, provider, shared database,
+production data, deployment, or go-live state was changed by that delivery.
 
 Feature 3.2 merged baseline: PR #96, merge commit
 `850d11a5a297070e62e23db25120cd4ac79b663a`.
@@ -1477,7 +1480,87 @@ Feature 3.2 merged baseline: PR #96, merge commit
   before merge. Substantive CodeRabbit review was unavailable because of rate
   limiting, so the merge is not independent readiness verification.
 
-Migration 007, historical Quote-line report execution or mapping, backup, dry
-run, validation, rollback/restore, migration, shared/production data access,
-provider activation, deployment, production readiness, and go-live remain
-separately gated and were not performed.
+Migration apply, historical Quote-line report execution or mapping, backup,
+validation against a migration result, rollback/restore, shared/production data
+access, provider activation, deployment, production readiness, and go-live
+remain separately gated and were not performed. A later local application-
+database dry-run audit is recorded below.
+
+### 31 July 2026 — Current-main backend and readiness revalidation
+
+Baseline: `origin/main`
+`57de1f36e297e250705e8c47df5bef6b8da86fc9`.
+
+Current Git ancestry confirms PR #96 merged as `850d11a`, PR #95 merged as
+`84f2ece`, and PR #93 merged as `57de1f3`. GitHub reported no open pull
+requests at revalidation time.
+
+Verification on the isolated audit worktree:
+
+- full backend: 653 passed, 13 skipped, 14 subtests passed;
+- auth/session/authorization focus: 92 passed, 1 skipped;
+- transaction and Quote-line focus: 53 passed, 2 skipped;
+- file security, readiness, and migration-contract focus: 94 passed, 2
+  skipped; and
+- real local replica-set transaction/session coverage: 21 passed with no
+  migration module, using unique `niuva_tx_*` databases that were dropped in
+  test cleanup.
+
+The real-replica run used the existing local `rs0` because Docker was not
+available. It is useful local evidence but does not replace the tracked
+disposable `rs-test`, shared/staging/production verification, backup/restore,
+or release evidence.
+
+Live local readiness remained `503 not_ready` while liveness returned `200`.
+Database ping and transaction capability were ready. The exact blocking schema
+chain was:
+
+- `007_security_publication_schema`: not applied;
+- `008_auth_recovery_safety`: not applied; and
+- `009_admin_session_safety`: not applied.
+
+Migration 010 is optional while authentication-security events remain
+disabled, so its absent marker did not cause this `503`. Its default dry-run
+CLI initially had a separate defect: it passed a database object to
+`probe_database_capabilities`, which requires the database-name string, and
+stopped with `TypeError` before producing its preflight report.
+
+Read-only migration audit against the local application database:
+
+- 007 reported `ready`, 82 planned indexes, no duplicate groups, and no
+  portfolio preflight issues;
+- 008 scanned zero reset tokens and planned zero invalidations;
+- 009 found zero owned indexes, zero TTL indexes, and no existing marker; and
+- 010 initially stopped on the CLI probe defect above.
+
+Before/after snapshots matched for migration markers, relevant index names,
+and aggregate collection counts. No marker, index, application document,
+backup, or migration artifact was created, and no `niuva_tx_*` database
+remained. Applying or rolling back 007–010 remains unauthorized until the
+target, reviewed backup and restore proof, owner/reviewer, execution window,
+stop conditions, and rollback authority are recorded.
+
+#### Bounded Migration 010 dry-run CLI correction
+
+The same audit branch corrects only the Migration 010 CLI seam:
+
+- retain the database name before resolving the Motor database object;
+- pass the database-name string to `probe_database_capabilities`; and
+- close the Motor client in `finally`.
+
+A regression test verifies the exact probe argument, dry-run report, database
+selection, and client cleanup. Verification passed:
+
+- Migration 010 migration tests: 6 passed;
+- auth-security/readiness focus: 106 passed;
+- full backend: 654 passed, 13 skipped, 14 subtests passed;
+- backend compile and `pip check`;
+- Black, isort with the Black profile, critical Flake8 selection, and
+  `git diff --check`.
+
+The corrected CLI then completed a live local dry run and reported unapplied,
+zero owned indexes, zero events, zero alert-outbox records, no historical
+backfill, and no second-run no-op. Before/after snapshots remained identical:
+the marker was absent, both dedicated collections remained empty, and no owned
+index appeared. No apply, rollback, backup, migration marker, application-data
+mutation, deployment, or activation occurred.
