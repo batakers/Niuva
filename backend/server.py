@@ -2965,8 +2965,10 @@ async def notification_outbox_loop():
                     "notification_outbox_batch",
                     extra={"notification_outbox": result},
                 )
-        except Exception:
-            logger.exception("notification_outbox_loop failed")
+        except Exception as exc:
+            logger.error(
+                "notification_outbox_loop_failed error_type=%s", type(exc).__name__
+            )
             app.state.notification_worker_status = {
                 **app.state.notification_worker_status,
                 "enabled": True,
