@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from notification_domain import (
+    NOTIFICATION_OUTBOX_SCHEMA_VERSION,
     NOTIFICATION_REFERENCE_ROUTES,
     NOTIFICATION_RETENTION,
     NOTIFICATION_SCHEMA_VERSION,
@@ -374,6 +375,7 @@ class NotificationService:
         session=None,
     ) -> dict:
         entry = {
+            "schema_version": NOTIFICATION_OUTBOX_SCHEMA_VERSION,
             "id": str(uuid.uuid4()),
             "notification_id": notification_id,
             "channel": channel,

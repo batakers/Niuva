@@ -9,9 +9,9 @@ import types
 from datetime import datetime, timedelta, timezone
 
 import pytest
-
 from notification_domain import (
     CANONICAL_NOTIFICATION_FIELDS,
+    NOTIFICATION_OUTBOX_SCHEMA_VERSION,
     NOTIFICATION_REFERENCE_ROUTES,
     NOTIFICATION_RETENTION,
     NOTIFICATION_SCHEMA_VERSION,
@@ -20,13 +20,13 @@ from notification_domain import (
     is_allowlisted_reference,
     project_notification,
 )
-from pymongo.errors import DuplicateKeyError
 from notification_service import (
     MAX_DELIVERY_ATTEMPTS,
     NotificationError,
     NotificationService,
 )
 from notification_worker import NotificationDeliveryWorker
+from pymongo.errors import DuplicateKeyError
 
 
 class FakeCollection:
@@ -627,6 +627,7 @@ def test_delivery_is_queued_separately_from_recording():
 
         pending = await service.claim_pending(worker_id="worker-a")
         assert len(pending) == 1
+        assert pending[0]["schema_version"] == NOTIFICATION_OUTBOX_SCHEMA_VERSION
         assert pending[0]["status"] == "processing"
         assert await service.claim_pending(worker_id="worker-b") == []
         # The notification exists whether or not the email ever goes out.
