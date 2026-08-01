@@ -2,17 +2,20 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from notification_domain import (
+    NOTIFICATION_REFERENCE_ROUTES,
+    NOTIFICATION_RETENTION,
+    NOTIFICATION_SCHEMA_VERSION,
+    REFERENCE_ID_PATTERN,
     deduplication_key,
+    deep_link_for,
     is_allowlisted_reference,
+    is_notification_readable,
     project_notification,
 )
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 MAX_DELIVERY_ATTEMPTS = 5
-
-
-def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def now_utc() -> datetime:
@@ -44,6 +47,49 @@ class NotificationService:
     def __init__(self, *, db):
         self.db = db
 
+    @staticmethod
+    def _required_text(value, *, field: str, maximum: int) -> str:
+        if not isinstance(value, str) or not value.strip() or len(value) > maximum:
+            raise NotificationError(
+                422,
+                "invalid_notification_field",
+                f"Field notifikasi tidak valid: {field}.",
+            )
+        return value.strip()
+
+    @classmethod
+    def _required_identity(cls, value, *, field: str, maximum: int) -> str:
+        identity = cls._required_text(value, field=field, maximum=maximum)
+        if "|" in identity or any(
+            ord(character) < 32 or ord(character) == 127 for character in identity
+        ):
+            raise NotificationError(
+                422,
+                "invalid_notification_field",
+                f"Field notifikasi tidak valid: {field}.",
+            )
+        return identity
+
+    @staticmethod
+    def _compatible_recurrence(document: dict, *, expected: dict, at: datetime) -> bool:
+        projected = project_notification(document)
+        return (
+            projected is not None
+            and is_notification_readable(document, user_id=expected["user_id"], at=at)
+            and all(
+                document.get(field) == expected[field]
+                for field in ("user_id", "event", "reference_type", "reference_id")
+            )
+        )
+
+    @staticmethod
+    def _storage_timestamp(document: dict, timestamp: datetime):
+        return (
+            timestamp.isoformat()
+            if isinstance(document.get("updated_at"), str)
+            else timestamp
+        )
+
     async def publish(
         self,
         *,
@@ -56,12 +102,46 @@ class NotificationService:
         session=None,
     ) -> dict:
         """Record one notifiable condition for one reader, idempotently."""
-        if reference_type is not None and not is_allowlisted_reference(reference_type):
+        user_id = self._required_identity(user_id, field="user_id", maximum=200)
+        event = self._required_identity(event, field="event", maximum=200)
+        title = self._required_text(title, field="title", maximum=300)
+        body = self._required_text(body, field="body", maximum=5000)
+        if reference_type is None and reference_id is not None:
             raise NotificationError(
                 422,
                 "notification_reference_not_allowed",
                 "Referensi notifikasi tidak ada pada daftar yang diizinkan.",
             )
+        if reference_type is not None:
+            reference_type = self._required_text(
+                reference_type, field="reference_type", maximum=80
+            )
+            if not is_allowlisted_reference(reference_type):
+                raise NotificationError(
+                    422,
+                    "notification_reference_not_allowed",
+                    "Referensi notifikasi tidak ada pada daftar yang diizinkan.",
+                )
+            if "{id}" in NOTIFICATION_REFERENCE_ROUTES[reference_type]:
+                reference_id = self._required_identity(
+                    reference_id, field="reference_id", maximum=200
+                )
+                if deep_link_for(reference_type, reference_id) is None:
+                    raise NotificationError(
+                        422,
+                        "notification_reference_not_allowed",
+                        "Referensi notifikasi tidak ada pada daftar yang diizinkan.",
+                    )
+            elif reference_id is not None:
+                reference_id = self._required_identity(
+                    reference_id, field="reference_id", maximum=200
+                )
+                if REFERENCE_ID_PATTERN.fullmatch(reference_id) is None:
+                    raise NotificationError(
+                        422,
+                        "notification_reference_not_allowed",
+                        "Referensi notifikasi tidak ada pada daftar yang diizinkan.",
+                    )
 
         key = deduplication_key(
             user_id=user_id,
@@ -69,32 +149,9 @@ class NotificationService:
             reference_type=reference_type,
             reference_id=reference_id,
         )
-        timestamp = now_iso()
-        existing = await self.db.notifications.find_one(
-            {"deduplication_key": key}, {"_id": 0}, **_write_options(session)
-        )
-        if existing:
-            # The condition recurred. Surface it again rather than duplicating
-            # it, and leave a read notification read: re-notifying on every
-            # observation is how a bell becomes noise nobody reads.
-            await self.db.notifications.update_one(
-                {"deduplication_key": key},
-                {
-                    "$set": {"last_seen_at": timestamp, "updated_at": timestamp},
-                    "$inc": {"occurrence_count": 1},
-                },
-                **_write_options(session),
-            )
-            return project_notification(
-                {
-                    **existing,
-                    "last_seen_at": timestamp,
-                    "updated_at": timestamp,
-                    "occurrence_count": existing.get("occurrence_count", 1) + 1,
-                }
-            )
-
+        timestamp = now_utc()
         notification = {
+            "schema_version": NOTIFICATION_SCHEMA_VERSION,
             "id": str(uuid.uuid4()),
             "user_id": user_id,
             "event": event,
@@ -108,60 +165,198 @@ class NotificationService:
             "created_at": timestamp,
             "last_seen_at": timestamp,
             "updated_at": timestamp,
+            "expires_at": timestamp + NOTIFICATION_RETENTION,
         }
-        await self.db.notifications.insert_one(
-            dict(notification), **_write_options(session)
+        identity = {
+            "user_id": user_id,
+            "event": event,
+            "reference_type": reference_type,
+            "reference_id": reference_id,
+        }
+        for _attempt in range(3):
+            existing = await self.db.notifications.find_one(
+                {"deduplication_key": key}, {"_id": 0}, **_write_options(session)
+            )
+            if existing:
+                if not self._compatible_recurrence(
+                    existing, expected=identity, at=timestamp
+                ):
+                    raise NotificationError(
+                        409,
+                        "notification_schema_conflict",
+                        "Identitas notifikasi berbenturan dengan record yang tidak kompatibel.",
+                    )
+                stored_timestamp = self._storage_timestamp(existing, timestamp)
+                updated = await self.db.notifications.find_one_and_update(
+                    {"id": existing["id"], "deduplication_key": key},
+                    {
+                        "$max": {
+                            "last_seen_at": stored_timestamp,
+                            "updated_at": stored_timestamp,
+                        },
+                        "$inc": {"occurrence_count": 1},
+                    },
+                    projection={"_id": 0},
+                    return_document=ReturnDocument.AFTER,
+                    **_write_options(session),
+                )
+                if updated is None:
+                    continue
+                projected = project_notification(updated)
+                if projected is None:
+                    raise NotificationError(
+                        409,
+                        "notification_schema_conflict",
+                        "Record notifikasi tidak kompatibel.",
+                    )
+                return projected
+            try:
+                insert_defaults = {
+                    field: value
+                    for field, value in notification.items()
+                    if field not in {"occurrence_count", "last_seen_at", "updated_at"}
+                }
+                updated = await self.db.notifications.find_one_and_update(
+                    {
+                        "deduplication_key": key,
+                        "schema_version": NOTIFICATION_SCHEMA_VERSION,
+                        **identity,
+                    },
+                    {
+                        "$setOnInsert": insert_defaults,
+                        "$max": {
+                            "last_seen_at": timestamp,
+                            "updated_at": timestamp,
+                        },
+                        "$inc": {"occurrence_count": 1},
+                    },
+                    projection={"_id": 0},
+                    return_document=ReturnDocument.AFTER,
+                    upsert=True,
+                    **_write_options(session),
+                )
+            except DuplicateKeyError:
+                continue
+            projected = project_notification(updated or {})
+            if projected is None:  # Defensive: the writer must satisfy its own schema.
+                raise RuntimeError("canonical_notification_projection_failed")
+            return projected
+        raise NotificationError(
+            409,
+            "notification_publish_conflict",
+            "Notifikasi sedang diperbarui; silakan coba kembali.",
         )
-        return project_notification(notification)
 
     async def list_for_user(
         self, user_id: str, *, unread_only: bool = False, limit: int = 50
     ) -> list[dict]:
+        bounded_limit = max(1, min(int(limit), 200))
         query: dict[str, object] = {"user_id": user_id}
         if unread_only:
             query["read_at"] = None
-        documents = (
-            await self.db.notifications.find(query, {"_id": 0})
-            .sort("created_at", -1)
-            .limit(min(limit, 200))
-            .to_list(min(limit, 200))
-        )
-        return [project_notification(document) for document in documents]
+        moment = now_utc()
+        projected = []
+        cursor = self.db.notifications.find(query, {"_id": 0}).sort("created_at", -1)
+        async for document in cursor:
+            if not is_notification_readable(document, user_id=user_id, at=moment):
+                continue
+            value = project_notification(document)
+            if value is not None:
+                projected.append(value)
+            if len(projected) >= bounded_limit:
+                break
+        return projected
 
     async def unread_count(self, user_id: str) -> int:
-        return await self.db.notifications.count_documents(
-            {"user_id": user_id, "read_at": None}
+        count = 0
+        moment = now_utc()
+        cursor = self.db.notifications.find(
+            {"user_id": user_id, "read_at": None}, {"_id": 0}
         )
+        async for document in cursor:
+            if is_notification_readable(document, user_id=user_id, at=moment):
+                count += 1
+        return count
 
     async def mark_read(self, notification_id: str, *, user_id: str) -> dict:
         notification = await self.db.notifications.find_one(
-            {"id": notification_id}, {"_id": 0}
+            {"id": notification_id, "user_id": user_id}, {"_id": 0}
         )
+        timestamp = now_utc()
         # Scoped to the reader: a notification id must not reveal another
         # person's feed, so an unowned one reads as absent.
-        if not notification or notification.get("user_id") != user_id:
+        if not notification or not is_notification_readable(
+            notification, user_id=user_id, at=timestamp
+        ):
             raise NotificationError(
                 404, "notification_not_found", "Notifikasi tidak ditemukan."
             )
         if notification.get("read_at"):
-            return project_notification(notification)
+            projected = project_notification(notification)
+            if projected is None:
+                raise NotificationError(
+                    404, "notification_not_found", "Notifikasi tidak ditemukan."
+                )
+            return projected
 
-        timestamp = now_iso()
-        await self.db.notifications.update_one(
+        stored_timestamp = self._storage_timestamp(notification, timestamp)
+        updated = await self.db.notifications.find_one_and_update(
             {"id": notification_id, "user_id": user_id, "read_at": None},
-            {"$set": {"read_at": timestamp, "updated_at": timestamp}},
+            {
+                "$set": {"read_at": stored_timestamp},
+                "$max": {"updated_at": stored_timestamp},
+            },
+            projection={"_id": 0},
+            return_document=ReturnDocument.AFTER,
         )
-        return project_notification(
-            {**notification, "read_at": timestamp, "updated_at": timestamp}
-        )
+        if updated is None:
+            updated = await self.db.notifications.find_one(
+                {"id": notification_id, "user_id": user_id}, {"_id": 0}
+            )
+        projected = project_notification(updated or {})
+        if projected is None:
+            raise NotificationError(
+                404, "notification_not_found", "Notifikasi tidak ditemukan."
+            )
+        return projected
 
     async def mark_all_read(self, user_id: str) -> dict:
-        timestamp = now_iso()
-        result = await self.db.notifications.update_many(
-            {"user_id": user_id, "read_at": None},
-            {"$set": {"read_at": timestamp, "updated_at": timestamp}},
+        timestamp = now_utc()
+        datetime_ids = []
+        string_ids = []
+        cursor = self.db.notifications.find(
+            {"user_id": user_id, "read_at": None}, {"_id": 0}
         )
-        return {"marked": getattr(result, "modified_count", 0), "read_at": timestamp}
+        async for document in cursor:
+            if is_notification_readable(document, user_id=user_id, at=timestamp):
+                target = (
+                    string_ids
+                    if isinstance(document.get("updated_at"), str)
+                    else datetime_ids
+                )
+                target.append(document["id"])
+        if not datetime_ids and not string_ids:
+            return {"marked": 0, "read_at": timestamp}
+        modified = 0
+        for notification_ids, stored_timestamp in (
+            (datetime_ids, timestamp),
+            (string_ids, timestamp.isoformat()),
+        ):
+            if not notification_ids:
+                continue
+            result = await self.db.notifications.update_many(
+                {
+                    "id": {"$in": notification_ids},
+                    "user_id": user_id,
+                    "read_at": None,
+                },
+                {
+                    "$set": {"read_at": stored_timestamp},
+                    "$max": {"updated_at": stored_timestamp},
+                },
+            )
+            modified += getattr(result, "modified_count", 0)
+        return {"marked": modified, "read_at": timestamp}
 
     # ------------------------------ Outbox ------------------------------
     #

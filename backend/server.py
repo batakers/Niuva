@@ -233,9 +233,7 @@ app.state.transaction_guard = TransactionMutationGuard(
     lambda: os.environ.get("TRANSACTION_MUTATIONS_ENABLED", "false").strip().lower()
     == "true",
 )
-app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
-    get_database=lambda: db,
-)
+app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery()
 app.state.admin_session_module = None
 app.state.auth_security_event_service = None
 app.state.auth_security_event_status = {
