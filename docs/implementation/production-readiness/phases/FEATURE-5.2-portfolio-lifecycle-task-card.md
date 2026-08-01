@@ -1,8 +1,10 @@
 # Feature 5.2 — Portfolio Lifecycle Task Card
 
-Status: **bounded source complete — Git delivery authorized, review pending**
+Status: **bounded source complete — PR #101 open, review pending**
 
 Branch: `fix/backend-portfolio-lifecycle`
+
+Pull request: `#101`
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 1 August 2026)
@@ -82,7 +84,8 @@ or organization/customer-facing scope.
 
 The 1 August request authorized bounded source and documentation implementation
 on this branch. On 2 August 2026, the Project Owner separately authorized
-commit, push, and pull-request creation. Merge, migration, deployment,
+commit, push, and pull-request creation. The source candidate was committed as
+`1dd4086`, pushed, and opened as PR #101. Merge, migration, deployment,
 production-readiness, and go-live remain unauthorized.
 
 ## Verification evidence

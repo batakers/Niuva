@@ -4,8 +4,9 @@ Branch: `fix/backend-portfolio-lifecycle`
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 
-Delivery state: bounded source candidate; commit, push, and pull-request
-creation were authorized on 2 August 2026. Independent review remains pending.
+Delivery state: bounded source candidate committed as `1dd4086`, pushed to
+`fix/backend-portfolio-lifecycle`, and opened as PR #101 on 2 August 2026.
+Independent review remains pending; merge is not authorized.
 
 ## Implemented
 
