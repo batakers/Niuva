@@ -27,7 +27,8 @@ PORTFOLIO_TRANSITIONS = {
     "review": {"draft", "preview", "archived"},
     "preview": {"review", "scheduled", "published", "archived"},
     "scheduled": {"published", "preview", "archived"},
-    "published": {"archived"},
+    # A live snapshot stays public while a new working revision is prepared.
+    "published": {"draft", "archived"},
     # Archived is a resting state, not a grave: work can come back as a draft.
     "archived": {"draft"},
 }
@@ -37,7 +38,7 @@ PORTFOLIO_ACTIONS = {
     "review": ["return_to_draft", "approve_preview", "archive"],
     "preview": ["return_to_review", "schedule", "publish", "archive"],
     "scheduled": ["publish", "return_to_preview", "archive"],
-    "published": ["archive"],
+    "published": ["revise", "archive"],
     "archived": ["restore"],
 }
 

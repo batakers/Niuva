@@ -73,6 +73,12 @@ the still-open customer Organization Portal decision under DR-010.
 | --- | --- | --- | --- | --- | --- |
 | 4.2 Quote lifecycle | `fix/backend-quote-lifecycle`; PR #100; implementation `571cdb9`; baseline `735674b` | Existing lifecycle, immutable revisions, exact sent/accepted version, acceptance evidence, permissions, and history revalidated. Quote transition, revision, and acceptance events now bind each `operation_id` to an exact canonical command fingerprint; materially different reuse fails `409 operation_id_conflict`. Quote routes declare the shared HTTP error envelope, including fail-closed `503` for revision creation. | Focused backend `66 passed, 1 skipped`; full backend `667 passed, 14 skipped, 14 subtests passed`; real local replica-set B2B integration `5 passed`; adjacent frontend `2` suites and `29` tests passed; critical lint and diff check passed. PR #100 backend/frontend/transaction-tests/secret-scan CI passed; CodeRabbit was rate-limited without substantive review. | Obtain independent review on PR #100. Quote-to-Project remains Feature 4.3; customer Quote access/self-acceptance remains blocked by DR-010; no historical migration, deployment, production-readiness, or go-live is implied. | `source_complete_review_pending`; bounded candidate only. |
 
+## Content publication lifecycle feature register — 1 August 2026
+
+| Feature | Branch / baseline | Completed source scope | Verification | Important notes and exact next step | State |
+| --- | --- | --- | --- | --- | --- |
+| 5.2 Portfolio lifecycle | `fix/backend-portfolio-lifecycle`; baseline `a2b7be0` | Exact revision ownership at publication; published-to-draft revision flow; append-only rollback metadata; immutable replacement publication snapshots during republish/reorder; stable-lock atomic reorder; customer-safe idempotent Project promotion; backend/frontend permission parity. | Focused backend `32 passed`; real local replica-set Portfolio integration `2 passed`; full backend `674 passed, 15 skipped, 14 subtests passed`; full frontend `36` suites and `239` tests passed; critical lint, compile, and diff check passed. | Git delivery was authorized on 2 August 2026; create the PR and obtain independent review. No new promotion/customer consumer or role grant was added; broader DR-010, migration, deployment, release, and production gates remain open. | `source_complete_review_pending`; bounded source candidate. |
+
 ## Frontend work register — current-source reconciliation
 
 This register inventories frontend work that is still open, only partially

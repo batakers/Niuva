@@ -12,6 +12,7 @@ from portfolio_domain import (
     requires_publish_authority,
     validate_portfolio_transition,
 )
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 CONTENT_FIELDS = (
     "title_id",
@@ -75,6 +76,38 @@ class PortfolioService:
             )
         return self.transaction_guard
 
+    @staticmethod
+    def _is_concurrency_conflict(exc: PyMongoError) -> bool:
+        return bool(
+            isinstance(exc, DuplicateKeyError)
+            or getattr(exc, "code", None) in {11000, 112}
+            or getattr(exc, "has_error_label", lambda _label: False)(
+                "TransientTransactionError"
+            )
+        )
+
+    async def _run_conflict_safe(
+        self,
+        mutation,
+        *,
+        operation_name: str,
+        retry_safe: bool = False,
+    ):
+        try:
+            return await self._require_guard().run(
+                mutation,
+                operation_name=operation_name,
+                retry_safe=retry_safe,
+            )
+        except PyMongoError as exc:
+            if not self._is_concurrency_conflict(exc):
+                raise
+            raise PortfolioDomainError(
+                409,
+                "version_conflict",
+                "Portofolio telah berubah oleh proses lain.",
+            ) from exc
+
     async def _get(self, entry_id: str, *, session=None) -> dict:
         options = {"session": session} if session is not None else {}
         entry = await self.db.portfolio.find_one(
@@ -92,11 +125,34 @@ class PortfolioService:
 
     async def _revisions(self, entry_id: str, *, session=None) -> list[dict]:
         options = {"session": session} if session is not None else {}
-        return await self.db.portfolio_revisions.find(
-            {"portfolio_id": entry_id},
+        return (
+            await self.db.portfolio_revisions.find(
+                {"portfolio_id": entry_id},
+                {"_id": 0},
+                **options,
+            )
+            .sort("revision", 1)
+            .to_list(1000)
+        )
+
+    async def _current_revision(self, entry: dict, *, session=None) -> dict:
+        options = {"session": session} if session is not None else {}
+        revision = await self.db.portfolio_revisions.find_one(
+            {
+                "id": entry.get("current_revision_id"),
+                "portfolio_id": entry["id"],
+                "revision": entry.get("revision_count", 1),
+            },
             {"_id": 0},
             **options,
-        ).sort("revision", 1).to_list(1000)
+        )
+        if revision is None:
+            raise PortfolioDomainError(
+                409,
+                "portfolio_revision_reference_invalid",
+                "Referensi revisi aktif portofolio tidak konsisten.",
+            )
+        return dict(revision)
 
     async def get(self, entry_id: str) -> dict:
         entry = await self._get(entry_id)
@@ -105,41 +161,62 @@ class PortfolioService:
 
     async def list_admin(self, *, status: str | None = None) -> list[dict]:
         query = {"status": status} if status else {}
-        documents = await self.db.portfolio.find(query, {"_id": 0}).sort(
-            "display_order",
-            1,
-        ).limit(500).to_list(500)
+        documents = (
+            await self.db.portfolio.find(query, {"_id": 0})
+            .sort(
+                "display_order",
+                1,
+            )
+            .limit(500)
+            .to_list(500)
+        )
         return [project_admin_portfolio(document) for document in documents]
 
     async def list_public(self) -> list[dict]:
-        publications = await self.db.portfolio_publications.find(
-            {
-                "retired_at": None,
-                "activates_at": {"$lte": now_utc()},
-            },
-            {"_id": 0},
-        ).sort("snapshot.display_order", 1).limit(200).to_list(200)
+        publications = (
+            await self.db.portfolio_publications.find(
+                {
+                    "retired_at": None,
+                    "activates_at": {"$lte": now_utc()},
+                },
+                {"_id": 0},
+            )
+            .sort("snapshot.display_order", 1)
+            .limit(200)
+            .to_list(200)
+        )
         return [
             project_public_portfolio(publication.get("snapshot") or {})
             for publication in publications
         ]
 
-    async def create(self, payload: dict, *, actor: dict) -> dict:
+    async def _build_create_documents(
+        self,
+        payload: dict,
+        *,
+        actor: dict,
+        reason: str,
+    ) -> tuple[dict, dict]:
         timestamp = now_iso()
         entry_id = str(uuid.uuid4())
         revision_id = str(uuid.uuid4())
         content = {field: payload.get(field) for field in CONTENT_FIELDS}
-        highest = await self.db.portfolio.find(
-            {},
-            {"_id": 0, "display_order": 1},
-        ).sort("display_order", -1).limit(1).to_list(1)
+        highest = (
+            await self.db.portfolio.find(
+                {},
+                {"_id": 0, "display_order": 1},
+            )
+            .sort("display_order", -1)
+            .limit(1)
+            .to_list(1)
+        )
         revision = {
             "id": revision_id,
             "portfolio_id": entry_id,
             "revision": 1,
             "content": deepcopy(content),
             "actor_user_id": actor.get("id"),
-            "reason": "Draft dibuat",
+            "reason": reason,
             "created_at": timestamp,
         }
         entry = {
@@ -160,13 +237,21 @@ class PortfolioService:
                     "from_status": None,
                     "to_status": "draft",
                     "actor_user_id": actor.get("id"),
-                    "reason": "Draft dibuat",
+                    "reason": reason,
                     "timestamp": timestamp,
                 }
             ],
             "created_at": timestamp,
             "updated_at": timestamp,
         }
+        return entry, revision
+
+    async def create(self, payload: dict, *, actor: dict) -> dict:
+        entry, revision = await self._build_create_documents(
+            payload,
+            actor=actor,
+            reason="Draft dibuat",
+        )
 
         async def mutation(session):
             options = {"session": session}
@@ -177,7 +262,7 @@ class PortfolioService:
             await self.db.portfolio.insert_one(deepcopy(entry), **options)
             return project_admin_portfolio({**entry, "versions": [revision]})
 
-        return await self._require_guard().run(
+        return await self._run_conflict_safe(
             mutation,
             operation_name="portfolio.create",
         )
@@ -199,7 +284,45 @@ class PortfolioService:
         )
         if existing:
             return await self.get(existing["id"])
-        return await self.create(prefill_from_project(project), actor=actor)
+        entry, revision = await self._build_create_documents(
+            prefill_from_project(project),
+            actor=actor,
+            reason="Draft dibuat dari Project selesai",
+        )
+
+        async def mutation(session):
+            options = {"session": session}
+            current = await self.db.portfolio.find_one(
+                {"source_project_id": project_id},
+                {"_id": 0},
+                **options,
+            )
+            if current:
+                revisions = await self._revisions(current["id"], session=session)
+                return project_admin_portfolio({**dict(current), "versions": revisions})
+            await self.db.portfolio_revisions.insert_one(
+                deepcopy(revision),
+                **options,
+            )
+            await self.db.portfolio.insert_one(deepcopy(entry), **options)
+            return project_admin_portfolio({**entry, "versions": [revision]})
+
+        try:
+            return await self._require_guard().run(
+                mutation,
+                operation_name="portfolio.create_from_project",
+                retry_safe=True,
+            )
+        except DuplicateKeyError:
+            # The unique source_project_id index selects the winner when two
+            # transactions promote the same completed Project concurrently.
+            current = await self.db.portfolio.find_one(
+                {"source_project_id": project_id},
+                {"_id": 0},
+            )
+            if current is None:
+                raise
+            return await self.get(current["id"])
 
     async def update_content(
         self,
@@ -279,7 +402,7 @@ class PortfolioService:
                 {**entry, **changes, "versions": revisions},
             )
 
-        return await self._require_guard().run(
+        return await self._run_conflict_safe(
             mutation,
             operation_name="portfolio.update_content",
         )
@@ -310,12 +433,85 @@ class PortfolioService:
                 "portfolio_revision_not_found",
                 "Revisi portofolio tidak ditemukan.",
             )
-        return await self.update_content(
-            entry_id,
-            source["content"],
-            expected_version=expected_version,
-            reason=reason,
-            actor=actor,
+        if not reason.strip():
+            raise PortfolioDomainError(
+                422,
+                "reason_required",
+                "Alasan rollback wajib diisi.",
+            )
+        timestamp = now_iso()
+        revision_number = int(entry.get("revision_count", 0)) + 1
+        revision_id = str(uuid.uuid4())
+        content = {
+            field: deepcopy(source["content"].get(field)) for field in CONTENT_FIELDS
+        }
+        restored = {
+            "id": revision_id,
+            "portfolio_id": entry_id,
+            "revision": revision_number,
+            "content": deepcopy(content),
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "rollback_source_revision_id": source["id"],
+            "rollback_source_revision": source["revision"],
+            "created_at": timestamp,
+        }
+        changes = {
+            **content,
+            "status": "draft",
+            "version": expected_version + 1,
+            "revision_count": revision_number,
+            "current_revision_id": revision_id,
+            "scheduled_for": None,
+            "archived_at": None,
+            "history": [
+                *entry.get("history", []),
+                {
+                    "from_status": entry["status"],
+                    "to_status": "draft",
+                    "actor_user_id": actor.get("id"),
+                    "reason": reason.strip(),
+                    "timestamp": timestamp,
+                    "rollback_source_revision_id": source["id"],
+                },
+            ],
+            "updated_at": timestamp,
+        }
+
+        async def mutation(session):
+            options = {"session": session}
+            await self.db.portfolio_revisions.insert_one(
+                deepcopy(restored),
+                **options,
+            )
+            result = await self.db.portfolio.update_one(
+                {"id": entry_id, "version": expected_version},
+                {"$set": changes},
+                **options,
+            )
+            if not result.matched_count:
+                raise PortfolioDomainError(
+                    409,
+                    "version_conflict",
+                    "Entri portofolio berubah selama rollback.",
+                )
+            if entry.get("status") == "scheduled":
+                retired_at = now_utc()
+                await self.db.portfolio_publications.update_many(
+                    {
+                        "portfolio_id": entry_id,
+                        "retired_at": None,
+                        "activates_at": {"$gt": retired_at},
+                    },
+                    {"$set": {"retired_at": retired_at}},
+                    **options,
+                )
+            revisions = await self._revisions(entry_id, session=session)
+            return project_admin_portfolio({**entry, **changes, "versions": revisions})
+
+        return await self._run_conflict_safe(
+            mutation,
+            operation_name="portfolio.rollback",
         )
 
     def _publication(
@@ -323,6 +519,7 @@ class PortfolioService:
         entry: dict,
         changes: dict,
         *,
+        source_revision: dict,
         activates_at: datetime,
         actor: dict,
         reason: str,
@@ -336,8 +533,8 @@ class PortfolioService:
         return {
             "id": str(uuid.uuid4()),
             "portfolio_id": entry["id"],
-            "source_revision_id": entry["current_revision_id"],
-            "source_revision": entry.get("revision_count", 1),
+            "source_revision_id": source_revision["id"],
+            "source_revision": source_revision["revision"],
             "snapshot": snapshot,
             "activates_at": activates_at,
             "retired_at": None,
@@ -435,9 +632,11 @@ class PortfolioService:
 
         publication = None
         if target_status in {"scheduled", "published"}:
+            source_revision = await self._current_revision(entry)
             publication = self._publication(
                 entry,
                 changes,
+                source_revision=source_revision,
                 activates_at=activation,
                 actor=actor,
                 reason=reason,
@@ -445,7 +644,11 @@ class PortfolioService:
 
         async def mutation(session):
             options = {"session": session}
-            if entry["status"] in {"scheduled", "published"}:
+            should_retire_publication = (
+                target_status in {"scheduled", "published", "archived"}
+                or entry["status"] == "scheduled"
+            )
+            if should_retire_publication:
                 await self.db.portfolio_publications.update_many(
                     {"portfolio_id": entry_id, "retired_at": None},
                     {"$set": {"retired_at": now_utc()}},
@@ -473,7 +676,7 @@ class PortfolioService:
                 )
             return project_admin_portfolio({**entry, **changes})
 
-        return await self._require_guard().run(
+        return await self._run_conflict_safe(
             mutation,
             operation_name="portfolio.transition",
         )
@@ -503,8 +706,40 @@ class PortfolioService:
         timestamp = now_iso()
 
         async def mutation(session):
-            for assignment in assignments:
+            # Lock aggregates in a stable order regardless of the requested
+            # display sequence, preventing opposing reorder commands from
+            # deadlocking while each holds a different first document.
+            for assignment in sorted(assignments, key=lambda item: item["id"]):
                 entry_id = assignment["id"]
+                active_publications = await self.db.portfolio_publications.find(
+                    {"portfolio_id": entry_id, "retired_at": None},
+                    {"_id": 0},
+                    session=session,
+                ).to_list(100)
+                retired_at = now_utc()
+                for publication in active_publications:
+                    replacement = deepcopy(publication)
+                    replacement["id"] = str(uuid.uuid4())
+                    replacement["snapshot"] = deepcopy(
+                        publication.get("snapshot") or {}
+                    )
+                    replacement["snapshot"]["display_order"] = assignment[
+                        "display_order"
+                    ]
+                    replacement["supersedes_publication_id"] = publication["id"]
+                    replacement["created_by"] = actor.get("id")
+                    replacement["reason"] = "Urutan portofolio diperbarui"
+                    replacement["created_at"] = retired_at
+                    replacement["retired_at"] = None
+                    await self.db.portfolio_publications.update_one(
+                        {"id": publication["id"], "retired_at": None},
+                        {"$set": {"retired_at": retired_at}},
+                        session=session,
+                    )
+                    await self.db.portfolio_publications.insert_one(
+                        replacement,
+                        session=session,
+                    )
                 result = await self.db.portfolio.update_one(
                     {
                         "id": entry_id,
@@ -526,9 +761,10 @@ class PortfolioService:
                         "version_conflict",
                         "Entri berubah selama reorder.",
                     )
-            return await self.list_admin()
+            return None
 
-        return await self._require_guard().run(
+        await self._run_conflict_safe(
             mutation,
             operation_name="portfolio.reorder",
         )
+        return await self.list_admin()
