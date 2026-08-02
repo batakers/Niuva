@@ -20,7 +20,7 @@ and merge pending; migration execution prohibited**
 Selected baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, verified 2 August 2026, Asia/Jakarta).
 
-Reconciliation baseline: `b16a30b626bd2263d17a45d82313a82d25edfa2c`
+Reconciliation baseline: `e5376b951735fe793bee877c81a91f84149dd52b`
 (`origin/main`, checked 3 August 2026, Asia/Jakarta).
 
 Branch / worktree: `plan/phase-02b-migration-hardening` /
