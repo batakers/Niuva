@@ -1,11 +1,12 @@
+from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
-
+from api_contract import error_responses
 from catalog_service import CatalogError, CatalogService
+from fastapi import APIRouter, Depends, HTTPException, status
 from permissions import has_permission
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CategoryPayload(BaseModel):
@@ -118,6 +119,36 @@ class RollbackPayload(ReasonPayload):
 
 class BulkArchivePayload(ReasonPayload):
     product_ids: list[str] = Field(min_length=1, max_length=100)
+
+
+class PublicCatalogCategoryResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    slug: str
+
+
+class PublicCatalogProductResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    product_id: str
+    revision: int
+    category: dict[str, Any]
+    product: dict[str, Any]
+    variants: list[dict[str, Any]]
+    options: list[dict[str, Any]]
+    published_at: str | datetime
+    cta_state: Literal["unavailable", "quote_required", "discovery_only"]
+    rollback_source_publication_id: str | None = None
+
+
+class PublicCatalogPageResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[PublicCatalogProductResponse]
+    next_cursor: str | None
 
 
 def build_catalog_router(
@@ -373,11 +404,19 @@ def build_catalog_router(
                 results.append({"id": product_id, "success": False, "error": exc.payload()})
         return {"results": results}
 
-    @router.get("/catalog/categories")
+    @router.get(
+        "/catalog/categories",
+        response_model=list[PublicCatalogCategoryResponse],
+        responses=error_responses(422, 500, 503),
+    )
     async def public_categories():
         return await invoke(service().list_public_categories())
 
-    @router.get("/catalog/products")
+    @router.get(
+        "/catalog/products",
+        response_model=PublicCatalogPageResponse,
+        responses=error_responses(422, 500, 503),
+    )
     async def public_products(
         limit: int = 24,
         cursor: str | None = None,
@@ -391,7 +430,12 @@ def build_catalog_router(
             service().list_public_products(limit=limit, cursor=cursor)
         )
 
-    @router.get("/catalog/products/{slug}")
+    @router.get(
+        "/catalog/products/{slug}",
+        response_model=PublicCatalogProductResponse,
+        response_model_exclude_none=True,
+        responses=error_responses(404, 422, 500, 503),
+    )
     async def public_product(slug: str):
         value = await invoke(service().get_public_product(slug))
         if value is None:

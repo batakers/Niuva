@@ -40,11 +40,27 @@ def test_transaction_unavailable_response_uses_stable_existing_envelope():
     expected_message = "Operasi sementara tidak tersedia karena transaksi "
     expected_message += "database belum siap."
     assert response.status_code == 503
-    assert response.json() == {
+    body = response.json()
+    assert body["detail"] == {
+        "code": "transaction_unavailable",
+        "message": expected_message,
+    }
+    assert body["error"] == {
+        "code": "transaction_unavailable",
+        "message": expected_message,
+    }
+    assert body["request_id"]
+    assert response.headers["x-request-id"] == body["request_id"]
+    assert body == {
         "detail": {
             "code": "transaction_unavailable",
             "message": expected_message,
-        }
+        },
+        "error": {
+            "code": "transaction_unavailable",
+            "message": expected_message,
+        },
+        "request_id": body["request_id"],
     }
 
 

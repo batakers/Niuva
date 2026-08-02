@@ -23,6 +23,12 @@ from urllib.parse import quote, urlsplit
 import bcrypt
 import emailer
 import storage
+from api_contract import (
+    error_response,
+    error_responses,
+    normalize_request_id,
+    request_id_for,
+)
 from audit import append_audit_event, append_identity_governance_event
 from auth_password import (
     PasswordPolicyError,
@@ -271,17 +277,21 @@ def current_database_capabilities() -> DatabaseCapabilities:
     return app.state.database_capabilities
 
 
-async def password_policy_error_handler(_request, exc):
-    return JSONResponse(
+async def password_policy_error_handler(request: Request, exc):
+    return error_response(
+        request,
         status_code=400,
-        content={"detail": {"code": exc.code}},
+        detail={"code": exc.code},
+        default_code=exc.code,
     )
 
 
-async def password_policy_unavailable_handler(_request, exc):
-    return JSONResponse(
+async def password_policy_unavailable_handler(request: Request, exc):
+    return error_response(
+        request,
         status_code=503,
-        content={"detail": {"code": exc.code}},
+        detail={"code": exc.code},
+        default_code=exc.code,
     )
 
 
@@ -296,11 +306,13 @@ app.add_exception_handler(
 )
 
 
-async def admin_session_error_handler(_request, exc):
+async def admin_session_error_handler(request: Request, exc):
     status_code = 403 if isinstance(exc, RequestVerificationError) else 401
-    return JSONResponse(
+    return error_response(
+        request,
         status_code=status_code,
-        content={"detail": {"code": exc.code}},
+        detail={"code": exc.code},
+        default_code=exc.code,
         headers={"Cache-Control": "no-store"},
     )
 
@@ -309,40 +321,13 @@ app.add_exception_handler(AdminSessionError, admin_session_error_handler)
 api = APIRouter(prefix="/api")
 
 
-def request_id_for(request: Request) -> str:
-    return getattr(request.state, "request_id", str(uuid.uuid4()))
-
-
-def error_payload(request: Request, detail, *, default_code: str) -> dict:
-    if isinstance(detail, dict):
-        code = str(detail.get("code") or default_code)
-        message = str(detail.get("message") or code)
-        details = detail.get("details")
-    else:
-        code = default_code
-        message = str(detail)
-        details = None
-    return {
-        # Kept during the contract cutover for existing clients.
-        "detail": detail,
-        "error": {
-            "code": code,
-            "message": message,
-            **({"details": details} if details is not None else {}),
-        },
-        "request_id": request_id_for(request),
-    }
-
-
 @app.exception_handler(HTTPException)
 async def http_error_envelope(request: Request, exc: HTTPException):
-    return JSONResponse(
-        error_payload(
-            request,
-            exc.detail,
-            default_code=f"http_{exc.status_code}",
-        ),
+    return error_response(
+        request,
         status_code=exc.status_code,
+        detail=exc.detail,
+        default_code=f"http_{exc.status_code}",
         headers=exc.headers,
     )
 
@@ -362,13 +347,11 @@ async def validation_error_envelope(request: Request, exc: RequestValidationErro
         "message": "Request tidak memenuhi schema.",
         "details": {"issues": issues},
     }
-    return JSONResponse(
-        error_payload(
-            request,
-            detail,
-            default_code="request_validation_failed",
-        ),
+    return error_response(
+        request,
         status_code=422,
+        detail=detail,
+        default_code="request_validation_failed",
     )
 
 
@@ -385,19 +368,18 @@ async def unhandled_error_envelope(request: Request, exc: Exception):
         "code": "internal_server_error",
         "message": "Terjadi kesalahan internal.",
     }
-    return JSONResponse(
-        error_payload(request, detail, default_code="internal_server_error"),
+    return error_response(
+        request,
         status_code=500,
+        detail=detail,
+        default_code="internal_server_error",
     )
 
 
 @app.middleware("http")
 async def request_context(request: Request, call_next):
-    supplied = request.headers.get("X-Request-ID", "").strip()
-    request.state.request_id = (
-        supplied[:128]
-        if supplied and re.fullmatch(r"[A-Za-z0-9._:-]+", supplied)
-        else str(uuid.uuid4())
+    request.state.request_id = normalize_request_id(
+        request.headers.get("X-Request-ID", "")
     )
     started = datetime.now(timezone.utc)
     try:
@@ -453,15 +435,12 @@ async def csrf_cookie_guard(request: Request, call_next):
         cookie = request.cookies.get(CSRF_COOKIE, "")
         header = request.headers.get(CSRF_HEADER, "")
         if not cookie or not header or not secrets.compare_digest(cookie, header):
-            response = JSONResponse(
-                error_payload(
-                    request,
-                    "CSRF validation failed",
-                    default_code="csrf_validation_failed",
-                ),
+            response = error_response(
+                request,
                 status_code=403,
+                detail="CSRF validation failed",
+                default_code="csrf_validation_failed",
             )
-            response.headers["X-Request-ID"] = request.state.request_id
             return response
     return await call_next(request)
 
@@ -793,6 +772,88 @@ require_admin = require_permission("admin.access")
 # ----------------------------- Models -----------------------------
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+class SafeUserResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    email: str
+    phone: str
+    company: str
+    status: str
+    access_state: str
+    role_policy_version: str | None = None
+    role: str
+    roles: list[str]
+    role_labels: list[str]
+    permissions: list[str]
+    version: int
+    created_at: str | datetime | None = None
+
+
+class LoginResponse(BaseModel):
+    user: SafeUserResponse
+
+
+class AdminSessionResponse(LoginResponse):
+    csrf_token: str
+    access_expires_at: str
+    idle_expires_at: str
+    absolute_expires_at: str
+
+
+class CustomerOrderFileResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    original_filename: str | None = None
+    content_type: str | None = None
+    size: int | None = None
+
+
+class CustomerOrderEstimateResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: int | float | None = None
+    currency: str | None = None
+    estimated_at: str | datetime | None = None
+
+
+class CustomerOrderPaymentResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verified: bool | None = None
+    uploaded_at: str | datetime | None = None
+    verified_at: str | datetime | None = None
+    proof_recorded: bool | None = None
+    proof: CustomerOrderFileResponse | None = None
+
+
+class CustomerOrderStatusEventResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: str
+    at: str | datetime | None = None
+
+
+class CustomerLegacyOrderResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str | None = None
+    order_number: str | None = None
+    material_name: str | None = None
+    status: str | None = None
+    created_at: str | datetime | None = None
+    updated_at: str | datetime | None = None
+    record_class: str
+    canonical_status_equivalent: str | None = None
+    creation_enabled: bool
+    mutations_enabled: bool
+    file: CustomerOrderFileResponse | None = None
+    estimate: CustomerOrderEstimateResponse | None = None
+    payment: CustomerOrderPaymentResponse | None = None
+    status_history: list[CustomerOrderStatusEventResponse]
 
 
 class ClientProvisionReq(StrictModel):
@@ -1295,7 +1356,11 @@ async def _perform_login(
     return {"user": safe_user(user)}
 
 
-@api.post("/auth/login")
+@api.post(
+    "/auth/login",
+    response_model=LoginResponse,
+    responses=error_responses(401, 403, 422, 429, 500),
+)
 async def login(req: LoginReq, request: Request, response: Response):
     verify_auth_origin(request)
     return await _perform_login(
@@ -1306,7 +1371,11 @@ async def login(req: LoginReq, request: Request, response: Response):
     )
 
 
-@api.post("/auth/admin/login")
+@api.post(
+    "/auth/admin/login",
+    response_model=AdminSessionResponse,
+    responses=error_responses(401, 403, 422, 429, 500, 503),
+)
 async def admin_login(req: AdminLoginReq, request: Request):
     verify_admin_origin(request)
     account = req.email.lower()
@@ -1408,7 +1477,11 @@ async def refresh_admin_session(request: Request):
     return _admin_session_response(user, grant)
 
 
-@api.get("/auth/admin/session")
+@api.get(
+    "/auth/admin/session",
+    response_model=LoginResponse,
+    responses=error_responses(401, 403, 500, 503),
+)
 async def current_admin_session(request: Request):
     user = await get_admin_user(request, verify_csrf=False)
     return JSONResponse(
@@ -1442,7 +1515,11 @@ async def admin_logout(request: Request):
     return response
 
 
-@api.get("/auth/me")
+@api.get(
+    "/auth/me",
+    response_model=SafeUserResponse,
+    responses=error_responses(401, 403, 500),
+)
 async def me(user: dict = Depends(get_current_user)):
     return safe_user(user)
 
@@ -1543,7 +1620,12 @@ async def public_capabilities():
     }
 
 
-@api.get("/orders")
+@api.get(
+    "/orders",
+    response_model=list[CustomerLegacyOrderResponse],
+    response_model_exclude_none=True,
+    responses=error_responses(401, 403, 500),
+)
 async def my_orders(user: dict = Depends(get_current_user)):
     if has_permission(user, "orders.read"):
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -1574,7 +1656,12 @@ async def download_legacy_order_design_file(
     return await download_file(storage_path, user)
 
 
-@api.get("/orders/{oid}")
+@api.get(
+    "/orders/{oid}",
+    response_model=CustomerLegacyOrderResponse,
+    response_model_exclude_none=True,
+    responses=error_responses(401, 403, 404, 500),
+)
 async def get_order(oid: str, user: dict = Depends(get_current_user)):
     if has_permission(user, "orders.read"):
         raise HTTPException(status_code=403, detail="Forbidden")
