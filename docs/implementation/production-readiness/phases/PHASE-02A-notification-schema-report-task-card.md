@@ -5,7 +5,7 @@ and merge pending; representative execution gated**
 Selected baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026, Asia/Jakarta)
 
-Reconciliation baseline: `b33619880b8b6ced2f0ad6c78ff102fc4bb8a9ce`
+Reconciliation baseline: `b16a30b626bd2263d17a45d82313a82d25edfa2c`
 (`origin/main`, checked 3 August 2026, Asia/Jakarta)
 Branch / worktree: `feat/backend-notification-schema-report` /
 `Niuva-worktrees/backend-notification-schema-report`
