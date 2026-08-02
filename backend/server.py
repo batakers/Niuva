@@ -76,7 +76,7 @@ from dashboard_domain import (
     summarize_movements,
     withheld_revenue,
 )
-from database_capabilities import DatabaseCapabilities, probe_database_capabilities
+from database_capabilities import DatabaseCapabilities
 from fastapi import (
     APIRouter,
     Depends,
@@ -117,12 +117,17 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
+from readiness_health import (
+    TOTAL_TIMEOUT_SECONDS,
+    ReadinessProbeCoordinator,
+    public_schema_status,
+    public_transaction_status,
+)
 from retail_domain import (
     project_customer_legacy_order,
     project_internal_legacy_order,
 )
 from retail_routes import build_retail_router
-from schema_readiness import inspect_schema
 from settings_domain import (
     PUBLIC_PROFILE_FIELDS,
     default_settings,
@@ -186,6 +191,10 @@ ORDER_STATUSES = [
     "cancelled",
 ]
 
+READINESS_PROBE_INTERVAL_SECONDS = 5
+NOTIFICATION_WORKER_HEARTBEAT_INTERVAL_SECONDS = 5
+NOTIFICATION_WORKER_STALE_SECONDS = 30
+
 CUSTOMER_QUERY = {
     "$or": [
         {"roles": {"$in": ["retail_customer", "organization_customer"]}},
@@ -205,6 +214,12 @@ async def lifespan(_application: FastAPI):
 
 app = FastAPI(title="NIUVA API", lifespan=lifespan)
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
+app.state.readiness_probe_coordinator = ReadinessProbeCoordinator(
+    client,
+    db,
+    database_name,
+)
+app.state.readiness_probe_task = None
 app.state.reservation_expiry_task = None
 app.state.notification_worker_task = None
 app.state.notification_worker_status = {
@@ -219,13 +234,14 @@ app.state.schema_status = {
     "migrations": {},
     "applied": False,
     "indexes_ready": False,
-    "missing_index_count": 0,
-    "retired_index_count": 0,
+    "missing_index_count": None,
+    "retired_index_count": None,
+    "inspection_complete": False,
     "ready": False,
 }
 app.state.transaction_executor = TransactionExecutor(
     client,
-    lambda: app.state.database_capabilities,
+    lambda: current_database_capabilities(),
     event_sink=TransactionLogSink(logging.getLogger("niuva.transaction")),
 )
 app.state.transaction_guard = TransactionMutationGuard(
@@ -245,6 +261,13 @@ app.add_exception_handler(
     TransactionUnavailableError,
     transaction_unavailable_handler,
 )
+
+
+def current_database_capabilities() -> DatabaseCapabilities:
+    coordinator = app.state.readiness_probe_coordinator
+    if isinstance(coordinator, ReadinessProbeCoordinator):
+        return coordinator.current_transaction_capabilities()
+    return app.state.database_capabilities
 
 
 async def password_policy_error_handler(_request, exc):
@@ -2622,7 +2645,7 @@ async def list_sent_notifications(
 async def health():
     return {
         "status": "ok",
-        "transactions": app.state.database_capabilities.transactions,
+        "transactions": current_database_capabilities().transactions,
     }
 
 
@@ -2633,47 +2656,58 @@ async def health_live():
 
 @api.get("/health/ready")
 async def health_ready():
-    capabilities = app.state.database_capabilities
-    database_available = False
-    try:
-        await db.command("ping")
-        database_available = True
-    except Exception:
-        logger.warning("Readiness database ping failed")
-    schema_status = app.state.schema_status
-    worker_required = (
-        os.environ.get("NOTIFICATION_WORKER_REQUIRED", "false").lower() == "true"
+    loop = asyncio.get_running_loop()
+    started_at = loop.time()
+    dependencies = await app.state.readiness_probe_coordinator.probe()
+    capabilities = dependencies.capabilities
+    database_available = dependencies.database_available
+    schema_status = public_schema_status(dependencies.schema_status)
+    transaction_status = public_transaction_status(capabilities)
+    transaction_required = _environment_flag("TRANSACTION_MUTATIONS_ENABLED")
+    transaction_ready = bool(
+        not transaction_required or transaction_status["available"]
     )
-    worker_status = app.state.notification_worker_status
+    worker_required = _environment_flag("NOTIFICATION_WORKER_REQUIRED")
+    worker_status_value = app.state.notification_worker_status
+    worker_status = worker_status_value if isinstance(worker_status_value, dict) else {}
     worker_task = app.state.notification_worker_task
     heartbeat = worker_status.get("last_heartbeat_at")
-    heartbeat_fresh = bool(
-        isinstance(heartbeat, datetime)
-        and datetime.now(timezone.utc) - heartbeat <= timedelta(seconds=30)
-    )
-    worker_ready = bool(
-        not worker_required
-        or (
-            worker_status.get("enabled")
-            and worker_status.get("running")
-            and heartbeat_fresh
-            and worker_task is not None
-            and not worker_task.done()
+    heartbeat_fresh = False
+    if isinstance(heartbeat, datetime) and heartbeat.tzinfo is not None:
+        heartbeat_age = datetime.now(timezone.utc) - heartbeat
+        heartbeat_fresh = bool(
+            timedelta(0)
+            <= heartbeat_age
+            <= timedelta(seconds=NOTIFICATION_WORKER_STALE_SECONDS)
         )
+    worker_task_active = bool(worker_task is not None and not worker_task.done())
+    worker_available = bool(
+        worker_status.get("enabled")
+        and worker_status.get("running")
+        and heartbeat_fresh
+        and worker_task_active
     )
-    email_required = (
-        os.environ.get("EMAIL_DELIVERY_REQUIRED", "false").lower() == "true"
+    worker_ready = bool(not worker_required or worker_available)
+    email_required = _environment_flag("EMAIL_DELIVERY_REQUIRED")
+    email_configured = bool(
+        isinstance(emailer.RESEND_API_KEY, str) and emailer.RESEND_API_KEY.strip()
     )
-    email_ready = bool(not email_required or emailer.RESEND_API_KEY)
+    email_ready = bool(not email_required or email_configured)
     auth_events_required = _environment_flag("AUTH_SECURITY_EVENTS_ENABLED")
     auth_events_ready = not auth_events_required
     auth_event_marker = False
     if auth_events_required and database_available:
         try:
             get_auth_security_event_service()
-            marker = await db.migration_state.find_one(
-                {"_id": "010_auth_security_events"},
-                {"_id": 1},
+            remaining = TOTAL_TIMEOUT_SECONDS - (loop.time() - started_at)
+            if remaining <= 0:
+                raise TimeoutError("readiness deadline elapsed")
+            marker = await asyncio.wait_for(
+                db.migration_state.find_one(
+                    {"_id": "010_auth_security_events"},
+                    {"_id": 1},
+                ),
+                timeout=remaining,
             )
             auth_event_marker = marker is not None
             auth_events_ready = bool(
@@ -2683,7 +2717,7 @@ async def health_ready():
             auth_events_ready = False
     ready = bool(
         database_available
-        and capabilities.transactions
+        and transaction_ready
         and schema_status.get("ready")
         and worker_ready
         and email_ready
@@ -2693,11 +2727,14 @@ async def health_ready():
         "status": "ready" if ready else "not_ready",
         "database": "ready" if database_available else "unavailable",
         "transaction_mutations": (
-            "ready" if capabilities.transactions else "unavailable"
+            "ready" if transaction_status["available"] else "unavailable"
         ),
         "schema": schema_status,
         "capabilities": {
-            "transactions": capabilities.transaction_diagnostic(),
+            "transactions": {
+                **transaction_status,
+                "required": transaction_required,
+            },
             "production_upload": {"status": "inactive", "required": False},
             "payment": {"status": "inactive", "required": False},
             "organization_portal": {"status": "inactive", "required": False},
@@ -2708,7 +2745,11 @@ async def health_ready():
                 "heartbeat_fresh": heartbeat_fresh,
             },
             "email_delivery": {
-                "status": ("ready" if emailer.RESEND_API_KEY else "inactive"),
+                "status": (
+                    "ready"
+                    if email_configured
+                    else ("unavailable" if email_required else "inactive")
+                ),
                 "required": email_required,
             },
             "authentication_security_events": {
@@ -2770,7 +2811,7 @@ api.include_router(
         get_inventory_service=lambda: InventoryService(
             db=db,
             client=client,
-            capabilities=app.state.database_capabilities,
+            capabilities=current_database_capabilities(),
             guard=app.state.transaction_guard,
         ),
     )
@@ -2797,7 +2838,7 @@ api.include_router(
     build_catalog_router(
         get_db=lambda: db,
         get_client=lambda: client,
-        get_capabilities=lambda: app.state.database_capabilities,
+        get_capabilities=current_database_capabilities,
         get_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
     )
@@ -2815,7 +2856,7 @@ api.include_router(
         get_service=lambda: InventoryService(
             db=db,
             client=client,
-            capabilities=app.state.database_capabilities,
+            capabilities=current_database_capabilities(),
             guard=app.state.transaction_guard,
         ),
         require_permission=require_permission,
@@ -2826,7 +2867,7 @@ api.include_router(
     build_content_router(
         get_db=lambda: db,
         get_client=lambda: client,
-        get_capabilities=lambda: app.state.database_capabilities,
+        get_capabilities=current_database_capabilities,
         get_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         has_permission=has_permission,
@@ -2916,7 +2957,7 @@ async def reservation_expiry_loop():
             service = InventoryService(
                 db=db,
                 client=client,
-                capabilities=app.state.database_capabilities,
+                capabilities=current_database_capabilities(),
                 guard=app.state.transaction_guard,
             )
             result = await service.expire_due_reservations(actor=system_actor)
@@ -2928,6 +2969,29 @@ async def reservation_expiry_loop():
         except Exception as exc:
             logger.error("reservation_expiry_loop error: %s", exc)
         await asyncio.sleep(60)
+
+
+async def readiness_probe_loop():
+    while True:
+        try:
+            await app.state.readiness_probe_coordinator.probe(refresh_transaction=True)
+        except Exception as exc:
+            logger.error(
+                "readiness_probe_loop_failed error_type=%s",
+                type(exc).__name__,
+            )
+        await asyncio.sleep(READINESS_PROBE_INTERVAL_SECONDS)
+
+
+async def notification_worker_heartbeat_loop():
+    while True:
+        status_value = app.state.notification_worker_status
+        status = status_value if isinstance(status_value, dict) else {}
+        app.state.notification_worker_status = {
+            **status,
+            "last_heartbeat_at": datetime.now(timezone.utc),
+        }
+        await asyncio.sleep(NOTIFICATION_WORKER_HEARTBEAT_INTERVAL_SECONDS)
 
 
 async def notification_outbox_loop():
@@ -2951,54 +3015,59 @@ async def notification_outbox_loop():
         worker_id=worker_id,
         deliverers={"email": deliver_email},
     )
-    while True:
-        try:
-            result = await worker.run_once(limit=50)
+    heartbeat_task = asyncio.create_task(notification_worker_heartbeat_loop())
+    try:
+        while True:
+            status_value = app.state.notification_worker_status
+            status = status_value if isinstance(status_value, dict) else {}
             app.state.notification_worker_status = {
+                **status,
                 "enabled": True,
                 "running": True,
                 "last_heartbeat_at": datetime.now(timezone.utc),
-                "last_result": result,
             }
-            if result.get("claimed"):
-                logger.info(
-                    "notification_outbox_batch",
-                    extra={"notification_outbox": result},
+            try:
+                result = await worker.run_once(limit=50)
+                app.state.notification_worker_status = {
+                    "enabled": True,
+                    "running": True,
+                    "last_heartbeat_at": datetime.now(timezone.utc),
+                    "last_result": result,
+                }
+                if result.get("claimed"):
+                    logger.info(
+                        "notification_outbox_batch",
+                        extra={"notification_outbox": result},
+                    )
+            except Exception as exc:
+                logger.error(
+                    "notification_outbox_loop_failed error_type=%s", type(exc).__name__
                 )
-        except Exception as exc:
-            logger.error(
-                "notification_outbox_loop_failed error_type=%s", type(exc).__name__
-            )
-            app.state.notification_worker_status = {
-                **app.state.notification_worker_status,
-                "enabled": True,
-                "running": False,
-                "last_heartbeat_at": datetime.now(timezone.utc),
-            }
-        await asyncio.sleep(5)
+                app.state.notification_worker_status = {
+                    **app.state.notification_worker_status,
+                    "enabled": True,
+                    "running": False,
+                    "last_heartbeat_at": datetime.now(timezone.utc),
+                }
+            await asyncio.sleep(5)
+    finally:
+        heartbeat_task.cancel()
+        await asyncio.gather(heartbeat_task, return_exceptions=True)
 
 
 async def _startup_runtime():
     validate_cookie_configuration()
     storage.init_storage()
     await seed()
-    app.state.database_capabilities = await probe_database_capabilities(
-        client,
-        database_name,
-    )
+    dependencies = await app.state.readiness_probe_coordinator.probe()
+    app.state.database_capabilities = dependencies.capabilities
+    app.state.schema_status = dependencies.schema_status
     logger.info(
         "database capability checked transactions=%s reason=%s",
         app.state.database_capabilities.transactions,
         app.state.database_capabilities.transaction_reason.value,
     )
-    try:
-        app.state.schema_status = await inspect_schema(db)
-    except Exception:
-        logger.exception("Unable to inspect required database schema")
-        app.state.schema_status = {
-            **app.state.schema_status,
-            "ready": False,
-        }
+    app.state.readiness_probe_task = asyncio.create_task(readiness_probe_loop())
     app.state.reservation_expiry_task = asyncio.create_task(reservation_expiry_loop())
     worker_enabled = (
         os.environ.get("NOTIFICATION_WORKER_ENABLED", "false").lower() == "true"
@@ -3017,6 +3086,7 @@ async def _startup_runtime():
 
 async def _shutdown_runtime():
     tasks = [
+        app.state.readiness_probe_task,
         app.state.reservation_expiry_task,
         app.state.notification_worker_task,
     ]
@@ -3030,4 +3100,5 @@ async def _shutdown_runtime():
             await task
         except asyncio.CancelledError:
             pass
+    await app.state.readiness_probe_coordinator.close()
     client.close()
