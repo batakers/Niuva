@@ -11,12 +11,16 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from notification_domain import (
+    CANONICAL_NOTIFICATION_FIELDS,
     NOTIFICATION_REFERENCE_ROUTES,
+    NOTIFICATION_RETENTION,
+    NOTIFICATION_SCHEMA_VERSION,
     deduplication_key,
     deep_link_for,
     is_allowlisted_reference,
     project_notification,
 )
+from pymongo.errors import DuplicateKeyError
 from notification_service import (
     MAX_DELIVERY_ATTEMPTS,
     NotificationError,
@@ -37,14 +41,26 @@ class FakeCollection:
                     return False
                 continue
             actual = item.get(key)
-            if isinstance(value, dict) and "$lte" in value:
-                if actual is None or actual > value["$lte"]:
+            if isinstance(value, dict):
+                if "$lte" in value and (actual is None or actual > value["$lte"]):
+                    return False
+                if "$gt" in value and (actual is None or actual <= value["$gt"]):
+                    return False
+                if "$exists" in value and (key in item) is not value["$exists"]:
+                    return False
+                if "$in" in value and actual not in value["$in"]:
                     return False
             elif actual != value:
                 return False
         return True
 
     async def insert_one(self, document, **_options):
+        await asyncio.sleep(0)
+        key = document.get("deduplication_key")
+        if key is not None and any(
+            item.get("deduplication_key") == key for item in self.items
+        ):
+            raise DuplicateKeyError("duplicate deduplication_key")
         self.items.append(dict(document))
         return types.SimpleNamespace(inserted_id=document.get("id"))
 
@@ -66,6 +82,8 @@ class FakeCollection:
                 item.update(update.get("$set", {}))
                 for key, amount in (update.get("$inc") or {}).items():
                     item[key] = item.get(key, 0) + amount
+                for key, value in (update.get("$max") or {}).items():
+                    item[key] = max(item.get(key, value), value)
                 return types.SimpleNamespace(matched_count=1, modified_count=1)
         return types.SimpleNamespace(matched_count=0, modified_count=0)
 
@@ -77,17 +95,40 @@ class FakeCollection:
         sort=None,
         projection=None,
         return_document=None,
+        upsert=False,
+        **_options,
     ):
+        if upsert:
+            await asyncio.sleep(0)
         candidates = [item for item in self.items if self._matches(item, query)]
         for key, direction in reversed(sort or []):
             candidates.sort(
-                key=lambda item: item.get(key) or datetime.min.replace(tzinfo=timezone.utc),
+                key=lambda item: item.get(key)
+                or datetime.min.replace(tzinfo=timezone.utc),
                 reverse=direction < 0,
             )
-        if not candidates:
+        if candidates:
+            target = candidates[0]
+        elif upsert:
+            key = query.get("deduplication_key")
+            if key is not None and any(
+                item.get("deduplication_key") == key for item in self.items
+            ):
+                raise DuplicateKeyError("duplicate deduplication_key")
+            target = {
+                key: value
+                for key, value in query.items()
+                if not isinstance(value, dict)
+            }
+            target.update(update.get("$setOnInsert", {}))
+            self.items.append(target)
+        else:
             return None
-        target = candidates[0]
         target.update(update.get("$set", {}))
+        for key, amount in (update.get("$inc") or {}).items():
+            target[key] = target.get(key, 0) + amount
+        for key, value in (update.get("$max") or {}).items():
+            target[key] = max(target.get(key, value), value)
         return {
             key: value
             for key, value in target.items()
@@ -99,6 +140,8 @@ class FakeCollection:
         for item in self.items:
             if self._matches(item, query):
                 item.update(update.get("$set", {}))
+                for key, value in (update.get("$max") or {}).items():
+                    item[key] = max(item.get(key, value), value)
                 modified += 1
         return types.SimpleNamespace(modified_count=modified)
 
@@ -117,6 +160,13 @@ class FakeCursor:
 
     async def to_list(self, length):
         return [dict(item) for item in self.items[:length]]
+
+    def __aiter__(self):
+        async def iterate():
+            for item in self.items:
+                yield dict(item)
+
+        return iterate()
 
 
 class FakeDatabase:
@@ -141,6 +191,34 @@ async def publish(service, **overrides):
     }
     payload.update(overrides)
     return await service.publish(**payload)
+
+
+def canonical_document(**overrides):
+    timestamp = datetime.now(timezone.utc)
+    document = {
+        "schema_version": NOTIFICATION_SCHEMA_VERSION,
+        "id": "n-1",
+        "user_id": "user-1",
+        "event": "work_order.material_shortage",
+        "title": "Material kurang",
+        "body": "Work Order tertahan menunggu material.",
+        "reference_type": "work_order",
+        "reference_id": "wo-1",
+        "deduplication_key": deduplication_key(
+            user_id="user-1",
+            event="work_order.material_shortage",
+            reference_type="work_order",
+            reference_id="wo-1",
+        ),
+        "read_at": None,
+        "occurrence_count": 1,
+        "created_at": timestamp,
+        "last_seen_at": timestamp,
+        "updated_at": timestamp,
+        "expires_at": timestamp + NOTIFICATION_RETENTION,
+    }
+    document.update(overrides)
+    return document
 
 
 # --------------------------- Deep links ---------------------------
@@ -171,6 +249,9 @@ def test_a_reference_outside_the_allowlist_yields_no_link():
         "wo-1#fragment",
         "https://evil.test",
         "wo-1&extra=1",
+        "wo-1%2Fadmin",
+        "wo-1\\admin",
+        "wo 1",
         "",
         "   ",
     ],
@@ -182,14 +263,11 @@ def test_a_reference_id_cannot_escape_its_template(hostile_id):
 def test_a_stored_link_is_never_trusted():
     """Whoever writes a notification must not choose where a reader lands."""
     projected = project_notification(
-        {
-            "id": "n-1",
-            "reference_type": "work_order",
-            "reference_id": "wo-1",
-            "deep_link": "https://evil.test/steal",
-            "link": "https://evil.test/steal",
-            "url": "https://evil.test/steal",
-        }
+        canonical_document(
+            deep_link="https://evil.test/steal",
+            link="https://evil.test/steal",
+            url="https://evil.test/steal",
+        )
     )
 
     assert projected["deep_link"] == "/admin/b2b/work-orders/wo-1"
@@ -215,6 +293,53 @@ def test_publishing_an_unallowlisted_reference_is_refused():
     asyncio.run(scenario())
 
 
+def test_new_notification_uses_the_exact_canonical_v1_shape():
+    async def scenario():
+        service, db = build_service()
+
+        projected = await publish(service)
+        stored = db.notifications.items[0]
+
+        assert set(stored) - {"_id"} == CANONICAL_NOTIFICATION_FIELDS
+        assert type(stored["schema_version"]) is int
+        assert stored["schema_version"] == 1
+        assert stored["id"] == projected["id"]
+        assert stored["expires_at"] == stored["created_at"] + NOTIFICATION_RETENTION
+        assert stored["read_at"] is None
+        assert "user_id" not in projected
+        assert "deduplication_key" not in projected
+        assert "read_at" not in projected
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("override", "expected_code"),
+    [
+        ({"user_id": ""}, "invalid_notification_field"),
+        ({"event": []}, "invalid_notification_field"),
+        ({"event": "work|order"}, "invalid_notification_field"),
+        ({"reference_type": ["work_order"]}, "invalid_notification_field"),
+        (
+            {"reference_type": None, "reference_id": "wo-1"},
+            "notification_reference_not_allowed",
+        ),
+        ({"reference_id": "../wo-1"}, "notification_reference_not_allowed"),
+    ],
+)
+def test_invalid_canonical_identity_or_reference_is_refused(override, expected_code):
+    async def scenario():
+        service, db = build_service()
+
+        with pytest.raises(NotificationError) as refused:
+            await publish(service, **override)
+
+        assert refused.value.code == expected_code
+        assert db.notifications.items == []
+
+    asyncio.run(scenario())
+
+
 # --------------------------- Deduplication ---------------------------
 
 
@@ -229,6 +354,108 @@ def test_the_same_condition_for_one_reader_is_one_notification():
         # The recurrence is recorded rather than duplicated.
         assert second["occurrence_count"] == 2
         assert second["last_seen_at"] >= first["last_seen_at"]
+
+    asyncio.run(scenario())
+
+
+def test_concurrent_publication_uses_one_immutable_identity():
+    async def scenario():
+        service, db = build_service()
+
+        published = await asyncio.gather(*(publish(service) for _index in range(10)))
+
+        assert len(db.notifications.items) == 1
+        assert {item["id"] for item in published} == {db.notifications.items[0]["id"]}
+        assert db.notifications.items[0]["occurrence_count"] == 10
+        assert {item["expires_at"] for item in published} == {
+            db.notifications.items[0]["expires_at"]
+        }
+        key = deduplication_key(
+            user_id="user-1",
+            event="work_order.material_shortage",
+            reference_type="work_order",
+            reference_id="wo-1",
+        )
+        assert db.notifications.items[0]["_id"] == f"notification:{key}"
+
+    asyncio.run(scenario())
+
+
+def test_an_incompatible_existing_dedup_identity_fails_closed():
+    async def scenario():
+        service, db = build_service()
+        key = deduplication_key(
+            user_id="user-1",
+            event="work_order.material_shortage",
+            reference_type="work_order",
+            reference_id="wo-1",
+        )
+        db.notifications.items.append(
+            {"id": "unknown", "deduplication_key": key, "provider_payload": {}}
+        )
+
+        with pytest.raises(NotificationError) as conflict:
+            await publish(service)
+
+        assert conflict.value.code == "notification_schema_conflict"
+        assert db.notifications.items == [
+            {"id": "unknown", "deduplication_key": key, "provider_payload": {}}
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_expired_dedup_identity_is_not_resurrected_or_replaced():
+    async def scenario():
+        service, db = build_service()
+        created_at = datetime.now(timezone.utc) - NOTIFICATION_RETENTION
+        existing = canonical_document(
+            id="expired",
+            deduplication_key=deduplication_key(
+                user_id="user-1",
+                event="work_order.material_shortage",
+                reference_type="work_order",
+                reference_id="wo-1",
+            ),
+            created_at=created_at,
+            last_seen_at=created_at,
+            updated_at=created_at,
+            expires_at=created_at + NOTIFICATION_RETENTION,
+        )
+        db.notifications.items.append(existing)
+
+        with pytest.raises(NotificationError) as conflict:
+            await publish(service)
+
+        assert conflict.value.code == "notification_schema_conflict"
+        assert len(db.notifications.items) == 1
+        assert db.notifications.items[0]["id"] == "expired"
+        assert db.notifications.items[0]["occurrence_count"] == 1
+
+    asyncio.run(scenario())
+
+
+def test_recurrence_updates_compatible_versionless_history_without_rewriting_it():
+    async def scenario():
+        service, db = build_service()
+        existing = canonical_document(
+            deduplication_key=deduplication_key(
+                user_id="user-1",
+                event="work_order.material_shortage",
+                reference_type="work_order",
+                reference_id="wo-1",
+            )
+        )
+        existing.pop("schema_version")
+        existing.pop("expires_at")
+        db.notifications.items.append(existing)
+
+        recurring = await publish(service)
+
+        assert recurring["id"] == existing["id"]
+        assert recurring["occurrence_count"] == 2
+        assert "schema_version" not in db.notifications.items[0]
+        assert "expires_at" not in db.notifications.items[0]
 
     asyncio.run(scenario())
 
@@ -282,6 +509,66 @@ def test_a_recurrence_does_not_resurface_a_notification_already_read():
 
 
 # --------------------------- Read state ---------------------------
+
+
+def test_versionless_modern_history_is_projected_without_becoming_canonical():
+    document = canonical_document()
+    document.pop("schema_version")
+    document.pop("expires_at")
+
+    projected = project_notification(document)
+
+    assert "schema_version" not in projected
+    assert projected["compatibility_status"] == "versionless_modern"
+    assert projected["expires_at"] == document["created_at"] + NOTIFICATION_RETENTION
+    assert "schema_version" not in document
+    assert "expires_at" not in document
+
+
+def test_legacy_email_and_mixed_or_unknown_history_fail_closed():
+    legacy = {
+        "id": "legacy-1",
+        "user_id": "user-1",
+        "to_email": "customer@example.test",
+        "subject": "Legacy",
+        "title": "Legacy",
+        "body_html": "<p>Legacy</p>",
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    mixed = {**canonical_document(), "to_email": "customer@example.test"}
+    unknown = {**canonical_document(), "provider_payload": {"token": "secret"}}
+
+    assert project_notification(legacy) is None
+    assert project_notification(mixed) is None
+    assert project_notification(unknown) is None
+
+
+def test_expired_and_unknown_records_are_absent_from_reader_operations():
+    async def scenario():
+        service, db = build_service()
+        expired = canonical_document(
+            id="expired",
+            expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
+        )
+        unknown = {
+            "id": "unknown",
+            "user_id": "user-1",
+            "read_at": None,
+            "created_at": datetime.now(timezone.utc),
+            "provider_payload": {},
+        }
+        db.notifications.items.extend([expired, unknown])
+
+        assert await service.list_for_user("user-1") == []
+        assert await service.unread_count("user-1") == 0
+        assert (await service.mark_all_read("user-1"))["marked"] == 0
+        with pytest.raises(NotificationError) as absent:
+            await service.mark_read("expired", user_id="user-1")
+        assert absent.value.status_code == 404
+        assert expired["read_at"] is None
+
+    asyncio.run(scenario())
 
 
 def test_unread_count_and_mark_one():
