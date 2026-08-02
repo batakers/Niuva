@@ -152,6 +152,42 @@ def test_probe_exceptions_fail_closed_independently():
     assert "private" not in str(result)
 
 
+def test_compatibility_probe_closes_tasks_left_after_total_timeout():
+    async def scenario():
+        transaction_cancelled = asyncio.Event()
+        schema_cancelled = asyncio.Event()
+
+        async def slow_capability_probe(*_args, **_kwargs):
+            try:
+                await asyncio.sleep(10)
+            finally:
+                transaction_cancelled.set()
+
+        async def slow_schema_probe(*_args, **_kwargs):
+            try:
+                await asyncio.sleep(10)
+            finally:
+                schema_cancelled.set()
+
+        result = await probe_readiness_dependencies(
+            object(),
+            Database(),
+            "niuva-test",
+            capability_probe=slow_capability_probe,
+            schema_probe=slow_schema_probe,
+            transaction_timeout=10,
+            schema_timeout=10,
+            total_timeout=0.001,
+            clock=lambda: NOW,
+        )
+        return result, transaction_cancelled.is_set(), schema_cancelled.is_set()
+
+    result, transaction_cancelled, schema_cancelled = asyncio.run(scenario())
+    assert result.database_available is False
+    assert transaction_cancelled is True
+    assert schema_cancelled is True
+
+
 def test_public_projections_drop_unknown_or_malformed_diagnostics():
     schema = public_schema_status(
         ready_schema(

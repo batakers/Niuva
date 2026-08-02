@@ -134,11 +134,16 @@ topology, deployment environment, or production policy.
   three-second readiness deadline.
 - Removed an unearned endpoint secret-scrubbing assertion; actual malicious
   exception coverage remains in the coordinator test.
+- Added `backend/server.py` to the CI isort scope so its changed imports are
+  checked consistently with Black.
+- Kept the periodic readiness refresh alive after unexpected coordinator
+  failures while logging only the exception type, and closed throwaway probe
+  coordinators so bounded-out background tasks are cancelled.
 - Reconciled all PHASE-08A assignment references to `DEC-READY-01` and the
   environment-only blocking state.
-- Focused readiness/schema/capability tests: `37 passed`.
+- Focused readiness/schema/capability tests: `39 passed`.
 - Readiness plus notification integration matrix: `95 passed`.
-- Complete backend suite: `867 passed, 15 skipped, 14 subtests passed`.
+- Complete backend suite: `869 passed, 15 skipped, 14 subtests passed`.
 - Critical Flake8, focused mypy, Black, isort, compileall, `pip check`, and
   `git diff --check`: passed. `pip-audit` was not rerun because the module is
   unavailable in the current environment; the earlier 2 August result remains

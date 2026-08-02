@@ -516,6 +516,45 @@ def test_required_worker_heartbeat_advances_during_slow_batch(monkeypatch):
         server.app.state.notification_worker_task = previous_task
 
 
+def test_readiness_probe_loop_recovers_without_logging_exception_details(
+    monkeypatch, caplog
+):
+    previous_coordinator = server.app.state.readiness_probe_coordinator
+    recovered = asyncio.Event()
+    secret = "mongodb://private-user:private-secret@database"
+
+    class FlakyCoordinator:
+        def __init__(self):
+            self.calls = 0
+
+        async def probe(self, *, refresh_transaction):
+            assert refresh_transaction is True
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError(secret)
+            recovered.set()
+
+    coordinator = FlakyCoordinator()
+
+    async def scenario():
+        monkeypatch.setattr(server, "READINESS_PROBE_INTERVAL_SECONDS", 0)
+        server.app.state.readiness_probe_coordinator = coordinator
+        task = asyncio.create_task(server.readiness_probe_loop())
+        try:
+            await asyncio.wait_for(recovered.wait(), timeout=0.1)
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+    try:
+        asyncio.run(scenario())
+        assert coordinator.calls >= 2
+        assert "readiness_probe_loop_failed error_type=RuntimeError" in caplog.text
+        assert secret not in caplog.text
+    finally:
+        server.app.state.readiness_probe_coordinator = previous_coordinator
+
+
 def test_required_email_capability_is_configuration_only_and_secret_safe(monkeypatch):
     monkeypatch.setenv("EMAIL_DELIVERY_REQUIRED", "true")
     monkeypatch.setattr(server.emailer, "RESEND_API_KEY", "   ")

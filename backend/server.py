@@ -2973,7 +2973,13 @@ async def reservation_expiry_loop():
 
 async def readiness_probe_loop():
     while True:
-        await app.state.readiness_probe_coordinator.probe(refresh_transaction=True)
+        try:
+            await app.state.readiness_probe_coordinator.probe(refresh_transaction=True)
+        except Exception as exc:
+            logger.error(
+                "readiness_probe_loop_failed error_type=%s",
+                type(exc).__name__,
+            )
         await asyncio.sleep(READINESS_PROBE_INTERVAL_SECONDS)
 
 

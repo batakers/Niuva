@@ -104,6 +104,7 @@ jobs:
             backend/notification_worker.py \
             backend/quote_line_reconciliation_report.py \
             backend/storage.py \
+            backend/server.py \
             backend/migrations/007_security_publication_schema.py \
             backend/migrations/008_auth_recovery_safety.py \
             backend/migrations/009_admin_session_safety.py \
