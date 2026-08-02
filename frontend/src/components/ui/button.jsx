@@ -26,10 +26,10 @@ const buttonVariants = cva(
           "text-action-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
+        default: "h-11 px-4 py-2",
         sm: "h-8 rounded-control px-3 text-xs",
-        lg: "h-11 px-7 text-base",
-        icon: "h-9 w-9",
+        lg: "h-12 px-7 text-base",
+        icon: "h-11 w-11",
       },
     },
     defaultVariants: {
@@ -52,7 +52,7 @@ const Button = React.forwardRef(
       >
         {loading ? (
           <>
-            <Loader2 className="animate-spin" />
+            <Loader2 className="motion-safe:animate-spin" />
             {children}
           </>
         ) : (
