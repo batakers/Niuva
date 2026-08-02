@@ -56,6 +56,7 @@ jobs:
           backend/csv_safety.py
           backend/schema_manifest.py
           backend/schema_readiness.py
+          backend/readiness_health.py
           backend/notification_worker.py
           backend/quote_line_reconciliation_report.py
           backend/storage.py
@@ -72,6 +73,7 @@ jobs:
             backend/csv_safety.py \
             backend/schema_manifest.py \
             backend/schema_readiness.py \
+            backend/readiness_health.py \
             backend/notification_worker.py \
             backend/quote_line_reconciliation_report.py \
             backend/storage.py \
@@ -80,6 +82,8 @@ jobs:
             backend/migrations/008_auth_recovery_safety.py \
             backend/migrations/009_admin_session_safety.py \
             backend/tests/test_admin_notifications.py \
+            backend/tests/test_health.py \
+            backend/tests/test_readiness_health.py \
             backend/tests/test_readonly_load_probe.py \
             backend/tests/test_inventory_service.py \
             backend/tests/test_quote_line_reconciliation_report.py \
@@ -96,6 +100,7 @@ jobs:
             backend/csv_safety.py \
             backend/schema_manifest.py \
             backend/schema_readiness.py \
+            backend/readiness_health.py \
             backend/notification_worker.py \
             backend/quote_line_reconciliation_report.py \
             backend/storage.py \
@@ -103,6 +108,8 @@ jobs:
             backend/migrations/008_auth_recovery_safety.py \
             backend/migrations/009_admin_session_safety.py \
             backend/tests/test_admin_notifications.py \
+            backend/tests/test_health.py \
+            backend/tests/test_readiness_health.py \
             backend/tests/test_readonly_load_probe.py \
             backend/tests/test_inventory_service.py \
             backend/tests/test_quote_line_reconciliation_report.py \
