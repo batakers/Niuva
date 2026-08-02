@@ -111,3 +111,16 @@ readability for unambiguous historical records and refusing unsafe projections.
   the public immutable notification ID remains separate and unchanged.
 - No migration, index/TTL mutation, representative/shared/staging/production
   access, deployment, or provider activation was performed.
+
+## Reconciliation verification — 3 August 2026
+
+- Focused RED reproduced reliance on a separately gated deduplication index;
+  GREEN passed after the deterministic internal `_id` boundary was added.
+- Notification schema report plus canonical feed/Admin/inventory/password
+  recovery matrix: `187 passed`.
+- Black and Python compile checks passed for the changed Python scope.
+- Current `main` through PR #112 was merged without source conflict. The final
+  delta remains the ten PR #103 paths; the Document Register conflict preserves
+  both notification and merged Portfolio evidence.
+- No migration, external database, representative dataset, provider activation,
+  deployment, production-readiness, or go-live action was performed.
