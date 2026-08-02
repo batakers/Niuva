@@ -144,12 +144,14 @@ Moderated human review menggunakan:
 - [FORMAL_EXPERT_CRITIQUE_RERUN_2.md](./FORMAL_EXPERT_CRITIQUE_RERUN_2.md)
 - [FORMAL_EXPERT_CRITIQUE_RERUN_5.md](./FORMAL_EXPERT_CRITIQUE_RERUN_5.md)
 - [FOCUSED_BROWSER_REVALIDATION_R6.md](./FOCUSED_BROWSER_REVALIDATION_R6.md)
+- [FORMAL_EXPERT_CRITIQUE_RERUN_7.md](./FORMAL_EXPERT_CRITIQUE_RERUN_7.md)
 - [MODERATED_USABILITY_REVIEW_PLAN.md](./MODERATED_USABILITY_REVIEW_PLAN.md)
 - [MODERATED_USABILITY_RESULTS.md](./MODERATED_USABILITY_RESULTS.md)
 
 Review kit sudah disiapkan. Historical Round 5 PASS di-invalidasi saat
 pre-publication review menemukan clean direct-entry Order ID mismatch yang
 belum diuji dan evidence recording yang tidak tersedia di artifact repository.
-Focused browser revalidation R6 untuk fix tersebut lulus, tetapi sesi peserta
-tetap **NOT READY TO RUN** sampai formal expert critique penuh dijalankan ulang
-dan lulus. Results serta route recommendation tetap `INSUFFICIENT_EVIDENCE`.
+Focused browser revalidation R6 untuk fix tersebut lulus. Formal expert critique
+R7 kemudian membuka empat P1 pada default operator case, legacy `/order`, mobile
+sticky CTA, dan active-reservation/cart recovery. Sesi peserta tetap **NOT READY
+TO RUN**. Results serta route recommendation tetap `INSUFFICIENT_EVIDENCE`.

@@ -3,6 +3,7 @@
 Tanggal validasi awal: 31 Juli 2026
 **Tanggal validasi R3: 2 Agustus 2026**
 **Tanggal focused revalidation R6: 2 Agustus 2026**
+**Tanggal formal critique R7: 3 Agustus 2026**
 Artifact: `docs/implementation/prototypes/2026-07-31-niuva-mvp-clickable-prototype/`
 Runtime: static Node.js server; port `4177`
 Browser: Google Chrome lokal melalui Playwright
@@ -11,7 +12,7 @@ Reduced motion: aktif pada browser validation context
 
 ## Outcome
 
-Status: **NOT READY — full formal expert critique rerun required**.
+Status: **NOT READY — formal expert critique R7 failed with four open P1s**.
 
 Round 5 dicatat sebagai historical PASS, tetapi invalid untuk current gate karena
 tidak menguji clean-session direct Order URL dengan ID non-fixture dan merujuk
@@ -23,9 +24,13 @@ revalidation R6 menutup mismatch tersebut:
 - dashboard pada session yang sama mempertahankan Order ID; dan
 - browser console mencatat 0 error.
 
-Focused result bukan pengganti formal expert critique penuh. Prototype belum
-boleh dipakai untuk moderated human session sampai critique tersebut lulus dan
-review plan diperbarui secara eksplisit menjadi `READY TO RUN`.
+Formal expert critique R7 sudah dijalankan setelah focused R6. Review tersebut
+terdegradasi menjadi sequential single-context karena dua independent agent
+gagal sebelum menghasilkan evidence akibat account usage limit. Browser review
+menemukan empat P1 baru: default Admin case dead end dan Participant Mode leak,
+legacy `/order` tidak mengikuti safe-unavailable canonical contract, mobile
+sticky CTA generik, serta active reservation yang hilang konteks ketika kembali
+ke cart. Prototype belum boleh dipakai untuk moderated human session.
 
 Route recommendation tetap `INSUFFICIENT_EVIDENCE`.
 
@@ -45,12 +50,12 @@ Temuan sebelumnya:
 | JavaScript syntax | PASS — `app.js` dan `server.js` |
 | Actual server smoke | PASS — direct `/orders/NV-DEMO-014` HTTP 200, HTML, dan CSP header |
 | Patch whitespace | N/A — direktori prototype untracked; `git diff --check` tidak memeriksa file untracked |
-| Direct route matrix | PASS — 34/34 route/alias HTTP 200, memiliki H1, tanpa prototype 404 |
+| Direct route matrix | FAIL in R7 — 34 route/alias lama tetap valid; tambahan canonical check `/order` jatuh ke prototype 404 |
 | Route classification | PASS — 5 candidate route dan 1 legacy route diberi label sesuai |
 | Scenario selector | PASS — 29/29 fixture membuka layar valid tanpa 404 |
 | P0 state integrity | PASS — Custom cart identity, mixed cart, auth continuation, dan cancellation bertahan saat refresh |
-| Participant neutrality | PASS — evaluator controls hanya tampil pada `?mode=moderator` |
-| Canonical alignment | PASS — `/capabilities`, `/contact`, aliases, dan official mark |
+| Participant neutrality | FAIL in R7 — Panel Moderator tersembunyi, tetapi default Admin missing-case copy membocorkan instruksi “Panel Moderator” |
+| Canonical alignment | FAIL in R7 — aliases dan `/admin/orders` benar; `/order` belum memiliki safe-unavailable compatibility state |
 | After-sales review paths | PASS — lifecycle gate, intake, truthful evidence, customer case, Admin case, dan direct refresh |
 | Additional branch checks | PASS — safe 3MF, superseded offer, pickup, delivery |
 | Automated accessibility | PASS — 0 axe violation pada 7 remediation-critical route |
@@ -60,7 +65,7 @@ Temuan sebelumnya:
 | Operator mobile menu | PASS — state visible, `aria-expanded=true`, route navigation berhasil |
 | Browser console | PASS — 0 console error dan 0 uncaught page error |
 | Impeccable detector | PASS — `[]`, exit code `0` setelah remediation |
-| Visual inspection | PASS — Participant/Moderator separation dan sticky mobile commercial CTA |
+| Visual inspection | FAIL in R7 — sticky mobile Ready Product dan cart masih memakai label generik “Lanjut” |
 | **R3: R2-P1-01 pricing** | **PASS** — PLA 86.4g = Rp115.150, ABS Rp132.430, no Rp500/g or Rp700/g |
 | **R3: R2-P1-02 lifecycle (partial)** | **INCOMPLETE** — dua bug ditemukan pasca-penulisan: confirm-order overwrite + pay tanpa reservationStatus guard |
 | **R3: BUG-3A fix** | ✅ confirm-order preserves orderReference on retry — 2 Agustus 2026 |
@@ -87,7 +92,8 @@ Temuan sebelumnya:
 | **R6: Dashboard persistence** | **PASS** — session state and dashboard retain `NV-DIRECT-999` |
 | **R6: Console errors** | **PASS** — 0 errors and 0 warnings |
 | **R6: Focused revalidation** | **PASS** — targeted finding closed |
-| **Current formal gate** | **NOT READY** — complete expert critique rerun has not yet executed |
+| **R7: Formal expert critique** | **FAIL — DEGRADED** — 0 P0, 4 P1, 1 P2; sequential fallback after both independent agents hit account usage limit |
+| **Current formal gate** | **NOT READY** — remediasi prototype-only dan revalidation penuh diperlukan |
 
 ## Direct route matrix
 
@@ -109,6 +115,7 @@ Route berikut dibuka sebagai direct URL, bukan hanya melalui client navigation:
 /login
 /register
 /retail/checkout
+/order
 /dashboard
 /dashboard/notifications
 /retail/requests/REQ-DEMO-01
@@ -132,7 +139,9 @@ Route berikut dibuka sebagai direct URL, bukan hanya melalui client navigation:
 
 `/services` diarahkan ke `/capabilities`; `/portfolio` diarahkan ke `/projects`.
 Keduanya menggunakan client-side `replaceState` pada prototype. Mekanisme HTTP
-redirect produksi tidak diklaim.
+redirect produksi tidak diklaim. R7 menambahkan pemeriksaan `/order`; route ini
+masih jatuh ke prototype 404 dan membuka `R7-P1-02` karena belum mengikuti
+safe-unavailable compatibility state dari `DEC-UX-003`.
 
 Expected classification terbukti:
 
@@ -167,6 +176,7 @@ Expected classification terbukti:
 | --- | --- | --- |
 | Satu operator lintas area | Persistent order context dan navigation antar-area | PASS |
 | Role-aware dashboard | Ranked next actions; bukan KPI grid | PASS |
+| Default case next action | Dashboard mengiklankan CASE-DEMO-01, tetapi case tidak tersedia tanpa fixture moderator | **FAIL — R7-P1-01** |
 | Offer + manager approval | Draft dan approval dicatat sebagai langkah terpisah meski role dapat digabung | PASS |
 | Safe file review | STL/3MF only, customer profile ignored, `.gcode` rejected | PASS |
 | Stale/conflict recovery | Save ditolak saat versi berubah; reload/compare message | PASS |
@@ -232,20 +242,22 @@ Keyboard validation:
 - Belum ada usability session dengan operator Niuva yang sebenarnya.
 - Moderated review plan dan results template sudah siap, tetapi belum berisi
   observasi peserta manusia.
-- Lima P1 dari formal rerun sebelumnya telah diremediasi dan lolos bounded
-  browser revalidation. Formal rerun terbaru kemudian menemukan dua replacement
-  P1: formula harga Custom Print tidak canonical dan timer reservasi dimulai
-  sebelum lifecycle event yang disetujui. Moderated session tetap belum siap.
+- Temuan pricing, reservation lifecycle, dan direct/deep Order identity dari
+  round sebelumnya sudah memiliki bukti focused closure. Formal critique R7
+  membuka empat P1 baru pada default operator case, `/order` compatibility,
+  mobile sticky CTA, dan active-reservation/cart recovery. Moderated session
+  tetap belum siap.
 - Route candidate tetap candidate walaupun prototipe dapat diklik.
 - Provider pembayaran/logistik, email, storage, slicer, dan authentication belum dipilih/diaktifkan.
 - Exact business content dan produksi nyata belum diuji.
 
 Rekomendasi gate berikutnya:
 
-1. remediasi `R2-P1-01` dan `R2-P1-02` pada
-   `FORMAL_EXPERT_CRITIQUE_RERUN_2.md` dengan izin terpisah;
-2. lakukan focused browser revalidation dan formal expert critique ulang;
-3. setelah expert gate lulus, jalankan `MODERATED_USABILITY_REVIEW_PLAN.md`
+1. remediasi prototype-only `R7-P1-01` sampai `R7-P1-04` dan
+   `R7-P2-01` pada `FORMAL_EXPERT_CRITIQUE_RERUN_7.md`;
+2. lakukan focused browser revalidation dan formal expert critique ulang dengan
+   evidence assessment independen yang pulih;
+3. hanya setelah expert gate lulus, jalankan `MODERATED_USABILITY_REVIEW_PLAN.md`
    bersama satu operator non-IT dan satu calon pelanggan;
 4. catat temuan per scenario tanpa mengubah status route canonical secara otomatis;
 5. putuskan apakah candidate cart dan customer after-sales route layak dipromosikan;
