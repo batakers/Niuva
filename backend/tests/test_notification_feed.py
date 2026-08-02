@@ -300,7 +300,7 @@ def test_new_notification_uses_the_exact_canonical_v1_shape():
         projected = await publish(service)
         stored = db.notifications.items[0]
 
-        assert set(stored) == CANONICAL_NOTIFICATION_FIELDS
+        assert set(stored) - {"_id"} == CANONICAL_NOTIFICATION_FIELDS
         assert type(stored["schema_version"]) is int
         assert stored["schema_version"] == 1
         assert stored["id"] == projected["id"]
@@ -370,6 +370,13 @@ def test_concurrent_publication_uses_one_immutable_identity():
         assert {item["expires_at"] for item in published} == {
             db.notifications.items[0]["expires_at"]
         }
+        key = deduplication_key(
+            user_id="user-1",
+            event="work_order.material_shortage",
+            reference_type="work_order",
+            reference_id="wo-1",
+        )
+        assert db.notifications.items[0]["_id"] == f"notification:{key}"
 
     asyncio.run(scenario())
 

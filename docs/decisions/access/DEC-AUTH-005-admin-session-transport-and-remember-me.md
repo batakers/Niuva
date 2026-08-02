@@ -17,9 +17,11 @@ local-only, and the backend accepts an `access_token` cookie fallback without
 issuing or clearing that cookie. There is no approved idle timeout, refresh,
 remember-me, server logout, or CSRF contract.
 
-The current application is route-based and same-origin. Surface topology remains
-an open architecture decision, so this session policy must be reopened if Admin
-moves to a subdomain or separate frontend application.
+The application is route-based and same-origin. Surface topology was still open
+when this decision was approved; `ADR-004` / `DEC-ARCH-01` later selected that
+single-origin route-based shape for MVP. This session policy must be reopened if
+a future superseding decision moves Admin to a subdomain or separate frontend
+application.
 
 ## Decision
 

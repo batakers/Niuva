@@ -1,12 +1,14 @@
 # ADR-004 — Surface Boundary Topology (Route vs Subdomain vs Separate Application)
 
-Status: **Proposed — Open Decision (no architecture change authorized)**
-Decision ID: `DEC-ARCH-01` (proposed)
+Status: **Accepted — Option A for MVP (no implementation authority)**
+Decision ID: `DEC-ARCH-01`
 Decision owner: Project Manager / Product Owner
 Technical approver: Acting Technical Owner
 Operations acknowledgement: Acting Operations Owner
 Proposed date: 24 July 2026
-Approval source: Not yet approved. This ADR only formalizes an open decision for later resolution.
+Decision date: 31 July 2026
+Approval source: Explicit user approval of `NUF-R01` through `NUF-R12`,
+including `NUF-R01` Option A, on 31 July 2026
 Related baseline: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 Canonical authority: `docs/NIUVA_MASTER_SPEC.md`; `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`
 Decision log: `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
@@ -36,12 +38,12 @@ Authenticated
 Admin Studio is explicitly **not a third customer journey**; it is the shared
 operational environment for authorized staff (Master Spec §5).
 
-The canonical documents deliberately leave **the technical boundary** between these
-surfaces open. They do not state whether Retail, B2B, and Admin Studio are served as
-routes within a single frontend application, as separate host names / subdomains, or
-as separately deployed frontend applications behind one identity and platform. No
-approved document in `docs/context/DOCUMENT_REGISTER.md` records a surface-topology
-decision.
+Before this approval, the canonical documents deliberately left **the technical
+boundary** between these surfaces open. They did not state whether Retail, B2B, and
+Admin Studio would be served as routes within a single frontend application, as
+separate host names / subdomains, or as separately deployed frontend applications
+behind one identity and platform. No earlier approved document in
+`docs/context/DOCUMENT_REGISTER.md` recorded a surface-topology selection.
 
 Today the repository ships a single React application (`frontend/`) with route groups
 for marketing, operational, and admin surfaces (`frontend/src/App.js`), backed by one
@@ -113,38 +115,69 @@ origin via reverse proxy, or subdomains as in Option B).
 
 ## Decision
 
-**Deferred.** No topology is selected. This ADR records the options, constraints, and
-the decision inputs required before a choice can be made. Until this ADR is approved,
-the current single-application route-based shape (Option A) remains the de facto
-implementation, and no subdomain or separate-application work is authorized.
+Niuva selects **Option A — single application, route-based surfaces under one
+origin for MVP**.
 
-## Decision Inputs Required Before Approval
+- Public, Retail, customer-account, B2B, and Admin Studio surfaces are delivered
+  through one frontend application and one origin, separated by canonical route
+  ownership.
+- Shared-origin session, origin, cookie, CSRF, and recovery behavior follows the
+  applicable approved authentication decisions. No cross-host token handoff is
+  introduced for MVP.
+- Route guards, code splitting, layout ownership, and operational navigation may
+  separate user experience and frontend delivery concerns, but backend handlers,
+  services, and ownership-scoped data queries remain the authorization boundary.
+- Admin Studio remains an internal operational surface and not a third customer
+  journey. Retail Order and B2B Quote/Project remain separate aggregates and state
+  machines.
+- The canonical MVP route responsibilities are governed by `DEC-UX-003`.
+- Selecting this topology does not activate routes or capabilities that are absent,
+  disabled, deferred, or provider-gated in current source.
+- Option B or C requires a new superseding architecture decision before any
+  subdomain, cross-host session, or separate-application work begins.
 
-1. Cross-surface session and authentication model (single-origin cookie vs cross-host
-   token handoff) and its CSRF/SameSite implications.
-2. Deployment and operations budget for the three-person operating model.
-3. Shared design-system and brand-governance mechanism that keeps "one identity"
-   true across whatever boundary is chosen (`DESIGN.md` is the active cross-surface
-   guardrail).
-4. Public-vs-operational isolation requirements (CSP, edge caching, exposure of the
-   Admin surface).
-5. The first approved Retail vertical slice scope, since the minimum viable Retail
-   surface should inform, not follow, the topology commitment.
+## Approval Basis and Remaining Implementation Inputs
+
+The MVP selection is based on:
+
+1. the existing single-application, single-origin repository shape;
+2. the approved same-origin customer and Admin session directions;
+3. the small operating model and the lower deployment, authentication, and support
+   burden of one frontend;
+4. the active shared design-system and brand guardrail in `DESIGN.md`; and
+5. the now-approved Retail product and route scope recorded in `DEC-UX-003`.
+
+The following remain implementation inputs rather than reasons to reopen the MVP
+topology:
+
+- exact route-level code splitting and bundle boundaries;
+- public-versus-operational CSP, caching, indexing, and exposure rules;
+- route-to-layout, route-to-permission, and same-origin deep-link allowlists;
+- environment-specific origin, cookie, proxy, TLS, and CSRF validation;
+- deployment, monitoring, rollback, and operational handover evidence; and
+- any later evidence that justifies a superseding Option B or C decision.
 
 ## Consequences
 
-- Future canonical documents may reference this ADR as the home for the surface-
-  topology decision, keeping it out of ad hoc conversation.
-- Selecting Option B or C will require an accompanying cross-host or cross-app
+- Canonical planning uses the single-origin route-based topology and the route
+  responsibilities in `DEC-UX-003`.
+- The former open route/subdomain/separate-application selection is closed for MVP.
+- Option B or C remains a possible later superseding decision, not an implementation
+  alternative that may be started under this ADR.
+- A later Option B or C proposal requires an accompanying cross-host or cross-app
   session/auth design and an explicit brand/identity governance note before any
   source or infrastructure change.
+- Frontend co-location does not permit customer/internal code, data, routes, or
+  permissions to share unsafe projections or bypass backend authorization.
 - Choosing any option does not by itself authorize implementation, provider
-  selection, infrastructure procurement, or go-live.
+  selection, migration, infrastructure procurement, deployment, production
+  readiness, or go-live.
 
 ## References
 
 - `docs/NIUVA_MASTER_SPEC.md` (§Overview, §5 Product Structure, §4 Authorization)
 - `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`
+- `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md`
 - `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-direction.md`
 - `docs/implementation/specs/candidates/2026-07-16-retail-order-checkout-foundation-design.md`
 - `docs/implementation/specs/candidates/2026-07-24-retail-catalog-discovery-slice-design.md`

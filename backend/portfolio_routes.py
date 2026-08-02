@@ -2,10 +2,9 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
-
 from portfolio_domain import PortfolioDomainError
 from portfolio_service import PortfolioService
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PortfolioContentPayload(BaseModel):
@@ -107,6 +106,7 @@ def build_portfolio_router(
     async def create_portfolio_from_project(
         project_id: str,
         actor: dict = Depends(require_permission("content.write")),
+        _project_reader: dict = Depends(require_permission("projects.read")),
     ):
         return await invoke(service().create_from_project(project_id, actor=actor))
 
@@ -133,7 +133,7 @@ def build_portfolio_router(
     async def rollback_portfolio(
         entry_id: str,
         payload: PortfolioRollbackPayload,
-        actor: dict = Depends(require_permission("content.write")),
+        actor: dict = Depends(require_permission("content.publish")),
     ):
         return await invoke(
             service().rollback(

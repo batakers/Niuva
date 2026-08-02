@@ -1,8 +1,12 @@
 # PHASE-02A — Notification Canonical Schema Task Card
 
-Status: **local implementation and self-review complete — delivery authorized**
+Status: **bounded source and reconciliation review complete — current-head CI
+and merge pending; operational activation excluded**
 Selected baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
-(`origin/main`, 2 August 2026)
+(`origin/main`, 2 August 2026, Asia/Jakarta)
+
+Reconciliation baseline: `a98463a3b8a7139a5340e6955672b6b3d4a9b461`
+(`origin/main`, checked 3 August 2026, Asia/Jakarta)
 Branch / worktree: `feat/backend-notification-schema` /
 `Niuva-worktrees/backend-notification-schema`
 
@@ -41,11 +45,13 @@ readability for unambiguous historical records and refusing unsafe projections.
 - `docs/NIUVA_MASTER_SPEC.md`
 - `docs/decisions/product/DEC-DATA-003-notification-schema-retention-and-delivery-boundary.md`
 - `docs/decisions/access/DEC-AUTH-009-authentication-security-event-governance.md`
-- PR #102 (`feat/backend-notification-schema-report`) is a review dependency;
-  its representative-data execution remains separately gated.
+- PR #102 merged as `e5376b9`; its aggregate report and representative-data
+  execution gates remain separate from this runtime slice.
 - User authorization on 2 August 2026 permits implementation, commit, push,
-  and pull-request creation for this bounded source slice. It does not permit
-  merge or excluded operational/data actions.
+  and pull-request creation for this bounded source slice. On 3 August 2026,
+  the Project Owner separately authorized the recommended PR reconciliation and
+  merge sequence. Neither authorization permits excluded operational/data
+  actions.
 
 ## Acceptance criteria
 
@@ -55,7 +61,8 @@ readability for unambiguous historical records and refusing unsafe projections.
    timestamps, and `expires_at = created_at + 180 days`.
 2. Concurrent publication of the same condition produces one notification and
    increments its occurrence count without changing its ID or reopening its
-   reader state.
+   reader state. It must remain atomic before the separately gated Migration 007
+   unique deduplication index is active.
 3. Feed/count/read mutations are recipient-scoped and exclude expired records.
 4. API projection exposes only the canonical safe field allowlist and derives
    deep links from allowlisted references.
@@ -73,7 +80,8 @@ readability for unambiguous historical records and refusing unsafe projections.
   and email tests.
 - Full backend regression suite, compile, formatter check, dependency check,
   `git diff --check`, and final security/diff review.
-- Commit, push, and PR only when all required local gates pass. Do not merge.
+- Commit, push, PR reconciliation, and merge only when all required local and
+  current-head CI gates pass.
 
 ## Remaining risks
 
@@ -83,6 +91,8 @@ readability for unambiguous historical records and refusing unsafe projections.
   migration procedure after the aggregate report gate.
 - Recurrence retains the existing product behavior: an already-read
   notification remains read.
+- Mixed historical-shape filtering can scan more rows than the returned feed
+  limit; production capacity and latency remain unverified operational gates.
 
 ## Local verification — 2 August 2026
 
@@ -96,5 +106,8 @@ readability for unambiguous historical records and refusing unsafe projections.
   atomic upsert, immutable identity/expiry, recurrence ordering, legacy email
   exclusion, versionless compatibility labeling, and expired/unknown fail-closed
   behavior.
+- Reconciliation review removed the inactive-index dependency from concurrent
+  writes by binding each new canonical row to a deterministic internal `_id`;
+  the public immutable notification ID remains separate and unchanged.
 - No migration, index/TTL mutation, representative/shared/staging/production
   access, deployment, or provider activation was performed.
