@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -16,6 +17,11 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 MAX_DELIVERY_ATTEMPTS = 5
+MAX_CLAIM_BATCH = 200
+DEFAULT_LEASE_SECONDS = 60
+MAX_BACKOFF_SECONDS = 300
+DELIVERY_ERROR_CODE_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
+WORKER_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9:._-]{0,199}$")
 
 
 def now_utc() -> datetime:
@@ -24,6 +30,22 @@ def now_utc() -> datetime:
 
 def _write_options(session=None) -> dict:
     return {"session": session} if session is not None else {}
+
+
+def delivery_backoff_seconds(attempt: int) -> int:
+    if (
+        not isinstance(attempt, int)
+        or isinstance(attempt, bool)
+        or not 1 <= attempt < MAX_DELIVERY_ATTEMPTS
+    ):
+        raise ValueError("attempt must be a retryable delivery attempt")
+    return min(2**attempt, MAX_BACKOFF_SECONDS)
+
+
+def safe_delivery_error_code(error: str | None) -> str:
+    if isinstance(error, str) and DELIVERY_ERROR_CODE_PATTERN.fullmatch(error):
+        return error
+    return "delivery_error"
 
 
 class NotificationError(Exception):
@@ -405,19 +427,36 @@ class NotificationService:
         *,
         worker_id: str,
         limit: int = 50,
-        lease_seconds: int = 60,
+        lease_seconds: int = DEFAULT_LEASE_SECONDS,
         at: datetime | None = None,
     ) -> list[dict]:
         """Atomically lease due work so concurrent workers cannot both send it."""
+        if not isinstance(worker_id, str) or not WORKER_ID_PATTERN.fullmatch(worker_id):
+            raise NotificationError(
+                422, "invalid_worker_id", "Identitas worker tidak valid."
+            )
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0:
+            raise NotificationError(
+                422, "invalid_claim_limit", "Batas claim outbox tidak valid."
+            )
+        if (
+            not isinstance(lease_seconds, int)
+            or isinstance(lease_seconds, bool)
+            or lease_seconds <= 0
+        ):
+            raise NotificationError(
+                422, "invalid_lease_duration", "Durasi lease outbox tidak valid."
+            )
         moment = at or now_utc()
         claimed = []
-        for _index in range(min(limit, 200)):
+        for _index in range(min(limit, MAX_CLAIM_BATCH)):
             lease_token = str(uuid.uuid4())
             entry = await self.db.notification_outbox.find_one_and_update(
                 {
                     "$or": [
                         {
                             "status": "pending",
+                            "attempts": {"$lt": MAX_DELIVERY_ATTEMPTS},
                             "next_attempt_at": {"$lte": moment},
                             "$or": [
                                 {"lease_until": None},
@@ -426,6 +465,7 @@ class NotificationService:
                         },
                         {
                             "status": "processing",
+                            "attempts": {"$lt": MAX_DELIVERY_ATTEMPTS},
                             "lease_until": {"$lte": moment},
                         },
                     ],
@@ -457,6 +497,26 @@ class NotificationService:
         error: str | None = None,
         at: datetime | None = None,
     ) -> dict:
+        if (
+            not isinstance(entry_id, str)
+            or not entry_id
+            or len(entry_id) > 200
+            or not isinstance(lease_token, str)
+            or not lease_token
+            or len(lease_token) > 200
+        ):
+            raise NotificationError(
+                422,
+                "invalid_outbox_identity",
+                "Identitas entri atau lease outbox tidak valid.",
+            )
+        if not isinstance(delivered, bool):
+            raise NotificationError(
+                422,
+                "invalid_delivery_result",
+                "Hasil delivery outbox tidak valid.",
+            )
+        timestamp = at or now_utc()
         entry = await self.db.notification_outbox.find_one({"id": entry_id}, {"_id": 0})
         if not entry:
             raise NotificationError(
@@ -466,14 +526,26 @@ class NotificationService:
         if (
             entry.get("status") != "processing"
             or entry.get("lease_token") != lease_token
+            or not isinstance(entry.get("lease_until"), datetime)
+            or entry["lease_until"] <= timestamp
         ):
             raise NotificationError(
                 409,
                 "outbox_lease_lost",
                 "Lease outbox tidak lagi dimiliki worker ini.",
             )
-        attempts = entry.get("attempts", 0) + 1
-        timestamp = at or now_utc()
+        previous_attempts = entry.get("attempts")
+        if (
+            not isinstance(previous_attempts, int)
+            or isinstance(previous_attempts, bool)
+            or not 0 <= previous_attempts < MAX_DELIVERY_ATTEMPTS
+        ):
+            raise NotificationError(
+                409,
+                "invalid_outbox_state",
+                "State percobaan outbox tidak valid.",
+            )
+        attempts = previous_attempts + 1
         if delivered:
             status = "delivered"
         elif attempts >= MAX_DELIVERY_ATTEMPTS:
@@ -486,12 +558,12 @@ class NotificationService:
         changes = {
             "status": status,
             "attempts": attempts,
-            "last_error": None if delivered else error,
+            "last_error": None if delivered else safe_delivery_error_code(error),
             "updated_at": timestamp,
             "next_attempt_at": (
                 None
                 if delivered or status == "exhausted"
-                else timestamp + timedelta(seconds=min(2**attempts, 300))
+                else timestamp + timedelta(seconds=delivery_backoff_seconds(attempts))
             ),
             "lease_owner": None,
             "lease_token": None,
@@ -502,6 +574,7 @@ class NotificationService:
                 "id": entry_id,
                 "status": "processing",
                 "lease_token": lease_token,
+                "lease_until": {"$gt": timestamp},
             },
             {"$set": changes},
         )
