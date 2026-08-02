@@ -6,12 +6,15 @@ Date: 2 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-observability`
 
-PR: `#108` (open; review pending)
+PR: `#108` (open; reconciliation review complete)
 
 Worktree: `/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-observability`
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
+
+Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
+(`origin/main`, merged 3 August 2026 after PR #107).
 
 Related roadmap task: `PHASE-08B`; `TASK-08B-01`; `TASK-08B-02`
 
@@ -33,9 +36,10 @@ journeys. Named approvers and their operational mandates remain pending.
 
 **Planning and Git delivery authorization:** The Project Owner explicitly
 authorized continuation of Feature 7.3 planning and authorized commit, push,
-and pull-request creation on 2 August 2026. This does not approve the proposed
-observability decisions, authorize source implementation, authorize PR merge,
-select a provider, or grant deployment/production/go-live authority.
+and pull-request creation on 2 August 2026. On 3 August 2026, the Project Owner
+separately authorized PR reconciliation and merge. Neither authorization
+approves the proposed observability decisions, source implementation, provider
+selection, deployment, production readiness, or go-live.
 
 Read authority in this order:
 
@@ -97,15 +101,15 @@ production telemetry system:
 
 ## Dependency on Feature 7.2
 
-PR `#107` on `plan/backend-worker-topology` proposes the worker topology,
-at-least-once replay, fencing, shutdown, readiness, scheduler, and backlog
-operating contract. Its quality gates were green when this task opened, but it
-remains open and unmerged.
+PR `#107` merged as `fe1d8a0` and records the Project Owner-approved
+worker-topology planning direction. Its Operations/SRE/Security acceptance,
+numerical timing, telemetry/SLO, capacity, destination, and accountable-owner
+inputs remain pending under DR-014; source implementation remains unauthorized.
 
 This task may define provider-neutral worker signal names and decision fields.
-It must not describe PR `#107` as merged authority, copy its proposal into
-source, or finalize worker thresholds before its Operations/SRE decisions are
-accepted.
+It must not treat the still-pending Operations/SRE contract as final, copy the
+planning proposal into source, or finalize worker thresholds before the
+required decisions are accepted.
 
 ## In scope
 
@@ -143,11 +147,10 @@ accepted.
 
 - `docs/implementation/production-readiness/phases/FEATURE-7.3-backend-observability-task-card.md`
 - `docs/implementation/production-readiness/phases/FEATURE-7.3-backend-observability-decision-package.md`
+- `docs/implementation/production-readiness/phases/README.md`
 
-The phase evidence index is intentionally unchanged in this branch because PR
-`#107` concurrently adds Feature 7.2 at the same table boundary. The index
-should be reconciled after the first planning PR merges, without stacking or
-silently importing the other branch.
+The phase evidence index is reconciled after PR #107 merged, preserving Feature
+7.2 and adding Feature 7.3 without importing any source implementation.
 
 All source, test, dependency, configuration, decision-register, canonical,
 migration, runbook, CI, and deployment files remain intentionally unchanged.
@@ -208,6 +211,6 @@ Stop before source implementation if:
   readiness.
 
 **Commit / push / PR authorization:** granted for this documentation-only
-planning packet. **Merge authorization:** not granted. **Source implementation,
-provider activation, deployment, production readiness, and go-live
-authorization:** not granted.
+planning packet. **PR reconciliation and merge authorization:** granted by the
+Project Owner on 3 August 2026. **Source implementation, provider activation,
+deployment, production readiness, and go-live authorization:** not granted.

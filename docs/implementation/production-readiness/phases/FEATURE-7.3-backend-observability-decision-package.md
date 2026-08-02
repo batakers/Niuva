@@ -6,10 +6,13 @@ Date: 2 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-observability`
 
-PR: `#108` (open; review pending)
+PR: `#108` (open; reconciliation review complete)
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
+
+Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
+(`origin/main`, merged 3 August 2026). This changes no decision or source gate.
 
 Decision dependency: `DR-014`
 
@@ -98,7 +101,7 @@ Application code exports directly to a selected telemetry provider.
 This can support rich correlation, but it selects a dependency, destination,
 credential, buffering, outage, and cost boundary that DR-014 has not resolved.
 
-### Recommendation
+### Structured logging recommendation
 
 Approve **Option B** as the canonical application log emission format. Treat
 external collection/export as a separate adapter/deployment decision. A later
@@ -145,7 +148,7 @@ safe event outcome.
 
 ## 4. Decision 2 — Request correlation and HTTP signals
 
-### Recommended contract
+### Request-correlation contract
 
 - Generate a UUID request ID when an inbound ID is absent or invalid.
 - Accept an inbound request ID only under a strict length/character contract;
@@ -163,7 +166,7 @@ safe event outcome.
   metrics provide complete aggregate counts. Errors, transaction-unknown, and
   security-relevant safe events retain their separately approved policy.
 
-### Required approval inputs
+### Request-correlation approval inputs
 
 | Field | Approved value |
 | --- | --- |
@@ -196,7 +199,7 @@ small internal interface. A later approved adapter exposes or exports them.
 This keeps domain instrumentation provider-neutral but provides no operational
 visibility until an adapter/destination is approved and connected.
 
-### Recommendation
+### Metrics recommendation
 
 Approve the canonical metric inventory and **Option C** first. Select Option A
 or B as a separate Operations/SRE implementation input before source work that
@@ -237,7 +240,7 @@ system and describe it as operational observability.
 - Histogram buckets, collection interval, process aggregation, multiprocess
   behavior, and resource overhead require approved capacity evidence.
 
-### Required approval inputs
+### Metrics approval inputs
 
 | Field | Approved value |
 | --- | --- |
@@ -285,7 +288,7 @@ system and describe it as operational observability.
 | Transaction commit unknown | Any ambiguous commit outcome; proposed immediate review | Pending |
 | Telemetry pipeline degraded | Export failures/drop/buffer saturation | Pending |
 
-### Required approval inputs
+### Alerting approval inputs
 
 | Field | Approved value |
 | --- | --- |
@@ -300,7 +303,7 @@ system and describe it as operational observability.
 
 ## 7. Decision 5 — Timeout visibility
 
-### Recommended contract
+### Timeout visibility contract
 
 - Every external or database dependency operation that can block has an
   approved end-to-end deadline before it is instrumented as compliant.
@@ -319,7 +322,7 @@ system and describe it as operational observability.
   remains off unless explicitly retry-safe, and an unknown commit never
   replays the business callback.
 
-### Required approval inputs
+### Timeout approval inputs
 
 | Field | Approved value |
 | --- | --- |
@@ -335,7 +338,7 @@ approved or merged source for final values.
 
 ## 8. Decision 6 — Worker backlog and exhaustion visibility
 
-### Recommended contract
+### Worker visibility contract
 
 - Worker signals are aggregate queries/state transitions, never scans that
   expose payloads or recipient fields.
@@ -360,7 +363,7 @@ approved or merged source for final values.
 Instrumentation implementation waits for acceptance of worker process
 topology, lease timing/fencing, shutdown, readiness, and scheduler ownership.
 Metrics must describe the accepted runtime, not the current in-process loop or
-an unmerged proposal as if it were final.
+a planning direction with pending Operations/SRE decisions as if it were final.
 
 **Approval field:** `Pending Operations/SRE decision and Feature 7.2 acceptance`
 
@@ -435,7 +438,7 @@ them.
 
 ## 11. Exporter and telemetry-outage behavior
 
-### Recommendation
+### Exporter-outage recommendation
 
 - Core request/business success does not depend synchronously on an optional
   telemetry exporter.
@@ -522,12 +525,14 @@ This list is planning context, not permission to edit those files now.
 ## 15. Approval record
 
 The Project Owner authorized planning and Git delivery of this proposal on
-2 August 2026. No recommendation or implementation decision is approved by
-that authorization or by the existence of this file/PR.
+2 August 2026, then separately authorized PR reconciliation and merge on
+3 August 2026. No observability recommendation or implementation decision is
+approved by those authorizations or by the existence of this file/PR.
 
 | Approval | Owner | Value / evidence | Date |
 | --- | --- | --- | --- |
 | Planning and commit/push/PR authorization | Project Owner | Granted for documentation-only proposal | 2 August 2026 |
+| PR reconciliation and merge | Project Owner | Granted for this documentation-only proposal | 3 August 2026 |
 | Data classification and redaction contract | Security + Operations/SRE | Pending | Pending |
 | Structured logging contract | Operations/SRE + Security | Pending | Pending |
 | Metric inventory/cardinality contract | Operations/SRE + Backend | Pending | Pending |
@@ -542,4 +547,4 @@ that authorization or by the existence of this file/PR.
 
 Until the remaining fields have attributable approval evidence, Feature 7.3
 remains `decision_blocked`. Source implementation, provider activation,
-deployment, production-readiness claims, PR merge, and go-live must not begin.
+deployment, production-readiness claims, and go-live must not begin.
