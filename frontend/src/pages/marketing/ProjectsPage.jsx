@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 import { MarketingLayout } from "@/components/layout/Layout";
 import { HAS_CONFIGURED_BACKEND, api, resolveMediaUrl } from "../../lib/api";
 import {
@@ -23,6 +24,27 @@ import { usePublicSettings } from "../../lib/publicSettings";
 // the card directly beneath it. Left eager: it is the LCP element here.
 const heroProject = profileContent.projects[1];
 
+// Portfolio API response shape. Extra fields from the backend are allowed
+// (passthrough); we only assert the keys the UI reads.
+const portfolioItemSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  title_id: z.string(),
+  description_id: z.string().optional().default(""),
+  category: z.string().optional().default(""),
+  images: z.array(z.string()).optional().default([]),
+}).passthrough();
+
+const portfolioListSchema = z.array(portfolioItemSchema);
+
+export function parsePortfolioResponse(data) {
+  const result = portfolioListSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, items: result.data };
+  }
+  // Do not make schema drift look like a genuine empty or partial portfolio.
+  return { success: false, items: [] };
+}
+
 export default function ProjectsPage() {
   const { contact } = usePublicSettings();
   const [portfolioState, setPortfolioState] = useState({
@@ -34,7 +56,11 @@ export default function ProjectsPage() {
     if (!HAS_CONFIGURED_BACKEND) return undefined;
     setPortfolioState((current) => ({ ...current, status: "loading" }));
     return api.get("/portfolio").then((response) => {
-      setPortfolioState({ status: "ready", items: response.data });
+      const parsed = parsePortfolioResponse(response.data);
+      setPortfolioState({
+        status: parsed.success ? "ready" : "invalid",
+        items: parsed.items,
+      });
     }).catch(() => {
       setPortfolioState((current) => ({ ...current, status: "error" }));
     });
@@ -96,19 +122,32 @@ export default function ProjectsPage() {
               align="stacked"
             />
             {portfolioState.status === "loading" && (
-              <div className="grid gap-8">
-                {[1, 2, 3].map((item) => (
-                  <Skeleton key={item} className="h-[30rem] rounded-card" />
-                ))}
+              <div role="status">
+                <p className="sr-only">Memuat portfolio yang dipublikasikan.</p>
+                <div aria-hidden="true" className="grid gap-8">
+                  {[1, 2, 3].map((item) => (
+                    <Skeleton key={item} className="h-[30rem] rounded-card" />
+                  ))}
+                </div>
               </div>
             )}
             {portfolioState.status === "error" && (
               <ErrorState error="Portfolio belum berhasil dimuat." onRetry={loadPortfolio} />
             )}
+            {portfolioState.status === "invalid" && (
+              <ErrorState
+                error="Data portfolio tidak dapat diverifikasi."
+                onRetry={loadPortfolio}
+              >
+                Muat ulang data. Jika masalah berlanjut, hubungi tim Niuva.
+              </ErrorState>
+            )}
             {portfolioState.status === "ready" && projects.length === 0 && (
               <EmptyState>Belum ada project yang dipublikasikan.</EmptyState>
             )}
-            {portfolioState.status !== "loading" && portfolioState.status !== "error" && (
+            {portfolioState.status !== "loading" &&
+              portfolioState.status !== "error" &&
+              portfolioState.status !== "invalid" && (
               <div className="grid gap-12 lg:gap-16">
                 {projects.map((project, index) => (
                 <ProjectCaseStudyCard

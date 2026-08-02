@@ -4,7 +4,7 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const skeletonVariants = cva(
-  "animate-pulse rounded-control bg-surface-muted",
+  "motion-safe:animate-pulse rounded-control bg-surface-muted",
   {
     variants: {
       variant: {
@@ -40,6 +40,7 @@ const Skeleton = React.forwardRef(
     return (
       <div
         ref={ref}
+        aria-hidden="true"
         className={cn(skeletonVariants({ variant, size }), className)}
         {...props}
       />

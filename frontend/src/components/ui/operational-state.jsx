@@ -52,7 +52,7 @@ export function OperationalState({
         className={cn(
           "h-7 w-7",
           meta.tone,
-          meta.animate && "animate-spin motion-reduce:animate-none"
+          meta.animate && "motion-safe:animate-spin"
         )}
         strokeWidth={1.6}
       />
