@@ -46,15 +46,34 @@ class Collection:
         self.before_delete = None
 
     @staticmethod
-    def _matches(item, query):
+    def _bool_numeric_mismatch(actual, expected):
+        return bool(
+            (type(actual) is bool and type(expected) in (int, float))
+            or (type(expected) is bool and type(actual) in (int, float))
+        )
+
+    @classmethod
+    def _bson_equal(cls, actual, expected):
+        return not cls._bool_numeric_mismatch(actual, expected) and actual == expected
+
+    @classmethod
+    def _matches(cls, item, query):
         for key, value in query.items():
             actual = item.get(key)
             if isinstance(value, dict):
-                if "$in" in value and actual not in value["$in"]:
+                if "$in" in value and not any(
+                    cls._bson_equal(actual, candidate) for candidate in value["$in"]
+                ):
                     return False
-                if "$lte" in value and (actual is None or actual > value["$lte"]):
-                    return False
-            elif actual != value:
+                if "$lte" in value:
+                    limit = value["$lte"]
+                    if (
+                        actual is None
+                        or cls._bool_numeric_mismatch(actual, limit)
+                        or actual > limit
+                    ):
+                        return False
+            elif not cls._bson_equal(actual, value):
                 return False
         return True
 
@@ -267,8 +286,8 @@ def test_boolean_schema_marker_is_not_treated_as_canonical():
 
     report = apply_cleanup(database)
 
-    assert report["disposition"] == "blocked_ambiguity"
-    assert report["terminal_outbox"]["invalid_excluded"] == 1
+    assert report["terminal_outbox"]["selected"] == 0
+    assert report["terminal_outbox"]["invalid_excluded"] == 0
     assert database.notification_outbox.deletes == 0
 
 

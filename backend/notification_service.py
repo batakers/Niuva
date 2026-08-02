@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from notification_domain import (
+    MAX_DELIVERY_ATTEMPTS,
     NOTIFICATION_OUTBOX_CHANNELS,
     NOTIFICATION_OUTBOX_PAYLOAD_FIELDS,
     NOTIFICATION_OUTBOX_SCHEMA_VERSION,
@@ -19,7 +20,6 @@ from notification_domain import (
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
-MAX_DELIVERY_ATTEMPTS = 5
 MAX_CLAIM_BATCH = 200
 DEFAULT_LEASE_SECONDS = 60
 MAX_BACKOFF_SECONDS = 300

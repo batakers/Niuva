@@ -13,6 +13,7 @@ from typing import Any
 
 from notification_domain import (
     CANONICAL_NOTIFICATION_FIELDS,
+    MAX_DELIVERY_ATTEMPTS,
     NOTIFICATION_OUTBOX_CHANNELS,
     NOTIFICATION_OUTBOX_PAYLOAD_FIELDS,
     NOTIFICATION_OUTBOX_SCHEMA_VERSION,
@@ -76,9 +77,9 @@ def _valid_terminal_outbox(document: dict, *, cutoff: datetime) -> bool:
     attempts = document.get("attempts")
     if status not in TERMINAL_OUTBOX_STATUSES:
         return False
-    if type(attempts) is not int or not 1 <= attempts <= 5:
+    if type(attempts) is not int or not 1 <= attempts <= MAX_DELIVERY_ATTEMPTS:
         return False
-    if status == "exhausted" and attempts != 5:
+    if status == "exhausted" and attempts != MAX_DELIVERY_ATTEMPTS:
         return False
     if not all(
         (

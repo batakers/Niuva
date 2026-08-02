@@ -56,6 +56,20 @@ without migrating, backfilling, scheduling, or deleting real data.
 - No change to PR #104 or the notification worker branch.
 - No assumption that versionless or shape-compatible history is canonical.
 
+## Affected areas
+
+- `backend/notification_domain.py` — shared outbox schema, channel, payload, and
+  retry-attempt constants.
+- `backend/notification_service.py` — schema-v1 marking and delivery-entry
+  validation on new outbox writes.
+- `backend/notification_retention.py` — guarded, transactional retention
+  selection, validation, reporting, and deletion.
+- `backend/tests/test_notification_feed.py` and
+  `backend/tests/test_notification_retention.py` — focused behavior and safety
+  evidence.
+- `docs/runbooks/NOTIFICATION_RETENTION_CLEANUP_RUNBOOK.md` and
+  `docs/context/DOCUMENT_REGISTER.md` — procedure and document registration.
+
 ## Acceptance criteria
 
 1. Dry-run performs no deletes and exposes aggregate counts only.
@@ -89,7 +103,27 @@ without migrating, backfilling, scheduling, or deleting real data.
   exists under this authorization.
 - The current safe target label/scope is a caller-supplied declaration, not
   database-identity proof. No data-bearing adapter or invocation is authorized.
+- Maximum payload-field length and permitted payload control characters do not
+  have an approved boundary. This source does not invent one; activation needs
+  an approved limit or a documented upstream envelope.
 - A supporting index and migration may be required before any data-bearing run.
 - Cleanup cadence and scheduler topology remain unresolved under `DR-014`.
 - Expired notifications with retained/nonterminal outbox links are deliberately
   withheld and require aggregate operational review.
+
+## Handover
+
+Changed by PR #105:
+
+- `backend/notification_domain.py`
+- `backend/notification_retention.py`
+- `backend/notification_service.py`
+- `backend/tests/test_notification_feed.py`
+- `backend/tests/test_notification_retention.py`
+- `docs/context/DOCUMENT_REGISTER.md`
+- `docs/implementation/production-readiness/phases/PHASE-02A-notification-retention-cleanup-task-card.md`
+- `docs/runbooks/NOTIFICATION_RETENTION_CLEANUP_RUNBOOK.md`
+
+Intentionally unchanged: `backend/notification_worker.py`, merged PR #104
+worker behavior, migrations, indexes, schedulers, deployment configuration, and
+every database target. Cleanup execution remains separately blocked.

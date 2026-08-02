@@ -62,13 +62,21 @@ Stop when the disposition is any of:
 
 These dispositions are evidence for review, not permission to bypass a guard.
 
+An apply run that passes its preconditions returns `applied`,
+`applied_with_exclusions`, `applied_partial_batch`, or
+`applied_with_conflicts`. A malformed marked candidate returns
+`blocked_ambiguity` before deletion. An unsafe target or missing confirmation
+or transaction guard raises before any read and does not return a disposition.
+Stop and preserve aggregate evidence when the disposition is
+`applied_with_conflicts`; do not continue to another batch without review.
+
 ## Apply contract for synthetic/isolated verification
 
 The reusable function requires all of the following before any read:
 
 - `target_scope="isolated"` with a bounded safe target label;
 - explicit cleanup confirmation;
-- restore-tested backup confirmation; and
+- restore-tested backup confirmation;
 - explicit owner approval; and
 - a transaction-capable guard.
 
