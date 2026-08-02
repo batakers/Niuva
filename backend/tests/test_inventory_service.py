@@ -89,8 +89,39 @@ class FakeCollection:
         for item in self.items:
             if self.matches(item, query):
                 item.update(deepcopy(update.get("$set", {})))
+                for key, amount in (update.get("$inc") or {}).items():
+                    item[key] = item.get(key, 0) + amount
+                for key, value in (update.get("$max") or {}).items():
+                    item[key] = max(item.get(key, value), value)
                 return SimpleNamespace(matched_count=1, modified_count=1)
         return SimpleNamespace(matched_count=0, modified_count=0)
+
+    async def find_one_and_update(
+        self,
+        query,
+        update,
+        *,
+        projection=None,
+        upsert=False,
+        **_options,
+    ):
+        target = next((item for item in self.items if self.matches(item, query)), None)
+        if target is None and upsert:
+            target = {
+                key: deepcopy(value)
+                for key, value in query.items()
+                if not isinstance(value, dict)
+            }
+            target.update(deepcopy(update.get("$setOnInsert", {})))
+            self.items.append(target)
+        if target is None:
+            return None
+        target.update(deepcopy(update.get("$set", {})))
+        for key, amount in (update.get("$inc") or {}).items():
+            target[key] = target.get(key, 0) + amount
+        for key, value in (update.get("$max") or {}).items():
+            target[key] = max(target.get(key, value), value)
+        return self.project(target, projection)
 
 
 class FakeDatabase:

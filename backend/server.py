@@ -118,6 +118,7 @@ from pydantic import (
     field_validator,
 )
 from readiness_health import (
+    TOTAL_TIMEOUT_SECONDS,
     ReadinessProbeCoordinator,
     public_schema_status,
     public_transaction_status,
@@ -248,9 +249,7 @@ app.state.transaction_guard = TransactionMutationGuard(
     lambda: os.environ.get("TRANSACTION_MUTATIONS_ENABLED", "false").strip().lower()
     == "true",
 )
-app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
-    get_database=lambda: db,
-)
+app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery()
 app.state.admin_session_module = None
 app.state.auth_security_event_service = None
 app.state.auth_security_event_status = {
@@ -2657,6 +2656,8 @@ async def health_live():
 
 @api.get("/health/ready")
 async def health_ready():
+    loop = asyncio.get_running_loop()
+    started_at = loop.time()
     dependencies = await app.state.readiness_probe_coordinator.probe()
     capabilities = dependencies.capabilities
     database_available = dependencies.database_available
@@ -2672,20 +2673,14 @@ async def health_ready():
     worker_task = app.state.notification_worker_task
     heartbeat = worker_status.get("last_heartbeat_at")
     heartbeat_fresh = False
-    worker_task_active = False
-    try:
+    if isinstance(heartbeat, datetime) and heartbeat.tzinfo is not None:
         heartbeat_age = datetime.now(timezone.utc) - heartbeat
         heartbeat_fresh = bool(
-            isinstance(heartbeat, datetime)
-            and heartbeat.tzinfo is not None
-            and timedelta(0)
+            timedelta(0)
             <= heartbeat_age
             <= timedelta(seconds=NOTIFICATION_WORKER_STALE_SECONDS)
         )
-        worker_task_active = bool(worker_task is not None and not worker_task.done())
-    except Exception:
-        heartbeat_fresh = False
-        worker_task_active = False
+    worker_task_active = bool(worker_task is not None and not worker_task.done())
     worker_available = bool(
         worker_status.get("enabled")
         and worker_status.get("running")
@@ -2704,9 +2699,15 @@ async def health_ready():
     if auth_events_required and database_available:
         try:
             get_auth_security_event_service()
-            marker = await db.migration_state.find_one(
-                {"_id": "010_auth_security_events"},
-                {"_id": 1},
+            remaining = TOTAL_TIMEOUT_SECONDS - (loop.time() - started_at)
+            if remaining <= 0:
+                raise TimeoutError("readiness deadline elapsed")
+            marker = await asyncio.wait_for(
+                db.migration_state.find_one(
+                    {"_id": "010_auth_security_events"},
+                    {"_id": 1},
+                ),
+                timeout=remaining,
             )
             auth_event_marker = marker is not None
             auth_events_ready = bool(
@@ -3032,8 +3033,10 @@ async def notification_outbox_loop():
                         "notification_outbox_batch",
                         extra={"notification_outbox": result},
                     )
-            except Exception:
-                logger.exception("notification_outbox_loop failed")
+            except Exception as exc:
+                logger.error(
+                    "notification_outbox_loop_failed error_type=%s", type(exc).__name__
+                )
                 app.state.notification_worker_status = {
                     **app.state.notification_worker_status,
                     "enabled": True,

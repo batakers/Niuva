@@ -1,8 +1,10 @@
 # PHASE-08A — Liveness and Readiness Health Task Card
 
-Status: **bounded source implementation complete — environment evidence pending**
+Status: **PR #106 bounded source candidate validated — environment evidence pending**
 Branch / worktree: `fix/backend-readiness-health` /
-`Niuva-worktrees/backend-readiness-health`
+`C:\tmp\niuva-pr106-review`
+Reconciliation baseline: `6eb380f4269918be986ee4f0d2bcad86c4ff80d9`
+from `origin/main` on 3 August 2026
 
 ## Objective
 
@@ -20,6 +22,9 @@ topology, deployment environment, or production policy.
 - `DEC-READY-01` was explicitly approved on 2 August 2026 for source and tests.
   It defines required-dependency flags, bounded freshness/timeouts,
   single-flight publication, worker heartbeat, and unknown diagnostics.
+- Faiz authorized the current bounded reconciliation, commit, push, and merge
+  sequence on 3 August 2026. Environment execution, activation, readiness, and
+  go-live remain excluded.
 
 ## In scope
 
@@ -52,6 +57,21 @@ topology, deployment environment, or production policy.
 - No change to the meaning of inactive upload, payment, organization-portal,
   or optional notification capabilities.
 - No commit, push, PR, or merge unless separately requested.
+
+## Affected areas
+
+- `.github/workflows/quality-gates.yml` — focused readiness lint/test scope.
+- `backend/readiness_health.py` — bounded probe coordination and public
+  projections.
+- `backend/server.py` — liveness/readiness routes, background refresh, and
+  independent worker heartbeat integration.
+- `backend/tests/test_health.py` and
+  `backend/tests/test_readiness_health.py` — route, timeout, concurrency,
+  fail-closed, and privacy evidence.
+- `docs/decisions/architecture/DEC-READY-01-readiness-dependency-probe-contract.md`
+  plus decision/document registers — approved bounded authority.
+- Readiness roadmap, assignment, and this task card — status and handover
+  traceability.
 
 ## Acceptance criteria
 
@@ -103,3 +123,46 @@ topology, deployment environment, or production policy.
   not delivery evidence.
 - Named traffic-routing/on-call ownership, telemetry destination, SLO,
   alerting, and staging-like evidence remain blocked by `DR-012`/`DR-014`.
+
+## Reconciliation evidence — 3 August 2026
+
+- Reconciled PR #106 with `origin/main` at `6eb380f`, retaining the merged
+  notification worker and secret-safe failure logging.
+- Fixed startup/malformed heartbeat handling so task activity is evaluated
+  independently without exception-driven control flow.
+- Bounded the optional authentication-event marker query by the remaining
+  three-second readiness deadline.
+- Removed an unearned endpoint secret-scrubbing assertion; actual malicious
+  exception coverage remains in the coordinator test.
+- Reconciled all PHASE-08A assignment references to `DEC-READY-01` and the
+  environment-only blocking state.
+- Focused readiness/schema/capability tests: `37 passed`.
+- Readiness plus notification integration matrix: `95 passed`.
+- Complete backend suite: `867 passed, 15 skipped, 14 subtests passed`.
+- Critical Flake8, focused mypy, Black, isort, compileall, `pip check`, and
+  `git diff --check`: passed. `pip-audit` was not rerun because the module is
+  unavailable in the current environment; the earlier 2 August result remains
+  historical evidence only.
+- No database mutation, shared/staging/production probe, provider activation,
+  deployment, production-readiness declaration, or go-live occurred.
+
+## Handover
+
+Changed by PR #106:
+
+- `.github/workflows/quality-gates.yml`
+- `backend/readiness_health.py`
+- `backend/server.py`
+- `backend/tests/test_health.py`
+- `backend/tests/test_readiness_health.py`
+- `docs/context/DOCUMENT_REGISTER.md`
+- `docs/decisions/DECISION_REGISTER.md`
+- `docs/decisions/architecture/DEC-READY-01-readiness-dependency-probe-contract.md`
+- `docs/implementation/production-readiness/REMEDIATION_ROADMAP.md`
+- `docs/implementation/production-readiness/TEAM_ASSIGNMENT.md`
+- `docs/implementation/production-readiness/phases/PHASE-08A-readiness-health-task-card.md`
+
+Intentionally unchanged: environment flags and secrets, provider adapters,
+migrations/indexes, routing, telemetry destinations, on-call ownership,
+deployment configuration, shared/staging/production systems, and go-live
+state.

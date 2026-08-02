@@ -12,7 +12,13 @@ Recorded by: Project documentation owner
 Compatibility amendment: `DEC-PAY-02`, approved by explicit user decision on
 24 July 2026, makes existing manual-transfer records read-only and disables new
 manual-transfer/payment-proof activity.
-Open decision categories: Gateway provider, payment state machine, Finance operations, reconciliation SLA, refund policy, event retention, webhook authentication, and production readiness.
+After-sales amendment: `DEC-AFTER-01`, approved by explicit user decision on
+31 July 2026, governs Retail refund eligibility, amount, fee allocation,
+approval, customer remedy, and after-sales lifecycle boundaries.
+Open decision categories: Gateway provider, payment state machine, Finance
+operations, reconciliation SLA, provider refund execution/timing,
+accounting/tax correction, event retention, webhook authentication, and
+production readiness.
 Related baseline: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`
 Decision log: `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
@@ -25,6 +31,13 @@ slice. `DEC-PAY-02` now resolves that legacy boundary as read-only and disables
 new manual-transfer/payment-proof activity.
 
 This ADR defines the boundary between the Retail payment experience, a provider-neutral payment contract, provider adapters, and exceptional manual-transfer handling. It does not select a gateway provider or authorize production go-live.
+
+`DEC-OFFER-01` governs the earlier offer and quote-routing boundary. A
+quote-required request, draft/offered Assisted Retail Offer, or offer
+acceptance creates no Order, reservation, payment attempt, or paid state.
+Payment orchestration begins only after an accepted active offer enters normal
+Retail checkout and the server revalidates ownership, version, expiry, tax,
+capacity, ETA, and fulfillment.
 
 ## Proposed Boundary
 
@@ -62,6 +75,9 @@ The application contract should represent, at minimum:
 ### Refund and reconciliation boundary
 
 - Refund is a separate idempotent operation with permission, approval, actor, time, reason, amount, and result.
+- Retail refund eligibility, amount, fee allocation, customer remedy, and
+  manager-approval policy follow `DEC-AFTER-01`. Provider-specific execution,
+  settlement timing, and Finance accounting/tax correction remain gated.
 - Underpayment, overpayment, duplicate event/proof, late payment, wrong destination, sender mismatch, and uncertain provider status enter a reconciliation boundary.
 - Finance owns reconciliation policy and SLA once assigned.
 - Internal cost, supplier, margin, raw provider payload, and sensitive finance notes are never returned to customers.
@@ -107,6 +123,9 @@ activity. Option C remains rejected. The gateway provider remains deferred.
 ## Dependencies and Impact
 
 - Retail checkout candidate must use the provider-neutral contract and separate adapter boundary.
+- Quote handoff and Assisted Retail Offer handling must preserve the no-payment
+  boundary in `DEC-OFFER-01`; they cannot call payment creation as a substitute
+  for normal Retail checkout.
 - Online payment remains the production target even while gateway provider is deferred.
 - Retained legacy payment-proof objects remain governed by the ownership,
   authorization, retention, backup, and recovery boundaries in `ADR-002`; no
@@ -121,7 +140,8 @@ activity. Option C remains rejected. The gateway provider remains deferred.
 - Payment gateway provider.
 - Exact payment state machine.
 - Reconciliation SLA.
-- Refund policy.
+- Provider refund execution/timing and Finance accounting/tax correction beyond
+  the product policy approved by `DEC-AFTER-01`.
 - Payment event retention.
 - Provider-specific webhook authentication.
 - Production go-live approval.
@@ -136,7 +156,10 @@ activity. Option C remains rejected. The gateway provider remains deferred.
 - **Approval source:** Role-based internal project approval recorded by the Project Manager / Product Owner through the Niuva platform governance process.
 - **Recorded by:** Project documentation owner
 - **Approval scope:** Internal architecture, documentation, and future implementation planning.
-- **Open provider and operational decisions:** Gateway provider, exact payment state machine, reconciliation SLA, refund policy, payment event retention, provider-specific webhook authentication, and production go-live approval.
+- **Open provider and operational decisions:** Gateway provider, exact payment
+  state machine, reconciliation SLA, provider refund execution/timing, Finance
+  accounting/tax correction, payment event retention, provider-specific webhook
+  authentication, and production go-live approval.
 - **Excluded from this approval:** Company-wide production authorization, infrastructure procurement approval, Finance operational sign-off for future payment operations, payment gateway activation approval, and production go-live approval.
 - **Final decision:** Approved with Open Decisions.
 
@@ -150,3 +173,16 @@ activity. Option C remains rejected. The gateway provider remains deferred.
 - **Approval source:** Explicit user approval in the backend-audit conversation.
 - **Implementation status:** Decision recorded; protected-scope implementation
   remains separately gated.
+
+## After-Sales Policy Amendment Record
+
+- **Decision:** Retail refund eligibility, exact approved amount, provider-fee
+  allocation, customer remedy, manager approval, and after-sales lifecycle are
+  governed by `DEC-AFTER-01`.
+- **Decision ID:** `DEC-AFTER-01`
+- **Decision date:** 31 July 2026
+- **Approval source:** Explicit user approval of the four NMVP-D06 decision
+  groups.
+- **Implementation status:** Product policy recorded; provider integration,
+  Finance operations, legal/customer terms, source changes, activation,
+  readiness, and go-live remain separately gated.

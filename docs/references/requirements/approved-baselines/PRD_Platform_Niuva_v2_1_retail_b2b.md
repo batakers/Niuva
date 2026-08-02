@@ -7,6 +7,7 @@ Product scope source: `docs/references/requirements/approved-baselines/PRS_Platf
 Design source: `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`
 Baseline lama: `memory/PRD.md`
 Approved architecture pointers:
+
 - `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
 - `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
 - `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
@@ -68,17 +69,25 @@ Tanpa fondasi bersama, Retail dan B2B berisiko memakai data material, inventory,
 
 ## 6. Persona dan Hak Akses
 
-### 6.1 Retail Guest
+### 6.1 Retail Visitor
 
 - Melihat dan mencari katalog.
-- Mengatur produk dan mengunggah file.
-- Melihat harga serta ETA jika konfigurasi memenuhi aturan.
-- Checkout dan membayar tanpa membuat akun.
-- Melacak order melalui nomor order dan verifikasi kontak.
+- Mengatur pilihan non-sensitif dan mempertahankan cart lokal
+  non-authoritative.
+- Melihat informasi harga/ETA yang aman ketika tidak memerlukan file privat.
+- Wajib mendaftar atau login sebelum upload file privat, authoritative
+  checkout, reservasi, payment, history, dan tracking.
 
 ### 6.2 Retail Account
 
-Memiliki semua kemampuan guest ditambah riwayat order, saved address, repeat order, dan akses ke file yang diizinkan.
+Memiliki kemampuan visitor ditambah upload file privat, authoritative checkout,
+payment, riwayat order, saved address, repeat order, tracking, dan akses ke file
+yang diizinkan. Setiap Retail Order baru menyimpan authenticated
+`customer_id`.
+
+`DEC-RT-02` menggantikan guest checkout untuk transaksi baru. Historical
+guest-shaped orders, bila ada, tetap immutable dan ownership-scoped; tidak
+di-link otomatis ke akun berdasarkan email, nomor telepon, atau contact match.
 
 ### 6.3 B2B Organization
 
@@ -118,8 +127,7 @@ Public Website
 ├── Retail
 │   ├── Catalog
 │   ├── Product Detail/Configurator
-│   ├── Cart/Checkout
-│   └── Order Tracking
+│   └── Cart
 └── Business/B2B
     ├── Capabilities
     ├── Projects/Portfolio
@@ -128,6 +136,9 @@ Public Website
 
 Authenticated
 ├── Retail Account
+│   ├── Private Upload
+│   ├── Checkout/Payment
+│   └── Order History/Tracking
 ├── B2B Organization Portal
 └── Admin Studio
     ├── CMS
@@ -141,8 +152,8 @@ Pola homepage dan detail visual navigasi Retail/B2B masih deferred. Foundation t
 ### 8.1 Retail Standard Order
 
 ```text
-Katalog → konfigurasi → upload file → harga dan ETA
-→ checkout → pembayaran → file review → produksi
+Katalog → konfigurasi → daftar/login → upload file → harga dan ETA
+→ authoritative checkout → pembayaran → file review → produksi
 → QC → pickup/pengiriman → selesai
 ```
 
@@ -190,13 +201,16 @@ Shared platform clarification: shared foundations do not mean that Retail Order 
 | FR-RT-02 | Catalog mendukung kategori, search, filter, availability, dan price from |
 | FR-RT-03 | Configurator mendukung variant, SKU, material, ukuran, warna, finishing, quantity, serta file requirement sesuai produk |
 | FR-RT-04 | Pricing mode terdiri dari fixed, calculated, dan quote_required |
-| FR-RT-05 | Customer melihat total dan ETA sebelum konfirmasi checkout |
-| FR-RT-06 | Checkout mendukung guest dan account |
-| FR-RT-07 | Checkout mendukung shipping dan pickup |
+| FR-RT-05 | Diubah oleh `DEC-ETA-01`: customer melihat total serta authoritative estimated-ready range dan, untuk delivery, separate arrival range sebelum konfirmasi checkout |
+| FR-RT-06 | Diubah oleh `DEC-RT-02`: checkout untuk setiap transaksi Retail baru membutuhkan authenticated account |
+| FR-RT-07 | Diubah oleh `DEC-FUL-01`: eligible direct checkout mendukung Rp0 pickup dan automatic-rate domestic Indonesia delivery; international/unsupported/special fulfillment menjadi `quote_required` |
 | FR-RT-08 | Online payment diproses secara idempotent |
 | FR-RT-09 | Ready-stock memakai reservation dengan expiry |
-| FR-RT-10 | Guest tracking memakai nomor order dan verified contact |
-| FR-RT-11 | Customer melihat milestone aktual, bukan persentase buatan |
+| FR-RT-10 | Diubah oleh `DEC-RT-02`: tracking order baru membutuhkan authenticated ownership; historical guest access tetap compatibility-only dan tidak menjadi jalur transaksi baru |
+| FR-RT-11 | Diubah oleh `DEC-ETA-01`: customer melihat milestone faktual, completed times, next action, current ETA range, dan safe exception/reason, bukan persentase buatan |
+| FR-RT-12 | Diubah oleh `DEC-AFTER-01`: Retail mendukung 48-hour file revision, lifecycle-specific cancellation/refund, at least two-working-day complaint intake, governed reprint/replacement/return, explicit SLA, dan manager-approved refund/free reprint |
+| FR-RT-13 | Diubah oleh `DEC-OFFER-01`: `offer_type`, `pricing_mode`, dan `fulfillment_mode` independen; Simple/Detailed configurator dan automatic-pricing eligibility memakai Niuva-authoritative profiles |
+| FR-RT-14 | Diubah oleh `DEC-OFFER-01`: quote item dipisahkan dari mixed cart dengan context preservation; eligible individual/UMKM dapat menerima private versioned manager-approved Assisted Retail Offer yang masuk normal Retail checkout |
 
 Status utama Retail:
 
@@ -207,6 +221,46 @@ created → awaiting_payment → paid → file_review → queued
 ```
 
 Exception state mencakup `payment_failed`, `file_revision_required`, `on_hold`, `cancelled`, `refund_pending`, dan `refunded`.
+
+Fulfillment Retail mengikuti `DEC-FUL-01`:
+
+- basic packaging termasuk dalam harga standar; packaging khusus menjadi
+  `quote_required`;
+- pickup location dipilih saat checkout dan collection window setelah
+  `ready_for_pickup`;
+- delivery rate menggunakan authoritative address/package inputs dan berlaku
+  sampai provider expiry yang dibatasi maksimum 30 menit;
+- rate/service/ETA yang kedaluwarsa atau berubah harus direfresh dan
+  dikonfirmasi ulang sebelum order/payment attempt;
+- order menyimpan immutable fulfillment, address/location, package, service,
+  amount, quote-timestamp, ETA, dan tracking snapshots; dan
+- tujuh hari tanpa recorded pickup handover membuat internal
+  `pickup_overdue` serta dashboard/email follow-up, bukan automatic
+  cancellation, disposal, storage fee, refund, atau completion.
+
+Revision dan after-sales Retail mengikuti `DEC-AFTER-01`:
+
+- timeout file revision setelah 48 jam masuk review dan tidak menghasilkan
+  automatic refund amount;
+- approved paid cancellation sebelum irreversible work mengembalikan full
+  eligible paid amount termasuk unused fulfillment tanpa provider/admin-fee
+  deduction;
+- cancellation setelah actual work dimulai bersifat manual dan partial refund
+  membutuhkan exact affected/unperformed amount yang disepakati;
+- complaint intake tetap tersedia sekurang-kurangnya dua hari kerja setelah
+  authoritative receipt tanpa automatic waiver untuk later/hidden defect;
+- confirmed Niuva error/carrier damage memberi customer pilihan affected-scope
+  reprint/replacement atau refund, serta required return/replacement shipping
+  ditanggung Niuva;
+- acknowledgement immediate, first human response target satu hari kerja, dan
+  resolution-decision target lima hari kerja setelah sufficient evidence; dan
+- `order_admin` melakukan triage, domain roles memberikan scoped evidence,
+  `finance` menyiapkan refund, serta setiap refund/free reprint memerlukan
+  `manager_approver`.
+
+Policy ini berlaku pada direct-checkout Retail Order; B2B Quote/Project tetap
+memakai accepted quotation/SOW/contract. Activation gates pada
+`DEC-AFTER-01` tetap berlaku.
 
 ### 9.3 B2B
 
@@ -266,7 +320,7 @@ projected = available + incoming - planned_demand
 | FR-OPS-02 | Order detail menampilkan customer/organization, configuration/scope, file/design, price/quote snapshot, payment, ETA, work order, QC, shipment, dan audit |
 | FR-OPS-03 | Staff dapat mengelola work order, step, status, output, kendala, QC, dan rework sesuai role |
 | FR-OPS-04 | Finance dapat mengelola payment, invoice, termin, refund, dan reconciliation sesuai role |
-| FR-OPS-05 | Manager approval dapat diwajibkan untuk refund, large price override, stock adjustment, dan role change |
+| FR-OPS-05 | `DEC-AFTER-01` mewajibkan `manager_approver` untuk setiap refund/free reprint; sensitive override/adjustment lain mengikuti approved role/decision boundary |
 
 ### 9.7 ETA, Progress, dan Notification
 
@@ -276,8 +330,26 @@ projected = available + incoming - planned_demand
 | FR-ETA-02 | ETA B2B juga mempertimbangkan design cycle, approval, procurement, dependency, dan payment gate |
 | FR-ETA-03 | Perubahan ETA menyimpan tanggal lama, tanggal baru, waktu perubahan, actor, dan alasan |
 | FR-ETA-04 | Customer hanya melihat alasan perubahan yang aman |
-| FR-NOT-01 | Notification failure tidak membatalkan transaksi utama |
-| FR-NOT-02 | Notification yang gagal masuk antrean retry dan dapat direkonsiliasi |
+| FR-ETA-05 | `DEC-ETA-01` menetapkan Retail ETA sebagai versioned `eta_earliest_at`–`eta_latest_at` dalam `Asia/Jakarta`; pickup memakai ready range dan delivery memisahkan ready-to-ship dari arrival range |
+| FR-ETA-06 | Ready Product memakai handling/packing, buffer, dan fulfillment; eligible Custom Print juga memakai applicable file/material readiness, queue range, exact accepted slicer time, post-processing, dan QC |
+| FR-ETA-07 | Authorized production, quality_control, dan order_admin dapat memperbarui routine domain milestone/ETA langsung dengan previous/new range, target, actor, time, reason, safe explanation, version references, dan audit |
+| FR-ETA-08 | Melewati `eta_latest_at` sebelum target milestone menghasilkan internal `eta_overdue` dan mewajibkan range/reason baru tanpa automatic cancellation, refund, reprint, disposal, atau completion |
+| FR-ETA-09 | Retail Order dan B2B Quote/Project mempertahankan milestone/state machine terpisah; live printer telemetry dan exact queue-position disclosure bukan MVP dependency |
+| FR-NOT-01 | General notification mengikuti amended `DEC-DATA-003`: recipient-scoped in-app record adalah canonical state dan email memakai provider-neutral outbox |
+| FR-NOT-02 | Customer direct-checkout Retail hanya menerima notification untuk Retail Order yang dimiliki authenticated account; contact/email equality bukan ownership proof |
+| FR-NOT-03 | Internal notification dirutekan menurut approved role, permission, dan domain scope; tidak broadcast ke seluruh Admin |
+| FR-NOT-04 | Customer event allowlist mencakup material payment, file revision, ETA, fulfillment, cancellation, complaint, reprint/replacement, dan refund conditions |
+| FR-NOT-05 | Operator event allowlist mencakup actionable order readiness, stock, reconciliation, file, production/QC, ETA, fulfillment, complaint/SLA, approval, refund-failure, dan notification-delivery conditions |
+| FR-NOT-06 | In-app allowlisted events tidak dapat dimatikan; required transactional email selalu dienqueue; routine production-progress email memakai satu default-on customer preference |
+| FR-NOT-07 | Notification memakai minimal versioned safe payload serta audience-aware same-origin reference allowlist; target selalu memerlukan authentication dan ownership/permission check |
+| FR-NOT-08 | Email delivery mencoba maksimal lima kali; terminal `exhausted` menghasilkan role-scoped in-app alert dan tidak memakai WhatsApp/unapproved fallback |
+| FR-NOT-09 | Authorized `order_admin` dapat meminta controlled resend setelah exhaustion dengan recipient/template tetap direkonsiliasi, linked delivery record baru, reason, dan audit |
+| FR-NOT-10 | Notification failure tidak membatalkan transaksi utama; duplicate source event tidak menduplikasi effect, sedangkan business occurrence baru mendapat identity baru |
+| FR-NOT-11 | In-app notification retain 180 hari dan terminal delivery metadata 30 hari; raw provider error, payload, dan retained contact copy dilarang |
+
+Ketentuan notification di atas berlaku untuk direct-checkout Retail. B2B
+Quote/Project notification recipients/events tetap mengikuti kontrak atau
+keputusan terpisah.
 
 ## 10. Pricing Requirements
 
@@ -289,6 +361,20 @@ Digunakan untuk ready-stock atau variant yang memiliki harga tetap.
 
 Digunakan hanya untuk custom standar yang seluruh inputnya tervalidasi.
 
+`DEC-OFFER-01` mensyaratkan file/version ownership, slicing, Niuva profile,
+build/configuration, quantity production plan, tax, capacity, ETA, fulfillment,
+dan operator-risk validation sebelum harga otomatis menjadi final. Customer
+mengonfirmasi file version, dimensions/scale, material/color/quantity/
+configuration, billable grams, print duration, breakdown, total, ETA, dan
+fulfillment; server merevalidasi sebelum commitment.
+
+Custom 3D Print memakai Simple mode secara default dan optional
+Detailed/advanced mode hanya untuk calibrated fields. `.stl` serta supported
+single-model/plate `.3mf` dapat otomatis; embedded customer profiles diabaikan.
+`.obj`, `.step`, `.stp`, ZIP, multiple models/parts/plates, serta complex
+projects masuk manual review. PDF/JPG/JPEG/PNG hanya reference attachment dan
+customer `.gcode` ditolak.
+
 ```text
 price = material + machine + labor + finishing
       + overhead + retail_margin + tax + shipping
@@ -296,9 +382,66 @@ price = material + machine + labor + finishing
 
 Perhitungan uang menggunakan representasi decimal atau minor unit yang konsisten, bukan floating point biner.
 
+#### Custom 3D Print FDM
+
+`DEC-PRICE-001` menetapkan policy `NIUVA-CP-FDM-001` untuk direct-calculated
+Custom 3D Print dengan filament PLA/ABS milik Niuva:
+
+```text
+PLA =
+  min(g, 200) * 1000
+  + min(max(g - 200, 0), 300) * 900
+  + max(g - 500, 0) * 800
+
+ABS =
+  min(g, 200) * 1200
+  + min(max(g - 200, 0), 300) * 1100
+  + max(g - 500, 0) * 1000
+
+machine = exact_print_seconds / 3600 * 5000
+
+custom_print_price =
+  ROUND_HALF_UP(progressive_material_price + machine, 0)
+```
+
+Tidak ada minimum 50 gram atau intermediate rounding. Billable weight mencakup
+model, support, brim/raft, serta purge/waste. Listrik, basic finishing, basic
+packaging, support removal, QC, failed-print risk, dan indirect tax yang
+berlaku sudah termasuk; shipping/pickup berada di luar formula ini.
+
+Policy belum aktif pada tanggal approval. `effective_at` dicatat saat checkout
+MVP memperoleh authorization terpisah, dalam zona `Asia/Jakarta`, setelah
+Finance mengonfirmasi tax profile menurut `DEC-TAX-01`. Paid order dan accepted
+quote menyimpan immutable input, policy, rate, tax, unrounded amount, serta
+rounded amount snapshots.
+
 ### Quote Required
 
-Digunakan untuk kebutuhan nonstandar atau ketika sistem tidak memiliki kepastian yang cukup. Sistem tidak boleh menampilkan harga final otomatis seolah-olah pasti.
+Digunakan untuk kebutuhan nonstandar atau ketika sistem tidak memiliki
+kepastian yang cukup. Sistem tidak boleh menampilkan harga final otomatis
+seolah-olah pasti.
+
+Quote item tidak menciptakan Order, reservation, payment attempt, atau checkout
+total. Pada mixed cart, item tersebut dipisahkan sebagai request dengan account,
+product/configuration, quantity, file, safe analysis, fulfillment, dan reason
+context tetap utuh.
+
+Bulk, bundle, borongan, partnership, recurring, organizational, contractual,
+atau special/international-fulfillment mengikuti B2B Inquiry →
+Quote/Project. Eligible individual/UMKM dapat menerima Assisted Retail Offer
+yang private, customer-bound, dan immutable per version:
+
+```text
+draft
+-> awaiting_approval
+-> offered
+-> accepted | declined | expired | superseded
+```
+
+Manual price commitment memerlukan `manager_approver`. Acceptance hanya masuk
+normal Retail checkout untuk revalidation terhadap ownership, active version,
+`expires_at`, tax, capacity, ETA, dan fulfillment. Offer tidak mengubah catalog
+price dan tidak menggabungkan Retail Order dengan B2B Quote/Project.
 
 ## 11. Data Model Minimum
 
@@ -309,13 +452,17 @@ Digunakan untuk kebutuhan nonstandar atau ketika sistem tidak memiliki kepastian
 | Catalog | Category, Product, Variant, ConfigurationOption, PricingRule |
 | Material | Material, MaterialPriceVersion, Supplier |
 | Inventory | InventoryBalance, StockMovement, StockReservation |
-| Retail | Cart, Order, OrderItemSnapshot, Payment |
+| Retail | Cart, quote-request record, versioned Assisted Retail Offer record, Order, OrderItemSnapshot, Payment |
 | B2B | Inquiry, QuoteVersion, Project, Milestone, DesignVersion, Approval |
 | Production | WorkOrder, WorkStep, QCRecord, ReworkRecord |
 | Fulfillment | Shipment, Pickup |
 | Platform | Notification, AuditEvent, WorkflowJob |
 
-Model detail ditetapkan dalam implementation plan dan schema design, tetapi harus menjaga versioning, snapshot, ownership, dan idempotency di atas.
+Nama entity/API/state teknis untuk quote request dan Assisted Retail Offer
+belum ditetapkan oleh `DEC-OFFER-01`. Model detail ditetapkan dalam
+implementation plan dan schema design, tetapi harus menjaga versioning,
+snapshot, ownership, expiry, approval, Retail/B2B separation, dan idempotency
+di atas.
 
 ## 12. Privacy dan Security Requirements
 
@@ -352,6 +499,9 @@ Model detail ditetapkan dalam implementation plan dan schema design, tetapi haru
 
 - Retail production target tetap online payment dengan provider-neutral core orchestration dan provider adapters di luar core order/payment domain.
 - Provider events/webhooks harus idempotent; refund dan reconciliation memiliki boundary eksplisit; customer responses memakai customer-safe payment projections.
+- Refund eligibility, amount, fee allocation, approval, dan customer remedy
+  mengikuti `DEC-AFTER-01`; provider execution/timing dan Finance accounting
+  tetap gated.
 - Gateway provider tetap deferred dan tidak dipilih oleh PRD ini.
 - Manual transfer bukan Retail production baseline. `DEC-PAY-02` menetapkan legacy manual-transfer records sebagai read-only dan menonaktifkan instruksi transfer, attempt, payment-proof upload, serta proof-driven transition baru. Historical records tetap dipertahankan.
 
@@ -367,6 +517,10 @@ ADR approval scope tetap terbatas pada internal architecture, documentation, dan
 - Upload retry: tidak membuat file/design version ganda.
 - Stale quote/design/content approval: ditolak sebagai conflict.
 - Notification failure: core transaction tetap berhasil dan notifikasi dapat di-retry.
+- File-revision timeout: masuk after-sales review tanpa menghapus order atau
+  menghasilkan automatic refund amount.
+- Duplicate refund/reprint request: satu approved idempotent outcome dan tidak
+  menduplikasi payment, inventory, notification, atau audit effect.
 - Transaction-required operations fail closed with `503 transaction_unavailable`; silent fallback to non-atomic writes is prohibited. See `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`.
 
 ## 14. Non-Functional Requirements
@@ -423,7 +577,13 @@ Target numerik ditetapkan setelah baseline produksi tersedia.
 
 - Catalog awal dan configurator.
 - File upload, price/ETA, cart, checkout, dan online payment.
-- Production milestone, QC, shipment/pickup, dan guest tracking.
+- Production milestone, QC, shipment/pickup, dan authenticated tracking sesuai
+  `DEC-RT-02` serta ETA/milestone policy `DEC-ETA-01`.
+- Revision, complaint, reprint/replacement, refund, dan return sesuai
+  `DEC-AFTER-01` setelah seluruh activation gate dipenuhi.
+- Authenticated-owner/role-scoped dashboard dan allowlisted transactional email
+  sesuai amended `DEC-DATA-003`, setelah provider, worker, technical,
+  implementation, migration, dan activation gate dipenuhi.
 
 ### Phase 3 — B2B MVP
 
@@ -442,9 +602,12 @@ Target numerik ditetapkan setelah baseline produksi tersedia.
 ## 18. Testing Requirements
 
 - **Unit:** pricing, decimal rounding, ETA, material price version, inventory, restock, dan production gate.
-- **API/Integration:** role, privacy boundary, versioning, publish/rollback, stock/order/payment transition, dan notification retry.
-- **Concurrency:** final-stock checkout, duplicate webhook, double approval, dan retried movement.
-- **E2E Retail:** catalog sampai shipment.
+- **API/Integration:** role, privacy boundary, versioning, publish/rollback,
+  stock/order/payment/after-sales transition, evidence boundary, dan
+  notification retry.
+- **Concurrency:** final-stock checkout, duplicate webhook/refund, double
+  approval, dan retried movement.
+- **E2E Retail:** catalog sampai shipment serta revision/complaint/remedy.
 - **E2E B2B:** inquiry sampai shipment.
 - **E2E CMS:** draft sampai rollback.
 - **Recovery:** backup restore exercise.
@@ -458,6 +621,9 @@ Target numerik ditetapkan setelah baseline produksi tersedia.
 - Staf dapat mengelola konten, katalog, material, harga, stock, order, project, produksi, QC, payment, dan shipment sesuai role.
 - Update harga/katalog tidak mengubah paid order atau accepted quote.
 - Retry dan concurrency tidak menghasilkan payment, approval, atau stock movement ganda.
+- Revision timeout, complaint, reprint/replacement, refund, dan return memiliki
+  eligibility, SLA, manager approval, immutable snapshot, dan append-only audit
+  sesuai `DEC-AFTER-01`.
 - Customer tidak menerima data internal sensitif.
 - Backup dapat dipulihkan dan aktivitas rutin dapat diteruskan berdasarkan handover pack.
 
@@ -468,6 +634,12 @@ Target numerik ditetapkan setelah baseline produksi tersedia.
 3. Detail visual navigasi/switch Retail dan B2B.
 
 Implementation plan untuk Foundation boleh dibuat sekarang. Implementasi surface yang bergantung langsung pada keputusan deferred harus menunggu keputusan terkait.
+
+Offer/file/quote-routing tidak lagi deferred; arahnya governed by
+`DEC-OFFER-01`. Preset/advanced fields, file/storage limits, machine/process/
+build/quantity/deadline/risk thresholds, default offer expiry, exact technical
+contract, implementation, migration, production readiness, dan go-live tetap
+gated.
 
 ## 21. Definition of Ready untuk Implementation Planning
 

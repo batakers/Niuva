@@ -2,11 +2,33 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import re
 
 from notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
+DELIVERY_KEY_PATTERN = re.compile(r"^notification-delivery:[A-Za-z0-9._-]{1,160}$")
+
+
+def _is_bounded_text(value: object, maximum: int) -> bool:
+    return bool(
+        isinstance(value, str)
+        and 0 < len(value) <= maximum
+        and not any(ord(character) < 32 or ord(character) == 127 for character in value)
+    )
+
+
+def _is_valid_delivery_entry(entry: object) -> bool:
+    return bool(
+        isinstance(entry, dict)
+        and isinstance(entry.get("delivery_key"), str)
+        and DELIVERY_KEY_PATTERN.fullmatch(entry["delivery_key"])
+        and _is_bounded_text(entry.get("channel"), 80)
+        and _is_bounded_text(entry.get("recipient"), 320)
+        and isinstance(entry.get("payload"), dict)
+    )
 
 
 class NotificationDeliveryWorker:
@@ -29,29 +51,47 @@ class NotificationDeliveryWorker:
         delivered = 0
         failed = 0
         for entry in entries:
-            deliverer = self.deliverers.get(entry["channel"])
+            entry_id = entry.get("id") if isinstance(entry, dict) else None
+            lease_token = entry.get("lease_token") if isinstance(entry, dict) else None
+            if (
+                not isinstance(entry_id, str)
+                or not 0 < len(entry_id) <= 200
+                or not isinstance(lease_token, str)
+                or not 0 < len(lease_token) <= 200
+            ):
+                logger.warning("notification_delivery_invalid_identity")
+                failed += 1
+                continue
+            channel = entry.get("channel") if isinstance(entry, dict) else None
+            deliverer = (
+                self.deliverers.get(channel) if isinstance(channel, str) else None
+            )
             error = None
             success = False
             try:
-                if deliverer is None:
-                    raise RuntimeError(
-                        f"Unsupported notification channel: {entry['channel']}"
+                if not _is_valid_delivery_entry(entry):
+                    error = "invalid_delivery_entry"
+                elif deliverer is None:
+                    error = "unsupported_channel"
+                else:
+                    result = await deliverer(
+                        entry,
+                        idempotency_key=entry["delivery_key"],
                     )
-                result = await deliverer(
-                    entry,
-                    idempotency_key=entry["delivery_key"],
-                )
-                success = result is not False
+                    success = result is True
+                    if not success:
+                        error = "delivery_rejected"
+            except asyncio.CancelledError:
+                raise
             except Exception as exc:
                 error = type(exc).__name__
-                logger.exception(
-                    "Notification delivery failed outbox_id=%s channel=%s",
-                    entry["id"],
-                    entry["channel"],
+                logger.warning(
+                    "notification_delivery_failed error_type=%s",
+                    type(exc).__name__,
                 )
             await self.service.record_delivery_result(
-                entry["id"],
-                lease_token=entry["lease_token"],
+                entry_id,
+                lease_token=lease_token,
                 delivered=success,
                 error=error,
             )

@@ -73,6 +73,12 @@ Before persistence or release to a downstream workflow:
 - retain validation/scanning result, actor, time, object reference, and reason in audit metadata;
 - return controlled errors without exposing provider paths or secret details.
 
+`DEC-OFFER-01` governs the business behavior for `.stl`, supported `.3mf`,
+manual-review CAD/archive inputs, reference attachments, and rejected customer
+`.gcode`. That product decision does not resolve this ADR's provider, MIME and
+signature, file-size, malware/quarantine, retention, quota, ownership,
+backup/restore, reconciliation, or production-readiness gates.
+
 ## Backup and Restore
 
 Production storage must define:
