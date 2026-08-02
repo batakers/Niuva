@@ -8,7 +8,8 @@ import asyncio
 import types
 
 import pytest
-
+from fastapi import FastAPI, HTTPException
+from httpx import ASGITransport, AsyncClient
 from portfolio_domain import (
     PUBLIC_PORTFOLIO_FIELDS,
     PortfolioDomainError,
@@ -18,6 +19,7 @@ from portfolio_domain import (
     reorder_entries,
     validate_portfolio_transition,
 )
+from portfolio_routes import build_portfolio_router
 from portfolio_service import PortfolioService
 
 ACTOR = {"id": "content-1", "email": "content@niuva.test"}
@@ -42,12 +44,16 @@ class FakeCollection:
     def _matches(item, query):
         for key, expected in query.items():
             if key == "$or":
-                if not any(FakeCollection._matches(item, clause) for clause in expected):
+                if not any(
+                    FakeCollection._matches(item, clause) for clause in expected
+                ):
                     return False
                 continue
             actual = item.get(key)
-            if isinstance(expected, dict) and "$lte" in expected:
-                if actual is None or actual > expected["$lte"]:
+            if isinstance(expected, dict):
+                if "$lte" in expected and (actual is None or actual > expected["$lte"]):
+                    return False
+                if "$gt" in expected and (actual is None or actual <= expected["$gt"]):
                     return False
             elif actual != expected:
                 return False
@@ -118,6 +124,22 @@ def build_service():
     return PortfolioService(db=db, transaction_guard=EnabledGuard()), db
 
 
+def test_mutations_fail_closed_without_a_transaction_guard():
+    async def scenario():
+        database = FakeDatabase()
+        service = PortfolioService(db=database, transaction_guard=None)
+
+        with pytest.raises(PortfolioDomainError) as unavailable:
+            await service.create(dict(DRAFT), actor=ACTOR)
+
+        assert unavailable.value.status_code == 503
+        assert unavailable.value.code == "transaction_unavailable"
+        assert database.portfolio.items == []
+        assert database.portfolio_revisions.items == []
+
+    asyncio.run(scenario())
+
+
 async def published_entry(service, *, actor=APPROVER):
     entry = await service.create(dict(DRAFT), actor=ACTOR)
     for target in ("review", "preview", "published"):
@@ -153,6 +175,74 @@ def test_archive_is_a_resting_state_not_a_grave():
     # Every live status can be archived, so nothing needs deleting to disappear.
     for status in ("draft", "review", "preview", "scheduled", "published"):
         validate_portfolio_transition(status, "archived", reason="Diarsipkan")
+
+
+def test_published_work_can_open_a_new_draft_without_rewriting_live_snapshot():
+    async def scenario():
+        service, _db = build_service()
+        published = await published_entry(service)
+        public_before = await service.list_public()
+
+        draft = await service.transition(
+            published["id"],
+            target_status="draft",
+            expected_version=published["version"],
+            reason="Siapkan revisi baru",
+            actor=ACTOR,
+            can_write=True,
+            can_publish=False,
+            can_archive=False,
+        )
+
+        assert draft["status"] == "draft"
+        assert await service.list_public() == public_before
+
+    asyncio.run(scenario())
+
+
+def test_republishing_a_working_revision_replaces_the_live_snapshot():
+    async def scenario():
+        service, db = build_service()
+        published = await published_entry(service)
+        draft = await service.transition(
+            published["id"],
+            target_status="draft",
+            expected_version=published["version"],
+            reason="Siapkan revisi baru",
+            actor=ACTOR,
+            can_write=True,
+            can_publish=False,
+            can_archive=False,
+        )
+        edited = await service.update_content(
+            draft["id"],
+            {**DRAFT, "title_id": "Judul publik baru"},
+            expected_version=draft["version"],
+            reason="Perbarui bukti proyek",
+            actor=ACTOR,
+        )
+        for target in ("review", "preview", "published"):
+            edited = await service.transition(
+                edited["id"],
+                target_status=target,
+                expected_version=edited["version"],
+                reason=f"Menuju {target}",
+                actor=APPROVER,
+                can_write=True,
+                can_publish=True,
+                can_archive=True,
+            )
+
+        assert [item["title_id"] for item in await service.list_public()] == [
+            "Judul publik baru"
+        ]
+        assert len(db.portfolio_publications.items) == 2
+        assert (
+            sum(item["retired_at"] is None for item in db.portfolio_publications.items)
+            == 1
+        )
+
+    asyncio.run(scenario())
 
 
 def test_publishing_requires_approval_authority():
@@ -269,6 +359,47 @@ def test_a_future_schedule_stays_private_until_its_time():
     asyncio.run(scenario())
 
 
+def test_publication_fails_closed_on_a_foreign_current_revision_reference():
+    async def scenario():
+        service, db = build_service()
+        first = await service.create(dict(DRAFT), actor=ACTOR)
+        second = await service.create(
+            {**DRAFT, "title_id": "Portofolio lain"}, actor=ACTOR
+        )
+        first_row = next(
+            item for item in db.portfolio.items if item["id"] == first["id"]
+        )
+        first_row["current_revision_id"] = second["current_revision_id"]
+        for target in ("review", "preview"):
+            first = await service.transition(
+                first["id"],
+                target_status=target,
+                expected_version=first["version"],
+                reason=f"Menuju {target}",
+                actor=ACTOR,
+                can_write=True,
+                can_publish=False,
+                can_archive=False,
+            )
+
+        with pytest.raises(PortfolioDomainError) as refused:
+            await service.transition(
+                first["id"],
+                target_status="published",
+                expected_version=first["version"],
+                reason="Publikasikan referensi rusak",
+                actor=APPROVER,
+                can_write=False,
+                can_publish=True,
+                can_archive=False,
+            )
+
+        assert refused.value.code == "portfolio_revision_reference_invalid"
+        assert db.portfolio_publications.items == []
+
+    asyncio.run(scenario())
+
+
 def test_the_public_projection_is_an_allowlist():
     entry = {
         "id": "p-1",
@@ -371,6 +502,63 @@ def test_one_project_yields_one_draft():
     asyncio.run(scenario())
 
 
+def test_routes_enforce_promotion_and_rollback_permission_boundaries():
+    async def scenario():
+        database = FakeDatabase()
+        await database.b2b_projects.insert_one(dict(COMPLETED_PROJECT))
+        granted = {"content.write"}
+
+        def require_permission(permission):
+            async def dependency():
+                if permission not in granted:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Permission required: {permission}",
+                    )
+                return ACTOR
+
+            return dependency
+
+        app = FastAPI()
+        app.include_router(
+            build_portfolio_router(
+                get_db=lambda: database,
+                get_transaction_guard=lambda: EnabledGuard(),
+                require_permission=require_permission,
+                has_permission=lambda _actor, permission: permission in granted,
+            ),
+            prefix="/api",
+        )
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            rollback_denied = await client.post(
+                "/api/admin/portfolio/missing/rollback",
+                json={
+                    "revision": 1,
+                    "expected_version": 1,
+                    "reason": "Restore an old revision",
+                },
+            )
+            assert rollback_denied.status_code == 403
+            assert (
+                rollback_denied.json()["detail"]
+                == "Permission required: content.publish"
+            )
+
+            denied = await client.post("/api/admin/portfolio/from-project/project-1")
+            assert denied.status_code == 403
+            assert denied.json()["detail"] == "Permission required: projects.read"
+            assert database.portfolio.items == []
+
+            granted.add("projects.read")
+            created = await client.post("/api/admin/portfolio/from-project/project-1")
+            assert created.status_code == 201
+            assert created.json()["source_project_id"] == "project-1"
+
+    asyncio.run(scenario())
+
+
 # --------------------------- Versions and ordering ---------------------------
 
 
@@ -398,6 +586,51 @@ def test_editing_appends_a_revision_and_rollback_does_not_truncate():
         assert restored["title_id"] == "Purwarupa Enclosure"
         # Rolling back appends; what was published stays on the record.
         assert len(restored["versions"]) == 3
+
+    asyncio.run(scenario())
+
+
+def test_rollback_from_published_appends_a_draft_and_preserves_live_publication():
+    async def scenario():
+        service, db = build_service()
+        entry = await service.create(dict(DRAFT), actor=ACTOR)
+        edited = await service.update_content(
+            entry["id"],
+            {**DRAFT, "title_id": "Judul yang tayang"},
+            expected_version=entry["version"],
+            reason="Siapkan judul publik",
+            actor=ACTOR,
+        )
+        for target in ("review", "preview", "published"):
+            edited = await service.transition(
+                edited["id"],
+                target_status=target,
+                expected_version=edited["version"],
+                reason=f"Menuju {target}",
+                actor=APPROVER,
+                can_write=True,
+                can_publish=True,
+                can_archive=True,
+            )
+        public_before = await service.list_public()
+
+        restored = await service.rollback(
+            edited["id"],
+            revision=1,
+            expected_version=edited["version"],
+            reason="Pulihkan revisi awal sebagai draft",
+            actor=APPROVER,
+        )
+
+        assert restored["status"] == "draft"
+        assert restored["title_id"] == DRAFT["title_id"]
+        assert restored["versions"][-1]["rollback_source_revision"] == 1
+        assert (
+            restored["versions"][-1]["rollback_source_revision_id"]
+            == entry["current_revision_id"]
+        )
+        assert len(db.portfolio_revisions.items) == 3
+        assert await service.list_public() == public_before
 
     asyncio.run(scenario())
 
@@ -439,6 +672,61 @@ def test_reordering_takes_the_whole_sequence_not_a_swap():
     with pytest.raises(PortfolioDomainError) as unknown:
         reorder_entries(entries, ["a", "b", "c", "d"])
     assert unknown.value.details["unknown"] == ["d"]
+
+
+def test_reorder_replaces_publication_snapshots_without_rewriting_history():
+    async def scenario():
+        service, db = build_service()
+        first = await published_entry(service)
+        second = await service.create(
+            {**DRAFT, "title_id": "Portofolio kedua"}, actor=ACTOR
+        )
+        for target in ("review", "preview", "published"):
+            second = await service.transition(
+                second["id"],
+                target_status=target,
+                expected_version=second["version"],
+                reason=f"Menuju {target}",
+                actor=APPROVER,
+                can_write=True,
+                can_publish=True,
+                can_archive=True,
+            )
+        old_publications = {
+            item["id"]: dict(item["snapshot"])
+            for item in db.portfolio_publications.items
+        }
+
+        reordered = await service.reorder(
+            [second["id"], first["id"]],
+            expected_versions={
+                first["id"]: first["version"],
+                second["id"]: second["version"],
+            },
+            actor=ACTOR,
+        )
+
+        assert [item["id"] for item in reordered] == [second["id"], first["id"]]
+        active = [
+            item
+            for item in db.portfolio_publications.items
+            if item["retired_at"] is None
+        ]
+        assert {
+            item["portfolio_id"]: item["snapshot"]["display_order"] for item in active
+        } == {
+            second["id"]: 0,
+            first["id"]: 1,
+        }
+        historical = [
+            item
+            for item in db.portfolio_publications.items
+            if item["id"] in old_publications
+        ]
+        assert all(item["retired_at"] is not None for item in historical)
+        assert {item["id"]: item["snapshot"] for item in historical} == old_publications
+
+    asyncio.run(scenario())
 
 
 def test_a_stale_version_does_not_overwrite_a_newer_edit():

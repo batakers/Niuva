@@ -174,11 +174,14 @@ def build_catalog_router(
             "fixed_price",
         ):
             if field in fields:
-                raise HTTPException(status_code=403, detail={
-                    "code": "catalog_field_forbidden",
-                    "field": field,
-                    "message": f"Operations cannot write {field}.",
-                })
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "code": "catalog_field_forbidden",
+                        "field": field,
+                        "message": f"Operations cannot write {field}.",
+                    },
+                )
 
     def reject_variant_lifecycle(actor: dict, fields: set[str]):
         if "status" in fields and not has_permission(actor, "catalog.publish"):
@@ -191,13 +194,33 @@ def build_catalog_router(
                 },
             )
 
-    def reject_operations_category_lifecycle(actor: dict, fields: set[str], *, requested_status: str, current_status: str | None = None):
+    def reject_operations_category_lifecycle(
+        actor: dict,
+        fields: set[str],
+        *,
+        requested_status: str,
+        current_status: str | None = None,
+    ):
         if has_permission(actor, "catalog.publish"):
             return
         if current_status == "archived":
-            raise HTTPException(status_code=403, detail={"code": "catalog_lifecycle_forbidden", "message": "Operations cannot update archived categories."})
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "catalog_lifecycle_forbidden",
+                    "message": "Operations cannot update archived categories.",
+                },
+            )
         if "status" in fields and requested_status != "active":
-            raise HTTPException(status_code=403, detail={"code": "catalog_lifecycle_forbidden", "field": "status", "message": "Operations cannot change category status."})
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "catalog_lifecycle_forbidden",
+                    "field": "status",
+                    "message": "Operations cannot change category status.",
+                },
+            )
+
     async def reject_operations_archived_product(actor: dict, product_id: str):
         if has_permission(actor, "catalog.publish"):
             return
@@ -205,12 +228,14 @@ def build_catalog_router(
         if current["product"].get("workflow_status") == "archived":
             raise HTTPException(
                 status_code=403,
-                detail={"code": "catalog_lifecycle_forbidden", "message": "Operations cannot update archived products."},
+                detail={
+                    "code": "catalog_lifecycle_forbidden",
+                    "message": "Operations cannot update archived products.",
+                },
             )
+
     def service() -> CatalogService:
-        return CatalogService(
-            get_db(), get_client(), get_capabilities(), get_guard()
-        )
+        return CatalogService(get_db(), get_client(), get_capabilities(), get_guard())
 
     async def invoke(awaitable):
         try:
@@ -232,7 +257,9 @@ def build_catalog_router(
         payload: CategoryPayload,
         actor: dict = Depends(require_permission("catalog.write")),
     ):
-        reject_operations_category_lifecycle(actor, payload.model_fields_set, requested_status=payload.status)
+        reject_operations_category_lifecycle(
+            actor, payload.model_fields_set, requested_status=payload.status
+        )
         return await invoke(
             service().create_category(payload.model_dump(mode="json"), actor)
         )
@@ -251,10 +278,20 @@ def build_catalog_router(
         actor: dict = Depends(require_permission("catalog.write")),
     ):
         current = await invoke(service().get_category(category_id))
-        reject_operations_category_lifecycle(actor, payload.model_fields_set, requested_status=payload.status, current_status=current.get("status"))
+        reject_operations_category_lifecycle(
+            actor,
+            payload.model_fields_set,
+            requested_status=payload.status,
+            current_status=current.get("status"),
+        )
         return await invoke(
             service().update_category(
-                category_id, payload.model_dump(mode="json", exclude_unset=not has_permission(actor, "catalog.publish")), actor
+                category_id,
+                payload.model_dump(
+                    mode="json",
+                    exclude_unset=not has_permission(actor, "catalog.publish"),
+                ),
+                actor,
             )
         )
 
@@ -308,7 +345,12 @@ def build_catalog_router(
         await reject_operations_archived_product(actor, product_id)
         return await invoke(
             service().update_product(
-                product_id, payload.model_dump(mode="json", exclude_unset=not has_permission(actor, "catalog.publish")), actor
+                product_id,
+                payload.model_dump(
+                    mode="json",
+                    exclude_unset=not has_permission(actor, "catalog.publish"),
+                ),
+                actor,
             )
         )
 
@@ -401,7 +443,9 @@ def build_catalog_router(
                 await service().archive_product(product_id, actor, payload.reason)
                 results.append({"id": product_id, "success": True, "error": None})
             except CatalogError as exc:
-                results.append({"id": product_id, "success": False, "error": exc.payload()})
+                results.append(
+                    {"id": product_id, "success": False, "error": exc.payload()}
+                )
         return {"results": results}
 
     @router.get(
@@ -426,9 +470,7 @@ def build_catalog_router(
                 status_code=422,
                 detail={"code": "limit_out_of_range"},
             )
-        return await invoke(
-            service().list_public_products(limit=limit, cursor=cursor)
-        )
+        return await invoke(service().list_public_products(limit=limit, cursor=cursor))
 
     @router.get(
         "/catalog/products/{slug}",
@@ -441,7 +483,10 @@ def build_catalog_router(
         if value is None:
             raise HTTPException(
                 status_code=404,
-                detail={"code": "product_not_found", "message": "Produk tidak ditemukan."},
+                detail={
+                    "code": "product_not_found",
+                    "message": "Produk tidak ditemukan.",
+                },
             )
         return value
 

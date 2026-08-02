@@ -219,7 +219,6 @@ def configured_runtime(monkeypatch, tmp_path, users, *, writes_enabled=True):
     server.db = database
     server.app.state.transaction_guard = AtomicGuard(database)
     server.app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
-        get_database=lambda: server.db,
         provider_sender=provider,
     )
     try:
@@ -305,7 +304,7 @@ def test_recovery_request_contract_origin_and_policy_routes(monkeypatch, tmp_pat
     asyncio.run(scenario())
 
 
-def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_token(
+def test_reset_route_revokes_old_session_and_keeps_auth_email_out_of_general_feed(
     monkeypatch, tmp_path
 ):
     async def scenario():
@@ -379,11 +378,12 @@ def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_to
                     "code": "password_reset_invalid",
                 }
 
-                assert len(database.notifications.items) == 1
-                notification = database.notifications.items[0]
-                assert raw_token not in repr(notification)
-                assert new_password not in repr(notification)
-                assert "berhasil diubah" in notification["body_html"].lower()
+                # Password-change delivery is authentication communication,
+                # not a general in-app notification or security-event store.
+                assert database.notifications.items == []
+                assert raw_token not in repr(provider.messages[-1])
+                assert new_password not in repr(provider.messages[-1])
+                assert "berhasil diubah" in provider.messages[-1]["body_html"].lower()
 
     asyncio.run(scenario())
 
@@ -465,7 +465,6 @@ def test_dedicated_delivery_invalidates_failed_token_without_general_notificatio
             failing_provider = CapturingProvider(fail=True)
             server.app.state.password_recovery_delivery = (
                 emailer.PasswordRecoveryDelivery(
-                    get_database=lambda: server.db,
                     provider_sender=failing_provider,
                 )
             )
@@ -504,7 +503,7 @@ def test_missing_provider_configuration_invalidates_token_outside_local_mode(
             monkeypatch.setenv("APP_ENV", "production")
             monkeypatch.setattr(emailer, "RESEND_API_KEY", "")
             server.app.state.password_recovery_delivery = (
-                emailer.PasswordRecoveryDelivery(get_database=lambda: server.db)
+                emailer.PasswordRecoveryDelivery()
             )
             transport = httpx.ASGITransport(app=server.app)
             async with httpx.AsyncClient(

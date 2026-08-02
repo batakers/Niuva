@@ -2,6 +2,7 @@ import asyncio
 import re
 
 import httpx
+import pytest
 from api_contract import ErrorEnvelope, error_responses, normalize_request_id
 
 from tests.test_identity_foundation import server
@@ -84,6 +85,45 @@ def test_request_id_normalization_rejects_unbounded_or_unsafe_values():
     assert normalize_request_id("x" * 129) != "x" * 129
     assert normalize_request_id("unsafe request") != "unsafe request"
     assert normalize_request_id(123) != "123"
+
+
+def test_csrf_rejection_correlates_a_valid_client_request_id():
+    response = asyncio.run(
+        request(
+            "POST",
+            "/api/contact",
+            headers={
+                "X-Request-ID": "client.csrf-1",
+                "Cookie": f"{server.ACCESS_COOKIE}=cookie-authenticated",
+            },
+            json={},
+        )
+    )
+
+    body = assert_error_contract(
+        response,
+        status_code=403,
+        code="csrf_validation_failed",
+    )
+    assert body["request_id"] == "client.csrf-1"
+
+
+def test_permission_denial_does_not_expose_internal_permission_name():
+    dependency = server.require_permission("payments.write")
+
+    with pytest.raises(server.HTTPException) as captured:
+        asyncio.run(
+            dependency(
+                user={
+                    "roles": ["retail_customer"],
+                    "role_policy_version": server.ROLE_POLICY_VERSION,
+                }
+            )
+        )
+
+    assert captured.value.status_code == 403
+    assert captured.value.detail == "Forbidden"
+    assert "payments.write" not in str(captured.value.detail)
 
 
 def test_shared_error_response_factory_uses_one_schema():

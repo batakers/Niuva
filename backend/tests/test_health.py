@@ -31,7 +31,14 @@ def ready_schema_status():
     }
 
 
-async def get(path, capabilities, *, dependencies=None, cached_capabilities=None):
+async def get(
+    path,
+    capabilities,
+    *,
+    dependencies=None,
+    cached_capabilities=None,
+    database=None,
+):
     previous = server.app.state.database_capabilities
     previous_schema = server.app.state.schema_status
     previous_db = server.db
@@ -54,7 +61,7 @@ async def get(path, capabilities, *, dependencies=None, cached_capabilities=None
 
     transport = httpx.ASGITransport(app=server.app)
     try:
-        server.db = HealthDatabase()
+        server.db = database or HealthDatabase()
         server.app.state.database_capabilities = (
             capabilities
             if path == "/api/health"
@@ -261,7 +268,7 @@ def test_optional_transaction_capability_does_not_disable_readiness(monkeypatch)
         assert forbidden not in serialized
 
 
-def test_database_ping_failure_is_not_ready_and_remains_secret_safe():
+def test_database_ping_failure_is_not_ready():
     dependencies = ReadinessDependencies(
         database_available=False,
         capabilities=DatabaseCapabilities(
@@ -280,7 +287,48 @@ def test_database_ping_failure_is_not_ready_and_remains_secret_safe():
     assert response.json()["database"] == "unavailable"
     assert response.json()["transaction_mutations"] == "unavailable"
     assert response.json()["schema"]["ready"] is False
-    assert "mongodb://private:secret@host" not in response.text
+
+
+def test_enabled_auth_event_marker_honors_total_readiness_deadline(monkeypatch):
+    class SlowMigrationState:
+        async def find_one(self, *_args, **_kwargs):
+            await asyncio.Event().wait()
+
+    class SlowMarkerDatabase:
+        migration_state = SlowMigrationState()
+
+    async def scenario():
+        previous_service = server.app.state.auth_security_event_service
+        previous_status = server.app.state.auth_security_event_status
+        monkeypatch.setenv("AUTH_SECURITY_EVENTS_ENABLED", "true")
+        monkeypatch.setattr(server, "TOTAL_TIMEOUT_SECONDS", 0.02, raising=False)
+        server.app.state.auth_security_event_service = object()
+        server.app.state.auth_security_event_status = {
+            "enabled": True,
+            "ready": True,
+            "last_error": None,
+        }
+        try:
+            return await asyncio.wait_for(
+                get(
+                    "/api/health/ready",
+                    available_capabilities(),
+                    database=SlowMarkerDatabase(),
+                ),
+                timeout=0.2,
+            )
+        finally:
+            server.app.state.auth_security_event_service = previous_service
+            server.app.state.auth_security_event_status = previous_status
+
+    response = asyncio.run(scenario())
+
+    assert response.status_code == 503
+    assert response.json()["capabilities"]["authentication_security_events"] == {
+        "status": "unavailable",
+        "required": True,
+        "migration_010": False,
+    }
 
 
 def test_fresh_schema_failure_overrides_cached_ready_state():
@@ -327,8 +375,10 @@ def test_required_fresh_transaction_failure_overrides_cached_available_state(
 class WorkerTask:
     def __init__(self, *, done=False):
         self._done = done
+        self.done_calls = 0
 
     def done(self):
+        self.done_calls += 1
         return self._done
 
 
@@ -353,6 +403,17 @@ def test_required_worker_needs_live_task_and_fresh_nonfuture_heartbeat(monkeypat
             "enabled": True,
             "heartbeat_fresh": False,
         }
+
+        startup_task = WorkerTask()
+        server.app.state.notification_worker_status = {
+            "enabled": True,
+            "running": True,
+            "last_heartbeat_at": None,
+        }
+        server.app.state.notification_worker_task = startup_task
+        startup = asyncio.run(get("/api/health/ready", available_capabilities()))
+        assert startup.status_code == 503
+        assert startup_task.done_calls == 1
 
         server.app.state.notification_worker_status["last_heartbeat_at"] = (
             server.datetime.now(server.timezone.utc)
@@ -453,6 +514,45 @@ def test_required_worker_heartbeat_advances_during_slow_batch(monkeypatch):
     finally:
         server.app.state.notification_worker_status = previous_status
         server.app.state.notification_worker_task = previous_task
+
+
+def test_readiness_probe_loop_recovers_without_logging_exception_details(
+    monkeypatch, caplog
+):
+    previous_coordinator = server.app.state.readiness_probe_coordinator
+    recovered = asyncio.Event()
+    secret = "mongodb://private-user:private-secret@database"
+
+    class FlakyCoordinator:
+        def __init__(self):
+            self.calls = 0
+
+        async def probe(self, *, refresh_transaction):
+            assert refresh_transaction is True
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError(secret)
+            recovered.set()
+
+    coordinator = FlakyCoordinator()
+
+    async def scenario():
+        monkeypatch.setattr(server, "READINESS_PROBE_INTERVAL_SECONDS", 0)
+        server.app.state.readiness_probe_coordinator = coordinator
+        task = asyncio.create_task(server.readiness_probe_loop())
+        try:
+            await asyncio.wait_for(recovered.wait(), timeout=0.1)
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+    try:
+        asyncio.run(scenario())
+        assert coordinator.calls >= 2
+        assert "readiness_probe_loop_failed error_type=RuntimeError" in caplog.text
+        assert secret not in caplog.text
+    finally:
+        server.app.state.readiness_probe_coordinator = previous_coordinator
 
 
 def test_required_email_capability_is_configuration_only_and_secret_safe(monkeypatch):

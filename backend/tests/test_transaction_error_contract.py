@@ -2,7 +2,6 @@ import asyncio
 
 import httpx
 from fastapi import FastAPI
-
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import (
     TransactionCommitOutcomeUnknownError,
@@ -95,8 +94,9 @@ def test_unknown_commit_stays_internal_without_public_retry_mapping():
 
 
 def test_server_composes_one_shared_transaction_guard_and_handler():
-    from tests.test_identity_foundation import server
     from transaction_guard import TransactionMutationGuard
+
+    from tests.test_identity_foundation import server
 
     guard = server.app.state.transaction_guard
     handlers = server.app.exception_handlers

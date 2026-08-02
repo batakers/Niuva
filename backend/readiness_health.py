@@ -385,4 +385,7 @@ async def probe_readiness_dependencies(
         schema_max_age=0,
         **kwargs,
     )
-    return await coordinator.probe()
+    try:
+        return await coordinator.probe()
+    finally:
+        await coordinator.close()

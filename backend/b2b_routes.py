@@ -498,9 +498,7 @@ def build_b2b_router(
         status_filter: str | None = None,
         _actor: dict = Depends(require_permission("inventory.read")),
     ):
-        return await invoke(
-            service().list_material_shortages(status=status_filter)
-        )
+        return await invoke(service().list_material_shortages(status=status_filter))
 
     @router.get("/admin/b2b/work-orders/{work_order_id}")
     async def get_work_order(
