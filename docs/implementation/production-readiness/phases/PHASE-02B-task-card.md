@@ -1,6 +1,7 @@
 # PHASE-02B Migration Hardening Task Card
 
-Status: **authorized planning task; migration execution prohibited**
+Status: **planning and current-source expert review complete; current-head CI
+and merge pending; migration execution prohibited**
 
 | Field | Task brief |
 | --- | --- |
@@ -12,15 +13,18 @@ Status: **authorized planning task; migration execution prohibited**
 | Contract or dependency | `PHASE-02A` and `PHASE-00C` remain planning inputs; execution stays blocked by incomplete `DR-012` and requires a separately approved isolated target/window. |
 | Done when | The current-SHA packet covers `001`–`009`, distinguishes migration from cleanup, maps existing and missing tests truthfully, preserves per-migration stop rules, and updates only directly stale tracker scope. |
 | Verification | Read-only source/test inventory; required-term and path checks; `git diff --check`; changed-path and diff review. No database or migration command. |
-| Owner and verifier | Driver: Backend/Codex under Faiz's authorization. Required PR reviewers: Lead rule reviewer and independent verifier; the Driver does not substitute for either. |
-| Commit/push/PR permitted? | Yes. Commit, push, and pull-request creation are authorized. Merge, migration execution, deployment, and production actions are not authorized. |
-| Risks or open decisions | `001`, `004`, and `005` retain hard reconciliation gaps; `DR-012` target/topology, RPO/RTO, evidence format, and operational ownership remain incomplete; Migration `009` retention cleanup is a separate destructive operation. |
+| Owner and verifier | Driver: Backend/Codex under Faiz's authorization. Bounded independent source/matrix review completed during PR reconciliation; a named operational reviewer remains required before any future execution proposal. |
+| Commit/push/PR permitted? | Yes. The Project Owner separately authorized the recommended PR reconciliation and merge sequence on 3 August 2026. Migration execution, deployment, production-readiness, and go-live remain unauthorized. |
+| Risks or open decisions | `001`, `004`, and `005` retain hard reconciliation gaps; `DR-012` target/topology, RPO/RTO, evidence format, and operational ownership remain incomplete; Migration `009` retention cleanup is a separate destructive operation; Migration `010` remains outside this packet under Feature 1.7. |
 
 Selected baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
-(`origin/main`, verified 2 August 2026).
+(`origin/main`, verified 2 August 2026, Asia/Jakarta).
+
+Reconciliation baseline: `b16a30b626bd2263d17a45d82313a82d25edfa2c`
+(`origin/main`, checked 3 August 2026, Asia/Jakarta).
 
 Branch / worktree: `plan/phase-02b-migration-hardening` /
-`/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-migration-hardening`.
+contributor-local isolated worktree.
 
 Finding scope: `DB-005` through `DB-012`, `DB-014`, `OPS-005`, `QA-004`,
 and `GOV-013`.

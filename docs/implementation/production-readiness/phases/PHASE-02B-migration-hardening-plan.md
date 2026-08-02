@@ -1,16 +1,20 @@
 # PHASE-02B — Migration Hardening Plan
 
-Status: **planning — ready for owner/reviewer review; execution remains blocked**
+Status: **planning packet reviewed — current-head CI and merge pending;
+execution remains blocked**
 
 Phase / tasks: `PHASE-02B` / `TASK-02B-01`, `TASK-02B-02`
 
 Task card: [PHASE-02B-task-card.md](PHASE-02B-task-card.md)
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91` (`origin/main`,
-verified 2 August 2026)
+verified 2 August 2026, Asia/Jakarta)
+
+Reconciliation baseline: `b16a30b626bd2263d17a45d82313a82d25edfa2c`
+(`origin/main`, checked 3 August 2026, Asia/Jakarta)
 
 Task branch / worktree: `plan/phase-02b-migration-hardening` /
-`/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-migration-hardening`
+contributor-local isolated worktree
 
 ## Objective
 
@@ -67,7 +71,9 @@ historical session records and requires separate authorization.
 Excluded work includes all migration commands, data/index/collection mutation,
 backup or restore execution, new mapping files, provider or scheduler work,
 environment/configuration changes, credentials, production-readiness claims,
-and go-live.
+and go-live. Migration `010_auth_security_events.py` already exists on the
+baseline but remains outside this 001–009 packet; Feature 1.7 and its recorded
+Migration 010 gates remain its separate implementation authority.
 
 ## Global execution gate
 
