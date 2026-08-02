@@ -42,6 +42,7 @@ class Collection:
         self.items = [dict(item) for item in items]
         self.reads = 0
         self.deletes = 0
+        self.sessions = []
         self.before_delete = None
 
     @staticmethod
@@ -57,16 +58,19 @@ class Collection:
                 return False
         return True
 
-    def find(self, query):
+    def find(self, query, **options):
         self.reads += 1
+        self.sessions.append(options.get("session"))
         return Cursor([item for item in self.items if self._matches(item, query)])
 
-    async def count_documents(self, query, **_options):
+    async def count_documents(self, query, **options):
         self.reads += 1
+        self.sessions.append(options.get("session"))
         return sum(1 for item in self.items if self._matches(item, query))
 
-    async def delete_one(self, query):
+    async def delete_one(self, query, **options):
         self.deletes += 1
+        self.sessions.append(options.get("session"))
         if self.before_delete is not None:
             callback = self.before_delete
             self.before_delete = None
@@ -82,6 +86,16 @@ class Database:
     def __init__(self, *, notifications=(), outbox=()):
         self.notifications = Collection(notifications)
         self.notification_outbox = Collection(outbox)
+
+
+class TransactionGuard:
+    def __init__(self):
+        self.session = object()
+        self.calls = []
+
+    async def run(self, callback, *, operation_name, retry_safe):
+        self.calls.append({"operation_name": operation_name, "retry_safe": retry_safe})
+        return await callback(self.session)
 
 
 def canonical_notification(identifier="notification-1", **overrides):
@@ -151,12 +165,14 @@ def run_cleanup(database, **overrides):
 
 
 def apply_cleanup(database, **overrides):
+    transaction_guard = overrides.pop("transaction_guard", TransactionGuard())
     return run_cleanup(
         database,
         apply=True,
         cleanup_confirmed=True,
         restore_tested_backup_confirmed=True,
         owner_approved=True,
+        transaction_guard=transaction_guard,
         **overrides,
     )
 
@@ -273,6 +289,33 @@ def test_malformed_marked_candidate_stops_all_mutation():
     assert len(database.notifications.items) == 1
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    (
+        {"channel": "sms"},
+        {"payload": {"provider_payload": "unsafe"}},
+        {"payload": {"subject": 123}},
+        {"last_error": "temporary_failure"},
+    ),
+)
+def test_schema_v1_outbox_with_invalid_delivery_content_stops_all_mutation(
+    overrides,
+):
+    database = Database(
+        notifications=[canonical_notification()],
+        outbox=[terminal_outbox(**overrides)],
+    )
+
+    report = apply_cleanup(database)
+
+    assert report["disposition"] == "blocked_ambiguity"
+    assert report["terminal_outbox"]["invalid_excluded"] == 1
+    assert database.notification_outbox.deletes == 0
+    assert database.notifications.deletes == 0
+    assert len(database.notification_outbox.items) == 1
+    assert len(database.notifications.items) == 1
+
+
 def test_reader_compatible_extra_url_field_is_not_cleanup_canonical():
     marked_but_ambiguous = canonical_notification(url="https://unsafe.example.test")
     database = Database(notifications=[marked_but_ambiguous])
@@ -367,6 +410,40 @@ def test_apply_requires_every_confirmation_before_database_access(
     assert database.notifications.reads == 0
     assert database.notification_outbox.reads == 0
     assert database.notifications.deletes == 0
+
+
+def test_apply_requires_transaction_guard_before_database_access():
+    database = Database(notifications=[canonical_notification()])
+
+    with pytest.raises(ValueError, match="transaction-capable guard"):
+        run_cleanup(
+            database,
+            apply=True,
+            cleanup_confirmed=True,
+            restore_tested_backup_confirmed=True,
+            owner_approved=True,
+        )
+
+    assert database.notifications.reads == 0
+    assert database.notification_outbox.reads == 0
+    assert database.notifications.deletes == 0
+
+
+def test_apply_uses_one_transaction_session_for_all_reads_and_writes():
+    database = Database(
+        notifications=[canonical_notification()],
+        outbox=[terminal_outbox()],
+    )
+    guard = TransactionGuard()
+
+    report = apply_cleanup(database, transaction_guard=guard)
+
+    assert report["disposition"] == "applied"
+    assert guard.calls == [
+        {"operation_name": "notification_retention_cleanup", "retry_safe": True}
+    ]
+    assert set(database.notifications.sessions) == {guard.session}
+    assert set(database.notification_outbox.sessions) == {guard.session}
 
 
 def test_shared_or_unsafe_target_is_blocked_without_database_access():

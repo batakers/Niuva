@@ -140,7 +140,7 @@ Benefits: little operator work.
 Trade-off: unsafe identity inference; company names and email domains are not
 authorization evidence.
 
-### Recommendation
+### Recommendation — canonical ownership attachment
 
 Approve **Option A**. Explicitly prohibit automatic ownership inference from
 company name, email domain, PIC email, or historical free text.

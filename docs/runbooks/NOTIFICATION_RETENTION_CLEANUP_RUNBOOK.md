@@ -27,6 +27,8 @@ The approved policy is:
 
 There is intentionally no CLI, runtime hook, scheduler, or deployment setting
 for cleanup in this feature. Do not construct an ad-hoc database invocation.
+The current safe target label and scope are caller declarations, not verified
+database-identity evidence, so they cannot authorize a data-bearing run.
 
 ## Future execution prerequisites
 
@@ -67,14 +69,15 @@ The reusable function requires all of the following before any read:
 - `target_scope="isolated"` with a bounded safe target label;
 - explicit cleanup confirmation;
 - restore-tested backup confirmation; and
-- explicit owner approval.
+- explicit owner approval; and
+- a transaction-capable guard.
 
-It validates the complete selected batch before deleting anything. Terminal
-outbox entries are deleted first, then notifications without any remaining
-outbox link. Deletes use the database `_id` plus immutable/version/timestamp
-fields as compare-and-delete selectors. A changed row is retained and counted
-as a conflict. Batches are repeatable and partial completion is reported
-truthfully.
+It runs the complete cross-collection selection, validation, and deletion batch
+in one transaction session. Terminal outbox entries are deleted first, then
+notifications without any remaining outbox link. Deletes use the database
+`_id` plus immutable/version/timestamp fields as compare-and-delete selectors.
+A changed row is retained and counted as a conflict. Batches are repeatable and
+partial completion is reported truthfully.
 
 ## Rollback and incident boundary
 

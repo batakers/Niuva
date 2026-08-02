@@ -18,6 +18,8 @@ from typing import Any
 
 NOTIFICATION_SCHEMA_VERSION = 1
 NOTIFICATION_OUTBOX_SCHEMA_VERSION = 1
+NOTIFICATION_OUTBOX_CHANNELS = frozenset({"email"})
+NOTIFICATION_OUTBOX_PAYLOAD_FIELDS = frozenset({"subject", "title", "body_html"})
 NOTIFICATION_RETENTION = timedelta(days=180)
 REFERENCE_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]{1,200}\Z")
 

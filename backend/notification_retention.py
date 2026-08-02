@@ -13,6 +13,8 @@ from typing import Any
 
 from notification_domain import (
     CANONICAL_NOTIFICATION_FIELDS,
+    NOTIFICATION_OUTBOX_CHANNELS,
+    NOTIFICATION_OUTBOX_PAYLOAD_FIELDS,
     NOTIFICATION_OUTBOX_SCHEMA_VERSION,
     NOTIFICATION_RETENTION,
     NOTIFICATION_SCHEMA_VERSION,
@@ -82,7 +84,7 @@ def _valid_terminal_outbox(document: dict, *, cutoff: datetime) -> bool:
         (
             _bounded_text(document.get("id"), 200),
             _bounded_text(document.get("notification_id"), 200),
-            _bounded_text(document.get("channel"), 80),
+            document.get("channel") in NOTIFICATION_OUTBOX_CHANNELS,
             _bounded_text(document.get("recipient"), 320),
         )
     ):
@@ -92,7 +94,13 @@ def _valid_terminal_outbox(document: dict, *, cutoff: datetime) -> bool:
         delivery_key
     ):
         return False
-    if not isinstance(document.get("payload"), dict):
+    payload = document.get("payload")
+    if not isinstance(payload, dict) or any(
+        not isinstance(field, str)
+        or field not in NOTIFICATION_OUTBOX_PAYLOAD_FIELDS
+        or not isinstance(value, str)
+        for field, value in payload.items()
+    ):
         return False
     if any(
         document.get(field) is not None
@@ -102,6 +110,8 @@ def _valid_terminal_outbox(document: dict, *, cutoff: datetime) -> bool:
     if document.get("last_error") is not None and not _bounded_text(
         document["last_error"], 128
     ):
+        return False
+    if status == "delivered" and document.get("last_error") is not None:
         return False
     created_at = as_utc_datetime(document.get("created_at"))
     updated_at = as_utc_datetime(document.get("updated_at"))
@@ -135,9 +145,11 @@ async def _candidates(
     *,
     sort: list[tuple[str, int]],
     batch_size: int,
+    session=None,
 ) -> tuple[list[dict], bool]:
+    options = {"session": session} if session is not None else {}
     documents = (
-        await collection.find(query)
+        await collection.find(query, **options)
         .sort(sort)
         .limit(batch_size + 1)
         .to_list(batch_size + 1)
@@ -177,6 +189,135 @@ def _empty_report(*, target_label: str, apply: bool, disposition: str) -> dict:
     }
 
 
+async def _cleanup_batch(
+    database,
+    *,
+    target_label: str,
+    apply: bool,
+    batch_size: int,
+    moment: datetime,
+    session=None,
+) -> dict:
+    options = {"session": session} if session is not None else {}
+    outbox_cutoff = moment - TERMINAL_OUTBOX_RETENTION
+    outbox_documents, outbox_truncated = await _candidates(
+        database.notification_outbox,
+        {
+            "schema_version": NOTIFICATION_OUTBOX_SCHEMA_VERSION,
+            "status": {"$in": sorted(TERMINAL_OUTBOX_STATUSES)},
+            "updated_at": {"$lte": outbox_cutoff},
+        },
+        sort=[("updated_at", 1), ("_id", 1)],
+        batch_size=batch_size,
+        session=session,
+    )
+    notification_documents, notification_truncated = await _candidates(
+        database.notifications,
+        {
+            "schema_version": NOTIFICATION_SCHEMA_VERSION,
+            "expires_at": {"$lte": moment},
+            "created_at": {"$lte": moment - NOTIFICATION_RETENTION},
+        },
+        sort=[("expires_at", 1), ("_id", 1)],
+        batch_size=batch_size,
+        session=session,
+    )
+    valid_outbox = [
+        document
+        for document in outbox_documents
+        if _valid_terminal_outbox(document, cutoff=outbox_cutoff)
+    ]
+    valid_notifications = [
+        document
+        for document in notification_documents
+        if _valid_expired_notification(document, moment=moment)
+    ]
+    report = _empty_report(
+        target_label=target_label,
+        apply=apply,
+        disposition="ready_for_review",
+    )
+    report["terminal_outbox"].update(
+        selected=len(outbox_documents),
+        eligible=len(valid_outbox),
+        invalid_excluded=len(outbox_documents) - len(valid_outbox),
+        truncated=outbox_truncated,
+    )
+    report["notifications"].update(
+        selected=len(notification_documents),
+        eligible=len(valid_notifications),
+        invalid_excluded=len(notification_documents) - len(valid_notifications),
+        truncated=notification_truncated,
+    )
+    if (
+        report["terminal_outbox"]["invalid_excluded"]
+        or report["notifications"]["invalid_excluded"]
+    ):
+        report["disposition"] = "blocked_ambiguity"
+        return report
+
+    if apply:
+        for document in valid_outbox:
+            result = await database.notification_outbox.delete_one(
+                {
+                    "_id": document.get("_id"),
+                    "schema_version": NOTIFICATION_OUTBOX_SCHEMA_VERSION,
+                    "id": document["id"],
+                    "delivery_key": document["delivery_key"],
+                    "status": document["status"],
+                    "updated_at": document["updated_at"],
+                },
+                **options,
+            )
+            if result.deleted_count:
+                report["terminal_outbox"]["deleted"] += 1
+            else:
+                report["terminal_outbox"]["delete_conflicts"] += 1
+
+    deletable_notifications = []
+    for document in valid_notifications:
+        linked = await database.notification_outbox.count_documents(
+            {"notification_id": document["id"]}, limit=1, **options
+        )
+        if linked:
+            report["notifications"]["linked_excluded"] += 1
+        else:
+            deletable_notifications.append(document)
+
+    truncated = bool(outbox_truncated or notification_truncated)
+    if apply:
+        for document in deletable_notifications:
+            result = await database.notifications.delete_one(
+                {
+                    "_id": document.get("_id"),
+                    "schema_version": NOTIFICATION_SCHEMA_VERSION,
+                    "id": document["id"],
+                    "expires_at": document["expires_at"],
+                },
+                **options,
+            )
+            if result.deleted_count:
+                report["notifications"]["deleted"] += 1
+            else:
+                report["notifications"]["delete_conflicts"] += 1
+        if (
+            report["terminal_outbox"]["delete_conflicts"]
+            or report["notifications"]["delete_conflicts"]
+        ):
+            report["disposition"] = "applied_with_conflicts"
+        elif truncated:
+            report["disposition"] = "applied_partial_batch"
+        elif report["notifications"]["linked_excluded"]:
+            report["disposition"] = "applied_with_exclusions"
+        else:
+            report["disposition"] = "applied"
+    elif truncated:
+        report["disposition"] = "partial_batch"
+    elif report["notifications"]["linked_excluded"]:
+        report["disposition"] = "ready_with_exclusions"
+    return report
+
+
 async def cleanup_notification_retention(
     database,
     *,
@@ -186,6 +327,7 @@ async def cleanup_notification_retention(
     cleanup_confirmed: bool = False,
     restore_tested_backup_confirmed: bool = False,
     owner_approved: bool = False,
+    transaction_guard=None,
     batch_size: int = 250,
     current_time: datetime | None = None,
 ) -> dict:
@@ -219,116 +361,30 @@ async def cleanup_notification_retention(
     if not isinstance(moment, datetime) or moment.tzinfo is None:
         raise ValueError("current_time must be timezone-aware")
     moment = moment.astimezone(timezone.utc)
-    outbox_cutoff = moment - TERMINAL_OUTBOX_RETENTION
-    outbox_documents, outbox_truncated = await _candidates(
-        database.notification_outbox,
-        {
-            "schema_version": NOTIFICATION_OUTBOX_SCHEMA_VERSION,
-            "status": {"$in": sorted(TERMINAL_OUTBOX_STATUSES)},
-            "updated_at": {"$lte": outbox_cutoff},
-        },
-        sort=[("updated_at", 1), ("_id", 1)],
-        batch_size=batch_size,
-    )
-    notification_documents, notification_truncated = await _candidates(
-        database.notifications,
-        {
-            "schema_version": NOTIFICATION_SCHEMA_VERSION,
-            "expires_at": {"$lte": moment},
-            "created_at": {"$lte": moment - NOTIFICATION_RETENTION},
-        },
-        sort=[("expires_at", 1), ("_id", 1)],
-        batch_size=batch_size,
-    )
-    valid_outbox = [
-        document
-        for document in outbox_documents
-        if _valid_terminal_outbox(document, cutoff=outbox_cutoff)
-    ]
-    valid_notifications = [
-        document
-        for document in notification_documents
-        if _valid_expired_notification(document, moment=moment)
-    ]
-    report = _empty_report(
-        target_label=safe_label,
-        apply=apply,
-        disposition="ready_for_review",
-    )
-    report["terminal_outbox"].update(
-        selected=len(outbox_documents),
-        eligible=len(valid_outbox),
-        invalid_excluded=len(outbox_documents) - len(valid_outbox),
-        truncated=outbox_truncated,
-    )
-    report["notifications"].update(
-        selected=len(notification_documents),
-        eligible=len(valid_notifications),
-        invalid_excluded=len(notification_documents) - len(valid_notifications),
-        truncated=notification_truncated,
-    )
-    if (
-        report["terminal_outbox"]["invalid_excluded"]
-        or report["notifications"]["invalid_excluded"]
-    ):
-        report["disposition"] = "blocked_ambiguity"
-        return report
-
     if apply:
-        for document in valid_outbox:
-            result = await database.notification_outbox.delete_one(
-                {
-                    "_id": document.get("_id"),
-                    "schema_version": NOTIFICATION_OUTBOX_SCHEMA_VERSION,
-                    "id": document["id"],
-                    "delivery_key": document["delivery_key"],
-                    "status": document["status"],
-                    "updated_at": document["updated_at"],
-                }
-            )
-            if result.deleted_count:
-                report["terminal_outbox"]["deleted"] += 1
-            else:
-                report["terminal_outbox"]["delete_conflicts"] += 1
+        if transaction_guard is None:
+            raise ValueError("a transaction-capable guard is required")
 
-    deletable_notifications = []
-    for document in valid_notifications:
-        linked = await database.notification_outbox.count_documents(
-            {"notification_id": document["id"]}, limit=1
+        async def mutate(session):
+            return await _cleanup_batch(
+                database,
+                target_label=safe_label,
+                apply=True,
+                batch_size=batch_size,
+                moment=moment,
+                session=session,
+            )
+
+        return await transaction_guard.run(
+            mutate,
+            operation_name="notification_retention_cleanup",
+            retry_safe=True,
         )
-        if linked:
-            report["notifications"]["linked_excluded"] += 1
-        else:
-            deletable_notifications.append(document)
 
-    truncated = bool(outbox_truncated or notification_truncated)
-    if apply:
-        for document in deletable_notifications:
-            result = await database.notifications.delete_one(
-                {
-                    "_id": document.get("_id"),
-                    "schema_version": NOTIFICATION_SCHEMA_VERSION,
-                    "id": document["id"],
-                    "expires_at": document["expires_at"],
-                }
-            )
-            if result.deleted_count:
-                report["notifications"]["deleted"] += 1
-            else:
-                report["notifications"]["delete_conflicts"] += 1
-        if (
-            report["terminal_outbox"]["delete_conflicts"]
-            or report["notifications"]["delete_conflicts"]
-        ):
-            report["disposition"] = "applied_with_conflicts"
-        elif truncated:
-            report["disposition"] = "applied_partial_batch"
-        elif report["notifications"]["linked_excluded"]:
-            report["disposition"] = "applied_with_exclusions"
-        else:
-            report["disposition"] = "applied"
-    elif truncated:
-        report["disposition"] = "partial_batch"
-    elif report["notifications"]["linked_excluded"]:
-        report["disposition"] = "ready_with_exclusions"
-    return report
+    return await _cleanup_batch(
+        database,
+        target_label=safe_label,
+        apply=False,
+        batch_size=batch_size,
+        moment=moment,
+    )
