@@ -46,66 +46,100 @@ jobs:
           --follow-imports=skip
           --ignore-missing-imports
           --check-untyped-defs
+          backend/api_contract.py
           backend/auth_sessions.py
           backend/auth_rate_limit.py
           backend/auth_password.py
           backend/auth_recovery.py
           backend/auth_session.py
+          backend/b2b_pagination.py
+          backend/b2b_routes.py
+          backend/b2b_service.py
+          backend/catalog_routes.py
           backend/content_domain.py
           backend/inventory_service.py
           backend/csv_safety.py
           backend/schema_manifest.py
           backend/schema_readiness.py
+          backend/readiness_health.py
           backend/notification_worker.py
           backend/quote_line_reconciliation_report.py
           backend/storage.py
+          backend/transaction_api.py
       - name: Check remediation formatting
         run: |
           python -m black --check \
+            backend/api_contract.py \
             backend/auth_sessions.py \
             backend/auth_rate_limit.py \
             backend/auth_password.py \
             backend/auth_recovery.py \
             backend/auth_session.py \
+            backend/b2b_pagination.py \
+            backend/b2b_routes.py \
+            backend/b2b_service.py \
+            backend/catalog_routes.py \
             backend/content_domain.py \
             backend/inventory_service.py \
             backend/csv_safety.py \
             backend/schema_manifest.py \
             backend/schema_readiness.py \
+            backend/readiness_health.py \
             backend/notification_worker.py \
             backend/quote_line_reconciliation_report.py \
             backend/storage.py \
             backend/server.py \
+            backend/transaction_api.py \
             backend/migrations/007_security_publication_schema.py \
             backend/migrations/008_auth_recovery_safety.py \
             backend/migrations/009_admin_session_safety.py \
             backend/tests/test_admin_notifications.py \
+            backend/tests/test_api_contract.py \
+            backend/tests/test_b2b_inquiry_routes.py \
+            backend/tests/test_b2b_pagination.py \
+            backend/tests/test_health.py \
+            backend/tests/test_readiness_health.py \
             backend/tests/test_readonly_load_probe.py \
             backend/tests/test_inventory_service.py \
             backend/tests/test_quote_line_reconciliation_report.py \
+            backend/tests/test_transaction_error_contract.py \
             backend/tests/test_work_order_allocation_integration.py \
             scripts/load_readonly_api.py
           python -m isort --profile black --check-only \
+            backend/api_contract.py \
             backend/auth_sessions.py \
             backend/auth_rate_limit.py \
             backend/auth_password.py \
             backend/auth_recovery.py \
             backend/auth_session.py \
+            backend/b2b_pagination.py \
+            backend/b2b_routes.py \
+            backend/b2b_service.py \
+            backend/catalog_routes.py \
             backend/content_domain.py \
             backend/inventory_service.py \
             backend/csv_safety.py \
             backend/schema_manifest.py \
             backend/schema_readiness.py \
+            backend/readiness_health.py \
             backend/notification_worker.py \
             backend/quote_line_reconciliation_report.py \
             backend/storage.py \
+            backend/server.py \
+            backend/transaction_api.py \
             backend/migrations/007_security_publication_schema.py \
             backend/migrations/008_auth_recovery_safety.py \
             backend/migrations/009_admin_session_safety.py \
             backend/tests/test_admin_notifications.py \
+            backend/tests/test_api_contract.py \
+            backend/tests/test_b2b_inquiry_routes.py \
+            backend/tests/test_b2b_pagination.py \
+            backend/tests/test_health.py \
+            backend/tests/test_readiness_health.py \
             backend/tests/test_readonly_load_probe.py \
             backend/tests/test_inventory_service.py \
             backend/tests/test_quote_line_reconciliation_report.py \
+            backend/tests/test_transaction_error_contract.py \
             backend/tests/test_work_order_allocation_integration.py \
             scripts/load_readonly_api.py
       - name: Run complete backend suite

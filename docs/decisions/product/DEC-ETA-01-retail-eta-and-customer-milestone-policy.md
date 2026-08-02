@@ -90,8 +90,10 @@ The following rules apply:
 6. Numeric handling, review, material-readiness, post-processing, QC, buffer,
    and calendar values require approved operational configuration before
    activation.
-7. If the system cannot produce a safe ETA from validated inputs, the order
-   becomes `quote_required` or uses another separately approved recovery path.
+7. If the system cannot produce a safe ETA from validated inputs before order
+   creation, the request is routed to `quote_required` without creating an
+   Order, reservation, payment attempt, or checkout total, unless another
+   recovery path is separately approved.
 
 Before order/payment-attempt creation, the server revalidates the ETA together
 with price, tax, stock/material, configuration, fulfillment, and file

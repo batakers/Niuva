@@ -6,9 +6,8 @@ import asyncio
 import html
 import logging
 import os
-import uuid
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable
+from typing import Awaitable, Callable
 
 import resend
 
@@ -86,25 +85,9 @@ async def send_email(
     subject: str,
     title: str,
     body_html: str,
-    db=None,
-    user_id: str | None = None,
     idempotency_key: str | None = None,
 ):
-    """Send a general notification and persist its non-secret in-app copy."""
-
-    if db is not None:
-        await db.notifications.insert_one(
-            {
-                "id": str(uuid.uuid4()),
-                "user_id": user_id,
-                "to_email": to_email,
-                "subject": subject,
-                "title": title,
-                "body_html": body_html,
-                "read": False,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }
-        )
+    """Deliver email only; in-app records belong to NotificationService."""
     return await _send_provider_email(
         to_email=to_email,
         subject=subject,
@@ -119,7 +102,6 @@ class PasswordRecoveryDeliveryError(RuntimeError):
 
 
 ProviderSender = Callable[..., Awaitable[dict]]
-DatabaseProvider = Callable[[], Any | None]
 
 
 class PasswordRecoveryDelivery:
@@ -128,10 +110,8 @@ class PasswordRecoveryDelivery:
     def __init__(
         self,
         *,
-        get_database: DatabaseProvider = lambda: None,
         provider_sender: ProviderSender = _send_provider_email,
     ):
-        self.get_database = get_database
         self.provider_sender = provider_sender
 
     async def send_password_reset(
@@ -161,25 +141,15 @@ class PasswordRecoveryDelivery:
             raise PasswordRecoveryDeliveryError("password_recovery_delivery_failed")
 
     async def send_password_changed(self, *, email: str) -> None:
-        database = self.get_database()
-        user_id = None
-        if database is not None:
-            user = await database.users.find_one(
-                {"email": email},
-                {"_id": 0, "id": 1},
-            )
-            user_id = user.get("id") if user else None
-        result = await send_email(
-            email,
-            "Password NIUVA berhasil diubah",
-            "Password berhasil diubah",
-            (
+        result = await self.provider_sender(
+            to_email=email,
+            subject="Password NIUVA berhasil diubah",
+            title="Password berhasil diubah",
+            body_html=(
                 "<p>Password akun Anda berhasil diubah.</p>"
                 "<p>Jika Anda tidak melakukan perubahan ini, hubungi "
                 "administrator melalui kanal resmi.</p>"
             ),
-            db=database,
-            user_id=user_id,
         )
         if result.get("status") == "error":
             raise PasswordRecoveryDeliveryError("password_changed_delivery_failed")

@@ -69,7 +69,7 @@ BRD website v1.0 tetap berlaku bagi brand, portfolio, lead generation, dan halam
 | BR2-03 | B2B mendukung inquiry/RFQ, quotation, approval, desain, milestone, termin, dan tracking |
 | BR2-04 | Retail mendukung fixed, calculated, dan quote_required pricing mode |
 | BR2-05 | Produk Retail dapat diminta sebagai bulk RFQ tanpa input ulang data |
-| BR2-06 | Diamendemen oleh `DEC-RT-02`: setiap transaksi Retail baru wajib memakai akun terautentikasi; histori guest lama tetap dipertahankan tanpa automatic account claim |
+| BR2-06 | Diubah oleh `DEC-RT-02`: setiap transaksi Retail baru wajib memakai akun terautentikasi; histori guest lama tetap dipertahankan tanpa automatic account claim |
 | BR2-07 | Portal B2B menggunakan organization account dan role anggota |
 | BR2-08 | Retail dan B2B berbagi catalog, material, inventory, production, payment, shipment, dan audit |
 | BR2-09 | CMS internal mengelola konten, portfolio, catalog, SEO, media, dan publish workflow |
@@ -80,8 +80,8 @@ BRD website v1.0 tetap berlaku bagi brand, portfolio, lead generation, dan halam
 | BR2-14 | Customer melihat milestone serta ETA tetapi tidak melihat data internal sensitif |
 | BR2-15 | CMS dan operasi memakai role, approval, audit, backup, serta recovery |
 | BR2-16 | Handover mencakup panduan, training, data dictionary, dan ownership matrix |
-| BR2-17 | Diamendemen oleh `DEC-AFTER-01`: Retail memiliki file-revision, cancellation, complaint, reprint/replacement, refund, return, SLA, dan approval policy yang lifecycle-specific serta auditable |
-| BR2-18 | Diamendemen oleh `DEC-OFFER-01`: offer, pricing, dan fulfillment tetap independen; automatic pricing hanya untuk file/configuration yang tervalidasi; quote handoff mempertahankan konteks; eligible individual/UMKM dapat menerima Assisted Retail Offer tanpa menggabungkan Retail dan B2B |
+| BR2-17 | Diubah oleh `DEC-AFTER-01`: Retail memiliki file-revision, cancellation, complaint, reprint/replacement, refund, return, SLA, dan approval policy yang lifecycle-specific serta auditable |
+| BR2-18 | Diubah oleh `DEC-OFFER-01`: offer, pricing, dan fulfillment tetap independen; automatic pricing hanya untuk file/configuration yang tervalidasi; quote handoff mempertahankan konteks; eligible individual/UMKM dapat menerima Assisted Retail Offer tanpa menggabungkan Retail dan B2B |
 
 ## 6. Model Pendapatan dan Transaksi
 

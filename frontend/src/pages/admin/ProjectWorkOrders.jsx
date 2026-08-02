@@ -11,6 +11,7 @@ import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel"
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
+import { fetchB2BPages } from "@/lib/b2bPagination";
 import { B2B_ACTION_PERMISSIONS, hasPermission } from "@/lib/permissions";
 
 function operationId() {
@@ -41,9 +42,10 @@ export default function ProjectWorkOrders({ project, onChanged }) {
   const closed = !["planned", "active"].includes(project.status);
 
   const load = useCallback(() => {
-    api
-      .get("/admin/b2b/work-orders", { params: { project_id: project.id } })
-      .then((response) => setWorkOrders(response.data))
+    fetchB2BPages(api, "/admin/b2b/work-orders", {
+      params: { project_id: project.id },
+    })
+      .then(setWorkOrders)
       .catch((requestError) =>
         setError(formatApiError(requestError.response?.data?.detail))
       );

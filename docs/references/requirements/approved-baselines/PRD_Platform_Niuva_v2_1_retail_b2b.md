@@ -201,16 +201,16 @@ Shared platform clarification: shared foundations do not mean that Retail Order 
 | FR-RT-02 | Catalog mendukung kategori, search, filter, availability, dan price from |
 | FR-RT-03 | Configurator mendukung variant, SKU, material, ukuran, warna, finishing, quantity, serta file requirement sesuai produk |
 | FR-RT-04 | Pricing mode terdiri dari fixed, calculated, dan quote_required |
-| FR-RT-05 | Diamendemen oleh `DEC-ETA-01`: customer melihat total serta authoritative estimated-ready range dan, untuk delivery, separate arrival range sebelum konfirmasi checkout |
-| FR-RT-06 | Diamendemen oleh `DEC-RT-02`: checkout untuk setiap transaksi Retail baru membutuhkan authenticated account |
-| FR-RT-07 | Diamendemen oleh `DEC-FUL-01`: eligible direct checkout mendukung Rp0 pickup dan automatic-rate domestic Indonesia delivery; international/unsupported/special fulfillment menjadi `quote_required` |
+| FR-RT-05 | Diubah oleh `DEC-ETA-01`: customer melihat total serta authoritative estimated-ready range dan, untuk delivery, separate arrival range sebelum konfirmasi checkout |
+| FR-RT-06 | Diubah oleh `DEC-RT-02`: checkout untuk setiap transaksi Retail baru membutuhkan authenticated account |
+| FR-RT-07 | Diubah oleh `DEC-FUL-01`: eligible direct checkout mendukung Rp0 pickup dan automatic-rate domestic Indonesia delivery; international/unsupported/special fulfillment menjadi `quote_required` |
 | FR-RT-08 | Online payment diproses secara idempotent |
 | FR-RT-09 | Ready-stock memakai reservation dengan expiry |
-| FR-RT-10 | Diamendemen oleh `DEC-RT-02`: tracking order baru membutuhkan authenticated ownership; historical guest access tetap compatibility-only dan tidak menjadi jalur transaksi baru |
-| FR-RT-11 | Diamendemen oleh `DEC-ETA-01`: customer melihat milestone faktual, completed times, next action, current ETA range, dan safe exception/reason, bukan persentase buatan |
-| FR-RT-12 | Diamendemen oleh `DEC-AFTER-01`: Retail mendukung 48-hour file revision, lifecycle-specific cancellation/refund, at least two-working-day complaint intake, governed reprint/replacement/return, explicit SLA, dan manager-approved refund/free reprint |
-| FR-RT-13 | Diamendemen oleh `DEC-OFFER-01`: `offer_type`, `pricing_mode`, dan `fulfillment_mode` independen; Simple/Detailed configurator dan automatic-pricing eligibility memakai Niuva-authoritative profiles |
-| FR-RT-14 | Diamendemen oleh `DEC-OFFER-01`: quote item dipisahkan dari mixed cart dengan context preservation; eligible individual/UMKM dapat menerima private versioned manager-approved Assisted Retail Offer yang masuk normal Retail checkout |
+| FR-RT-10 | Diubah oleh `DEC-RT-02`: tracking order baru membutuhkan authenticated ownership; historical guest access tetap compatibility-only dan tidak menjadi jalur transaksi baru |
+| FR-RT-11 | Diubah oleh `DEC-ETA-01`: customer melihat milestone faktual, completed times, next action, current ETA range, dan safe exception/reason, bukan persentase buatan |
+| FR-RT-12 | Diubah oleh `DEC-AFTER-01`: Retail mendukung 48-hour file revision, lifecycle-specific cancellation/refund, at least two-working-day complaint intake, governed reprint/replacement/return, explicit SLA, dan manager-approved refund/free reprint |
+| FR-RT-13 | Diubah oleh `DEC-OFFER-01`: `offer_type`, `pricing_mode`, dan `fulfillment_mode` independen; Simple/Detailed configurator dan automatic-pricing eligibility memakai Niuva-authoritative profiles |
+| FR-RT-14 | Diubah oleh `DEC-OFFER-01`: quote item dipisahkan dari mixed cart dengan context preservation; eligible individual/UMKM dapat menerima private versioned manager-approved Assisted Retail Offer yang masuk normal Retail checkout |
 
 Status utama Retail:
 

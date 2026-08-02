@@ -370,7 +370,7 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
   state mapping, reconciliation SLA, implementation, deployment, production
   readiness, and go-live remain separately gated.
 
-## DEC-AFTER-01 — Cancellation, Refund, and Return
+## DEC-AFTER-01 — Retail Revision and After-Sales Policy
 
 - **Status:** Approved After-Sales Policy — Activation Gated
 - **Decision owner:** Product, Operations, and Finance policy authority

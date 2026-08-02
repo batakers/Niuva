@@ -141,6 +141,33 @@ class FakeCollection:
         self.items.append(dict(item))
         return types.SimpleNamespace(inserted_id=item.get("id"))
 
+    async def find_one_and_update(
+        self,
+        query,
+        update,
+        *,
+        projection=None,
+        upsert=False,
+        **_options,
+    ):
+        target = next((item for item in self.items if self._matches(item, query)), None)
+        if target is None and upsert:
+            target = {
+                key: value
+                for key, value in query.items()
+                if not isinstance(value, dict)
+            }
+            target.update(update.get("$setOnInsert", {}))
+            self.items.append(target)
+        if target is None:
+            return None
+        target.update(update.get("$set", {}))
+        for key, amount in (update.get("$inc") or {}).items():
+            target[key] = target.get(key, 0) + amount
+        for key, value in (update.get("$max") or {}).items():
+            target[key] = max(target.get(key, value), value)
+        return self._project(target, projection)
+
     def find(self, query, projection=None):
         matched = [
             self._project(item, projection)
