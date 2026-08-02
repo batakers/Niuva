@@ -69,7 +69,7 @@ BRD website v1.0 tetap berlaku bagi brand, portfolio, lead generation, dan halam
 | BR2-03 | B2B mendukung inquiry/RFQ, quotation, approval, desain, milestone, termin, dan tracking |
 | BR2-04 | Retail mendukung fixed, calculated, dan quote_required pricing mode |
 | BR2-05 | Produk Retail dapat diminta sebagai bulk RFQ tanpa input ulang data |
-| BR2-06 | Retail mendukung guest checkout serta akun opsional |
+| BR2-06 | Diamendemen oleh `DEC-RT-02`: setiap transaksi Retail baru wajib memakai akun terautentikasi; histori guest lama tetap dipertahankan tanpa automatic account claim |
 | BR2-07 | Portal B2B menggunakan organization account dan role anggota |
 | BR2-08 | Retail dan B2B berbagi catalog, material, inventory, production, payment, shipment, dan audit |
 | BR2-09 | CMS internal mengelola konten, portfolio, catalog, SEO, media, dan publish workflow |
@@ -80,6 +80,8 @@ BRD website v1.0 tetap berlaku bagi brand, portfolio, lead generation, dan halam
 | BR2-14 | Customer melihat milestone serta ETA tetapi tidak melihat data internal sensitif |
 | BR2-15 | CMS dan operasi memakai role, approval, audit, backup, serta recovery |
 | BR2-16 | Handover mencakup panduan, training, data dictionary, dan ownership matrix |
+| BR2-17 | Diamendemen oleh `DEC-AFTER-01`: Retail memiliki file-revision, cancellation, complaint, reprint/replacement, refund, return, SLA, dan approval policy yang lifecycle-specific serta auditable |
+| BR2-18 | Diamendemen oleh `DEC-OFFER-01`: offer, pricing, dan fulfillment tetap independen; automatic pricing hanya untuk file/configuration yang tervalidasi; quote handoff mempertahankan konteks; eligible individual/UMKM dapat menerima Assisted Retail Offer tanpa menggabungkan Retail dan B2B |
 
 ## 6. Model Pendapatan dan Transaksi
 
@@ -93,7 +95,16 @@ Custom standar dengan harga berdasarkan material, machine, labor, finishing, ove
 
 ### Quote Required
 
-Kebutuhan nonstandar diteruskan sebagai quote request. Individu tetap dapat menjadi retail-assisted customer; perusahaan dapat memilih jalur B2B/RFQ.
+Kebutuhan nonstandar diteruskan sebagai quote request tanpa membuat Order,
+reservation, payment attempt, atau checkout total. Konteks account, produk,
+configuration, quantity, file, analisis aman, dan fulfillment dipertahankan.
+Bulk, borongan, partnership, recurring, organizational, contractual, atau
+special-fulfillment masuk B2B/RFQ.
+
+Individu/UMKM yang masih cocok dengan lifecycle Retail dapat menerima private,
+versioned, customer-bound Assisted Retail Offer. Manual price commitment
+memerlukan `manager_approver`; acceptance hanya masuk ke checkout Retail untuk
+revalidation dan bukan langsung menciptakan transaksi. Lihat `DEC-OFFER-01`.
 
 ### B2B
 
@@ -114,9 +125,12 @@ B2B memakai quotation/invoice, transfer, DP, termin, dan purchase order referenc
 - Katalog 3D printing, ready-stock, apparel, dan merchandise.
 - Product configurator dan file upload.
 - Harga serta ETA.
-- Guest/account checkout.
+- Safe automatic-pricing dan quote/Assisted Retail Offer routing sesuai
+  `DEC-OFFER-01`.
+- Account-required checkout sesuai `DEC-RT-02`.
 - Online payment integration.
 - Production tracking, QC, shipment/pickup.
+- Revision dan after-sales recovery sesuai `DEC-AFTER-01`.
 
 ### B2B MVP
 
@@ -160,6 +174,7 @@ Target numerik ditetapkan setelah baseline tersedia. Sistem harus dapat mengukur
 | Data internal bocor | Backend authorization dan customer response schema |
 | CMS merusak layout | Structured fields, preview, approval, dan rollback |
 | Staff salah mengubah harga/stok | Role, manager approval, audit, dan training |
+| Komplain/refund ditangani tidak konsisten | Lifecycle-specific `DEC-AFTER-01`, immutable snapshots, explicit SLA/approval, legal review, dan idempotent refund boundary |
 | Sistem tidak terurus setelah magang | Handover pack, ownership, SOP, backup/restore exercise |
 | External service gagal | Retry, reconciliation, dan graceful error state |
 
