@@ -1,14 +1,14 @@
+import inspect
 import logging
 from datetime import datetime
-import inspect
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
-
+from api_contract import error_responses
 from b2b_domain import B2BDomainError, project_customer_inquiry
 from b2b_service import B2BService
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from transaction_execution import TransactionUnavailableError
 
 logger = logging.getLogger(__name__)
@@ -41,18 +41,6 @@ class InquiryConversionPayload(BaseModel):
     expected_version: int = Field(ge=1)
     operation_id: UUID
     reason: str = Field(min_length=3, max_length=500)
-
-
-class ErrorBody(BaseModel):
-    code: str
-    message: str
-    details: dict[str, Any] | None = None
-
-
-class ErrorEnvelope(BaseModel):
-    detail: Any
-    error: ErrorBody
-    request_id: str
 
 
 class InquiryHistoryResponse(BaseModel):
@@ -101,16 +89,7 @@ class InquiryConversionResponse(BaseModel):
     quote: dict[str, Any]
 
 
-B2B_ERROR_RESPONSES = {
-    401: {"model": ErrorEnvelope, "description": "Authentication required"},
-    403: {"model": ErrorEnvelope, "description": "Permission denied"},
-    404: {"model": ErrorEnvelope, "description": "Resource not found"},
-    409: {"model": ErrorEnvelope, "description": "Command conflict"},
-    422: {"model": ErrorEnvelope, "description": "Request validation failed"},
-    429: {"model": ErrorEnvelope, "description": "Rate limit exceeded"},
-    500: {"model": ErrorEnvelope, "description": "Unexpected safe failure"},
-    503: {"model": ErrorEnvelope, "description": "Required transaction unavailable"},
-}
+B2B_ERROR_RESPONSES = error_responses(401, 403, 404, 409, 422, 429, 500, 503)
 
 
 class QuoteTransitionPayload(BaseModel):
@@ -519,9 +498,7 @@ def build_b2b_router(
         status_filter: str | None = None,
         _actor: dict = Depends(require_permission("inventory.read")),
     ):
-        return await invoke(
-            service().list_material_shortages(status=status_filter)
-        )
+        return await invoke(service().list_material_shortages(status=status_filter))
 
     @router.get("/admin/b2b/work-orders/{work_order_id}")
     async def get_work_order(
