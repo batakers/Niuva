@@ -28,6 +28,7 @@ Approved ADRs are not replaced by summaries in this document. In particular:
 - `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
 - `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
 - `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
+- `docs/decisions/architecture/ADR-004-surface-boundary-topology.md`
 
 Runbooks are procedural authority only. They do not decide product direction, customer journeys, business policy, visual direction, or brand identity.
 
@@ -54,7 +55,13 @@ The journeys share identity, organization, catalog, materials, inventory, produc
 
 Shared foundations do not mean shared customer lifecycles. Retail Order and B2B Quote/Project remain separate aggregates, state machines, authorization projections, and customer experiences.
 
-Sources: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`.
+For MVP, the approved technical surface topology is one frontend application
+under one origin with route-based Public, Retail, customer-account, B2B, and
+Admin Studio surfaces. `ADR-004` / `DEC-ARCH-01` governs this topology and
+`DEC-UX-003` governs canonical route ownership. This selection does not merge
+journeys or make a route an authorization boundary.
+
+Sources: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`; `docs/decisions/architecture/ADR-004-surface-boundary-topology.md`; `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md`.
 
 ## 3. Business Positioning
 
@@ -72,9 +79,16 @@ Sources: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; 
 
 ### Customer users
 
-- **Retail Guest:** browse, configure, upload, view safe price/ETA, checkout, pay, and track through verified contact information.
-- **Retail Account:** guest capabilities plus permitted order history, saved details, repeat order, and file access.
+- **Retail Visitor:** browse, inspect products, choose non-sensitive
+  configuration, and maintain a non-authoritative local cart.
+- **Retail Account:** authenticated private upload, authoritative checkout,
+  payment, order history, permitted file access, and production tracking. Every
+  new Retail Order requires an authenticated account.
 - **B2B Organization:** inquiry may begin without login; quotation and project access require an organization account.
+
+`DEC-RT-02` supersedes guest checkout for new Retail transactions. Historical
+guest-shaped records, if any, remain ownership-scoped and are not automatically
+linked to an account by matching contact data.
 
 ### B2B organization roles
 
@@ -133,11 +147,12 @@ Admin Studio is not a third customer journey. It is the shared operational envir
 
 ## 6. Customer Journeys
 
-### Retail
+### Retail journey
 
 ```text
 Catalog
 → Configure
+→ Register/Login
 → Upload
 → Safe Price/ETA
 → Checkout
@@ -167,7 +182,21 @@ Inquiry/RFQ
 
 B2B prioritizes scope clarity, versioned quotation, approval authority, design versions, milestones, payment terms, and governed change.
 
-When a Retail configuration cannot be priced or scheduled safely, the action becomes `quote_required`. Product, configuration, file, quantity, and contact information must transfer into the quote flow without re-entry. This fallback does not collapse the Retail and B2B lifecycles into one model.
+When a Retail configuration cannot be priced or scheduled safely, the action
+becomes `quote_required`. This is a commitment route, not a customer type.
+Product, configuration, file version, quantity, safe analysis, contact, and
+fulfillment context must transfer without re-entry. In a mixed cart, the
+quote-required item is separated while eligible items remain available for
+direct checkout.
+
+Bulk, borongan, partnership, recurring, organizational, contractual, and
+special-fulfillment work enters the B2B Inquiry → Quote/Project path. An
+individual or UMKM request that can still follow Retail operations may receive
+a private, versioned, manager-approved Assisted Retail Offer. Requesting or
+accepting that offer creates no Order, reservation, payment attempt, or paid
+state; an accepted active offer enters the normal Retail checkout and is
+revalidated there. This fallback does not collapse the Retail and B2B
+lifecycles into one model. See `DEC-OFFER-01`.
 
 ## 7. Public Website and Homepage
 
@@ -286,6 +315,14 @@ Source: `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-directio
 
 CMS is an integrated, structured module in Admin Studio. It is not an external CMS and not a free-form page builder.
 
+For MVP, `DEC-OPS-003` selects a reduced integrated CMS topology. The reduced
+surface prioritizes the structured public content required for launch while
+retaining validation, permission-aware publishing, versioning, rollback,
+archive, and audit requirements. A single operator may author and publish only
+when that account also holds the applicable `manager_approver` capability.
+Content management remains separate from inventory, pricing, Retail Order,
+payment, production, and B2B Project sources of truth.
+
 The content lifecycle is:
 
 ```text
@@ -313,6 +350,61 @@ Pricing modes are:
 - `fixed` for ready-stock or validated fixed variants;
 - `calculated` for standardized custom work with complete, validated rules;
 - `quote_required` for nonstandard, uncertain, or complex work.
+
+`DEC-OFFER-01` keeps customer offer, pricing behavior, and fulfillment behavior
+independent through `offer_type`, `pricing_mode`, and `fulfillment_mode`.
+Ready Products may be ready-stock or made-to-order with fixed pricing; Standard
+Custom 3D Print is calculated and made-to-order only when all file, profile,
+capacity, ETA, tax, and fulfillment validations succeed.
+
+Custom 3D Print provides a default Simple configuration and an optional
+Detailed/advanced configuration containing only Niuva-calibrated values.
+Niuva-authoritative machine, nozzle, material, support, and process profiles
+always replace customer-embedded slicer settings. `.stl` and a supported
+single-model/plate `.3mf` may be eligible for automated validation and slicing;
+`.obj`, `.step`, `.stp`, ZIP, multiple models/parts/plates, and complex projects
+require manual review and quotation. PDF, JPG/JPEG, and PNG are quotation
+references only. Customer `.gcode` is rejected.
+
+Before calculated work enters checkout, the customer confirms the exact file
+version, dimensions/scale, material/color/quantity/configuration, slicer-derived
+billable grams and print duration, customer-safe price breakdown, final
+production total, ETA range, and fulfillment. The server then revalidates all
+commercial and production inputs. Validation/slicing failure, unsupported or
+unsafe profiles, CAD repair, nonstandard finishing/assembly/post-processing,
+complex files, unsafe quantity/deadline/capacity, bulk/bundle/borongan/
+partnership/recurring/customer-filament work, unsafe fulfillment, or an audited
+operator risk rejection becomes `quote_required`.
+
+An Assisted Retail Offer is private, customer-bound, immutable by version, and
+uses `draft → awaiting_approval → offered → accepted | declined | expired |
+superseded`. Manual price commitment requires `manager_approver`. Acceptance
+enters the normal Retail checkout; ownership, active version, expiry, tax,
+capacity, ETA, and fulfillment are revalidated there. It does not mutate public
+catalog pricing or merge Retail Order with B2B Quote/Project.
+
+`DEC-PRICE-001` approves Custom 3D Print policy `NIUVA-CP-FDM-001` for
+validated FDM work using Niuva-owned PLA or ABS filament:
+
+- PLA uses progressive rates of Rp1.000/g for the first 200 g, Rp900/g for the
+  next 300 g, and Rp800/g above 500 g;
+- ABS uses progressive rates of Rp1.200/g for the first 200 g, Rp1.100/g for
+  the next 300 g, and Rp1.000/g above 500 g;
+- machine price is exact print seconds divided by 3.600, multiplied by
+  Rp5.000;
+- billable weight includes model, support, brim/raft, and purge/waste;
+- there is no 50-gram minimum and no weight, duration, or component rounding;
+- material plus machine is rounded once using `ROUND_HALF_UP` to the nearest
+  rupiah; and
+- electricity, basic finishing, basic packaging, support removal, QC,
+  failed-print risk, and legally applicable indirect tax are included.
+  Shipping/pickup remains a separate fulfillment line.
+
+The policy approval date is not its effective date. Activation occurs only
+with a separately authorized checkout MVP launch, an exact `Asia/Jakarta`
+`effective_at`, and the Finance-confirmed tax profile required by `DEC-TAX-01`.
+While Niuva's PKP status remains unknown, the UI must not display a PPN amount
+or rate, promise a Faktur Pajak, or activate production checkout.
 
 Accepted quotation versions and approved design versions are immutable. Scope changes create new versions and may change price, ETA, milestones, and payment terms.
 
@@ -346,6 +438,129 @@ Inventory and operational mutations must provide:
 - customer-safe explanations for ETA changes.
 
 Notification failure must not roll back an otherwise successful core transaction.
+
+Retail checkout uses the fixed 30-minute reservation policy in `DEC-INV-01`.
+The clock starts after successful creation of the order and payment attempt,
+not when a cart or checkout page is opened. Checkout shows the remaining time
+and a five-minute warning, does not extend the reservation automatically, and
+revalidates price, stock or material, shipping, and ETA before any retry after
+expiry. Payment success and expiry are atomic competing transitions; late
+success enters reconciliation and never silently recreates stock or creates a
+second paid order. A payment method cannot be activated unless its expiry and
+callback behavior can be enforced or reconciled safely with this policy.
+
+Retail fulfillment follows `DEC-FUL-01`:
+
+- eligible direct-checkout Ready Product and Custom 3D Print orders offer Rp0
+  pickup or automatically rated domestic Indonesia delivery;
+- international, special-packaging, unsupported, oversize, unsafe, or uncertain
+  fulfillment becomes `quote_required`;
+- basic packaging is included in the standard customer price;
+- delivery eligibility and rate use authoritative origin, normalized domestic
+  address, and versioned package inputs;
+- rate validity is the provider expiry capped at 30 minutes, or 30 minutes when
+  no provider expiry is supplied;
+- an expired or changed rate/service/ETA is refreshed and explicitly
+  reconfirmed before order/payment-attempt creation;
+- location is selected at checkout, while the pickup window is selected only
+  after `ready_for_pickup`; and
+- seven calendar days without recorded handover creates internal
+  `pickup_overdue` plus dashboard/email follow-up, never automatic
+  cancellation, disposal, storage fee, refund, ownership transfer, or
+  completion.
+
+The committed order snapshots its fulfillment policy, location or normalized
+address, package profile/input, provider-neutral service, delivery amount,
+quote timestamps, delivery estimate, and later customer-safe tracking. Actual
+providers, origin/location data, operating hours/windows, package profiles,
+service allowlists, Finance treatment, and operational ownership remain
+activation gates.
+
+Retail ETA and customer milestones follow `DEC-ETA-01`:
+
+- checkout shows an `eta_earliest_at` to `eta_latest_at` range in
+  `Asia/Jakarta`, not a guaranteed single date;
+- pickup shows an estimated ready range, while delivery separately shows
+  estimated ready-to-ship and arrival ranges;
+- Ready Product uses handling/packing, buffer, and fulfillment inputs;
+- eligible Custom Print additionally uses applicable file/material readiness,
+  production queue range, exact accepted slicer time, post-processing, and QC;
+- post-payment tracking uses factual, product-appropriate milestones with
+  completed times, next action, current ETA, and customer-safe exceptions;
+- authorized `production`, `quality_control`, and `order_admin` actors may
+  publish routine domain updates directly with reason and append-only audit
+  history; and
+- passing the latest ETA before its target milestone creates internal
+  `eta_overdue` and requires a new range/reason, never automatic cancellation,
+  refund, reprint, disposal, or completion.
+
+The Retail milestone contract does not replace the B2B Quote/Project lifecycle.
+Numeric duration, operating-calendar, buffer, and safe-copy profiles plus the
+exact backend state machine/API/schema remain separate activation or
+implementation gates. Retail notification recipients/channels follow amended
+`DEC-DATA-003`; provider selection and notification implementation/activation
+remain gated. Live printer telemetry is not an MVP dependency.
+
+Retail revision and after-sales handling follows `DEC-AFTER-01`:
+
+- `file_revision_required` gives the customer 48 hours from a successfully
+  available customer-facing notice; timeout enters review and never infers an
+  automatic refund amount;
+- unpaid cancellation releases any reservation exactly once and has no
+  paid-order refund;
+- an approved paid cancellation before actual printing/customization or
+  Ready-Product handoff receives the full eligible customer-paid amount,
+  including unused fulfillment, without deducting provider or administrative
+  fees;
+- after irreversible work starts, cancellation is manual and any partial refund
+  requires an exact affected or unperformed amount agreed with the customer;
+- defect, damage, wrong-item, or nonconformity complaint intake remains open for
+  at least two working days after authoritative delivery or pickup handover,
+  without automatically extinguishing later or hidden-defect review;
+- confirmed Niuva error or carrier damage gives the customer a choice of
+  affected-scope reprint/replacement or refund, with Niuva-funded required
+  return/replacement shipping;
+- complaint acknowledgement is immediate, first human response targets one
+  working day, and the resolution decision targets five working days after
+  sufficient evidence; and
+- `order_admin` triages, domain roles contribute evidence, `finance` prepares
+  refund work, and every refund or free reprint/replacement requires
+  `manager_approver`.
+
+Direct-checkout Retail Orders use this policy; B2B Quote/Project after-sales
+remains governed by the accepted quotation, statement of work, or contract.
+Legal/customer-terms review, working-day configuration, provider refund
+execution, Finance accounting/tax handling, exact technical contracts,
+notification implementation, and activation remain gated.
+
+Retail operator and customer notifications follow amended `DEC-DATA-003`:
+
+- the authenticated Retail Order owner is the only customer recipient;
+- internal recipients are role-, permission-, and domain-scoped rather than
+  broadcast to every Admin;
+- the customer allowlist covers material payment, file revision, ETA,
+  fulfillment, cancellation, complaint, reprint/replacement, and refund events;
+- the operator allowlist covers actionable order readiness, stock, payment
+  reconciliation, file, production/QC, ETA, fulfillment, after-sales approval,
+  refund-failure, and notification-delivery conditions;
+- complete milestone tracking remains on the Retail Order detail, while bell
+  and email communicate important change or required action;
+- in-app allowlisted events cannot be disabled; routine production-progress
+  email uses one default-on customer preference;
+- mandatory transactional email means the provider-neutral outbox must enqueue
+  it, not that external delivery is guaranteed;
+- payloads are minimal and customer-safe, and deep links are audience-aware,
+  same-origin, allowlisted, authenticated, and ownership/permission checked;
+- email is attempted at most five times, then becomes `exhausted`; an authorized
+  `order_admin` may request a controlled, immutable-template resend; and
+- WhatsApp, marketing/broadcast, arbitrary recipient selection, and B2B
+  Quote/Project notification policy are not approved by this Retail amendment.
+
+The existing 180-day in-app and 30-day terminal delivery-metadata retention,
+provider-neutral outbox, deduplication, non-rollback, privacy, and historical
+data boundaries remain unchanged. Provider/scheduler/worker selection, exact
+event enum/source mapping, preference UI, implementation, migration,
+deployment, readiness, and go-live remain separate gates.
 
 Detailed rollout, migration, correction, rollback, and recovery procedures remain in `docs/runbooks/CATALOG_MATERIAL_INVENTORY_RUNBOOK.md` and other relevant runbooks.
 
@@ -395,14 +610,20 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Unified Homepage | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | Business/B2B is the primary Homepage narrative | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | Retail is a secondary but clear Homepage path | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
+| MVP surfaces use one frontend application under one origin with route-based boundaries | Approved Architecture Decision | `docs/decisions/architecture/ADR-004-surface-boundary-topology.md` |
+| Canonical MVP public aliases, Retail account/configuration/request/offer/checkout and Order destinations, legacy-route treatment, and Admin Retail queue ownership | Approved Decision | `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md` |
 | Experimental Editorial Hybrid | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | Homepage uses Poppins + Inter with the approved display/UI and body/metadata roles | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | U-curve is a semantic transformation path with two initial dominant placements | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | Official company mark is the `ni` brandmark | Supporting official brand authority + active decision | `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
 | Primary and supporting capability hierarchy | Historical Active Baseline | `docs/references/requirements/historical-active/PRS_Website_Niuva.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
 | Fixed, calculated, and quote-required pricing | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
-| Guest Retail checkout and organization-based B2B access | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
+| Retail offer/file eligibility, automatic-pricing confirmation, quote routing, mixed-cart separation, and Assisted Retail Offer | Approved Product Contract — Activation Gated | `docs/decisions/product/DEC-OFFER-01-retail-offer-file-and-quote-routing.md` |
+| Custom 3D Print progressive material plus exact machine-time policy `NIUVA-CP-FDM-001`, with final-only half-up rounding | Approved Commercial Policy — Activation Gated | `docs/decisions/product/DEC-PRICE-001-custom-print-commercial-pricing.md` |
+| Customer price is tax-inclusive if applicable; tax profile and checkout activation require Finance confirmation because PKP status is unknown | Approved Direction with Open Finance Activation Gate | `docs/decisions/product/DEC-TAX-01-tax-inclusive-display-and-finance-activation-gate.md` |
+| New Retail checkout requires an authenticated account; historical guest compatibility is retained without automatic claim | Approved Decision | `docs/decisions/product/DEC-RT-02-retail-account-required-checkout.md` |
 | Structured integrated CMS and Admin Studio | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Reduced integrated structured CMS for MVP; external CMS and free-form page builder excluded | Approved Decision | `docs/decisions/experience/DEC-OPS-003-reduced-integrated-cms-mvp.md` |
 | Admin Studio follows the approved operational experience direction | Approved Decision | `docs/decisions/experience/DEC-OPS-001-admin-studio-operational-direction.md` |
 | Commercial history uses versions and snapshots | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
 | Real milestones and ETA replace fake percentage progress | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
@@ -413,23 +634,31 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Provider-neutral private production storage boundary | Approved with Open Decisions | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` |
 | Provider-neutral Retail online-payment orchestration | Approved with Open Decisions | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` |
 | Existing manual-transfer records are read-only; no new manual-transfer or payment-proof activity is enabled | Approved Decision | `docs/decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md` |
+| Retail checkout reservation is fixed at 30 minutes with versioned policy and atomic payment/expiry handling | Approved Decision | `docs/decisions/product/DEC-INV-01-retail-checkout-reservation-duration.md` |
+| Retail fulfillment uses Rp0 pickup and automatically rated domestic Indonesia delivery with provider expiry capped at 30 minutes and seven-day pickup-overdue follow-up | Approved Fulfillment Policy — Activation Gated | `docs/decisions/product/DEC-FUL-01-shipping-and-pickup-policy.md` |
+| Retail checkout shows ETA ranges and post-payment factual milestones with authorized audited updates and explicit `eta_overdue` behavior | Approved Customer ETA and Milestone Policy — Activation Gated | `docs/decisions/product/DEC-ETA-01-retail-eta-and-customer-milestone-policy.md` |
+| Retail file revision and after-sales use lifecycle-specific cancellation, complaint, reprint/replacement, refund, return, SLA, and approval rules | Approved After-Sales Policy — Activation Gated | `docs/decisions/product/DEC-AFTER-01-retail-revision-and-after-sales-policy.md` |
+| Retail notifications use authenticated owner and role-scoped recipients, dashboard plus allowlisted transactional email, safe audience-aware links, five delivery attempts, and no WhatsApp | Approved Decision — Amended for NMVP-D07 | `docs/decisions/product/DEC-DATA-003-notification-schema-retention-and-delivery-boundary.md` |
 | Secure-session remediation and read-only Retail catalog discovery | Approved Implementation Decision | `docs/decisions/architecture/ADR-005-backend-remediation-runtime-policy.md` |
 
 ## 16. Deferred Decisions
 
 | Decision | Status | Blocking scope |
 |---|---|---|
-| Navigation topology beyond the implemented secondary Retail entry | Deferred | Subdomain/separate-app topology and broader journey switching |
+| Detailed visual navigation beyond the approved canonical route ownership | Deferred | Public journey switching, CTA labels/placement, and exact desktop/mobile navigation treatment; subdomain or separate-app work requires a superseding `ADR-004` decision |
 | Payment gateway provider | Open | Provider integration and production payment activation |
 | Provider-specific payment state mapping and webhook authentication | Open | Payment adapter implementation |
 | Finance operations, reconciliation SLA, and payment-event retention | Open | Payment operations and production readiness |
 | Production storage provider | Open | Production upload and object operations |
 | Storage RPO/RTO | Open | Recovery readiness and operational ownership |
 | Storage retention, quota, backup, malware, and incident ownership | Open | Production storage readiness |
-| Shipping and pickup policy | Open | Checkout, ETA, fulfillment, and customer communication |
-| Tax treatment and rounding policy | Open | Price display, invoice, payment, refund, and reconciliation |
-| Reservation duration | Open | Checkout expiry, stock availability, and payment timing |
-| Cancellation, refund, and return policy | Open | Checkout terms, Finance, fulfillment, and support |
+| Retail offer/file/quote routing | Resolved direction — activation gated | Preset/advanced fields, file/storage limits, machine/process/build/quantity/deadline/risk thresholds, default Assisted Retail Offer expiry, exact technical contract, implementation, providers, migration, readiness, and go-live remain open under `DEC-OFFER-01` |
+| Shipping and pickup policy | Resolved direction — activation gated | Provider, origin/location/hours/windows, package profiles, domestic address validation, service allowlist, Finance treatment, operational ownership, implementation, deployment, readiness, and go-live remain open under `DEC-FUL-01` |
+| Retail ETA and customer milestone policy | Resolved direction — activation gated | Numeric duration/calendar/buffer profiles, safe reason copy, exact backend state machine/API/schema, implementation, readiness, and go-live remain open under `DEC-ETA-01`; notification recipients/channels are governed by amended `DEC-DATA-003` |
+| Tax treatment and rounding policy | Partially resolved | Final-only Custom Print rounding and tax-inclusive display direction are approved; PKP status, classification, rate/basis, invoice profile, and Finance activation remain open under `DEC-PRICE-001` and `DEC-TAX-01` |
+| Reservation duration | Resolved: fixed 30 minutes | Implementation, payment-method compatibility, expiry execution, and late-success reconciliation remain separately gated by `DEC-INV-01` |
+| Retail revision and after-sales policy | Resolved direction — activation gated | Legal/customer-terms review, working-day calendar, provider refund execution/timing, Finance accounting/tax correction, evidence privacy/retention, abuse/fraud handling, long-term uncollected-pickup policy, exact technical contract, implementation, readiness, and go-live remain open under `DEC-AFTER-01`; notification policy follows amended `DEC-DATA-003` |
+| Retail operator/customer notification policy | Resolved direction — activation gated | Email provider, scheduler/worker topology, exact event enum/source mapping, preference UI, implementation, migration, deployment, readiness, and go-live remain open under amended `DEC-DATA-003` |
 | First Retail vertical slice | Resolved: read-only discovery | Implemented listing/detail and secondary entry only; no transaction capability |
 | Protected-scope implementation permission | Bounded approval | Auth/session, legacy-order quarantine, publication/data-integrity remediation, and Retail discovery per `DEC-REMED-001`; payment, fulfillment, production storage, Organization Portal, rollout, and go-live remain open |
 | Production readiness | Open | Feature activation and operational handover |
@@ -444,14 +673,18 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 Homepage pattern is not deferred. It is resolved as Unified Homepage with a Business/B2B-primary narrative and a clear secondary Retail path.
 
 The first Retail vertical slice is also no longer deferred. `DEC-REMED-001`
-authorizes read-only discovery on the existing route-based surface. This does
-not select the broader topology in `ADR-004` and does not activate cart,
-checkout, payment, fulfillment, reservation, or upload.
+authorizes read-only discovery on the existing route-based surface. `ADR-004`
+now selects that single-origin route-based shape for MVP and `DEC-UX-003`
+defines the canonical route direction. Neither decision activates cart,
+registration, upload, checkout, payment, fulfillment, reservation, production
+tracking, after-sales, or any other gated capability.
 
 ## 17. Implementation Boundaries
 
 - Approval of this Master Specification does not automatically authorize implementation.
 - Homepage approval does not authorize redesign of About, Capabilities, Projects, Contact, authentication, customer portal, Admin Studio, backend, or API surfaces.
+- Route and topology approval does not authorize route, navigation, redirect,
+  authentication, API, schema, migration, or infrastructure changes.
 - UI redesign does not change backend authorization, aggregate boundaries, state machines, or data privacy rules.
 - Admin Studio redesign does not activate a payment gateway, production upload, infrastructure change, or go-live.
 - Hiding UI is not security.

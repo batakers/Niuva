@@ -85,7 +85,7 @@ Verified on branch `feat/admin-auth-phase-1-recovery-safety` at commit `871f0a2`
 | Lifetime | JWT expiry is seven days; no idle, absolute, refresh, or remember-me model exists | Session module owns controlled-clock lifetime transitions |
 | CSRF | No CSRF contract or Origin/Referer enforcement exists | Cookie cutover and CSRF protection must ship atomically |
 | Downloads | `fetchFile` and `downloadCsv` manually add bearer headers | Admin downloads use credentials + CSRF rules; customer download compatibility remains bearer-capable |
-| Topology | One React app and FastAPI service; `ADR-004` leaves future topology open | Scope is current same-origin route topology only |
+| Topology | One React app and FastAPI service; `ADR-004` / `DEC-ARCH-01` selects the same-origin route-based shape for MVP | Validate only the approved same-origin scope; any later cross-host topology requires a superseding decision and session-contract review |
 | Store | MongoDB is existing platform storage and transaction capability is established | Use a dedicated Mongo-backed session collection; no new provider/dependency |
 | Privacy copy | Public privacy page says login tokens are stored in `localStorage` | Update factual copy when Admin storage behavior changes; do not claim customer migration |
 
@@ -356,9 +356,10 @@ not themselves authorize staging/production execution.
 ### P2-PROD-01 — Topology assumption
 
 **Decision:** Phase 2 production readiness uses the current single-origin,
-route-based application shape. This does not resolve `ADR-004` globally. Any
-subdomain, cross-origin, or separate-application move reopens the cookie, CSRF,
-CORS, and cutover contract before implementation or rollout.
+route-based application shape. This packet did not resolve `ADR-004`;
+`ADR-004` / `DEC-ARCH-01` later selected the same shape for MVP. Any future
+superseding subdomain, cross-origin, or separate-application move reopens the
+cookie, CSRF, CORS, and cutover contract before implementation or rollout.
 
 Status: **Approved on 27 July 2026.**
 
