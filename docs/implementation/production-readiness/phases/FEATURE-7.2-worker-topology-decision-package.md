@@ -6,10 +6,13 @@ Date: 2 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-worker-topology`
 
-PR: `#107` (open; review pending)
+PR: `#107` (open; reconciliation review complete)
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
+
+Reconciliation baseline: `aff3d1177b2be1288b0682ae376eadd1c8029816`
+(`origin/main`, merged 3 August 2026). This changes no decision or source gate.
 
 Decision dependency: `DR-014`
 
@@ -77,13 +80,13 @@ committed core transaction. This packet does not reopen those decisions.
 
 Every API process starts delivery and periodic background loops.
 
-**Benefits**
+#### Option A benefits
 
 - smallest development and deployment shape;
 - no separate process command or worker probe; and
 - current source is closest to this topology.
 
-**Costs and risks**
+#### Option A costs and risks
 
 - API scaling also changes background concurrency;
 - deploys and API restarts interrupt all background work;
@@ -98,7 +101,7 @@ reviewed application artifact. Local/test may use an explicitly non-production
 co-located mode for convenience. API processes enqueue durable work but do not
 start delivery or periodic job loops.
 
-**Benefits**
+#### Option B benefits
 
 - API replicas and worker replicas scale independently;
 - worker health, shutdown, resource limits, and incident response are explicit;
@@ -106,7 +109,7 @@ start delivery or periodic job loops.
 - one artifact can preserve code/version consistency without requiring a new
   queue or scheduler provider.
 
-**Costs and risks**
+#### Option B costs and risks
 
 - requires a supported worker entry point, process supervision, separate
   readiness, and deployment evidence;
@@ -147,7 +150,7 @@ The maximum bounded operation time includes all provider connection/read
 timeouts and bounded internal work. A provider call without a hard timeout
 cannot satisfy this invariant.
 
-### Recommended contract
+### Recommended lease and batch contract
 
 - Lease duration is validated configuration, not an unreviewed hard-coded
   policy.
@@ -173,7 +176,7 @@ and a 5-second result-acknowledgement budget, a 60-second lease leaves a
 40-second margin. These values are review inputs only. Operations/SRE must
 approve the final timeout, lease, margin, and renewal threshold together.
 
-**Approval fields**
+### Lease approval fields
 
 | Field | Approved value |
 | --- | --- |
@@ -187,7 +190,7 @@ approve the final timeout, lease, margin, and renewal threshold together.
 
 ## 5. Decision 3 — Multi-instance and delivery guarantee
 
-### Recommended contract
+### Recommended multi-instance contract
 
 - Zero, one, or multiple delivery-worker replicas may run.
 - MongoDB atomic claim plus lease-token fencing prevents two healthy workers
@@ -245,7 +248,7 @@ lease duration.
 - Operators may inspect aggregate stale/backlog counts but must not receive
   recipient addresses, payloads, or raw provider errors in alerts.
 
-**Approval fields**
+### Shutdown approval fields
 
 | Field | Approved value |
 | --- | --- |
@@ -283,7 +286,7 @@ lease duration.
   safe configuration/capability is unavailable. It must not silently fall back
   to another channel or inline request delivery.
 
-**Approval fields**
+### Dependency approval fields
 
 | Field | Approved value |
 | --- | --- |
@@ -294,7 +297,7 @@ lease duration.
 
 ## 8. Decision 6 — Scheduler ownership
 
-### Recommended contract
+### Recommended scheduler ownership contract
 
 - Periodic jobs do not start automatically in every API process in
   staging/production.

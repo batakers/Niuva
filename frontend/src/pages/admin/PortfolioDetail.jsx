@@ -13,7 +13,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
 import { fmtDate } from "@/lib/format";
-import { PORTFOLIO_ACTION_PERMISSIONS, hasPermission } from "@/lib/permissions";
+import {
+  PORTFOLIO_ACTION_PERMISSIONS,
+  PORTFOLIO_ROLLBACK_PERMISSION,
+  hasPermission,
+} from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
 
 const ACTION_TARGETS = {
@@ -25,6 +29,7 @@ const ACTION_TARGETS = {
   publish: "published",
   archive: "archived",
   restore: "draft",
+  revise: "draft",
 };
 
 // Only scheduling asks for a time; every other action is immediate.
@@ -237,7 +242,8 @@ export default function PortfolioDetail() {
                         {fmtDate(revision.created_at)}
                       </p>
                     </div>
-                    {revision.revision !== revisions[0].revision && (
+                    {revision.revision !== revisions[0].revision &&
+                      hasPermission(user, PORTFOLIO_ROLLBACK_PERMISSION) && (
                       <Button
                         type="button"
                         variant="outline"
