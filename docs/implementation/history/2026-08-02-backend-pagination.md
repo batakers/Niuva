@@ -11,7 +11,8 @@ pending**
 - Base: `572e0c0dcd60ac847b1f100ea795755b9f484579`, stacked on
   `fix/backend-api-contract` (PR #109)
 - Main ancestor: `a2b7be0`
-- Pull request: pending creation after the implementation commit
+- Implementation commit: `66dbf39`
+- Pull request: #110
 - Task card:
   `docs/implementation/production-readiness/phases/FEATURE-8.2-pagination-task-card.md`
 
@@ -57,7 +58,7 @@ deployment, production-readiness, and go-live remain unproven or unauthorized.
 
 ## Integration and overlap
 
-Merge order is PR #106, then PR #109, then this Feature 8.2 candidate. After
+Merge order is PR #106, then PR #109, then PR #110. After
 the bases merge, refresh from current `main`, rerun full backend/frontend and
 mandatory CI, and inspect the final diff before merge.
 
