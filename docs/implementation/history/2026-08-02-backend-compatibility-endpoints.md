@@ -1,15 +1,17 @@
 # Backend Compatibility Endpoint Governance — 2 August 2026
 
-Status: **planning complete on source baseline; local verification passed;
-review, CI, and merge pending**
+Status: **planning complete; reconciliation review passed; current-head CI and
+merge pending**
 
 ## Delivery identity
 
 - Feature: 8.3 Compatibility Endpoint Governance
 - Branch: `plan/backend-compatibility-endpoints`
-- Worktree:
-  `/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-compatibility-endpoints`
+- Worktree: contributor-local isolated worktree for
+  `plan/backend-compatibility-endpoints`
 - Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
+- Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
+  (`origin/main`, after PR #107, checked 3 August 2026)
 - Documentation commit: `6bc9d89`
 - Pull request: #111
 - Task card:
@@ -51,15 +53,19 @@ permission, schema, migration, index, data, dependency, environment, provider,
 or deployment state was changed. No compatibility endpoint was removed,
 redirected, re-enabled, or assigned a new sunset date.
 
-PR #106, PR #109, and PR #110 are pending overlays and are not represented as
-current-main behavior. PR #101 overlaps consolidated tracker documentation and
-must be reconciled if either branch merges first.
+PR #106, PR #109, and PR #110 remain pending overlays and are not represented as
+current-main behavior. PR #101 merged as `aff3d117`; its tracker changes were
+reconciled without changing the endpoint inventory or dispositions.
 
 ## Verification
 
 - Generated OpenAPI reconciliation: passed with 151 operations, 21 registered
   candidates, 21 unique IDs, and 21 unique method/path pairs; every candidate
   exists in the baseline schema.
+- Reconciliation-baseline OpenAPI check on 3 August 2026: 151 operations, 151
+  unique operation IDs, 151 unique method/path pairs, and zero OpenAPI operations
+  marked deprecated. The register remains 21 source-identified compatibility
+  candidates with unchanged dispositions.
 - Register source-path, disposition-count, consumer-reference, and tracker-count
   reconciliation: passed.
 - Focused backend Auth/Order/File/Material/Health/Contact compatibility matrix:

@@ -6,6 +6,10 @@ remain separate**
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, refreshed 2 August 2026)
 
+Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
+(`origin/main`, checked 3 August 2026). The OpenAPI operation count, candidate
+count, and dispositions below remain unchanged.
+
 Branch: `plan/backend-compatibility-endpoints`
 
 ## Result summary
@@ -225,8 +229,9 @@ This register describes current `origin/main`, not unmerged candidates:
 
 All three PRs were open with green checks when this register was prepared. The
 inventory must be refreshed after their eventual merge or closure. PR #101
-also overlaps consolidated tracker documents; reconcile rather than overwrite
-its final tracker changes.
+merged as `aff3d117`; its tracker changes were reconciled, and a fresh OpenAPI
+check confirmed that the 151-operation inventory and 21 candidate dispositions
+did not change.
 
 ## Decision queue and exact next gates
 

@@ -71,11 +71,14 @@ export const PORTFOLIO_ACTION_PERMISSIONS = Object.freeze({
   return_to_draft: "content.write",
   approve_preview: "content.write",
   return_to_review: "content.write",
+  revise: "content.write",
   archive: "content.archive",
   restore: "content.write",
   schedule: "content.publish",
   publish: "content.publish",
 });
+
+export const PORTFOLIO_ROLLBACK_PERMISSION = "content.publish";
 
 export function hasPermission(user, permission) {
   const permissions = Array.isArray(user?.permissions) ? user.permissions : [];

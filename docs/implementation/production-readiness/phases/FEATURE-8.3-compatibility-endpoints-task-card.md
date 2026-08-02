@@ -1,22 +1,27 @@
 # Task Card — Feature 8.3 Compatibility Endpoint Governance
 
-Status: **planning complete — local verification passed; review, CI, and merge
-pending**
+Status: **planning complete — reconciliation review passed; current-head CI and
+merge pending**
 
 ## Identity and authorization
 
 **Project Owner / API Owner / Driver:** Faiz
 
 **Branch / worktree:** `plan/backend-compatibility-endpoints` /
-`/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-compatibility-endpoints`
+contributor-local isolated worktree
 
 **Baseline:** `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, refreshed 2 August 2026).
 
+**Reconciliation baseline:** `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
+(`origin/main`, after PR #107, checked 3 August 2026).
+
 **Authorization:** On 2 August 2026 the Project Owner authorized Feature 8.3
 inventory, governance planning, tracker updates, commit, push, and pull request
-when verification is safe. Route deletion, runtime behavior changes, migration,
-deployment, production operation, merge, and go-live are not authorized.
+when verification is safe. On 3 August 2026, the Project Owner separately
+authorized the recommended PR reconciliation and merge sequence. Route deletion,
+runtime behavior changes, migration, deployment, production operation,
+production-readiness, and go-live remain unauthorized.
 
 ## Objective
 
@@ -113,8 +118,8 @@ No backend or frontend runtime file is owned by this task.
 - Deprecated aliases name a successor when one is evidenced.
 - Every sunset candidate has prerequisites, owner decisions, monitoring,
   rollback evidence, and a stop condition; no date is invented.
-- Pending PR #106/#109/#110 overlays and tracker overlap with PR #101 are
-  recorded.
+- Pending PR #106/#109/#110 overlays are recorded. Merged PR #101 tracker
+  changes are reconciled without altering the endpoint inventory.
 - `git diff --check`, link/path checks, route-to-register reconciliation, and
   documentation consistency checks pass.
 
