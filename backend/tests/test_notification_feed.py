@@ -12,6 +12,7 @@ import emailer
 import pytest
 from notification_domain import (
     CANONICAL_NOTIFICATION_FIELDS,
+    NOTIFICATION_OUTBOX_SCHEMA_VERSION,
     NOTIFICATION_REFERENCE_ROUTES,
     NOTIFICATION_RETENTION,
     NOTIFICATION_SCHEMA_VERSION,
@@ -636,10 +637,41 @@ def test_delivery_is_queued_separately_from_recording():
 
         pending = await service.claim_pending(worker_id="worker-a")
         assert len(pending) == 1
+        assert pending[0]["schema_version"] == NOTIFICATION_OUTBOX_SCHEMA_VERSION
         assert pending[0]["status"] == "processing"
         assert await service.claim_pending(worker_id="worker-b") == []
         # The notification exists whether or not the email ever goes out.
         assert len(db.notifications.items) == 1
+
+    asyncio.run(scenario())
+
+
+def test_enqueue_delivery_rejects_noncanonical_schema_v1_content():
+    async def scenario():
+        invalid_values = (
+            {"channel": "sms"},
+            {"recipient": "ops@niuva.test\nBcc:unsafe@niuva.test"},
+            {"notification_id": "notification\nunsafe"},
+            {"payload": "not-a-dict"},
+            {"payload": {"provider_payload": "unsafe"}},
+            {"payload": {"subject": 123}},
+        )
+
+        for overrides in invalid_values:
+            service, db = build_service()
+            values = {
+                "notification_id": "notification-1",
+                "channel": "email",
+                "recipient": "ops@niuva.test",
+                "payload": {"subject": "Material kurang"},
+                **overrides,
+            }
+
+            with pytest.raises(NotificationError) as refused:
+                await service.enqueue_delivery(**values)
+
+            assert refused.value.code == "invalid_delivery_entry"
+            assert db.notification_outbox.items == []
 
     asyncio.run(scenario())
 
@@ -946,7 +978,7 @@ def test_provider_exception_message_is_not_logged_or_persisted(caplog):
             notification_id=notification["id"],
             channel="email",
             recipient="ops@niuva.test",
-            payload={"secret": "payload-secret"},
+            payload={"body_html": "payload-secret"},
         )
 
         async def deliver(_entry, *, idempotency_key):

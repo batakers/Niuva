@@ -3,6 +3,10 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from notification_domain import (
+    MAX_DELIVERY_ATTEMPTS,
+    NOTIFICATION_OUTBOX_CHANNELS,
+    NOTIFICATION_OUTBOX_PAYLOAD_FIELDS,
+    NOTIFICATION_OUTBOX_SCHEMA_VERSION,
     NOTIFICATION_REFERENCE_ROUTES,
     NOTIFICATION_RETENTION,
     NOTIFICATION_SCHEMA_VERSION,
@@ -16,7 +20,6 @@ from notification_domain import (
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
-MAX_DELIVERY_ATTEMPTS = 5
 MAX_CLAIM_BATCH = 200
 DEFAULT_LEASE_SECONDS = 60
 MAX_BACKOFF_SECONDS = 300
@@ -91,6 +94,21 @@ class NotificationService:
                 f"Field notifikasi tidak valid: {field}.",
             )
         return identity
+
+    @staticmethod
+    def _required_delivery_text(value, *, maximum: int) -> str:
+        if (
+            not isinstance(value, str)
+            or not value.strip()
+            or len(value) > maximum
+            or any(ord(character) < 32 or ord(character) == 127 for character in value)
+        ):
+            raise NotificationError(
+                422,
+                "invalid_delivery_entry",
+                "Data pengiriman notifikasi tidak valid.",
+            )
+        return value.strip()
 
     @staticmethod
     def _compatible_recurrence(document: dict, *, expected: dict, at: datetime) -> bool:
@@ -400,7 +418,25 @@ class NotificationService:
         payload: dict,
         session=None,
     ) -> dict:
+        notification_id = self._required_delivery_text(notification_id, maximum=200)
+        channel = self._required_delivery_text(channel, maximum=80)
+        recipient = self._required_delivery_text(recipient, maximum=320)
+        if channel not in NOTIFICATION_OUTBOX_CHANNELS or (
+            not isinstance(payload, dict)
+            or any(
+                not isinstance(field, str)
+                or field not in NOTIFICATION_OUTBOX_PAYLOAD_FIELDS
+                or not isinstance(value, str)
+                for field, value in payload.items()
+            )
+        ):
+            raise NotificationError(
+                422,
+                "invalid_delivery_entry",
+                "Data pengiriman notifikasi tidak valid.",
+            )
         entry = {
+            "schema_version": NOTIFICATION_OUTBOX_SCHEMA_VERSION,
             "id": str(uuid.uuid4()),
             "notification_id": notification_id,
             "channel": channel,
