@@ -10,7 +10,8 @@ review, CI, and merge pending**
 - Worktree:
   `/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-compatibility-endpoints`
 - Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
-- Pull request: pending creation after documentation verification
+- Documentation commit: `6bc9d89`
+- Pull request: #111
 - Task card:
   `docs/implementation/production-readiness/phases/FEATURE-8.3-compatibility-endpoints-task-card.md`
 - Register:
