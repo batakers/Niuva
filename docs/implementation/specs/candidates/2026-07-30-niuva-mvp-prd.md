@@ -419,8 +419,8 @@ an audit record where required.
 - Checkout revalidates active publication, price, eligibility, and stock.
 - Eligible stock is reserved atomically when the order/payment attempt is
   created.
-- Successful payment consumes or continues the approved allocation according
-  to the later order/inventory contract.
+- Successful payment consumes the active reservation atomically according to
+  `DEC-INV-01`; it does not create or silently continue a second allocation.
 - Failed, cancelled, or expired payment releases the reservation exactly once.
 - Late payment after release/expiry enters reconciliation and must not recreate
   stock silently.

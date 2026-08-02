@@ -357,7 +357,7 @@ Movement: receive, reserve, release, consume, produce, ship, damage, adjustment.
 | FR2-01 | Sistem menyediakan Retail dan B2B journey dalam satu website |
 | FR2-02 | Product mendukung Retail CTA serta Bulk/RFQ CTA |
 | FR2-03 | Retail mendukung fixed, calculated, dan quote_required pricing |
-| FR2-04 | Diamendemen oleh `DEC-RT-02`: Retail mendukung authenticated file upload, price/ETA, account-required checkout, online payment, dan tracking |
+| FR2-04 | Diubah oleh `DEC-RT-02`: Retail mendukung authenticated file upload, price/ETA, account-required checkout, online payment, dan tracking |
 | FR2-05 | Complex Retail configuration diteruskan ke quote request tanpa input ulang |
 | FR2-06 | B2B mendukung inquiry, organization, quotation, design approval, milestone, term, dan tracking |
 | FR2-07 | CMS mengelola content, catalog, portfolio, SEO, media, dan publish workflow |
@@ -372,12 +372,12 @@ Movement: receive, reserve, release, consume, produce, ship, damage, adjustment.
 | FR2-16 | Upload file memakai validation dan ownership check |
 | FR2-17 | Notification failure tidak membatalkan core transaction |
 | FR2-18 | Sensitive action memiliki audit dan optional manager approval |
-| FR2-19 | Diamendemen oleh `DEC-RT-02`: order baru dilacak oleh authenticated owner; verified-contact guest tracking hanya compatibility untuk histori yang sudah ada |
+| FR2-19 | Diubah oleh `DEC-RT-02`: order baru dilacak oleh authenticated owner; verified-contact guest tracking hanya compatibility untuk histori yang sudah ada |
 | FR2-20 | Handover artifacts tersedia sebelum ownership berpindah |
-| FR2-21 | Diamendemen oleh `DEC-AFTER-01`: Retail revision/after-sales memakai lifecycle-specific eligibility, at least two-working-day complaint intake, exact auditable refund/reprint/return outcome, explicit SLA, dan manager approval |
-| FR2-22 | Diamendemen oleh `DEC-OFFER-01`: Custom Print Simple/Detailed configuration dan allowed file matrix memakai Niuva-authoritative profiles; customer `.gcode` ditolak |
-| FR2-23 | Diamendemen oleh `DEC-OFFER-01`: automatic price membutuhkan seluruh technical/commercial validation, customer confirmation, dan server revalidation |
-| FR2-24 | Diamendemen oleh `DEC-OFFER-01`: quote item terpisah dari direct cart dengan context preservation; eligible individual/UMKM dapat menerima private versioned manager-approved Assisted Retail Offer sebelum normal Retail checkout |
+| FR2-21 | Diubah oleh `DEC-AFTER-01`: Retail revision/after-sales memakai lifecycle-specific eligibility, at least two-working-day complaint intake, exact auditable refund/reprint/return outcome, explicit SLA, dan manager approval |
+| FR2-22 | Diubah oleh `DEC-OFFER-01`: Custom Print Simple/Detailed configuration dan allowed file matrix memakai Niuva-authoritative profiles; customer `.gcode` ditolak |
+| FR2-23 | Diubah oleh `DEC-OFFER-01`: automatic price membutuhkan seluruh technical/commercial validation, customer confirmation, dan server revalidation |
+| FR2-24 | Diubah oleh `DEC-OFFER-01`: quote item terpisah dari direct cart dengan context preservation; eligible individual/UMKM dapat menerima private versioned manager-approved Assisted Retail Offer sebelum normal Retail checkout |
 
 ## 11. Non-Functional Requirements
 

@@ -48,7 +48,7 @@ Status document ini tetap candidate dan tidak memberi implementation approval.
 | Checkout preview | Server authoritative untuk publication, price, stock, fulfillment input, dan total | Candidate invariant |
 | Fulfillment | Rp0 pickup + automatic-rate domestic Indonesia delivery | Resolved by `DEC-FUL-01`; provider/configuration/implementation remain gated |
 | ETA dan milestone | Pre-payment date/time range + factual post-payment milestones | Resolved by `DEC-ETA-01`; Operations configuration and technical contract remain gated |
-| Pajak | Treatment dan display | Tetap open; memerlukan Finance decision |
+| Pajak | Tax-inclusive customer display if applicable; no invented PPN rate or amount while PKP status is unknown | Approved direction by `DEC-TAX-01`; versioned Finance profile, implementation, and activation remain gated |
 | Reservation duration | Fixed 30 minutes from successful order/payment-attempt creation | Resolved by `DEC-INV-01`; implementation remains gated |
 | Payment architecture | Provider-neutral online-payment orchestration | Approved architecture direction melalui ADR-003; provider tetap deferred |
 | Manual transfer | Legacy records read-only; no new instruction, attempt, proof upload, or proof-driven transition | Resolved by `DEC-PAY-02`; not an open application fallback |
@@ -88,7 +88,7 @@ Status document ini tetap candidate dan tidak memberi implementation approval.
 - Custom configuration atau design-file upload pada ready-stock checkout.
 - Provider selection atau provider-specific SDK, schema, webhook signature, dan API.
 - New manual-transfer adapter, payment-proof upload pada primary production path, atau manual-payment review flow.
-- Live logistics-provider integration, tax policy, cancellation/refund/return policy, atau production go-live.
+- Live logistics-provider integration, tax-profile implementation/activation, after-sales policy implementation/activation, atau production go-live.
 - Supplier purchase automation.
 - B2B quotation, organization approval, atau project workflow.
 - Pembuatan customer authentication baru.
@@ -593,9 +593,10 @@ Retail and B2B must both remain discoverable, but this candidate does not lock t
 - No provider-specific SDK, schema, webhook signature, or API is selected.
 - No new manual-transfer adapter or payment-proof production path is enabled.
 - Retail Order and B2B Quote/Project remain separate aggregates and state machines.
-- Except for the fixed duration and invariants resolved by `DEC-INV-01`, all
-  listed business, provider, storage, protected-scope, and readiness decisions
-  remain open.
+- Product, fulfillment, ETA, tax-display, after-sales, notification, and
+  reservation directions listed above are governed by their approved decisions;
+  provider/configuration choices, exact technical contracts, protected-scope
+  implementation, readiness, and go-live remain gated.
 
 ## 14. Operational Constraints dan Deferred Decisions
 
@@ -627,7 +628,7 @@ The following remain open:
   exact technical contract, dan separately authorized implementation;
 - logistics provider and approved fulfillment configuration/operations;
 - ETA duration/calendar/buffer/reason profiles and exact state/API/schema;
-- tax treatment;
+- Finance-approved versioned tax profile, implementation, and activation;
 - after-sales legal/customer terms, working-day configuration, provider
   execution/timing, Finance accounting/tax correction, evidence
   privacy/retention, abuse/fraud, long-term uncollected pickup, and exact
@@ -724,7 +725,7 @@ following approvals/configurations are still required:
   state/API/schema contract;
 - approved offer/configuration/file profiles and thresholds, default Assisted
   Retail Offer expiry, and exact offer/quote technical contract;
-- tax treatment;
+- Finance-approved versioned tax profile, implementation, and activation;
 - after-sales legal/customer terms, working-day configuration, provider
   execution/timing, Finance accounting/tax correction, evidence
   privacy/retention, abuse/fraud, long-term uncollected pickup, and exact

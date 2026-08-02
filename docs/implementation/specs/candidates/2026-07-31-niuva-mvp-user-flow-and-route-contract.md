@@ -291,7 +291,7 @@ Homepage / Capabilities / Projects
 /retail
 -> /retail/products/:slug
 -> choose variant and quantity
--> /retail/cart
+-> non-authoritative cart (`/retail/cart`, candidate-only)
 -> /login or /register when required
 -> server revalidation
 -> /retail/checkout
@@ -321,10 +321,10 @@ checkout.
 -> customer reviews exact file version, dimensions/scale,
    material/color/quantity/configuration, billable grams,
    print duration, customer-safe breakdown, total, ETA, fulfillment
--> /retail/cart
+-> non-authoritative cart (`/retail/cart`, candidate-only)
 -> /retail/checkout
 -> server revalidation and explicit reconfirmation if changed
--> Order/payment attempt/reservation
+-> create Order + payment attempt + 30-minute reservation atomically
 -> payment
 -> /orders/:id production tracking
 ```
@@ -401,7 +401,7 @@ or private notes.
 ```text
 /orders/:id
 -> file_revision_required
--> /orders/:id/file-revision
+-> candidate-only file-revision route (`/orders/:id/file-revision`)
 -> upload new private file version within revision_due_at
 -> operator review
 -> continue production OR quote_required OR cancellation/refund review
@@ -410,7 +410,7 @@ or private notes.
 ```text
 /orders/:id
 -> cancellation or complaint action
--> owned action/case route
+-> candidate-only owned action/case route
 -> operator triage
 -> evidence or domain review
 -> manager approval where required
