@@ -455,6 +455,14 @@ def test_inquiry_cursor_pages_are_stable_and_filter_bound():
                 mismatch.json()["error"]["code"] == "pagination_cursor_filter_mismatch"
             )
 
+            empty_cursor = await api.get(
+                "/api/admin/inquiries",
+                params={"cursor": "   "},
+                headers={"X-Role": "sales_estimator"},
+            )
+            assert empty_cursor.status_code == 422
+            assert empty_cursor.json()["error"]["code"] == "pagination_cursor_invalid"
+
             naive = await api.get(
                 "/api/admin/inquiries",
                 params={"updated_from": "2026-08-02T00:00:00"},
