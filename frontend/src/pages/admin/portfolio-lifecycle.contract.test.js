@@ -4,6 +4,7 @@ const path = require("path");
 const {
   ADMIN_ROUTE_PERMISSIONS,
   PORTFOLIO_ACTION_PERMISSIONS,
+  PORTFOLIO_ROLLBACK_PERMISSION,
 } = require("@/lib/permissions");
 
 const read = (...segments) =>
@@ -94,6 +95,10 @@ describe("Revisions and rollback", () => {
     expect(detailSource).toContain('data-testid="portfolio-revisions"');
     expect(detailSource).toContain("/rollback`");
     expect(detailSource).toContain('t("portfolio.rollbackReasonRequired")');
+    expect(PORTFOLIO_ROLLBACK_PERMISSION).toBe("content.publish");
+    expect(detailSource).toContain(
+      "hasPermission(user, PORTFOLIO_ROLLBACK_PERMISSION)"
+    );
   });
 
   test("the page says rollback appends rather than truncates", () => {

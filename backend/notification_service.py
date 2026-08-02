@@ -240,6 +240,11 @@ class NotificationService:
                 }
                 updated = await self.db.notifications.find_one_and_update(
                     {
+                        # The built-in MongoDB `_id` index is always present,
+                        # unlike the separately gated Migration 007 dedup index.
+                        # Binding a canonical row to this deterministic key keeps
+                        # concurrent upserts atomic without activating a migration.
+                        "_id": f"notification:{key}",
                         "deduplication_key": key,
                         "schema_version": NOTIFICATION_SCHEMA_VERSION,
                         **identity,

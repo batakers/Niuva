@@ -1,8 +1,12 @@
 # PHASE-08C — Notification Worker Fault-Hardening Task Card
 
-Status: **bounded local implementation authorized — staging remains blocked**
-Selected dependency: `e3f202a13848e274119d59e3247fba0288a8c39b`
-(PR #103, canonical notification schema)
+Status: **bounded source and reconciliation review complete — current-head CI
+and merge pending; staging remains blocked**
+Selected dependency: `146c945831864857dff8c9448deafad96e346f2d`
+(PR #103 merged, canonical notification schema)
+
+Reconciliation baseline: `146c945831864857dff8c9448deafad96e346f2d`
+(`origin/main`, checked 3 August 2026, Asia/Jakarta)
 Branch / worktree: `fix/backend-notification-worker` /
 `Niuva-worktrees/backend-notification-worker`
 
@@ -37,7 +41,8 @@ and unsafe error evidence without selecting a new topology or operating policy.
   entry; that requires separate Product/Operations approval.
 - No migration, backfill, cleanup, index/TTL change, historical mutation,
   provider activation, deployment, or shared/staging/production execution.
-- No merge of dependency PR #102 or #103.
+- No change to the already merged source scope of PR #102 or #103 beyond
+  preserving PR #103's deterministic canonical-notification storage identity.
 
 ## Authority and dependencies
 
@@ -46,8 +51,10 @@ and unsafe error evidence without selecting a new topology or operating policy.
 - `DR-014` remains open for topology, capacity, telemetry, service objectives,
   and production/staging-like operations.
 - User authorization on 2 August 2026 permits this bounded implementation,
-  commit, push, and stacked PR. It does not permit merge or excluded actions.
-- PR #102 and then PR #103 remain merge-order dependencies.
+  commit, push, and stacked PR. On 3 August 2026, the Project Owner separately
+  authorized the recommended reconciliation and merge sequence. Neither
+  authorization permits excluded actions.
+- PR #102 and PR #103 are merged; this PR is retargeted to `main`.
 
 ## Acceptance criteria
 
@@ -71,7 +78,10 @@ and unsafe error evidence without selecting a new topology or operating policy.
   `git diff --check`: **passed**.
 - Final diff and privacy/concurrency review found and closed malformed
   idempotency-key forwarding and expired-lease result acceptance.
-- Commit, push, and stacked PR only if all local gates pass. Do not merge.
+- Reconciliation notification/report/Admin/inventory/password matrix:
+  **200 passed**; Black and Python compile checks passed for changed source.
+- Commit, push, PR reconciliation, and merge only if all local and current-head
+  CI gates pass.
 
 ## Remaining risks
 
@@ -80,3 +90,6 @@ and unsafe error evidence without selecting a new topology or operating policy.
 - Embedded-per-web-process versus dedicated-worker topology remains unresolved.
 - Staging-like fault, shutdown, capacity, alert, and telemetry evidence remains
   blocked by DR-014 and environment authorization.
+- A malformed outbox row with no usable identity is left leased to expire rather
+  than mutated by an unsafe guess; poison-entry alert/repair ownership remains an
+  operational decision under DR-014.
