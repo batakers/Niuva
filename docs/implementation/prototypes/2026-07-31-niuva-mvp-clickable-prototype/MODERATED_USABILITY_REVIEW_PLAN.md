@@ -1,6 +1,6 @@
 # Moderated Usability Review Plan — Niuva MVP
 
-Status: **NOT READY TO RUN — ROUND 7 FAILED WITH FOUR OPEN P1s**
+Status: **NOT READY TO RUN — R8 TARGETED PASS; INDEPENDENT EXPERT RERUN REQUIRED**
 Prepared: 31 July 2026
 Minimum participants: one Niuva non-IT operator and one prospective Retail customer
 Prototype: `http://127.0.0.1:4177/`

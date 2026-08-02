@@ -33,6 +33,12 @@ Set-Location "C:\Portfolio\Niuva\Niuva-main-latest\docs\implementation\prototype
 node server.js
 ```
 
+Jalankan contract test prototype dari root repository:
+
+```powershell
+node --test docs/implementation/prototypes/2026-07-31-niuva-mvp-clickable-prototype/prototype-flow.contract.test.cjs
+```
+
 Buka `http://127.0.0.1:4177/` untuk **Participant Mode**.
 
 Moderator membuka `http://127.0.0.1:4177/?mode=moderator`. Panel skenario,
@@ -145,6 +151,7 @@ Moderated human review menggunakan:
 - [FORMAL_EXPERT_CRITIQUE_RERUN_5.md](./FORMAL_EXPERT_CRITIQUE_RERUN_5.md)
 - [FOCUSED_BROWSER_REVALIDATION_R6.md](./FOCUSED_BROWSER_REVALIDATION_R6.md)
 - [FORMAL_EXPERT_CRITIQUE_RERUN_7.md](./FORMAL_EXPERT_CRITIQUE_RERUN_7.md)
+- [FOCUSED_BROWSER_REVALIDATION_R8.md](./FOCUSED_BROWSER_REVALIDATION_R8.md)
 - [MODERATED_USABILITY_REVIEW_PLAN.md](./MODERATED_USABILITY_REVIEW_PLAN.md)
 - [MODERATED_USABILITY_RESULTS.md](./MODERATED_USABILITY_RESULTS.md)
 
@@ -152,6 +159,8 @@ Review kit sudah disiapkan. Historical Round 5 PASS di-invalidasi saat
 pre-publication review menemukan clean direct-entry Order ID mismatch yang
 belum diuji dan evidence recording yang tidak tersedia di artifact repository.
 Focused browser revalidation R6 untuk fix tersebut lulus. Formal expert critique
-R7 kemudian membuka empat P1 pada default operator case, legacy `/order`, mobile
-sticky CTA, dan active-reservation/cart recovery. Sesi peserta tetap **NOT READY
-TO RUN**. Results serta route recommendation tetap `INSUFFICIENT_EVIDENCE`.
+R7 kemudian membuka empat P1 dan satu P2. Remediation serta focused browser
+revalidation R8 menutup semuanya untuk targeted source/browser scope. Sesi
+peserta tetap **NOT READY TO RUN** sampai full expert critique diulang dengan
+assessment independen dan lulus. Results serta route recommendation tetap
+`INSUFFICIENT_EVIDENCE`.

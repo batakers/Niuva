@@ -1,6 +1,6 @@
 # Moderated Usability Review Results — Niuva MVP
 
-Status: **HUMAN SESSIONS BLOCKED — ROUND 7 HAS FOUR OPEN P1s**
+Status: **HUMAN SESSIONS BLOCKED — R8 TARGETED PASS; FORMAL GATE PENDING**
 Prepared: 31 July 2026
 Required evidence: `P-C01` and `P-O01`
 Current route recommendation: **INSUFFICIENT_EVIDENCE**

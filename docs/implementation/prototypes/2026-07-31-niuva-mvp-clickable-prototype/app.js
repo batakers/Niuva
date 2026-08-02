@@ -254,6 +254,12 @@
 
   const activeOrderSnapshot = () => state.orderSnapshot || fallbackOrderSnapshot();
 
+  const hasActiveCheckoutAttempt = () =>
+    state.reservationStatus === "active"
+    && Boolean(state.orderReference)
+    && Boolean(state.paymentAttemptReference)
+    && Boolean(state.orderSnapshot);
+
   const createOrderSnapshot = () => {
     const subtotal = cartSubtotal();
     const shipping = state.fulfillmentMode === "pickup" ? 0 : DELIVERY_SHIPPING;
@@ -309,7 +315,7 @@
       .replaceAll("'", "&#039;");
 
   const routeKind = (path) => {
-    if (path === "/admin/orders") return "legacy";
+    if (path === "/order" || path === "/admin/orders") return "legacy";
     if (candidatePatterns.some((pattern) => pattern.test(path))) return "candidate";
     if (canonicalExact.has(path) || canonicalPatterns.some((pattern) => pattern.test(path))) {
       return "canonical";
@@ -649,7 +655,7 @@
         <div class="page compact">
           <div class="detail-grid">
             <div>
-              <div class="product-figure" style="min-height: 470px"><span class="product-shape" aria-hidden="true"></span></div>
+              <div class="product-figure ready-product-figure"><span class="product-shape" aria-hidden="true"></span></div>
               <div class="section">
                 <span class="eyebrow">Informasi produk</span>
                 <h2>Ready stock dan made-to-order dalam satu katalog</h2>
@@ -673,7 +679,7 @@
             </aside>
           </div>
         </div>
-        ${mobileActionBar("Keychain Layer", "Rp45.000", "add-ready")}
+        ${mobileActionBar("Keychain Layer", "Rp45.000", "add-ready", false, "Tambah ke keranjang")}
       </main>
     `;
   }
@@ -844,7 +850,7 @@
         </div>
         ${
           slicing === "done" && !quote
-            ? mobileActionBar("Total Custom Print", rupiah(totals.total), "add-custom")
+            ? mobileActionBar("Total Custom Print", rupiah(totals.total), "add-custom", false, "Tambah ke keranjang")
             : ""
         }
       </main>
@@ -852,9 +858,13 @@
   }
 
   function cartPage() {
-    const items = state.cartItems;
+    const cartLocked = hasActiveCheckoutAttempt();
+    const items = cartLocked ? state.orderSnapshot.items : state.cartItems;
     const mixed = new Set(items.map((item) => item.type)).size > 1;
-    const subtotal = cartSubtotal();
+    const subtotal = cartLocked ? state.orderSnapshot.subtotal : cartSubtotal();
+    const cartTotal = cartLocked ? state.orderSnapshot.total : subtotal;
+    const cartBarLabel = cartLocked ? "Reservasi aktif" : "Total sementara";
+    const cartActionLabel = cartLocked ? "Kembali ke pembayaran" : "Lanjut checkout";
     return `
       <main id="main-content" class="main" tabindex="-1">
         <div class="page compact">
@@ -867,11 +877,17 @@
             items.length
               ? `
                 <div style="margin-top:24px">${notice(
-                  mixed ? "Waktu pemrosesan berbeda" : "Nilai akan diperiksa kembali",
-                  mixed
-                    ? "Ready Product dan Custom Print memiliki ETA/fulfillment berbeda. Keduanya tetap dapat dilanjutkan dalam checkout simulasi ini."
-                    : "Harga, ETA, stok, dan ongkir akan diperiksa kembali sebelum pembayaran.",
-                  mixed ? "warning" : "info",
+                  cartLocked
+                    ? `Keranjang terkunci pada Order ${escapeHtml(state.orderReference)}`
+                    : mixed
+                      ? "Waktu pemrosesan berbeda"
+                      : "Nilai akan diperiksa kembali",
+                  cartLocked
+                    ? "Order dan payment attempt sudah dibuat. Item dan total mengikuti snapshot Order; kembali ke pembayaran untuk melanjutkan."
+                    : mixed
+                      ? "Ready Product dan Custom Print memiliki ETA/fulfillment berbeda. Keduanya tetap dapat dilanjutkan dalam checkout simulasi ini."
+                      : "Harga, ETA, stok, dan ongkir akan diperiksa kembali sebelum pembayaran.",
+                  cartLocked || mixed ? "warning" : "info",
                 )}</div>
                 <div class="detail-grid section" style="margin-top:28px">
                   <div class="cart-items">
@@ -899,7 +915,7 @@
                                 ? `
                                   <div class="field cart-quantity">
                                     <label for="quantity-${item.id}">Jumlah</label>
-                                    <select id="quantity-${item.id}" data-change="cart-quantity" data-item-id="${item.id}">
+                                    <select id="quantity-${item.id}" data-change="cart-quantity" data-item-id="${item.id}"${cartLocked ? " disabled" : ""}>
                                       ${[1, 2, 3, 4]
                                         .map(
                                           (quantity) =>
@@ -911,30 +927,32 @@
                                 `
                                 : ""
                             }
-                            <div class="button-row">
-                              ${
-                                item.type === "custom"
-                                  ? link("/retail/products/custom-fdm/configure", "Ubah konfigurasi", "button secondary small")
-                                  : link("/retail/products/ready-keychain", "Ubah pilihan", "button secondary small")
-                              }
-                              ${button("Hapus", `remove-cart:${item.id}`, "button secondary small")}
-                            </div>
+                            ${
+                              cartLocked
+                                ? ""
+                                : `<div class="button-row">
+                                    ${
+                                      item.type === "custom"
+                                        ? link("/retail/products/custom-fdm/configure", "Ubah konfigurasi", "button secondary small")
+                                        : link("/retail/products/ready-keychain", "Ubah pilihan", "button secondary small")
+                                    }
+                                    ${button("Hapus", `remove-cart:${item.id}`, "button secondary small")}
+                                  </div>`
+                            }
                           </article>
                         `,
                       )
                       .join("")}
-                    <div class="button-row">
-                      ${link("/retail", "Lanjut belanja", "button secondary")}
-                    </div>
+                    ${cartLocked ? "" : `<div class="button-row">${link("/retail", "Lanjut belanja", "button secondary")}</div>`}
                   </div>
                   <aside class="layer-card detail-sticky">
                     <span class="card-kicker">Ringkasan</span>
                     <div class="summary-list">
                       <div class="summary-row"><span>Produk</span><strong>${items.length} item</strong></div>
-                      <div class="summary-row"><span>Ongkir</span><strong>Dihitung di checkout</strong></div>
-                      <div class="summary-row total"><span>Total sementara</span><strong>${rupiah(subtotal)}</strong></div>
+                      <div class="summary-row"><span>Ongkir</span><strong>${cartLocked ? rupiah(state.orderSnapshot.shipping) : "Dihitung di checkout"}</strong></div>
+                      <div class="summary-row total"><span>${cartLocked ? "Total Order" : "Total sementara"}</span><strong>${rupiah(cartTotal)}</strong></div>
                     </div>
-                    <div class="button-row">${button("Lanjut checkout", "go-checkout")}</div>
+                    <div class="button-row">${button(cartActionLabel, "go-checkout")}</div>
                   </aside>
                 </div>
               `
@@ -949,7 +967,7 @@
               `
           }
         </div>
-        ${items.length ? mobileActionBar("Total sementara", rupiah(subtotal), "go-checkout") : ""}
+        ${items.length ? mobileActionBar(cartBarLabel, rupiah(cartTotal), "go-checkout", false, cartActionLabel) : ""}
       </main>
     `;
   }
@@ -1082,6 +1100,11 @@
 
     // Fulfillment is immutable after confirm (not preview)
     const fulfillmentEditable = preview;
+    const activeAttempt = hasActiveCheckoutAttempt();
+    const checkoutBackLabel = activeAttempt ? "← Lihat keranjang terkunci" : "← Kembali ke keranjang";
+    const fulfillmentLockCopy = activeAttempt
+      ? "Metode pengiriman mengikuti snapshot Order. Lihat keranjang terkunci atau selesaikan payment attempt aktif."
+      : "Metode pengiriman mengikuti snapshot Order. Periksa ulang ketersediaan sebelum membuat payment attempt baru.";
 
     // Stepper: preview has Checkout current, post-confirm has Pembayaran current
     const stepperCheckout = preview ? "current" : "done";
@@ -1099,9 +1122,9 @@
         <div class="page compact">
           <span class="eyebrow">${state.reviewMode === "moderator" ? "Checkout \u00b7 provider-neutral" : "Checkout"}</span>
           <h1 style="font-size:clamp(2rem,4vw,3.5rem)">${preview ? "Tinjau pesanan sebelum konfirmasi" : "Konfirmasi sebelum pembayaran"}</h1>
-          <div class="back-link">${link("/retail/cart", "\u2190 Kembali ke keranjang")}</div>
+          <div class="back-link">${link("/retail/cart", checkoutBackLabel)}</div>
           <ol class="stepper">
-            <li class="done">Keranjang</li><li class="done">Akun</li><li class="${stepperCheckout}">Checkout</li><li class="${stepperPayment}">Pembayaran</li>
+            <li class="done">Keranjang</li><li class="done">Akun</li><li class="${stepperCheckout}"${stepperCheckout === "current" ? ' aria-current="step"' : ""}>Checkout</li><li class="${stepperPayment}"${stepperPayment === "current" ? ' aria-current="step"' : ""}>Pembayaran</li>
           </ol>
           ${noticeHtml}
           <div class="detail-grid" style="margin-top:22px">
@@ -1143,7 +1166,7 @@
                   ? notice("Pickup dipilih", "Tidak ada ongkir. Lokasi dan waktu pickup tetap berupa data prototipe.", "info")
                   : notice("Logistik belum dipilih", "Ongkir otomatis disimulasikan tanpa menyebut atau mengaktifkan penyedia.", "info")
               }</div>
-              ${!fulfillmentEditable ? "<div style=\"margin-top:12px\">" + notice("Fulfillment dikunci", "Metode pengiriman tidak dapat diubah setelah Order dibuat. Kembali ke pratinjau untuk mengubah.", "info") + "</div>" : ""}
+              ${!fulfillmentEditable ? "<div style=\"margin-top:12px\">" + notice("Fulfillment dikunci", fulfillmentLockCopy, "info") + "</div>" : ""}
             </section>
             <aside class="layer-card detail-sticky">
               <span class="card-kicker">${kickerText}</span>
@@ -1759,11 +1782,19 @@
           <div><strong>Perbarui milestone NV-DEMO-014</strong><p>Printing aktif · ETA perlu dikonfirmasi</p></div>
           ${link("/admin/retail-orders/NV-DEMO-014", "Buka order", "button small")}
         </div>
-        <div class="next-action">
-          <span class="next-number">03</span>
-          <div><strong>Tinjau CASE-DEMO-01</strong><p>Bukti komplain lengkap · menunggu keputusan</p></div>
-          ${link("/admin/retail-cases/CASE-DEMO-01", "Buka kasus", "button small")}
-        </div>
+        ${
+          state.complaintCase
+            ? `<div class="next-action">
+                <span class="next-number">03</span>
+                <div><strong>Tinjau ${escapeHtml(state.complaintCase.id)}</strong><p>Bukti komplain lengkap · menunggu keputusan</p></div>
+                ${link(`/admin/retail-cases/${state.complaintCase.id}`, "Buka kasus", "button small")}
+              </div>`
+            : `<div class="next-action">
+                <span class="next-number">03</span>
+                <div><strong>Periksa antrean after-sales</strong><p>Belum ada case aktif yang ditugaskan pada sesi ini</p></div>
+                ${link("/admin/retail-cases", "Buka antrean", "button small")}
+              </div>`
+        }
         <div class="next-action">
           <span class="next-number">04</span>
           <div><strong>Stok Keychain Layer menipis</strong><p>2 item tersisa · batas minimum 3</p></div>
@@ -2019,7 +2050,7 @@
         path,
         "Kasus tidak tersedia",
         "Belum ada case simulasi pada sesi browser ini.",
-        `<div class="empty-state"><div><h2>Tidak ada case untuk ditinjau</h2><p>Pilih fixture after-sales dari Panel Moderator atau kirim komplain melalui customer surface.</p></div></div>`,
+        `<div class="empty-state"><div><h2>Tidak ada case untuk ditinjau</h2><p>Kembali ke antrean after-sales untuk memilih case yang tersedia.</p></div></div>`,
         link("/admin/retail-cases", "Kembali", "button secondary small"),
       );
     }
@@ -2172,12 +2203,30 @@
     `;
   }
 
+  function legacyCustomerOrderUnavailable() {
+    return `
+      <main id="main-content" class="main" tabindex="-1">
+        <div class="page compact">
+          <div class="empty-state">
+            <div>
+              <span class="eyebrow">Legacy compatibility · read-only</span>
+              <h1 style="font-size:clamp(2rem,4vw,3.5rem);margin:0 auto">Pemesanan lama tidak tersedia</h1>
+              <p>Route /order tidak menerima pembuatan Order atau pembayaran baru. Gunakan Retail untuk melihat produk dan layanan yang tersedia.</p>
+              <div class="button-row" style="justify-content:center">${link("/retail", "Jelajahi Retail", "button")}</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    `;
+  }
+
   function contentFor(path) {
     if (state.scenario === "session-expired" && !path.startsWith("/admin")) return recoveryPage("session-expired");
     if (state.scenario === "access-denied" && path.startsWith("/orders/")) return recoveryPage("access-denied");
     if (state.scenario === "backend-down" && path === "/dashboard") return recoveryPage("backend-down");
 
     if (path === "/") return publicHome();
+    if (path === "/order") return legacyCustomerOrderUnavailable();
     if (["/about", "/capabilities", "/projects", "/contact"].includes(path)) return simplePublicPage(path);
     if (path === "/retail") return retailIndex();
     if (path === "/retail/products/ready-keychain") return readyProduct();
@@ -2221,6 +2270,7 @@
     "/retail/products/custom-fdm/configure": "Konfigurasi Custom Print",
     "/retail/cart": "Keranjang",
     "/retail/checkout": "Checkout",
+    "/order": "Legacy Order",
     "/login": "Login",
     "/register": "Register",
     "/dashboard": "Dashboard Pelanggan",

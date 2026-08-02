@@ -622,6 +622,10 @@ button.button {
   background: var(--frost);
 }
 
+.ready-product-figure {
+  min-height: 470px;
+}
+
 .product-shape {
   width: 94px;
   height: 94px;
@@ -1487,6 +1491,10 @@ button.button {
 
   .main {
     min-height: 0;
+  }
+
+  .ready-product-figure {
+    min-height: 260px;
   }
 
   .page {
