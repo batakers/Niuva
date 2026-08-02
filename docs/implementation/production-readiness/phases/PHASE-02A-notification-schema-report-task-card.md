@@ -1,7 +1,12 @@
 # PHASE-02A — Notification Schema Report Hardening Task Card
 
-Status: **local implementation and self-review complete — representative execution gated**
-Selected baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91` (`origin/main`, 2 August 2026)
+Status: **bounded source and reconciliation review complete — current-head CI
+and merge pending; representative execution gated**
+Selected baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
+(`origin/main`, fetched 2 August 2026, Asia/Jakarta)
+
+Reconciliation baseline: `b33619880b8b6ced2f0ad6c78ff102fc4bb8a9ce`
+(`origin/main`, checked 3 August 2026, Asia/Jakarta)
 Branch / worktree: `feat/backend-notification-schema-report` /
 `Niuva-worktrees/backend-notification-schema-report`
 
@@ -41,17 +46,21 @@ collection reads when target or role verification fails; focused tests pass.
 Verification: Focused report/runner tests, relevant notification tests, compile,
 `git diff --check`, and diff inspection for write paths or raw-data output.
 
-Owner and verifier: Faiz is Driver/temporary notification owner; independent
-privacy/data review remains required before representative execution or merge.
+Owner and verifier: Faiz is Driver/temporary notification owner. Bounded
+independent source and aggregate-privacy-boundary review completed during PR
+reconciliation; named privacy/data approval remains required before any
+representative execution.
 
-Commit/push/PR permitted? No — local changes and handoff only unless separately
-authorized.
+Commit/push/PR permitted? The original handoff did not authorize Git delivery.
+The Project Owner later authorized PR reconciliation and merge on 3 August 2026.
+That authorization does not permit representative-data access, migration,
+deployment, production-readiness, or go-live.
 
 Risks or open decisions: No representative target, credential, target fingerprint,
 data custody, or execution window is approved. Any privacy hit or ambiguity must
 stop the report; migration and production status remain open.
 
-## Local handoff — 2 August 2026
+## Local handoff — 2 August 2026 (Asia/Jakarta)
 
 - Changed: report version 3; exact integer schema version `1`; acronym-aware
   privacy field matching with bounded nested traversal; strict top-level and
@@ -75,5 +84,6 @@ stop the report; migration and production status remain open.
   behavior; and database substitution before collection reads.
 - Not run: representative dataset, shared/staging/production target, migration,
   backup/restore, deployment, and browser checks.
-- Git delivery: local uncommitted work only; commit, push, PR, and merge remain
-  unapproved.
+- Original Git delivery state: local uncommitted work only. PR #102 was later
+  opened, and the Project Owner separately authorized its reconciliation and
+  merge on 3 August 2026; current-head CI remains the merge gate.

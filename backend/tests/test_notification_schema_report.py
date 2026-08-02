@@ -455,6 +455,7 @@ def test_report_counts_unlinked_metadata_only_admin_log():
     report = run_report(database)
 
     assert report["issues"]["unlinked_admin_log"] == 1
+    assert "admin_log_notification_count_mismatch" not in report["issues"]
 
 
 def test_zero_recipient_metadata_log_is_not_falsely_unlinked():

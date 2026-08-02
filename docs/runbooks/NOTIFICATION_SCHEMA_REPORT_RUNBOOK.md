@@ -35,10 +35,11 @@ There is no apply, repair, backfill, delete, resend, index, or migration mode.
 
 ## Local synthetic verification
 
-From the repository root:
+Activate the repository's backend virtual environment so `python` resolves to
+its interpreter, then run from the repository root:
 
 ```bash
-/Users/macintoshhd/NIUVA/Niuva/backend/.venv/bin/python -m pytest -n 0 -q \
+python -m pytest -n 0 -q \
   backend/tests/test_notification_schema_report.py
 ```
 
@@ -92,7 +93,7 @@ After the approved secret-delivery mechanism has populated
 `NOTIFICATION_REPORT_MONGO_URL`, run from the repository root:
 
 ```bash
-/Users/macintoshhd/NIUVA/Niuva/backend/.venv/bin/python \
+python \
   backend/notification_schema_report.py \
   --database '<approved-isolated-database>' \
   --target-label '<approved-isolated-label>' \
@@ -110,7 +111,7 @@ because inspection returned a topology fingerprint.
 Only after the preceding gate is recorded:
 
 ```bash
-/Users/macintoshhd/NIUVA/Niuva/backend/.venv/bin/python \
+python \
   backend/notification_schema_report.py \
   --database '<approved-isolated-database>' \
   --target-label '<approved-isolated-label>' \
@@ -176,8 +177,11 @@ unreadable retention timestamp remains a blocking issue.
 
 ## Handoff
 
-Retain only the aggregate JSON, approved target metadata, command version/SHA,
-reviewer, and execution time. Do not retain terminal history containing a URI or
-copy raw records into tickets, pull requests, chat, or documentation. Any later
-transition requires separate migration authority, backup, dry run, validation,
-rollback, restore, and historical-preservation review.
+Retain only the aggregate JSON, command version/SHA, execution time, and the
+approved `dataset_id`, `snapshot_id`, `manifest_id`, `expected_fingerprint`,
+`read_only_credential_reference`, `custody_owner`, `reviewer`,
+`execution_window`, `evidence_location`, and `retention_policy`. Do not retain a
+MongoDB URI, terminal history containing a URI, or raw records in tickets, pull
+requests, chat, or documentation. Any later transition requires separate
+migration authority, backup, dry run, validation, rollback, restore, and
+historical-preservation review.

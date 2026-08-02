@@ -1306,7 +1306,7 @@ async def build_notification_schema_report(
             and not admin_notification_links[log_id]
         ):
             issues["unlinked_admin_log"] += 1
-        if (
+        elif (
             _identity(log_id)
             and isinstance(recipient_count, int)
             and recipient_count >= 0
