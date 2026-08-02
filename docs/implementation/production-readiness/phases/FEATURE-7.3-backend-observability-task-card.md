@@ -2,13 +2,15 @@
 
 Status: **Planning / DR-014 decision-blocked — source implementation not authorized**
 
-Date: 2 August 2026 (Asia/Jakarta)
+Original planning date: 2 August 2026 (Asia/Jakarta)
+
+Reconciliation date: 3 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-observability`
 
 PR: `#108` (open; reconciliation review complete)
 
-Worktree: `/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-observability`
+Worktree: contributor-local isolated worktree for `plan/backend-observability`
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)

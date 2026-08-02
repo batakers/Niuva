@@ -2,7 +2,9 @@
 
 Status: **Proposed — Operations/SRE/Security decision required before source implementation**
 
-Date: 2 August 2026 (Asia/Jakarta)
+Original planning date: 2 August 2026 (Asia/Jakarta)
+
+Reconciliation date: 3 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-observability`
 
@@ -404,11 +406,11 @@ payloads remain prohibited.
 | API availability | Eligible non-5xx responses / eligible requests, with approved route exclusions |
 | API latency | Eligible requests completed within the approved threshold / eligible requests |
 | Required-dependency availability | Time required dependency is ready / observed time |
-| Worker delivery freshness | Due work completed before approved age / due work completed |
+| Worker delivery freshness | Eligible due work completed before the approved age / eligible due work observed in the measurement window |
 | Worker exhaustion | Non-exhausted terminal deliveries / terminal delivery outcomes |
 | Scheduled-job reliability | Successful on-time logical runs / expected logical runs |
 | Transaction availability | Eligible transaction-required mutations not rejected for capability / eligible mutations |
-| Transaction certainty | Non-ambiguous terminal transaction outcomes / transaction attempts |
+| Transaction certainty | Logical transactions reaching a non-ambiguous terminal outcome / eligible logical transactions observed in the measurement window |
 | Telemetry pipeline health | Accepted non-dropped telemetry records / attempted records, where measurable |
 
 Eligibility, low-traffic handling, maintenance windows, burn-rate windows,
