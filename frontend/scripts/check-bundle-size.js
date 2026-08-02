@@ -43,7 +43,7 @@ function readBudgets(env) {
       continue;
     }
     const value = Number(raw);
-    if (!Number.isFinite(value) || value <= 0) {
+    if (!Number.isInteger(value) || value <= 0) {
       invalid.push(name);
       continue;
     }
@@ -54,7 +54,7 @@ function readBudgets(env) {
     const details = [];
     if (missing.length > 0) details.push(`missing: ${missing.join(", ")}`);
     if (invalid.length > 0) {
-      details.push(`must be a positive number of bytes: ${invalid.join(", ")}`);
+      details.push(`must be a positive integer number of bytes: ${invalid.join(", ")}`);
     }
     throw new Error(details.join("; "));
   }
@@ -106,7 +106,13 @@ function loadAssets(buildRoot) {
 }
 
 function largestOf(assets, kind) {
-  return assets.filter((asset) => asset.kind === kind).sort((a, b) => b.gzip - a.gzip)[0];
+  let largest = null;
+  for (const asset of assets) {
+    if (asset.kind === kind && (largest === null || asset.gzip > largest.gzip)) {
+      largest = asset;
+    }
+  }
+  return largest;
 }
 
 function evaluate(assets, budgets) {

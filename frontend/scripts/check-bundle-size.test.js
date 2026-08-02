@@ -87,7 +87,7 @@ test("gate mode distinguishes entry and async limits", () => {
   assert.doesNotMatch(failing.stderr, /Async asset/);
 });
 
-test("gate mode rejects non-positive or non-numeric budget values", () => {
+test("gate mode rejects non-positive, non-numeric, or fractional budget values", () => {
   const result = run([], {
     BUNDLE_TOTAL_GZIP_BUDGET: "not-a-number",
     BUNDLE_ENTRY_GZIP_BUDGET: "0",
@@ -95,5 +95,15 @@ test("gate mode rejects non-positive or non-numeric budget values", () => {
   });
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /positive number of bytes/);
+  assert.match(result.stderr, /positive integer number of bytes/);
+
+  const fractional = run([], {
+    BUNDLE_TOTAL_GZIP_BUDGET: "1000.5",
+    BUNDLE_ENTRY_GZIP_BUDGET: "1000",
+    BUNDLE_ASYNC_GZIP_BUDGET: "1000",
+  });
+
+  assert.equal(fractional.status, 2);
+  assert.match(fractional.stderr, /BUNDLE_TOTAL_GZIP_BUDGET/);
+  assert.match(fractional.stderr, /positive integer number of bytes/);
 });

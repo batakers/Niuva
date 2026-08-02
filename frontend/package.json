@@ -40,7 +40,7 @@
     "audit:production": "node scripts/audit-production-dependencies.js",
     "measure:bundle": "node scripts/check-bundle-size.js --report-only",
     "check:bundle": "node scripts/check-bundle-size.js",
-    "test:bundle": "node scripts/check-bundle-size.test.js"
+    "test:bundle": "node --test scripts/check-bundle-size.test.js"
   },
   "browserslist": {
     "production": [
