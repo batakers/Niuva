@@ -1,6 +1,7 @@
 # Task Card — Feature 8.1 API Contract and OpenAPI
 
-Status: **bounded source and local verification complete — PR pending**
+Status: **reconciled review and local verification complete — exact-head PR
+CI and merge pending**
 
 ## Identity and baseline
 
@@ -8,17 +9,22 @@ Status: **bounded source and local verification complete — PR pending**
 
 **Project Owner / API Owner / Driver:** Faiz
 
-**Branch / worktree:** `fix/backend-api-contract` /
-`/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-api-contract`
+**Branch / reconciliation worktree:** `fix/backend-api-contract` /
+`C:\tmp\niuva-pr109-review`
 
 **Stacked baseline:** `7471f9f21fe8c019ce9bdc5b25ee50e1ca81895a`
 (`fix/backend-readiness-health`, PR #106), itself based on `origin/main`
 `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`.
 
+**Reconciliation baseline:** `origin/main` at `5eaf14ca6bbb01cbdf84b5926f92e852aff145b1`
+after PR #106 merged.
+
 **Authorization:** On 2 August 2026 the Project Owner explicitly authorized
 continuing Feature 8.1 through implementation, commit, push, and pull request.
-PR merge, deployment, migration, production-readiness, and go-live are not
-authorized.
+At that time PR merge, deployment, migration, production-readiness, and go-live
+were not authorized. On 3 August 2026 the Project Owner separately authorized
+the reviewed PR reconciliation and merge sequence. That later authorization
+does not include deployment, migration, production-readiness, or go-live.
 
 ## Objective
 
@@ -84,9 +90,13 @@ revalidated against the resulting `main` before Feature 8.1 merges.
 ## Expected changed areas
 
 - `backend/api_contract.py`
+- `.github/workflows/quality-gates.yml`
+- `backend/b2b_routes.py` and `backend/catalog_routes.py`
 - `backend/server.py`
 - bounded representative route declarations where required
 - `backend/tests/test_api_contract.py`
+- `backend/tests/test_transaction_error_contract.py`
+- `backend/transaction_api.py`
 - this task card and bounded handoff evidence
 
 ## Acceptance criteria
@@ -138,3 +148,34 @@ remaining review/CI/merge requirements.
 PR CI and review remain separate gates. The transaction-test workflow will run
 against its isolated replica set after the branch is pushed. This stacked
 branch must not merge before PR #106.
+
+## Reconciliation evidence — 3 August 2026
+
+- Retargeted PR #109 to `main` after PR #106 merged and reconciled its shared
+  `backend/server.py` seam with notification and readiness changes through
+  `5eaf14c`.
+- Fixed early CSRF rejection so a valid client request ID is normalized and
+  echoed consistently even when request-context middleware is bypassed.
+- Redacted internal permission identifiers from generic 403 denial detail;
+  authorization status, roles, permissions, and backend enforcement remain
+  unchanged.
+- Added the changed API contract, representative routes, transaction adapter,
+  and tests to the focused CI MyPy, Black, and isort scopes.
+- Focused API, Catalog, B2B, and transaction route matrix: `41 passed`.
+- Complete backend suite: `878 passed, 15 skipped, 14 subtests passed`.
+- Current-head critical Flake8, expanded focused MyPy (`18` source files),
+  Black/isort (`32` files), compileall/py_compile, `pip check`, Markdown, and
+  diff checks passed. `pip-audit` was not available in the local environment
+  and remains an exact-head CI gate.
+- No database mutation, migration/index execution, provider operation,
+  shared/staging/production probe, deployment, production-readiness
+  declaration, or go-live occurred.
+
+## Reconciliation handoff
+
+Changed by PR #109: the shared API contract and transaction adapter,
+representative B2B/Catalog/server response declarations, focused contract
+tests, CI scope, and the two bounded delivery records. Intentionally unchanged:
+session lifecycle, role/permission policy, Catalog cursor shape, B2B command
+semantics, Notification/Portfolio implementation, frontend transport,
+migrations, providers, data, and environment configuration.

@@ -1,7 +1,7 @@
 # Backend API Contract Delivery — 2 August 2026
 
-Status: **source complete; local verification passed; review, CI, and merge
-pending**
+Status: **original delivery evidence retained; reconciled review complete on
+3 August 2026; exact-head CI and merge pending**
 
 ## Delivery identity
 
@@ -71,3 +71,21 @@ PR #106 is the producer/base and must merge before Feature 8.1. After #106
 merges, refresh the Feature 8.1 base from current `main`, reconcile any
 `backend/server.py` changes introduced by the notification PR stack, rerun the
 full backend suite, and require fresh PR CI before merge.
+
+## Reconciliation addendum — 3 August 2026
+
+- PR #106 merged to `main` at `5eaf14c`; PR #109 was retargeted to `main` and
+  reconciled in `C:\tmp\niuva-pr109-review` without modifying the older local
+  `main` worktree.
+- The review fixed request-ID correlation for early CSRF rejection and removed
+  internal permission names from generic 403 response detail without changing
+  authorization policy or status codes.
+- CI coverage now includes the changed contract, route, adapter, and test files
+  in the applicable MyPy, Black, and isort scopes.
+- Focused API/Catalog/B2B/transaction checks passed `41` tests. The complete
+  backend suite passed `878`, with `15 skipped` and `14 subtests passed`.
+- Critical Flake8, expanded focused MyPy, Black/isort, compileall/py_compile,
+  `pip check`, Markdown, and diff checks passed. Local `pip-audit` was
+  unavailable and remains an exact-head CI gate.
+- Deployment, migration, shared-environment validation, provider activation,
+  production-readiness, and go-live remain outside this delivery.

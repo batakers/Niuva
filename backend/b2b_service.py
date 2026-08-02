@@ -6,27 +6,25 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from bson.decimal128 import Decimal128
-
-from inventory_service import InventoryError
-
 from b2b_domain import (
-    B2BDomainError,
     PROJECT_STATUSES_ACCEPTING_WORK,
+    B2BDomainError,
     build_material_requirements,
     build_quote_item_snapshot,
+    project_b2b_project,
+    project_inquiry,
+    project_quote,
     project_work_order,
     require_exact_quote_line_identities,
-    validate_work_order_transition,
-    project_inquiry,
-    project_b2b_project,
-    project_quote,
     validate_inquiry_transition,
+    validate_project_transition,
     validate_quote_readiness,
     validate_quote_transition,
-    validate_project_transition,
+    validate_work_order_transition,
 )
 from b2b_pagination import PageRequest, paginate_collection
+from bson.decimal128 import Decimal128
+from inventory_service import InventoryError
 
 logger = logging.getLogger(__name__)
 
@@ -130,16 +128,22 @@ class B2BService:
 
     async def list_inquiries(self, *, status: str | None = None) -> list[dict]:
         query = {"status": status} if status else {}
-        documents = await self.db.inquiries.find(
-            query,
-            {"_id": 0},
-        ).sort("updated_at", -1).limit(500).to_list(500)
+        documents = (
+            await self.db.inquiries.find(
+                query,
+                {"_id": 0},
+            )
+            .sort("updated_at", -1)
+            .limit(500)
+            .to_list(500)
+        )
         return [project_inquiry(document) for document in documents]
 
     async def page_inquiries(self, request: PageRequest) -> dict:
         return await paginate_collection(
             self.db.inquiries,
             request=request,
+            scope="inquiries",
             project=project_inquiry,
         )
 
@@ -269,15 +273,19 @@ class B2BService:
 
     async def list_quotes(self, *, status: str | None = None) -> list[dict]:
         query = {"status": status} if status else {}
-        quotes = await self.db.b2b_quotes.find(query, {"_id": 0}).sort(
-            "updated_at", -1
-        ).limit(500).to_list(500)
+        quotes = (
+            await self.db.b2b_quotes.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .limit(500)
+            .to_list(500)
+        )
         return [project_quote(quote) for quote in quotes]
 
     async def page_quotes(self, request: PageRequest) -> dict:
         return await paginate_collection(
             self.db.b2b_quotes,
             request=request,
+            scope="quotes",
             project=project_quote,
         )
 
@@ -540,7 +548,10 @@ class B2BService:
                 409,
                 "version_conflict",
                 "Quote telah berubah. Muat versi terbaru sebelum membuat revisi.",
-                details={"current_version": quote["version"], "current_status": quote["status"]},
+                details={
+                    "current_version": quote["version"],
+                    "current_status": quote["status"],
+                },
             )
         if quote["status"] not in {"draft", "revision_requested"}:
             raise B2BDomainError(
@@ -550,7 +561,9 @@ class B2BService:
             )
         if not reason.strip():
             raise B2BDomainError(422, "reason_required", "Alasan revisi wajib diisi.")
-        if total_minor is not None and (not isinstance(total_minor, int) or total_minor < 0):
+        if total_minor is not None and (
+            not isinstance(total_minor, int) or total_minor < 0
+        ):
             raise B2BDomainError(
                 422,
                 "money_invalid",
@@ -650,15 +663,19 @@ class B2BService:
             query["project_id"] = project_id
         if status:
             query["status"] = status
-        documents = await self.db.work_orders.find(query, {"_id": 0}).sort(
-            "updated_at", -1
-        ).limit(500).to_list(500)
+        documents = (
+            await self.db.work_orders.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .limit(500)
+            .to_list(500)
+        )
         return [project_work_order(document) for document in documents]
 
     async def page_work_orders(self, request: PageRequest) -> dict:
         return await paginate_collection(
             self.db.work_orders,
             request=request,
+            scope="work_orders",
             project=project_work_order,
         )
 
@@ -970,14 +987,18 @@ class B2BService:
 
     async def list_material_shortages(self, *, status: str | None = None) -> list[dict]:
         query = {"status": status} if status else {}
-        return await self.db.work_order_shortages.find(query, {"_id": 0}).sort(
-            "updated_at", -1
-        ).limit(500).to_list(500)
+        return (
+            await self.db.work_order_shortages.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .limit(500)
+            .to_list(500)
+        )
 
     async def page_material_shortages(self, request: PageRequest) -> dict:
         return await paginate_collection(
             self.db.work_order_shortages,
             request=request,
+            scope="material_shortages",
         )
 
     async def allocate_work_order(
@@ -1027,9 +1048,7 @@ class B2BService:
                 "Work Order sudah memiliki alokasi material.",
             )
         if not reason.strip():
-            raise B2BDomainError(
-                422, "reason_required", "Alasan alokasi wajib diisi."
-            )
+            raise B2BDomainError(422, "reason_required", "Alasan alokasi wajib diisi.")
 
         requirements = work_order.get("material_requirements") or []
         if not requirements:
@@ -1072,9 +1091,7 @@ class B2BService:
             }
             changes = {
                 "version": expected_version + 1,
-                "reservation_ids": [
-                    result["reservation"]["id"] for result in results
-                ],
+                "reservation_ids": [result["reservation"]["id"] for result in results],
                 "history": [*work_order.get("history", []), event],
                 "updated_at": timestamp,
             }
@@ -1124,9 +1141,7 @@ class B2BService:
                         "work_order_material_shortage",
                         "Stok material tidak mencukupi untuk alokasi Work Order.",
                         details={
-                            **(
-                                {"shortage_id": shortage["id"]} if shortage else {}
-                            ),
+                            **({"shortage_id": shortage["id"]} if shortage else {}),
                             "lines": lines,
                         },
                     ) from exc
@@ -1192,9 +1207,7 @@ class B2BService:
                 "Work Order belum memiliki alokasi material.",
             )
         if not reason.strip():
-            raise B2BDomainError(
-                422, "reason_required", "Alasan konsumsi wajib diisi."
-            )
+            raise B2BDomainError(422, "reason_required", "Alasan konsumsi wajib diisi.")
 
         operations = []
         for reservation_id in reservation_ids:
@@ -1502,8 +1515,9 @@ class B2BService:
         for item in items:
             variant_id = str(item.get("variant_id") or "").strip()
             variant = variants_by_id.get(variant_id) if variant_id else None
+            product_id = variant.get("product_id") if variant else None
             product = (
-                products_by_id.get(variant.get("product_id")) if variant else None
+                products_by_id.get(product_id) if isinstance(product_id, str) else None
             )
             snapshots.append(
                 build_quote_item_snapshot(
@@ -1526,15 +1540,19 @@ class B2BService:
 
     async def list_projects(self, *, status: str | None = None) -> list[dict]:
         query = {"status": status} if status else {}
-        projects = await self.db.b2b_projects.find(query, {"_id": 0}).sort(
-            "updated_at", -1
-        ).limit(500).to_list(500)
+        projects = (
+            await self.db.b2b_projects.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .limit(500)
+            .to_list(500)
+        )
         return [project_b2b_project(project) for project in projects]
 
     async def page_projects(self, request: PageRequest) -> dict:
         return await paginate_collection(
             self.db.b2b_projects,
             request=request,
+            scope="projects",
             project=project_b2b_project,
         )
 
@@ -1576,7 +1594,10 @@ class B2BService:
                 409,
                 "version_conflict",
                 "Quote telah berubah. Muat versi terbaru sebelum membuat Project.",
-                details={"current_version": quote["version"], "current_status": quote["status"]},
+                details={
+                    "current_version": quote["version"],
+                    "current_status": quote["status"],
+                },
             )
         if quote["status"] != "accepted" or not quote.get("accepted_version_id"):
             raise B2BDomainError(
@@ -1591,7 +1612,9 @@ class B2BService:
                 "Project memerlukan evidence penerimaan Quote yang lengkap.",
             )
         if not reason.strip():
-            raise B2BDomainError(422, "reason_required", "Alasan pembuatan Project wajib diisi.")
+            raise B2BDomainError(
+                422, "reason_required", "Alasan pembuatan Project wajib diisi."
+            )
 
         accepted_version = await self._get_quote_version(quote["accepted_version_id"])
         require_exact_quote_line_identities(accepted_version.get("items") or [])
@@ -1753,7 +1776,11 @@ class B2BService:
             "updated_at": timestamp,
         }
         result = await self.db.b2b_projects.update_one(
-            {"id": project_id, "version": expected_version, "status": project["status"]},
+            {
+                "id": project_id,
+                "version": expected_version,
+                "status": project["status"],
+            },
             {"$set": changes},
         )
         if not result.matched_count:
@@ -1762,7 +1789,10 @@ class B2BService:
                 409,
                 "version_conflict",
                 "Project telah berubah. Muat versi terbaru sebelum mencoba lagi.",
-                details={"current_version": current["version"], "current_status": current["status"]},
+                details={
+                    "current_version": current["version"],
+                    "current_status": current["status"],
+                },
             )
         return project_b2b_project({**project, **changes})
 
@@ -1836,12 +1866,14 @@ class B2BService:
             reason=reason,
         )
         if not reason.strip():
-            raise B2BDomainError(422, "reason_required", "Alasan conversion wajib diisi.")
+            raise B2BDomainError(
+                422, "reason_required", "Alasan conversion wajib diisi."
+            )
 
         timestamp = now_iso()
         quote_id = str(uuid.uuid4())
         version_id = str(uuid.uuid4())
-        quote_version = {
+        quote_version: dict = {
             "id": version_id,
             "quote_id": quote_id,
             "revision": 1,

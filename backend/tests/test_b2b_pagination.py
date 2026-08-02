@@ -69,8 +69,8 @@ class Collection:
         return Cursor([item for item in self.items if matches(item, query)])
 
 
-def page(collection, request):
-    return asyncio.run(paginate_collection(collection, request=request))
+def page(collection, request, *, scope="test"):
+    return asyncio.run(paginate_collection(collection, request=request, scope=scope))
 
 
 def test_equal_timestamps_use_id_tie_breaker_without_duplicates():
@@ -128,6 +128,29 @@ def test_cursor_is_bound_to_filters_and_rejects_invalid_input():
     assert invalid.value.code == "pagination_cursor_invalid"
 
 
+def test_cursor_is_bound_to_its_list_scope():
+    collection = Collection(
+        [
+            {"id": "b", "updated_at": "2026-08-02T02:00:00+00:00"},
+            {"id": "a", "updated_at": "2026-08-02T01:00:00+00:00"},
+        ]
+    )
+    first = page(
+        collection,
+        build_page_request(limit=1),
+        scope="inquiries",
+    )
+
+    with pytest.raises(B2BDomainError) as mismatch:
+        page(
+            collection,
+            build_page_request(limit=1, cursor=first["next_cursor"]),
+            scope="quotes",
+        )
+
+    assert mismatch.value.code == "pagination_cursor_filter_mismatch"
+
+
 def test_timezone_range_is_normalized_and_half_open():
     request = build_page_request(
         limit=10,
@@ -166,6 +189,14 @@ def test_timezone_range_is_normalized_and_half_open():
             "pagination_datetime_range_invalid",
         ),
         ({"updated_before": "not-a-date"}, "pagination_datetime_invalid"),
+        (
+            {"updated_from": "0001-01-01T00:00:00+14:00"},
+            "pagination_datetime_invalid",
+        ),
+        (
+            {"updated_before": "9999-12-31T23:59:59-14:00"},
+            "pagination_datetime_invalid",
+        ),
         ({"limit": 101}, "pagination_limit_out_of_range"),
         ({"cursor": "   "}, "pagination_cursor_invalid"),
     ],

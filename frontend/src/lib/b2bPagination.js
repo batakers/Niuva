@@ -6,7 +6,12 @@ export function readB2BPage(payload) {
     !payload ||
     !Array.isArray(payload.items) ||
     !Object.prototype.hasOwnProperty.call(payload, "next_cursor") ||
-    !(payload.next_cursor === null || typeof payload.next_cursor === "string")
+    !(
+      payload.next_cursor === null ||
+      (typeof payload.next_cursor === "string" &&
+        payload.next_cursor.trim().length > 0)
+    ) ||
+    (payload.items.length === 0 && payload.next_cursor !== null)
   ) {
     throw new Error("invalid_b2b_page");
   }

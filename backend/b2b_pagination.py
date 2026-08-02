@@ -46,7 +46,13 @@ def _normalize_datetime(value: str | None, *, field: str) -> str | None:
             "pagination_datetime_timezone_required",
             f"{field} wajib menyertakan timezone.",
         )
-    return parsed.astimezone(timezone.utc).isoformat()
+    try:
+        return parsed.astimezone(timezone.utc).isoformat()
+    except (OverflowError, ValueError) as exc:
+        raise _pagination_error(
+            "pagination_datetime_invalid",
+            f"{field} harus menggunakan format RFC3339.",
+        ) from exc
 
 
 def build_page_request(
@@ -98,10 +104,11 @@ def build_page_request(
     )
 
 
-def _filter_fingerprint(request: PageRequest) -> str:
+def _filter_fingerprint(request: PageRequest, *, scope: str) -> str:
     canonical = json.dumps(
         {
             "filters": request.filters,
+            "scope": scope,
             "updated_before": request.updated_before,
             "updated_from": request.updated_from,
         },
@@ -193,9 +200,10 @@ async def paginate_collection(
     collection,
     *,
     request: PageRequest,
+    scope: str,
     project: Callable[[dict], dict] = dict,
 ) -> dict[str, Any]:
-    fingerprint = _filter_fingerprint(request)
+    fingerprint = _filter_fingerprint(request, scope=scope)
     position = (
         _decode_cursor(request.cursor, fingerprint=fingerprint)
         if request.cursor

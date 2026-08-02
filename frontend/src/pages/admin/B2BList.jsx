@@ -141,7 +141,7 @@ function B2BList({ kind }) {
             title={t("b2b.loadFailed")}
             description={error}
             retryLabel={t("common.retry")}
-            onRetry={load}
+            onRetry={() => load()}
           />
         ) : records.length === 0 ? (
           <OperationalState state="empty" title={t(config.emptyKey)} />

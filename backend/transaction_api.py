@@ -1,7 +1,6 @@
+from api_contract import error_response
 from fastapi import Request
 from starlette.responses import JSONResponse
-
-from api_contract import error_response
 from transaction_execution import TransactionUnavailableError
 
 TRANSACTION_UNAVAILABLE_DETAIL = {

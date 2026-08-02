@@ -56,6 +56,7 @@ describe("B2B Admin workbench routes", () => {
     expect(listSource).toContain("page.nextCursor");
     expect(listSource).toContain('t("b2b.loadMore")');
     expect(listSource).toContain("load(nextCursor)");
+    expect(listSource).toContain("onRetry={() => load()}");
   });
 
   test("shows operational spine, blockers, version, and audit history", () => {

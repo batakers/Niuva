@@ -1,23 +1,25 @@
 # Task Card — Feature 8.2 Pagination and Stable Ordering
 
-Status: **source complete — local verification passed; review, CI, and merge
-pending**
+Status: **reconciled with current main — local review and verification passed;
+exact-head CI and merge pending**
 
 ## Identity and authorization
 
 **Project Owner / API Owner / Driver:** Faiz
 
 **Branch / worktree:** `feat/backend-pagination` /
-`/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-pagination`
+`C:\\tmp\\niuva-pr110-review`
 
-**Stacked baseline:** `572e0c0dcd60ac847b1f100ea795755b9f484579`
-(`fix/backend-api-contract`, PR #109).
+**Reconciled baseline:** `770a4c3d2d3f3ead0d44f5ac298fac1bb41a0702`
+(`main`, after PR #109 merged).
 
 **Authorization:** On 2 August 2026 the Project Owner approved the bounded B2B
 pagination policy described below and authorized implementation, tracker
-updates, commit, push, and pull request when verification is safe. PR merge,
-database index application, migration, deployment, production-readiness, and
-go-live are not authorized.
+updates, commit, push, and pull request when verification is safe. On 3 August
+2026 the owner separately authorized the recommended open-PR reconciliation
+sequence, including exact-head merge after review and mandatory CI pass.
+Database index application, migration, deployment, production-readiness, and
+go-live remain unauthorized.
 
 ## Objective and approved contract
 
@@ -56,8 +58,9 @@ Approved rules:
 - `docs/implementation/production-readiness/phases/PHASE-03A-http-command-contract-plan.md`.
 - Feature 8.1 API envelope/OpenAPI contract from PR #109.
 
-Merge order is PR #106, then PR #109, then Feature 8.2. The Feature 8.2 PR must
-be revalidated against the resulting current `main` before merge.
+PR #106 and PR #109 are merged. Feature 8.2 has been reconciled and locally
+revalidated against their resulting `main`; exact-head review and mandatory CI
+remain required before merge.
 
 ## In scope
 

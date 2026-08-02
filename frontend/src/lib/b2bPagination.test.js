@@ -11,12 +11,25 @@ test("reads the bounded B2B page envelope", () => {
   });
 });
 
-test.each([null, [], {}, { items: [] }, { items: {}, next_cursor: null }])(
+test.each([
+  null,
+  [],
+  {},
+  { items: [] },
+  { items: {}, next_cursor: null },
+  { items: [], next_cursor: "" },
+])(
   "rejects an invalid B2B page without guessing a compatibility shape",
   (payload) => {
     expect(() => readB2BPage(payload)).toThrow("invalid_b2b_page");
   }
 );
+
+test("rejects a continuation cursor when the page makes no progress", () => {
+  expect(() => readB2BPage({ items: [], next_cursor: "next" })).toThrow(
+    "invalid_b2b_page"
+  );
+});
 
 test("collects bounded cursor pages for embedded B2B consumers", async () => {
   const get = jest
