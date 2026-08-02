@@ -4,22 +4,63 @@ from pathlib import Path
 
 import httpx
 import pytest
-from fastapi import APIRouter, FastAPI, Header, HTTPException
-from fastapi.exceptions import RequestValidationError
-
 from auth_rate_limit import PublicRateLimiter
 from b2b_routes import build_b2b_router
+from fastapi import APIRouter, FastAPI, Header, HTTPException
+from fastapi.exceptions import RequestValidationError
 from permissions import ROLE_POLICY_VERSION, has_permission
-from tests.test_identity_foundation import server
 from transaction_execution import TransactionUnavailableError
+
+from tests.test_identity_foundation import server
+
+MISSING = object()
+
+
+def field_matches(actual, expected):
+    if not isinstance(expected, dict):
+        return actual is not MISSING and actual == expected
+    for operator, value in expected.items():
+        if operator == "$type":
+            if value != "string" or not isinstance(actual, str):
+                return False
+        elif operator == "$not":
+            if field_matches(actual, value):
+                return False
+        elif operator == "$lt":
+            if actual is MISSING or not actual < value:
+                return False
+        elif operator == "$gte":
+            if actual is MISSING or not actual >= value:
+                return False
+        else:
+            raise AssertionError(f"Unsupported test operator: {operator}")
+    return True
+
+
+def matches(document, query):
+    for key, expected in query.items():
+        if key == "$and":
+            if not all(matches(document, clause) for clause in expected):
+                return False
+        elif key == "$or":
+            if not any(matches(document, clause) for clause in expected):
+                return False
+        elif not field_matches(document.get(key, MISSING), expected):
+            return False
+    return True
 
 
 class FakeCursor:
     def __init__(self, items):
         self.items = [dict(item) for item in items]
 
-    def sort(self, key, direction):
-        self.items.sort(key=lambda item: item.get(key, ""), reverse=direction < 0)
+    def sort(self, key, direction=None):
+        fields = key if isinstance(key, list) else [(key, direction)]
+        for field, field_direction in reversed(fields):
+            self.items.sort(
+                key=lambda item: item.get(field, ""),
+                reverse=field_direction < 0,
+            )
         return self
 
     def limit(self, value):
@@ -45,11 +86,7 @@ class FakeCollection:
         return None
 
     def find(self, query, projection=None):
-        values = [
-            item
-            for item in self.items
-            if all(item.get(key) == value for key, value in query.items())
-        ]
+        values = [item for item in self.items if matches(item, query)]
         return FakeCursor(values)
 
     async def update_one(self, query, update, **_options):
@@ -210,7 +247,7 @@ def test_public_intake_and_permission_scoped_triage():
                 headers={"X-Role": "sales_estimator"},
             )
             assert listed.status_code == 200
-            assert listed.json()[0]["id"] == inquiry["id"]
+            assert listed.json()["items"][0]["id"] == inquiry["id"]
 
     asyncio.run(scenario())
 
@@ -318,8 +355,7 @@ def test_inquiry_openapi_declares_success_and_error_contracts():
 
     inquiry_list = schema["paths"]["/api/admin/inquiries"]["get"]["responses"]
     list_schema = inquiry_list["200"]["content"]["application/json"]["schema"]
-    assert list_schema["type"] == "array"
-    assert list_schema["items"] == {"$ref": "#/components/schemas/AdminInquiryResponse"}
+    assert list_schema == {"$ref": "#/components/schemas/InquiryPageResponse"}
     assert inquiry_list["403"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/ErrorEnvelope"
     }
@@ -334,6 +370,109 @@ def test_inquiry_openapi_declares_success_and_error_contracts():
         assert conversion[status_code]["content"]["application/json"]["schema"] == {
             "$ref": "#/components/schemas/ErrorEnvelope"
         }
+
+
+def test_b2b_list_openapi_declares_bounded_cursor_contract():
+    schema = build_context().openapi()
+    paths = schema["paths"]
+    expected_models = {
+        "/api/admin/inquiries": "InquiryPageResponse",
+        "/api/admin/b2b/quotes": "B2BPageResponse",
+        "/api/admin/b2b/projects": "B2BPageResponse",
+        "/api/admin/b2b/work-orders": "B2BPageResponse",
+        "/api/admin/b2b/material-shortages": "B2BPageResponse",
+    }
+
+    for path, model in expected_models.items():
+        operation = paths[path]["get"]
+        assert operation["responses"]["200"]["content"]["application/json"][
+            "schema"
+        ] == {"$ref": f"#/components/schemas/{model}"}
+        parameters = {item["name"]: item for item in operation["parameters"]}
+        assert set(("limit", "cursor", "updated_from", "updated_before")) <= set(
+            parameters
+        )
+        assert parameters["limit"]["schema"]["minimum"] == 1
+        assert parameters["limit"]["schema"]["maximum"] == 100
+
+
+def test_inquiry_cursor_pages_are_stable_and_filter_bound():
+    async def scenario():
+        database = FakeDatabase()
+        timestamp = "2026-08-02T08:00:00+00:00"
+        for identifier in ("inquiry-a", "inquiry-c", "inquiry-b"):
+            await database.inquiries.insert_one(
+                {
+                    "id": identifier,
+                    "company": "PT Contoh",
+                    "pic_name": "Ayu",
+                    "pic_email": "ayu@example.com",
+                    "pic_phone": "",
+                    "need": "Prototype",
+                    "timeline": "Q4",
+                    "brief": "Membutuhkan prototype untuk validasi.",
+                    "status": "new",
+                    "version": 1,
+                    "converted_quote_id": None,
+                    "history": [],
+                    "created_at": timestamp,
+                    "updated_at": timestamp,
+                }
+            )
+        app = build_context(db=database)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            first = await api.get(
+                "/api/admin/inquiries?limit=2&status_filter=new",
+                headers={"X-Role": "sales_estimator"},
+            )
+            assert first.status_code == 200
+            assert [item["id"] for item in first.json()["items"]] == [
+                "inquiry-c",
+                "inquiry-b",
+            ]
+            cursor = first.json()["next_cursor"]
+            assert cursor
+
+            second = await api.get(
+                "/api/admin/inquiries",
+                params={"limit": 2, "status_filter": "new", "cursor": cursor},
+                headers={"X-Role": "sales_estimator"},
+            )
+            assert [item["id"] for item in second.json()["items"]] == ["inquiry-a"]
+            assert second.json()["next_cursor"] is None
+
+            mismatch = await api.get(
+                "/api/admin/inquiries",
+                params={"status_filter": "reviewed", "cursor": cursor},
+                headers={"X-Role": "sales_estimator"},
+            )
+            assert mismatch.status_code == 422
+            assert (
+                mismatch.json()["error"]["code"] == "pagination_cursor_filter_mismatch"
+            )
+
+            naive = await api.get(
+                "/api/admin/inquiries",
+                params={"updated_from": "2026-08-02T00:00:00"},
+                headers={"X-Role": "sales_estimator"},
+            )
+            assert naive.status_code == 422
+            assert (
+                naive.json()["error"]["code"] == "pagination_datetime_timezone_required"
+            )
+
+            oversized = await api.get(
+                "/api/admin/inquiries?limit=101",
+                headers={"X-Role": "sales_estimator"},
+            )
+            assert oversized.status_code == 422
+            assert oversized.json()["error"]["code"] == "request_validation_failed"
+
+    asyncio.run(scenario())
 
 
 def test_public_intake_is_throttled_and_announced():
@@ -583,7 +722,9 @@ def test_lead_notification_failure_never_costs_the_lead():
                 "/api/admin/inquiries",
                 headers={"X-Role": "sales_estimator"},
             )
-            assert [item["id"] for item in listed.json()] == [created.json()["id"]]
+            assert [item["id"] for item in listed.json()["items"]] == [
+                created.json()["id"]
+            ]
 
     asyncio.run(scenario())
 

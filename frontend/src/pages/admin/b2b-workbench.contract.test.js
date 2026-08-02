@@ -51,6 +51,13 @@ describe("B2B Admin workbench routes", () => {
     expect(listSource).not.toContain("<Dialog");
   });
 
+  test("consumes the bounded cursor page and exposes explicit continuation", () => {
+    expect(listSource).toContain("readB2BPage(response.data)");
+    expect(listSource).toContain("page.nextCursor");
+    expect(listSource).toContain('t("b2b.loadMore")');
+    expect(listSource).toContain("load(nextCursor)");
+  });
+
   test("shows operational spine, blockers, version, and audit history", () => {
     expect(detailSource).toContain('data-testid="b2b-operational-spine"');
     expect(detailSource).toContain('t("b2b.blockers")');

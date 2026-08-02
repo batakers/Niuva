@@ -26,7 +26,7 @@ from b2b_domain import (
     validate_quote_transition,
     validate_project_transition,
 )
-
+from b2b_pagination import PageRequest, paginate_collection
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +135,13 @@ class B2BService:
             {"_id": 0},
         ).sort("updated_at", -1).limit(500).to_list(500)
         return [project_inquiry(document) for document in documents]
+
+    async def page_inquiries(self, request: PageRequest) -> dict:
+        return await paginate_collection(
+            self.db.inquiries,
+            request=request,
+            project=project_inquiry,
+        )
 
     async def get_inquiry(self, inquiry_id: str) -> dict:
         return project_inquiry(await self._get_inquiry(inquiry_id))
@@ -266,6 +273,13 @@ class B2BService:
             "updated_at", -1
         ).limit(500).to_list(500)
         return [project_quote(quote) for quote in quotes]
+
+    async def page_quotes(self, request: PageRequest) -> dict:
+        return await paginate_collection(
+            self.db.b2b_quotes,
+            request=request,
+            project=project_quote,
+        )
 
     async def transition_quote(
         self,
@@ -641,6 +655,13 @@ class B2BService:
         ).limit(500).to_list(500)
         return [project_work_order(document) for document in documents]
 
+    async def page_work_orders(self, request: PageRequest) -> dict:
+        return await paginate_collection(
+            self.db.work_orders,
+            request=request,
+            project=project_work_order,
+        )
+
     async def _accepted_line(
         self,
         project: dict,
@@ -952,6 +973,12 @@ class B2BService:
         return await self.db.work_order_shortages.find(query, {"_id": 0}).sort(
             "updated_at", -1
         ).limit(500).to_list(500)
+
+    async def page_material_shortages(self, request: PageRequest) -> dict:
+        return await paginate_collection(
+            self.db.work_order_shortages,
+            request=request,
+        )
 
     async def allocate_work_order(
         self,
@@ -1503,6 +1530,13 @@ class B2BService:
             "updated_at", -1
         ).limit(500).to_list(500)
         return [project_b2b_project(project) for project in projects]
+
+    async def page_projects(self, request: PageRequest) -> dict:
+        return await paginate_collection(
+            self.db.b2b_projects,
+            request=request,
+            project=project_b2b_project,
+        )
 
     async def create_project_from_quote(
         self,

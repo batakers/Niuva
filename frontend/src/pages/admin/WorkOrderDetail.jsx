@@ -19,6 +19,7 @@ import { TechnicalLabel } from "@/components/ui/technical-label";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
+import { fetchB2BPages } from "@/lib/b2bPagination";
 import { fmtDate } from "@/lib/format";
 import { B2B_ACTION_PERMISSIONS, hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
@@ -77,14 +78,14 @@ export default function WorkOrderDetail() {
     Promise.all([
       api.get(`/admin/b2b/work-orders/${id}`),
       // A stalled run is only meaningful next to the run itself.
-      api
-        .get("/admin/b2b/material-shortages", { params: { status_filter: "open" } })
-        .catch(() => ({ data: [] })),
+      fetchB2BPages(api, "/admin/b2b/material-shortages", {
+        params: { status_filter: "open" },
+      }).catch(() => []),
     ])
       .then(([detail, shortages]) => {
         setRecord(detail.data);
         setShortage(
-          (shortages.data || []).find((item) => item.work_order_id === id) || null
+          shortages.find((item) => item.work_order_id === id) || null
         );
       })
       .catch((requestError) =>
