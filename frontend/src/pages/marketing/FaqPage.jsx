@@ -71,7 +71,18 @@ export default function FaqPage() {
               />
             )}
 
-            {status !== "loading" && status !== "error" && faqs.length === 0 && (
+            {status === "invalid" && (
+              <SectionHeader
+                title="Data FAQ tidak dapat diverifikasi."
+                body="Muat ulang halaman. Jika masalah berlanjut, hubungi tim Niuva melalui kanal resmi."
+                align="stacked"
+              />
+            )}
+
+            {status !== "loading" &&
+              status !== "error" &&
+              status !== "invalid" &&
+              faqs.length === 0 && (
               <SectionHeader
                 title="Pertanyaan yang sering diajukan akan tampil di sini."
                 body="Hubungi tim Niuva langsung untuk pertanyaan spesifik mengenai proyek Anda."

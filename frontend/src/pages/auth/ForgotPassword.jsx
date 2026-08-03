@@ -61,14 +61,14 @@ export default function ForgotPassword() {
               Jika email {maskedEmail || "yang Anda masukkan"} terdaftar, instruksi reset password telah dikirim.
             </div>
             {email && (
-              <Button
-                type="button"
-                onClick={requestReset}
-                disabled={submitting || cooldown > 0}
-                className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90"
-              >
-                {submitting ? "MENGIRIM..." : cooldown > 0 ? `Kirim ulang (${cooldown})` : "Kirim Ulang"}
-              </Button>
+            <Button
+              type="button"
+              onClick={requestReset}
+              disabled={submitting || cooldown > 0}
+              className="h-12 w-full rounded-none bg-action-primary font-mono text-xs uppercase tracking-widest text-text-inverse hover:bg-action-primary-hover"
+            >
+              {submitting ? "MENGIRIM..." : cooldown > 0 ? `Kirim ulang (${cooldown})` : "Kirim Ulang"}
+            </Button>
             )}
             <Link to="/forgot-password" className="block text-center font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary">
               Gunakan Email Lain
@@ -92,11 +92,11 @@ export default function ForgotPassword() {
                   required
                   autoComplete="username"
                   aria-describedby={error ? "forgot-password-error" : undefined}
-                  className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
+                  className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-action-primary focus-visible:ring-1 focus-visible:ring-action-primary/20"
                 />
               </div>
               {error && <p id="forgot-password-error" className="border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{error}</p>}
-              <Button type="submit" disabled={submitting} data-testid="forgot-password-submit" className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90">
+              <Button type="submit" disabled={submitting} data-testid="forgot-password-submit" className="h-12 w-full rounded-none bg-action-primary font-mono text-xs uppercase tracking-widest text-text-inverse hover:bg-action-primary-hover">
                 {submitting ? "MENGIRIM..." : "Kirim Link Reset"}
               </Button>
               <Link to="/admin/login" className="block text-center font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary">Kembali ke Login</Link>

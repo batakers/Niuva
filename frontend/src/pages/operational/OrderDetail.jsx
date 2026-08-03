@@ -232,7 +232,7 @@ export default function OrderDetail() {
                           className="flex items-center gap-2 text-status-warning font-mono text-xs uppercase tracking-widest p-4 border border-status-warning/30 bg-status-warning/5"
                           data-testid="proof-uploaded"
                         >
-                          <Clock className="h-4 w-4 animate-pulse" />{" "}
+                          <Clock className="h-4 w-4 motion-safe:animate-pulse" />{" "}
                           {t("detail.proofUploaded")} · {t("detail.awaitingVerification")}
                         </div>
                       )

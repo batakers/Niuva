@@ -30,7 +30,7 @@ const EmptyState = React.forwardRef(
       >
         {loading ? (
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-6 w-6 text-text-secondary animate-spin" />
+            <Loader2 className="h-6 w-6 text-text-secondary motion-safe:animate-spin" />
             <span className="type-body-small text-text-secondary">
               {children}
             </span>

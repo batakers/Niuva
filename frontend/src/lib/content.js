@@ -1,5 +1,27 @@
 import { useEffect, useState } from "react";
+import { z } from "zod";
 import { HAS_CONFIGURED_BACKEND, api, unwrap } from "./api";
+
+// Public content block shape. Backend may add fields; we only validate the
+// keys the frontend actually reads (slug + fields object) so contract drift on
+// other keys does not break rendering.
+const publicContentBlockSchema = z.object({
+  slug: z.string(),
+  fields: z.record(z.unknown()).optional().default({}),
+}).passthrough();
+
+const publicContentListSchema = z.array(publicContentBlockSchema);
+
+export function parsePublicContentResponse(rows) {
+  const result = publicContentListSchema.safeParse(rows);
+  if (result.success) {
+    return { success: true, blocks: result.data };
+  }
+  // Public copy must not become a plausible-looking partial result. The
+  // caller receives one explicit invalid state for either a malformed
+  // top-level value or a malformed row.
+  return { success: false, blocks: [] };
+}
 
 export const CONTENT_TYPES = ["about", "capability", "faq", "cta", "contact"];
 
@@ -121,9 +143,10 @@ export function statusTone(status) {
  * running. `disabled` means no backend is configured, which is a settled state
  * rather than a pending one.
  *
- * Blocks stay `[]` on failure so callers keep falling back to hardcoded copy
- * rather than blocking the render. ponytail: no cache/retry; add if content
- * pages feel slow.
+ * Blocks stay `[]` on transport failure, while malformed responses become an
+ * explicit `invalid` state so callers cannot mislabel schema drift as ordinary
+ * empty or fallback content. ponytail: no cache/retry; add if content pages
+ * feel slow.
  */
 export function usePublicContent(contentType) {
   const [state, setState] = useState(() => ({
@@ -142,7 +165,12 @@ export function usePublicContent(contentType) {
 
     contentApi.public(contentType)
       .then((rows) => {
-        if (mounted) setState({ blocks: rows, status: "ready" });
+        if (!mounted) return;
+        const parsed = parsePublicContentResponse(rows);
+        setState({
+          blocks: parsed.blocks,
+          status: parsed.success ? "ready" : "invalid",
+        });
       })
       .catch(() => {
         if (mounted) setState({ blocks: [], status: "error" });

@@ -115,6 +115,11 @@ export default function CapabilitiesPage() {
             {status === "error" && (
               <ErrorState error="Kapabilitas belum berhasil dimuat." />
             )}
+            {status === "invalid" && (
+              <ErrorState error="Data kapabilitas tidak dapat diverifikasi.">
+                Muat ulang halaman. Jika masalah berlanjut, hubungi tim Niuva.
+              </ErrorState>
+            )}
             {status === "ready" && capabilities.length === 0 && (
               <EmptyState>Belum ada kapabilitas yang dipublikasikan.</EmptyState>
             )}
