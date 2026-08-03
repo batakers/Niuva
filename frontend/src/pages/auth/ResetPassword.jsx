@@ -102,7 +102,7 @@ export default function ResetPassword() {
         {preparationError ? (
           <div className="space-y-6" role="alert">
             <p className="text-sm text-text-secondary">Link belum dapat diperiksa. Periksa koneksi, lalu coba lagi.</p>
-            <Button type="button" onClick={() => setPreparationAttempt((attempt) => attempt + 1)} className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90">
+            <Button type="button" onClick={() => setPreparationAttempt((attempt) => attempt + 1)} className="h-12 w-full rounded-none bg-action-primary font-mono text-xs uppercase tracking-widest text-text-inverse hover:bg-action-primary-hover">
               Coba Lagi
             </Button>
           </div>
@@ -126,7 +126,8 @@ export default function ResetPassword() {
                   minLength={policy.min_code_points}
                   autoComplete="new-password"
                   aria-describedby="reset-password-rules"
-                  className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
+                  aria-invalid={newPassword.length > 0 && !lengthValid ? "true" : undefined}
+                  className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-action-primary focus-visible:ring-1 focus-visible:ring-action-primary/20"
                 />
                 <button
                   type="button"
@@ -137,7 +138,7 @@ export default function ResetPassword() {
                   {showPassword ? "Sembunyikan" : "Tampilkan"}
                 </button>
               </div>
-              <ul id="reset-password-rules" className="space-y-1 text-xs text-text-secondary">
+              <ul id="reset-password-rules" aria-live="polite" className="space-y-1 text-xs text-text-secondary">
                 <li className={newPassword && codePoints < policy.min_code_points ? "text-destructive" : ""}>
                   {policy.min_code_points}-{policy.max_code_points} karakter Unicode.
                 </li>
@@ -159,7 +160,7 @@ export default function ResetPassword() {
                 autoComplete="new-password"
                 aria-invalid={mismatch || undefined}
                 aria-describedby={mismatch ? "reset-password-mismatch" : undefined}
-                className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
+                className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-action-primary focus-visible:ring-1 focus-visible:ring-action-primary/20"
               />
               {mismatch && <p id="reset-password-mismatch" className="text-xs text-destructive">Password tidak cocok.</p>}
             </div>
@@ -174,7 +175,7 @@ export default function ResetPassword() {
               type="submit"
               disabled={submitting || !canSubmit}
               data-testid="reset-password-submit"
-              className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90"
+              className="h-12 w-full rounded-none bg-action-primary font-mono text-xs uppercase tracking-widest text-text-inverse hover:bg-action-primary-hover"
             >
               {submitting ? "MEMPROSES..." : "Reset Password"}
             </Button>

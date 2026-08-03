@@ -69,10 +69,33 @@ export function Navbar() {
     if (!open) return undefined;
 
     const handleKeyDown = (event) => {
-      if (event.key !== "Escape") return;
-      window.clearTimeout(menuFocusTimerRef.current);
-      setOpen(false);
-      window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+      if (event.key === "Escape") {
+        window.clearTimeout(menuFocusTimerRef.current);
+        setOpen(false);
+        window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = mobilePanelRef.current?.querySelectorAll(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      const insidePanel = mobilePanelRef.current?.contains(active);
+      if (!insidePanel) {
+        event.preventDefault();
+        first.focus();
+        return;
+      }
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -168,14 +191,17 @@ export function Navbar() {
         </button>
       </div>
 
-      <div
-        ref={mobilePanelRef}
-        id="mobile-navigation-panel"
-        aria-hidden={!open}
-        className={`fixed inset-x-4 top-[5.5rem] max-h-[calc(100dvh-6.5rem)] overflow-y-auto rounded-feature bg-surface-default p-5 shadow-overlay ring-1 ring-border-default transition-[opacity,transform] duration-emphasis ease-snap sm:inset-x-6 lg:hidden ${
-          open ? "visible translate-y-0 opacity-100" : "invisible pointer-events-none -translate-y-4 opacity-0"
-        }`}
-      >
+        <div
+          ref={mobilePanelRef}
+          id="mobile-navigation-panel"
+          role="dialog"
+          aria-modal={open ? "true" : undefined}
+          aria-label="Menu navigasi"
+          aria-hidden={!open}
+          className={`fixed inset-x-4 top-[5.5rem] max-h-[calc(100dvh-6.5rem)] overflow-y-auto rounded-feature bg-surface-default p-5 shadow-overlay ring-1 ring-border-default transition-[opacity,transform] duration-emphasis ease-snap sm:inset-x-6 lg:hidden ${
+            open ? "visible translate-y-0 opacity-100" : "invisible pointer-events-none -translate-y-4 opacity-0"
+          }`}
+        >
         <nav className="grid gap-2" aria-label="Mobile navigation">
           {primaryLinks.map((item, index) => (
             <Link

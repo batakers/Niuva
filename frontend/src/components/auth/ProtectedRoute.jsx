@@ -9,8 +9,16 @@ export function ProtectedRoute({ children, permission }) {
   const location = useLocation();
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-surface-page">
-        <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <div
+        className="min-h-screen grid place-items-center bg-surface-page"
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          aria-hidden="true"
+          className="h-10 w-10 rounded-full border-2 border-action-primary border-t-transparent motion-safe:animate-spin"
+        />
+        <span className="sr-only">Memuat halaman</span>
       </div>
     );
   }
