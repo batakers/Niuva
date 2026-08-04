@@ -9,7 +9,8 @@ Reconciliation date: 3 August 2026 (Asia/Jakarta)
 Branch: `plan/backend-observability`
 
 PR: `#108` merged as `b336198`; the worksheet update in PR `#133` merged as
-`5dd6112`; this package remains a planning record and does not authorize source
+`5dd6112`; the candidate baseline proposal in PR `#134` merged as `0b699fe`;
+this package remains a planning record and does not authorize source
 implementation.
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
@@ -18,8 +19,8 @@ Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
 (`origin/main`, merged 3 August 2026). This changes no decision or source gate.
 
-Current proposal baseline: `5dd611297f8db5db03872d10b605536e2da462cf`
-(`origin/main`, fetched 5 August 2026). This follow-up changes documentation
+Current proposal baseline: `0b699fea676d285a749f7bf41765b542238c3def`
+(`origin/main`, fetched 4 August 2026 UTC (5 August 2026 Asia/Jakarta)). This follow-up changes documentation
 only and does not replace the historical baselines above.
 
 Decision dependency: `DR-014`
@@ -28,7 +29,7 @@ Related roadmap task: `PHASE-08B`; `TASK-08B-01`; `TASK-08B-02`
 
 ## Decision authority
 
-On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Yanuar/Owner delegated to Faiz the Ops/SRE accountable
+On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner delegated to Faiz the Ops/SRE accountable
 role, Security/Data reviewer role, and DR-014 decision-maker responsibility for
 Commerce Transaction 1A through 30 August 2026. No backup owner exists; the
 single-person ownership risk is accepted.
@@ -39,7 +40,7 @@ or destination, retention/access policy, SLO, error budget, threshold,
 capacity limit, production credential, migration, deployment, or go-live, and
 it does not replace separate source implementation authorization.
 
-On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved JSON Lines application emission to stdout/stderr
+On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Faiz approved JSON Lines application emission to stdout/stderr
 and no external telemetry provider at high level. External collection,
 destination, retention, metrics, SLO, alert, and capacity values remain pending.
 
@@ -125,7 +126,14 @@ their own approved decisions.
 | Histogram buckets | Milliseconds: `10`, `50`, `100`, `250`, `500`, `1000`, `2000`, `5000`, `10000`, `15000`, `30000`, and `60000`. |
 | Allowed labels | Use only the finite inventory in Section 5: method, route template, status class, dependency class, operation class, outcome, worker class, channel, safe state, job name, safe operation name, retry mode, and safe capability reason. |
 | Label registry ceilings | At most 32 route templates, 16 safe operation names, 8 dependency classes, 4 worker classes, 4 channels, 8 scheduled jobs, and 8 values for each status/outcome/state/retry registry. Unknown values map to `unknown` or `other`. |
-| Cardinality ceiling | At most 2,000 active label combinations before histogram expansion and at most 20,000 emitted bucket/time-series entries across the sandbox process set. Dynamic labels are rejected and counted, never created. |
+| Cardinality ceiling | Each histogram-family/label combination emits 12 bucket entries plus one `_count` and one `_sum`, or 14 entries. Across all histogram families, allow at most 1,000 active combinations (14,000 entries) and at most 6,000 entries for counters, gauges, and control signals; `14H + C + G + R <= 20,000` across the sandbox process set. Dynamic labels or configurations exceeding an allocation are rejected and counted, never created. |
+
+In that formula, `H` is the total number of active histogram-family/label
+combinations, `C` and `G` are active counter and gauge entries, and `R` is the
+reserved control/degraded-signal allowance. The 1,000-combination histogram
+cap therefore consumes at most 14,000 entries and leaves 6,000 entries for
+non-histogram and control signals.
+
 | SLI window and eligibility | Use a rolling 30-day window. Exclude health/readiness/metrics probes and explicitly marked synthetic validation traffic from customer-facing SLIs. Planned maintenance is excluded only when recorded before start and limited to 4 hours per window. |
 | Low-traffic rule | Require at least 100 eligible HTTP requests for API SLO calculations and at least 3 eligible logical transaction or worker items for their respective SLOs. Below the minimum, report `insufficient_sample` and raw counts; do not claim pass or failure. |
 | CPU budget | Observability-enabled process CPU delta is at most 5 percentage points over a representative 5-minute sandbox run compared with the same run without telemetry. |
@@ -134,6 +142,21 @@ their own approved decisions.
 | Output/storage budget | Structured telemetry output is at most 25 MiB per day at the approved sandbox activity ceiling. No persistent metrics store is assumed. |
 | Buffer budget | Any optional adapter may buffer at most 256 records or 1 MiB, whichever is reached first. Buffer capacity is included in the output/storage measurement. |
 
+#### Representative sandbox workload `OBS-DR014-SB-001` (candidate)
+
+The CPU, memory, latency, output, and cardinality budgets above are measured
+against this bounded synthetic workload. It is a candidate workload definition,
+not source or production evidence.
+
+| Dimension | Candidate definition |
+| --- | --- |
+| Data and process isolation | Use synthetic Commerce Transaction 1A records only, the same immutable application artifact for both paired runs, one API process, and one explicitly co-located development/test worker. Do not use customer data, production credentials, external providers, or a shared/staging/production target. |
+| Request mix | Per repetition, issue 100 synthetic HTTP operations: 50 read/validation operations, 20 authenticated Commerce Transaction 1A reads, 20 transaction-required synthetic mutations with at most 5 order attempts, and 10 controlled invalid/timeout cases. Add 3 synthetic worker items for claim/result/heartbeat signals. |
+| Concurrency | Use at most 4 HTTP clients, with no more than 1 transaction-required mutation in flight. Keep worker concurrency at the approved value of 1 and claim-ahead at 0. |
+| Warm-up and repetitions | Warm up for 60 seconds, discard warm-up measurements, then run 5 paired repetitions. Each repetition has a 5-minute wall-clock ceiling; stop when the operation cap is reached. |
+| Activity ceiling | The 100 HTTP operations, 5 order attempts, 3 worker items, 256-record/1 MiB buffer, and 20,000 emitted-entry budget are hard per-repetition ceilings. |
+| Measurement method | Run telemetry-disabled and telemetry-enabled conditions with identical data, process limits, and request order. Measure p95 client-observed latency, process CPU delta, resident-memory delta, JSON Lines bytes, emitted entries, dropped records, and histogram combinations using monotonic timestamps and OS/process counters. Record the SHA, environment, command, sample counts, median/worst repetition, redactions, and limitations in the evidence packet. |
+
 #### Telemetry model and exporter-outage behavior
 
 | Field | Candidate value |
@@ -141,8 +164,8 @@ their own approved decisions.
 | Sandbox destination | Local process stdout/stderr as JSON Lines only. No external provider, endpoint, credential, or network destination is part of this decision. |
 | Core-transaction boundary | Optional telemetry must never synchronously determine a successful core mutation and must not roll it back. A telemetry write may consume at most 50 ms per record before it is treated as degraded. |
 | Buffer and retry | No application-level retry is required for the local sink. A later optional adapter may use one bounded retry, the 256-record/1 MiB limit above, and must return or drop within the bounded budget; it may not block indefinitely. |
-| Drop/backpressure | Prefer dropping low-severity success/info records before warning/critical records. When capacity is exhausted, drop the new optional telemetry record, increment a bounded drop counter, and never fall back to sensitive payload logging. Reserve 32 records for warning/critical local signals where possible. |
-| Degraded signal | Emit at most one redacted `telemetry_pipeline_degraded` signal per 60 seconds after three consecutive write failures, any buffer saturation, or a drop ratio above 1% over 5 minutes. |
+| Drop/backpressure | Prefer dropping low-severity success/info records before warning/critical records. When capacity is exhausted, drop the new optional telemetry record, increment a bounded drop counter, and never fall back to sensitive payload logging. Reserve a dedicated single-slot path outside the optional buffer for the redacted `telemetry_pipeline_degraded` control signal; buffer saturation must not evict that signal. |
+| Degraded signal | Emit at most one redacted `telemetry_pipeline_degraded` signal per 60 seconds after three consecutive write failures, any buffer saturation, or a drop ratio above 1% over 5 minutes. Emit it directly to local stderr or the dedicated slot, coalesce repeats, and retain a bounded one-bit retry latch if the sink itself is unavailable; never recursively log sensitive data. |
 | Security and audit boundary | Required authentication security-event persistence and domain audit writes retain their own approved failure behavior; they are never downgraded to optional telemetry. |
 
 #### SLO, error budget, thresholds, responder, and evidence
@@ -306,7 +329,7 @@ is covered by negative tests. Otherwise emit an allowlisted error class and
 safe event outcome.
 
 **Approval field:** High-level JSON Lines/stdout/stderr direction approved by
-Faiz on 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC); exporter, destination, retention, and outage values
+Faiz on 4 August 2026 UTC (5 August 2026 Asia/Jakarta); exporter, destination, retention, and outage values
 remain pending.
 
 ## 4. Decision 2 — Request correlation and HTTP signals
@@ -690,7 +713,7 @@ This list is planning context, not permission to edit those files now.
 
 The Project Owner authorized planning and Git delivery of this proposal on
 2 August 2026, then separately authorized PR reconciliation and merge on
-3 August 2026. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Yanuar/Owner delegated the DR-014 decision
+3 August 2026. On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner delegated the DR-014 decision
 authority recorded in section 2 to Faiz, who approved the high-level JSON
 Lines/stdout/stderr and no-external-provider direction plus the bounded
 Feature 7.2 lease/worker values. Numerical observability values and source
@@ -700,14 +723,14 @@ implementation remain separately gated.
 | --- | --- | --- | --- |
 | Planning and commit/push/PR authorization | Project Owner | Granted for documentation-only proposal | 2 August 2026 |
 | PR reconciliation and merge | Project Owner | Granted for this documentation-only proposal | 3 August 2026 |
-| Candidate sandbox baseline proposal | Faiz review required | Concrete provider-neutral values prepared in this package; not an approval and no source gate | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
-| DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
+| Candidate sandbox baseline proposal | Faiz review required | Concrete provider-neutral values prepared in this package; proposal date only, not an approval and no source gate | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
+| DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | Data classification and redaction contract | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
-| Structured logging contract | Faiz (delegated Ops/SRE + Security/Data) | Approved high-level Option B: JSON Lines to stdout/stderr; schema/redaction details pending | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
+| Structured logging contract | Faiz (delegated Ops/SRE + Security/Data) | Approved high-level Option B: JSON Lines to stdout/stderr; schema/redaction details pending | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | Metric inventory/cardinality contract | Faiz (delegated DR-014) | Pending value | Pending |
-| Export model/provider/destination | Faiz (delegated Ops/SRE + Security/Data) | No external provider approved; local stdout/stderr emission approved at high level; destination/export details pending | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
+| Export model/provider/destination | Faiz (delegated Ops/SRE + Security/Data) | No external provider approved; local stdout/stderr emission approved at high level; destination/export details pending | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | Timeout visibility contract | Faiz (delegated DR-014) | Pending value | Pending |
-| Worker observability contract | Faiz (delegated Ops/SRE) | Feature 7.2 high-level and bounded lease/worker values approved; metric/query/capacity evidence pending | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
+| Worker observability contract | Faiz (delegated Ops/SRE) | Feature 7.2 high-level and bounded lease/worker values approved; metric/query/capacity evidence pending | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | Transaction diagnostic/alert contract | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
 | Retention/access policy | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
 | SLI/SLO/error-budget/threshold package | Faiz (delegated DR-014) | Pending value | Pending |
