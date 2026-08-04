@@ -118,7 +118,7 @@ export default function PrivacyPolicyPage() {
             <SectionHeader
               eyebrow="Penyimpanan & Keamanan"
               title="Data tersimpan di sistem operasional Niuva dengan akses terbatas."
-              body="Data pesan dan pesanan disimpan di basis data internal Niuva dan hanya dapat diakses oleh tim internal dengan izin yang sesuai (mis. tim yang menangani inquiries atau order). Niuva tidak menjual data pribadi kepada pihak ketiga."
+              body="Data pesan, akun, dan pesanan disimpan di sistem operasional Niuva. Akses internal dibatasi berdasarkan izin yang sesuai. Jika notifikasi email dikonfigurasi secara eksternal, data yang relevan dapat diteruskan secara terbatas sebagaimana dijelaskan pada bagian Berbagi dengan Pihak Ketiga. Niuva tidak menjual data pribadi kepada pihak ketiga."
               align="split"
             />
           </PageContainer>

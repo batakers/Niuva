@@ -46,6 +46,11 @@ test("renders the approved current-scope and provider-neutral privacy copy", () 
     screen.getByText(/tidak ada penyedia tertentu yang dinyatakan aktif/i)
   ).toBeInTheDocument();
   expect(
+    screen.getByText(
+      /Data pesan, akun, dan pesanan disimpan di sistem operasional Niuva\./,
+    ),
+  ).toBeInTheDocument();
+  expect(
     screen.queryByText(/token login.*localStorage/i)
   ).not.toBeInTheDocument();
   expect(
