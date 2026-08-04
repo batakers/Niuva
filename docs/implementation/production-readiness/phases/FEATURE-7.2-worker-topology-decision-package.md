@@ -6,7 +6,8 @@ Date: 2 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-worker-topology`
 
-PR: `#107` (open; reconciliation review complete)
+PR: `#107` merged as `fe1d8a0`; CI passed; this package remains a planning
+record and does not authorize source implementation.
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)

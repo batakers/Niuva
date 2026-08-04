@@ -8,7 +8,8 @@ Reconciliation date: 3 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-observability`
 
-PR: `#108` (open; reconciliation review complete)
+PR: `#108` merged as `b336198`; CI passed; reconciliation is complete and
+source implementation remains DR-014 decision-blocked.
 
 Worktree: contributor-local isolated worktree for `plan/backend-observability`
 
