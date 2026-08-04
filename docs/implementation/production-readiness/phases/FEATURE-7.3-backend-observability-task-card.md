@@ -1,6 +1,6 @@
 # Task Card — Feature 7.3 Backend Observability
 
-Status: **Planning / candidate observability contract prepared; high-level DR-014 direction and bounded worker values approved; explicit observability values pending — source implementation not authorized**
+Status: **Planning / candidate observability contract and sandbox baseline prepared; high-level DR-014 direction and bounded worker values approved; explicit approval pending — source implementation not authorized**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -8,7 +8,8 @@ Reconciliation date: 3 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-observability`
 
-PR: `#108` merged as `b336198`; CI passed; reconciliation is complete and
+PR: `#108` merged as `b336198`; worksheet reconciliation PR `#133` merged as
+`5dd6112`; CI passed; reconciliation is complete and
 Faiz's DR-014 decision authority, high-level direction, and bounded worker
 values are recorded, while source implementation remains `decision_blocked`.
 
@@ -18,7 +19,9 @@ Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
 
 Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
-(`origin/main`, merged 3 August 2026 after PR #107).
+(`origin/main`, merged 3 August 2026 after PR #107). The current proposal
+baseline is `5dd611297f8db5db03872d10b605536e2da462cf` (`origin/main`, fetched
+5 August 2026).
 
 Related roadmap task: `PHASE-08B`; `TASK-08B-01`; `TASK-08B-02`
 
@@ -40,14 +43,16 @@ decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
 Product input for customer-visible service objectives is covered by the
 delegated DR-014 decision-maker role. The concrete telemetry, SLO, capacity,
-threshold, and retention/access values remain pending. This revision prepares
-a candidate contract and explicit approval worksheet for those areas; it does
-not convert a proposal into an approval. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz
+threshold, and retention/access values remain pending approval. This revision
+adds a bounded candidate baseline and explicit approval worksheet for those
+areas; it does not convert a proposal into an approval. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz
 approved JSON Lines to stdout/stderr and no external telemetry provider at
 high level; exporter and numerical observability values remain pending. The
 approved worker values are 15-second maximum operation, 5-second
 acknowledgement, 40-second margin, 60-second lease, 30-second renewal,
 concurrency 1, claim-ahead 0, and 30-second drain.
+The concrete candidate values are recorded in the decision package's
+"Recommended sandbox baseline" section and remain approval-gated.
 
 **Planning and Git delivery authorization:** The Project Owner explicitly
 authorized continuation of Feature 7.3 planning and authorized commit, push,
@@ -86,8 +91,9 @@ Prepare one provider-neutral Operations/SRE decision package for:
 
 The package must define safe schemas, cardinality constraints, ownership,
 objective formulas, approval fields, later source acceptance tests, and stop
-conditions without inventing a provider, destination, threshold, SLO, or
-on-call commitment.
+conditions. Any proposed provider-neutral destination, threshold, SLO, or
+response value must remain explicitly candidate until approved and must not
+create an on-call commitment.
 
 ## Current-source baseline
 
@@ -188,8 +194,8 @@ The planning packet is ready for review only when it:
 - makes worker signals conditional on the approved Feature 7.2 contract;
 - preserves `UnknownTransactionCommitResult` ambiguity and never suggests
   replaying the business callback;
-- provides SLI formulas while leaving unapproved numerical objectives and
-  thresholds visibly pending;
+- provides SLI formulas and a clearly labeled candidate numerical baseline while
+  keeping approval status visibly pending;
 - names retention, access, dashboard, alert, response, capacity, and evidence
   owners as required approval fields;
 - includes privacy, spoofing, cardinality, dependency-failure, and exporter-
