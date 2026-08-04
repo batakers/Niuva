@@ -1,6 +1,6 @@
 # Task Card — Feature 7.3 Backend Observability
 
-Status: **Planning / high-level DR-014 direction and bounded worker values approved; observability values pending — source implementation not authorized**
+Status: **Planning / candidate observability contract prepared; high-level DR-014 direction and bounded worker values approved; explicit observability values pending — source implementation not authorized**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -40,7 +40,9 @@ decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
 Product input for customer-visible service objectives is covered by the
 delegated DR-014 decision-maker role. The concrete telemetry, SLO, capacity,
-threshold, and retention/access values remain pending. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz
+threshold, and retention/access values remain pending. This revision prepares
+a candidate contract and explicit approval worksheet for those areas; it does
+not convert a proposal into an approval. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz
 approved JSON Lines to stdout/stderr and no external telemetry provider at
 high level; exporter and numerical observability values remain pending. The
 approved worker values are 15-second maximum operation, 5-second
@@ -192,7 +194,9 @@ The planning packet is ready for review only when it:
   owners as required approval fields;
 - includes privacy, spoofing, cardinality, dependency-failure, and exporter-
   outage negative cases; and
-- makes no implementation, provider, production, or finding-resolution claim.
+- makes no implementation, provider, production, or finding-resolution claim;
+- separates candidate contract text from the explicit approval evidence needed
+  to leave `decision_blocked`.
 
 ## Stop conditions
 

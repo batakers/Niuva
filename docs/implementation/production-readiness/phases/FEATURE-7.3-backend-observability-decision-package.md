@@ -1,6 +1,6 @@
 # Feature 7.3 — Backend Observability Decision Package
 
-Status: **High-level DR-014 direction and bounded worker values approved by Faiz — observability values required before source implementation**
+Status: **Candidate observability contract prepared; high-level DR-014 direction and bounded worker values approved by Faiz — explicit observability values required before source implementation**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -43,6 +43,45 @@ contract: 15-second maximum delivery operation, 5-second acknowledgement,
 40-second clock/network margin, 60-second lease, 30-second renewal threshold,
 concurrency 1, claim-ahead 0, and 30-second worker drain. This does not approve
 the remaining observability or production-readiness values.
+
+## Decision status and candidate contract
+
+This revision prepares one reviewable, provider-neutral candidate contract for
+the remaining DR-014 observability decisions. It is a proposal and approval
+worksheet, not an approval record. Existing high-level JSON Lines/stdout/stderr,
+no-external-provider, and Feature 7.2 worker-value approvals remain bounded as
+recorded above. No candidate below authorizes source implementation, provider
+activation, credentials, migration, deployment, production readiness, or
+go-live.
+
+| Decision area | Candidate contract for review | Decision state |
+| --- | --- | --- |
+| Data classification | Operational telemetry is internal operational data. Domain audit records, authentication security events under `DEC-AUTH-009`/`DEC-AUTH-011`, and recipient notifications under `DEC-DATA-003` remain separate stores and policies. | Candidate; Faiz approval pending |
+| Redaction | Emit only closed, allowlisted event fields and safe outcome classes. Exclude credentials, tokens, cookies, contact data, customer/business payloads, concrete identifier-bearing paths, provider/database payloads, and raw exception bodies. | Candidate; Faiz approval pending |
+| Retention and access | Use least-privilege named operational/security access; do not create a general audit viewer or expose telemetry as customer data. Telemetry retention, deletion, access cadence, and evidence retention are not inferred from the 180-day notification or 30-day terminal-delivery policies. | Candidate; exact policy pending |
+| Metrics and SLI | Use the finite metric inventory and formula boundaries in Sections 5, 8, and 9. Labels remain closed/finite; unknown values map to `unknown`/`other`; no request/resource/customer identifiers become labels. | Candidate; metric/SLI approval pending |
+| Cardinality and capacity | Measure histogram, collection, multiprocess, storage, CPU, memory, and cardinality overhead against an explicit budget before implementation claims. | Candidate; numerical budget pending |
+| Telemetry model and exporter outage | Preserve JSON Lines to stdout/stderr and no external provider at the approved high level. Any later exporter is optional, bounded, observable, and must not block a successful core mutation; destination, buffering, drop, backpressure, and outage thresholds remain separate decisions. | Candidate; operational approval pending |
+| SLO, error budget, and thresholds | Use the SLI formulas in Section 10 with explicit eligibility, low-traffic, maintenance-window, percentile, objective, and burn-rate rules. No numerical SLO, error budget, threshold, or review cadence is invented here. | Candidate; numerical approval pending |
+| Alerts, responder, and evidence | Use the closed alert families in Section 6, with safe severity, deduplication, runbook reference, and evidence correlation. Faiz is the delegated primary responder/owner and no backup is currently assigned; destination, response objective, runbook location, and evidence format remain pending. | Candidate; operational approval pending |
+
+### Approval worksheet
+
+Faiz, acting under the recorded Yanuar/Owner delegation, must explicitly
+approve or amend each candidate area before this package can leave
+`decision_blocked`. A PR merge, green CI, or the existing worker values cannot
+be used as approval for the rows below.
+
+| Required approval | Current record | Required output |
+| --- | --- | --- |
+| Classification and redaction | Candidate contract above | Approved data classes, prohibited fields, safe event/exception allowlists |
+| Retention/access/evidence | Candidate; exact values pending | Retention/deletion periods, authorized roles, review cadence, evidence custody and retention |
+| Metric/SLI/cardinality | Candidate inventory and formulas | Metric types/units, finite labels, eligibility rules, collection/bucket/aggregation constraints |
+| Capacity/resource overhead | Candidate measurement boundary | CPU, memory, latency, storage, cardinality, and buffer budgets |
+| Telemetry destination/exporter outage | JSON Lines/stdout/stderr and no external provider approved at high level | Export/exposure model, destination decision, outage/drop/backpressure limits |
+| SLO/error budget/threshold | Formula boundaries only | Numerical objectives, windows, low-traffic/maintenance treatment, burn-rate policy |
+| Alerts/responder/runbook | Alert families proposed; Faiz primary; no backup | Severity, threshold/window, deduplication, response objective, destination, runbook/evidence location |
+| Source implementation gate | Not authorized | Separate explicit Project Owner authorization after approved records |
 
 ## 1. Purpose and decision boundary
 
