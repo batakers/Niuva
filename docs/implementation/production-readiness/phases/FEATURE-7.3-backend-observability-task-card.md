@@ -1,6 +1,6 @@
 # Task Card — Feature 7.3 Backend Observability
 
-Status: **Planning / DR-014 decision-blocked — source implementation not authorized**
+Status: **Planning / high-level DR-014 direction approved; values pending — source implementation not authorized**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -9,7 +9,8 @@ Reconciliation date: 3 August 2026 (Asia/Jakarta)
 Branch: `plan/backend-observability`
 
 PR: `#108` merged as `b336198`; CI passed; reconciliation is complete and
-source implementation remains DR-014 decision-blocked.
+Faiz's DR-014 decision authority and high-level direction are recorded, while
+source implementation remains `decision_blocked`.
 
 Worktree: contributor-local isolated worktree for `plan/backend-observability`
 
@@ -33,9 +34,15 @@ Decision dependency: `DR-014`
 
 **Planning driver:** Project Owner / backend planning driver.
 
-**Required decision approvers:** Operations/SRE and Security owners. Product
-input is additionally required for service objectives tied to customer-visible
-journeys. Named approvers and their operational mandates remain pending.
+**Delegated DR-014 authority:** On 5 August 2026, Yanuar/Owner delegated to
+Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
+decision-maker responsibility for Commerce Transaction 1A through 30 August
+2026. No backup owner exists; the single-person ownership risk is accepted.
+Product input for customer-visible service objectives is covered by the
+delegated DR-014 decision-maker role. The concrete telemetry, SLO, capacity,
+threshold, and retention/access values remain pending. On 5 August 2026, Faiz
+approved JSON Lines to stdout/stderr and no external telemetry provider at
+high level; exporter and numerical observability values remain pending.
 
 **Planning and Git delivery authorization:** The Project Owner explicitly
 authorized continuation of Feature 7.3 planning and authorized commit, push,
@@ -105,9 +112,10 @@ production telemetry system:
 ## Dependency on Feature 7.2
 
 PR `#107` merged as `fe1d8a0` and records the Project Owner-approved
-worker-topology planning direction. Its Operations/SRE/Security acceptance,
-numerical timing, telemetry/SLO, capacity, destination, and accountable-owner
-inputs remain pending under DR-014; source implementation remains unauthorized.
+worker-topology planning direction. Faiz's delegated DR-014 authority and
+high-level Option B direction are now recorded; numerical timing,
+telemetry/SLO, capacity, destination, and decision values remain pending under
+DR-014, and source implementation remains unauthorized.
 
 This task may define provider-neutral worker signal names and decision fields.
 It must not treat the still-pending Operations/SRE contract as final, copy the
@@ -187,7 +195,8 @@ The planning packet is ready for review only when it:
 
 Stop before source implementation if:
 
-- Operations/SRE/Security approval and accountable owners are absent;
+- the delegated Operations/SRE/Security decision authority or accountable
+  ownership evidence is absent;
 - the telemetry destination/exposure model and retention/access boundary are
   unresolved;
 - metric names, units, labels, cardinality bounds, or SLI formulas remain

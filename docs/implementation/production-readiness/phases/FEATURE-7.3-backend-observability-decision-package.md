@@ -1,6 +1,6 @@
 # Feature 7.3 — Backend Observability Decision Package
 
-Status: **Proposed — Operations/SRE/Security decision required before source implementation**
+Status: **High-level DR-014 direction approved by Faiz — values required before source implementation**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -20,6 +20,23 @@ Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
 Decision dependency: `DR-014`
 
 Related roadmap task: `PHASE-08B`; `TASK-08B-01`; `TASK-08B-02`
+
+## Decision authority
+
+On 5 August 2026, Yanuar/Owner delegated to Faiz the Ops/SRE accountable
+role, Security/Data reviewer role, and DR-014 decision-maker responsibility for
+Commerce Transaction 1A through 30 August 2026. No backup owner exists; the
+single-person ownership risk is accepted.
+
+This delegation resolves who may review and decide the remaining provider-
+neutral observability values. It does not itself approve a telemetry provider
+or destination, retention/access policy, SLO, error budget, threshold,
+capacity limit, production credential, migration, deployment, or go-live, and
+it does not replace separate source implementation authorization.
+
+On 5 August 2026, Faiz approved JSON Lines application emission to stdout/stderr
+and no external telemetry provider at high level. External collection,
+destination, retention, metrics, SLO, alert, and capacity values remain pending.
 
 ## 1. Purpose and decision boundary
 
@@ -104,12 +121,13 @@ Application code exports directly to a selected telemetry provider.
 This can support rich correlation, but it selects a dependency, destination,
 credential, buffering, outage, and cost boundary that DR-014 has not resolved.
 
-### Structured logging recommendation
+### Structured logging decision
 
-Approve **Option B** as the canonical application log emission format. Treat
-external collection/export as a separate adapter/deployment decision. A later
-provider adapter may consume the same schema but must not replace safe local
-emission or become required for business mutation success by default.
+Option B is approved as the canonical application log emission format: JSON
+Lines to stdout/stderr. External collection/export remains a separate
+adapter/deployment decision. A later provider adapter may consume the same
+schema but must not replace safe local emission or become required for business
+mutation success by default.
 
 ### Recommended common envelope
 
@@ -147,7 +165,9 @@ redacts exception messages and locals, applies access/retention controls, and
 is covered by negative tests. Otherwise emit an allowlisted error class and
 safe event outcome.
 
-**Approval field:** `Pending Operations/SRE/Security decision`
+**Approval field:** High-level JSON Lines/stdout/stderr direction approved by
+Faiz on 5 August 2026; exporter, destination, retention, and outage values
+remain pending.
 
 ## 4. Decision 2 — Request correlation and HTTP signals
 
@@ -297,12 +317,12 @@ system and describe it as operational observability.
 | --- | --- |
 | Alert evaluation location | Pending |
 | Destination | Pending |
-| Primary responder and backup | Pending |
+| Primary responder and backup | Faiz primary (delegated Ops/SRE); no backup; single-person risk accepted |
 | Severity definitions | Pending |
 | Threshold/window per family | Pending |
 | Deduplication/suppression policy | Pending |
 | Response objective per severity | Pending |
-| Runbook/evidence location | Pending |
+| Runbook/evidence location | Faiz (delegated DR-014); location/value pending |
 
 ## 7. Decision 5 — Timeout visibility
 
@@ -428,16 +448,16 @@ them.
 | Metrics retention | Pending |
 | Alert/evidence retention | Pending |
 | Access roles and review cadence | Pending |
-| Privacy/retention approver | Pending |
-| Operations/SRE owner and backup | Pending |
-| Security reviewer | Pending |
-| Dashboard owner | Pending |
-| Alert/on-call owner and backup | Pending |
+| Privacy/retention approver | Faiz (delegated Security/Data); policy value pending |
+| Operations/SRE owner and backup | Faiz primary (delegated Ops/SRE); no backup; single-person risk accepted |
+| Security reviewer | Faiz (delegated Security/Data) |
+| Dashboard owner | Faiz (delegated DR-014); dashboard scope/details pending |
+| Alert/on-call owner and backup | Faiz primary (delegated Ops/SRE); no backup; single-person risk accepted |
 | SLI eligibility definitions | Pending |
 | SLO numerical objectives | Pending |
 | Error budgets and burn-rate policy | Pending |
 | Capacity/resource-overhead budget | Pending |
-| Evidence custody/location | Pending |
+| Evidence custody/location | Faiz (delegated DR-014); location pending |
 
 ## 11. Exporter and telemetry-outage behavior
 
@@ -529,25 +549,29 @@ This list is planning context, not permission to edit those files now.
 
 The Project Owner authorized planning and Git delivery of this proposal on
 2 August 2026, then separately authorized PR reconciliation and merge on
-3 August 2026. No observability recommendation or implementation decision is
-approved by those authorizations or by the existence of this file/PR.
+3 August 2026. On 5 August 2026, Yanuar/Owner delegated the DR-014 decision
+authority recorded in section 2 to Faiz, who approved the high-level JSON
+Lines/stdout/stderr and no-external-provider direction. Numerical observability
+values and source implementation remain separately gated.
 
 | Approval | Owner | Value / evidence | Date |
 | --- | --- | --- | --- |
 | Planning and commit/push/PR authorization | Project Owner | Granted for documentation-only proposal | 2 August 2026 |
 | PR reconciliation and merge | Project Owner | Granted for this documentation-only proposal | 3 August 2026 |
-| Data classification and redaction contract | Security + Operations/SRE | Pending | Pending |
-| Structured logging contract | Operations/SRE + Security | Pending | Pending |
-| Metric inventory/cardinality contract | Operations/SRE + Backend | Pending | Pending |
-| Export model/provider/destination | Operations/SRE + Security | Pending | Pending |
-| Timeout visibility contract | Operations/SRE + Backend | Pending | Pending |
-| Worker observability contract | Operations/SRE | Pending Feature 7.2 acceptance | Pending |
-| Transaction diagnostic/alert contract | Operations/SRE + Security | Pending | Pending |
-| Retention/access policy | Operations/SRE + Security/Privacy | Pending | Pending |
-| SLI/SLO/error-budget/threshold package | Operations/SRE + Product | Pending | Pending |
-| Alert responder/runbook/evidence ownership | Operations/SRE | Pending | Pending |
+| DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 5 August 2026 |
+| Data classification and redaction contract | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
+| Structured logging contract | Faiz (delegated Ops/SRE + Security/Data) | Approved high-level Option B: JSON Lines to stdout/stderr; schema/redaction details pending | 5 August 2026 |
+| Metric inventory/cardinality contract | Faiz (delegated DR-014) | Pending value | Pending |
+| Export model/provider/destination | Faiz (delegated Ops/SRE + Security/Data) | No external provider approved; local stdout/stderr emission approved at high level; destination/export details pending | 5 August 2026 |
+| Timeout visibility contract | Faiz (delegated DR-014) | Pending value | Pending |
+| Worker observability contract | Faiz (delegated Ops/SRE) | Pending Feature 7.2 acceptance/value | Pending |
+| Transaction diagnostic/alert contract | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
+| Retention/access policy | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
+| SLI/SLO/error-budget/threshold package | Faiz (delegated DR-014) | Pending value | Pending |
+| Alert responder/runbook/evidence ownership | Faiz (delegated Ops/SRE) | Pending value | Pending |
 | Separate source implementation authorization | Project Owner | Pending | Pending |
 
-Until the remaining fields have attributable approval evidence, Feature 7.3
-remains `decision_blocked`. Source implementation, provider activation,
+Until the remaining fields have explicit values and approval evidence, Feature
+7.3 remains `decision_blocked`; the high-level approval does not replace
+the remaining decision values. Source implementation, provider activation,
 deployment, production-readiness claims, and go-live must not begin.

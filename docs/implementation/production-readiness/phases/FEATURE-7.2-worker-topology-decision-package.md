@@ -1,6 +1,6 @@
 # Feature 7.2 — Worker Topology Decision Package
 
-Status: **Recommended package approved by Project Owner — Operations/SRE decision required before source implementation**
+Status: **High-level DR-014 direction approved by Faiz — numerical values required before source implementation**
 
 Date: 2 August 2026 (Asia/Jakarta)
 
@@ -20,6 +20,25 @@ Decision dependency: `DR-014`
 Related authority: `DEC-DATA-003`
 
 Related roadmap task: `PHASE-08C`; `TASK-08C-01`; `TASK-08C-02`
+
+## Decision authority
+
+On 5 August 2026, Yanuar/Owner delegated to Faiz the Ops/SRE accountable
+role, Security/Data reviewer role, and DR-014 decision-maker responsibility for
+Commerce Transaction 1A through 30 August 2026. No backup owner exists; the
+single-person ownership risk is accepted.
+
+This delegation records who may decide the remaining DR-014 values. It does
+not itself approve a topology, timing, capacity, telemetry destination,
+retention/access policy, SLO, threshold, provider, production credential,
+migration, deployment, or go-live, and it does not replace the separate source
+implementation authorization.
+
+On 5 August 2026, Faiz approved the following high-level DR-014 direction for
+Commerce Transaction 1A: Option B (separate staging/production worker and
+development/test co-location only), no external queue/scheduler provider,
+at-least-once delivery, and bounded shutdown. Numerical lease, concurrency,
+capacity, alert, and SLO values remain pending.
 
 ## 1. Purpose and decision boundary
 
@@ -135,7 +154,8 @@ Select **Option B**:
 - same immutable application artifact for API and worker initially; and
 - no external queue/scheduler provider in Feature 7.2.
 
-**Approval field:** `Pending Operations/SRE decision`
+**Approval field:** High-level Option B approved by Faiz on 5 August 2026;
+numeric lease and timing values remain pending.
 
 ## 4. Decision 2 — Lease duration, fencing, and batch behavior
 
@@ -256,7 +276,7 @@ lease duration.
 | Platform termination grace | Pending |
 | Worker drain deadline | Pending |
 | Claimed-not-started disposition | Pending; recommendation fenced release |
-| Forced-termination evidence owner | Pending |
+| Forced-termination evidence owner | Faiz (delegated Ops/SRE); evidence location pending |
 
 ## 7. Decision 5 — Required versus optional dependency
 
@@ -324,12 +344,12 @@ lease duration.
 
 | Field | Approved value |
 | --- | --- |
-| Scheduler service owner | Pending |
-| Reservation-expiry run owner | Pending |
-| General-notification retention owner | Pending |
-| Authentication-event cleanup owner | Pending under its own decision |
-| Schedule/catch-up policy owner | Pending |
-| Run-evidence reviewer and location | Pending |
+| Scheduler service owner | Faiz (delegated Ops/SRE); service/evidence details pending |
+| Reservation-expiry run owner | Faiz (delegated Ops/SRE); run/evidence details pending |
+| General-notification retention owner | Faiz (delegated Ops/SRE); retention details remain subject to `DEC-DATA-003` |
+| Authentication-event cleanup owner | Pending under its own decision; outside this delegation |
+| Schedule/catch-up policy owner | Faiz (delegated Ops/SRE); policy value pending |
+| Run-evidence reviewer and location | Faiz (delegated Security/Data); location pending |
 
 ## 9. Decision 7 — Operational objectives and alerts
 
@@ -359,7 +379,7 @@ payloads, provider payloads, credentials, tokens, and raw exception bodies.
 | Telemetry destination | Pending |
 | Retention and access | Pending |
 | Backlog/exhaustion alert destination | Pending |
-| Alert responder and backup | Pending |
+| Alert responder and backup | Faiz primary (delegated Ops/SRE); no backup; single-person risk accepted |
 | Response objective | Pending |
 | Delivery/backlog SLI and objective | Pending |
 | Capacity model and scaling trigger | Pending |
@@ -369,9 +389,11 @@ Faiz remains the temporary general-notification backlog/exhaustion alert owner
 under `DEC-DATA-003`. This does not fill the pending destination, SLA, backup,
 on-call, capacity, or scheduler fields.
 
-## 10. Recommended package for Operations/SRE approval
+## 10. High-level package approved; remaining values require decision
 
-Approve or amend the following package as one coherent contract:
+The high-level direction below was approved by Faiz on 5 August 2026. The
+listed numerical, capacity, alert, and evidence fields still require explicit
+values before source implementation:
 
 1. Separate worker process for staging/production; co-located only for
    development/test.
@@ -445,25 +467,26 @@ The later implementation is not complete until evidence demonstrates:
 No choice below is approved by the existence of this file or branch.
 
 On 2 August 2026, the Project Owner explicitly approved the recommended
-package in section 10. The approval establishes the preferred planning
-direction: separate staging/production worker, just-in-time fenced claims,
-at-least-once delivery, bounded drain, independent API/worker readiness, named
-scheduler leases, and redacted owned operational signals. It does not fill the
-pending timing, threshold, capacity, destination, or accountable-owner values;
-does not identify the Project Owner as an Operations/SRE or Security approver;
-and does not authorize source implementation.
+planning direction in section 10. On 5 August 2026, Faiz approved the
+high-level DR-014 direction: Option B, no external queue/scheduler provider,
+at-least-once delivery, and bounded shutdown. These approvals do not fill the
+pending timing, threshold, capacity, destination, SLO, or evidence values and
+do not authorize source implementation.
 
 | Approval | Owner | Value / evidence | Date |
 | --- | --- | --- | --- |
 | Recommended package direction | Project Owner | Approved section 10 as the preferred planning direction; bounded as stated above | 2 August 2026 |
-| Worker topology | Operations/SRE | Pending | Pending |
-| Lease/timing contract | Operations/SRE | Pending | Pending |
-| Multi-instance/replay contract | Operations/SRE + Security | Pending | Pending |
-| Shutdown contract | Operations/SRE | Pending | Pending |
-| Required/optional dependency policy | Operations/SRE + Product | Pending | Pending |
-| Scheduler ownership | Operations/SRE | Pending | Pending |
-| Telemetry/SLO/alert/capacity inputs | Operations/SRE + Security | Pending | Pending |
+| DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 5 August 2026 |
+| Worker topology | Faiz (delegated DR-014) | Approved Option B: separate staging/production worker; development/test co-location only; no external queue/scheduler provider | 5 August 2026 |
+| Lease/timing contract | Faiz (delegated Ops/SRE) | Pending; numeric operation, acknowledgement, margin, lease, renewal, concurrency, and claim-ahead values remain open | Pending |
+| Multi-instance/replay contract | Faiz (delegated Ops/SRE + Security/Data) | Approved at-least-once delivery at high level; exact fencing, idempotency, replay, and capacity values pending | 5 August 2026 |
+| Shutdown contract | Faiz (delegated Ops/SRE) | Approved bounded shutdown at high level; termination grace, drain deadline, and claimed-work disposition pending | 5 August 2026 |
+| Required/optional dependency policy | Faiz (delegated DR-014) | Pending value | Pending |
+| Scheduler ownership | Faiz (delegated Ops/SRE) | Pending value | Pending |
+| Telemetry/SLO/alert/capacity inputs | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
 | Separate source implementation authorization | Project Owner | Pending | Pending |
 
-Until the remaining fields have attributable approval evidence, Feature 7.2
-remains `decision_blocked` and source implementation must not begin.
+Until the remaining fields have explicit values and approval evidence, Feature
+7.2 remains `decision_blocked`; the high-level approval does not replace
+the remaining decision values or separate source authorization, and source
+implementation must not begin.
