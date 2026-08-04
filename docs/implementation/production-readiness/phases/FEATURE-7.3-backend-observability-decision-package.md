@@ -8,14 +8,19 @@ Reconciliation date: 3 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-observability`
 
-PR: `#108` merged as `b336198`; CI passed; this package remains a planning
-record and does not authorize source implementation.
+PR: `#108` merged as `b336198`; the worksheet update in PR `#133` merged as
+`5dd6112`; this package remains a planning record and does not authorize source
+implementation.
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
 
 Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
 (`origin/main`, merged 3 August 2026). This changes no decision or source gate.
+
+Current proposal baseline: `5dd611297f8db5db03872d10b605536e2da462cf`
+(`origin/main`, fetched 5 August 2026). This follow-up changes documentation
+only and does not replace the historical baselines above.
 
 Decision dependency: `DR-014`
 
@@ -74,14 +79,104 @@ be used as approval for the rows below.
 
 | Required approval | Current record | Required output |
 | --- | --- | --- |
-| Classification and redaction | Candidate contract above | Approved data classes, prohibited fields, safe event/exception allowlists |
-| Retention/access/evidence | Candidate; exact values pending | Retention/deletion periods, authorized roles, review cadence, evidence custody and retention |
-| Metric/SLI/cardinality | Candidate inventory and formulas | Metric types/units, finite labels, eligibility rules, collection/bucket/aggregation constraints |
-| Capacity/resource overhead | Candidate measurement boundary | CPU, memory, latency, storage, cardinality, and buffer budgets |
-| Telemetry destination/exporter outage | JSON Lines/stdout/stderr and no external provider approved at high level | Export/exposure model, destination decision, outage/drop/backpressure limits |
-| SLO/error budget/threshold | Formula boundaries only | Numerical objectives, windows, low-traffic/maintenance treatment, burn-rate policy |
-| Alerts/responder/runbook | Alert families proposed; Faiz primary; no backup | Severity, threshold/window, deduplication, response objective, destination, runbook/evidence location |
+| Classification and redaction | Candidate contract and sandbox baseline below; approval pending | Approved data classes, prohibited fields, safe event/exception allowlists |
+| Retention/access/evidence | Candidate 7-day raw / 30-day redacted evidence baseline below; approval pending | Retention/deletion periods, authorized roles, review cadence, evidence custody and retention |
+| Metric/SLI/cardinality | Candidate inventory, formulas, finite registries, and buckets below; approval pending | Metric types/units, finite labels, eligibility rules, collection/bucket/aggregation constraints |
+| Capacity/resource overhead | Candidate CPU, memory, latency, storage, cardinality, and buffer budgets below; approval pending | CPU, memory, latency, storage, cardinality, and buffer budgets |
+| Telemetry destination/exporter outage | Candidate local JSON Lines behavior below; no external provider | Export/exposure model, destination decision, outage/drop/backpressure limits |
+| SLO/error budget/threshold | Candidate numerical objectives and alert thresholds below; approval pending | Numerical objectives, windows, low-traffic/maintenance treatment, burn-rate policy |
+| Alerts/responder/runbook | Candidate alert families and sandbox review response below; Faiz primary; no backup | Severity, threshold/window, deduplication, response objective, destination, runbook/evidence location |
 | Source implementation gate | Not authorized | Separate explicit Project Owner authorization after approved records |
+
+### Recommended sandbox baseline (candidate only — not an approval)
+
+The following is a bounded recommendation for Commerce Transaction 1A sandbox
+validation. It is deliberately local and provider-neutral, and is not a
+production SLA, provider selection, credential authorization, implementation
+approval, or go-live decision. Faiz may approve it as written or amend any row;
+the values become approved only when that approval is recorded in this package
+and the decision register.
+
+The baseline applies through the recorded delegation end date of 30 August 2026
+and only to local, test, or explicitly named sandbox evidence. Domain audit,
+authentication security-event, and recipient-notification policies remain under
+their own approved decisions.
+
+#### Data classification, redaction, retention, and access
+
+| Field | Candidate value |
+| --- | --- |
+| Data class | Operational telemetry is **Internal Operational Data**. It is not the domain audit system, authentication security-event store, recipient feed, or provider record. |
+| Common allowlist | `schema_version`, UTC `timestamp`, closed `level`, trusted `service` and `environment`, closed `event`, validated opaque `request_id` in access-controlled logs only, route template, HTTP method, status class, bounded duration, and event-specific closed fields. |
+| Event-specific allowlist | `dependency_class`, `operation_class`, `worker_class`, `channel`, `job_name`, `safe_state`, `safe_outcome`, `safe_error_class`, `retry_mode`, bounded `attempt_count`, `lease_state`, bounded aggregate `count`, and bounded age/duration buckets. |
+| Safe outcome/error classes | `success`, `timeout`, `unavailable`, `rejected`, `failed_safe`, `cancelled`, `commit_unknown`, `schema_rejected`, `dropped`, and `backpressure`. No free-form error class is allowed. |
+| Redaction | Emit only the closed allowlist. Prohibit credentials, tokens, cookies, contact data, customer/business payloads, concrete identifier-bearing paths, query strings, provider/database payloads, raw exception bodies, traceback locals, connection details, and arbitrary IDs. |
+| Raw telemetry retention | stdout/stderr is ephemeral. If captured as a sandbox file, retain it for 7 calendar days, then delete it; never commit raw telemetry to Git. |
+| Derived and evidence retention | Retain only redacted aggregate metric/alert summaries and evidence packets for 30 calendar days. Mark superseded evidence rather than overwriting it. |
+| Access and review | Faiz is the only named delegated Ops/SRE and Security/Data reviewer for this sandbox contract. Review access before each validation and at least every 30 days; no general audit viewer and no customer access. |
+| Custody boundary | Use the redaction, naming, provenance, and storage rules in `docs/context/production-readiness-audit/evidence/README.md`. Existing domain retention policies are not changed by this candidate. |
+
+#### Metrics, SLI, labels, cardinality, and capacity
+
+| Field | Candidate value |
+| --- | --- |
+| Metric model | Use the provider-neutral internal metric port (Option C). Counters, gauges, and histograms are serialized as bounded JSON Lines records to stdout/stderr; no pull endpoint, SDK exporter, or external provider is selected for sandbox. |
+| Collection and aggregation | Counters and event outcomes are recorded at event time. Gauge snapshots and histogram aggregates flush every 60 seconds. Counters and histograms may be added across API/worker processes; global worker gauges come from the accepted worker owner and are never multiplied by process count. |
+| Histogram buckets | Milliseconds: `10`, `50`, `100`, `250`, `500`, `1000`, `2000`, `5000`, `10000`, `15000`, `30000`, and `60000`. |
+| Allowed labels | Use only the finite inventory in Section 5: method, route template, status class, dependency class, operation class, outcome, worker class, channel, safe state, job name, safe operation name, retry mode, and safe capability reason. |
+| Label registry ceilings | At most 32 route templates, 16 safe operation names, 8 dependency classes, 4 worker classes, 4 channels, 8 scheduled jobs, and 8 values for each status/outcome/state/retry registry. Unknown values map to `unknown` or `other`. |
+| Cardinality ceiling | At most 2,000 active label combinations before histogram expansion and at most 20,000 emitted bucket/time-series entries across the sandbox process set. Dynamic labels are rejected and counted, never created. |
+| SLI window and eligibility | Use a rolling 30-day window. Exclude health/readiness/metrics probes and explicitly marked synthetic validation traffic from customer-facing SLIs. Planned maintenance is excluded only when recorded before start and limited to 4 hours per window. |
+| Low-traffic rule | Require at least 100 eligible HTTP requests for API SLO calculations and at least 3 eligible logical transaction or worker items for their respective SLOs. Below the minimum, report `insufficient_sample` and raw counts; do not claim pass or failure. |
+| CPU budget | Observability-enabled process CPU delta is at most 5 percentage points over a representative 5-minute sandbox run compared with the same run without telemetry. |
+| Memory budget | Observability-enabled resident-memory delta is at most 64 MiB during the representative sandbox run. |
+| Latency budget | p95 request-duration increase is at most 5 ms and at most 5% versus the telemetry-disabled comparison. |
+| Output/storage budget | Structured telemetry output is at most 25 MiB per day at the approved sandbox activity ceiling. No persistent metrics store is assumed. |
+| Buffer budget | Any optional adapter may buffer at most 256 records or 1 MiB, whichever is reached first. Buffer capacity is included in the output/storage measurement. |
+
+#### Telemetry model and exporter-outage behavior
+
+| Field | Candidate value |
+| --- | --- |
+| Sandbox destination | Local process stdout/stderr as JSON Lines only. No external provider, endpoint, credential, or network destination is part of this decision. |
+| Core-transaction boundary | Optional telemetry must never synchronously determine a successful core mutation and must not roll it back. A telemetry write may consume at most 50 ms per record before it is treated as degraded. |
+| Buffer and retry | No application-level retry is required for the local sink. A later optional adapter may use one bounded retry, the 256-record/1 MiB limit above, and must return or drop within the bounded budget; it may not block indefinitely. |
+| Drop/backpressure | Prefer dropping low-severity success/info records before warning/critical records. When capacity is exhausted, drop the new optional telemetry record, increment a bounded drop counter, and never fall back to sensitive payload logging. Reserve 32 records for warning/critical local signals where possible. |
+| Degraded signal | Emit at most one redacted `telemetry_pipeline_degraded` signal per 60 seconds after three consecutive write failures, any buffer saturation, or a drop ratio above 1% over 5 minutes. |
+| Security and audit boundary | Required authentication security-event persistence and domain audit writes retain their own approved failure behavior; they are never downgraded to optional telemetry. |
+
+#### SLO, error budget, thresholds, responder, and evidence
+
+| SLI/SLO | Candidate objective and error budget |
+| --- | --- |
+| API availability | At least 99% of eligible requests are non-5xx in each rolling 30-day window; error budget is 1% of eligible requests. |
+| API latency | At least 99% of eligible requests complete within 2,000 ms in each rolling 30-day window; error budget is 1%. The histogram supports additional percentile review but does not change this objective. |
+| Required dependency availability | At least 99% of observed required-dependency time is ready; error budget is 1%. |
+| Transaction availability | At least 99.5% of eligible transaction-required mutations are not rejected for unavailable transaction capability; error budget is 0.5%. |
+| Transaction certainty | At least 99.5% of eligible logical transactions reach a non-ambiguous terminal outcome; error budget is 0.5%. Any commit-unknown event is immediately alertable even when the sample is too small for an SLO claim. |
+| Worker delivery freshness | At least 99% of eligible due work completes within 60 seconds of eligibility; error budget is 1%. The approved 60-second lease remains a worker control, not proof of this SLO. |
+| Worker exhaustion | At least 99.5% of terminal worker outcomes are not exhausted; error budget is 0.5%. Any newly exhausted item is separately alertable. |
+| Telemetry pipeline health | At least 99% of attempted optional telemetry records are accepted rather than dropped when acceptance is measurable. This is a diagnostic SLI, not a customer-facing availability SLO. |
+| Low traffic and maintenance | Below the minimum sample, record `insufficient_sample` and do not burn a percentage budget. Only pre-recorded maintenance up to 4 hours per 30-day window is excluded; all other failures count. |
+| Burn-rate policy | Warning at 10% of the applicable error budget consumed in a rolling 1-hour window; critical at 50% consumed in a rolling 6-hour window, subject to the minimum sample. A commit-unknown, transaction-capability rejection, newly exhausted item, or buffer saturation over 60 seconds is critical immediately. |
+
+| Alert family | Candidate trigger, severity, and response |
+| --- | --- |
+| API error rate | Warning at at least 1% over 15 minutes with at least 20 eligible requests; critical at at least 5% over 5 minutes with at least 20. |
+| API latency | Warning when at least 1% exceed 2,000 ms over 15 minutes with at least 20 requests; critical when at least 5% exceed 5,000 ms over 5 minutes with at least 20. |
+| Dependency timeout/unavailable | Warning at 3 timeouts or 5% over 5 minutes with at least 20 operations; critical when a required dependency is unavailable for more than 60 seconds. |
+| Worker backlog/lease | Warning when oldest due work exceeds 60 seconds for 10 minutes or a lease is lost; critical when oldest due work exceeds 300 seconds for 5 minutes or three leases are lost in 5 minutes. |
+| Worker exhaustion | Critical on any newly exhausted terminal outcome. |
+| Transaction integrity | Critical on any commit-unknown or transaction-capability rejection; do not suppress the first occurrence. |
+| Telemetry pipeline degraded | Warning after the candidate degraded signal; critical when the buffer is saturated for more than 60 seconds. |
+| Severity and deduplication | `critical` means integrity, required-dependency, or sustained-loss review; `warning` means bounded degradation; `info` is an expected transition. Deduplicate by closed family, safe class, environment, and 15-minute bucket; preserve aggregate count and first/last timestamps without identifiers. |
+| Destination and responder | Emit the alert as a redacted JSON Lines record to stdout/stderr. Faiz is the primary responder with no backup. This is a sandbox review objective, not a 24/7 production on-call commitment: critical alerts are reviewed within 15 minutes during an active validation session and otherwise before the next run and within one business day; warnings within one business day. |
+| Evidence | Store redacted, timestamped decision/test/operational evidence under the existing evidence guide, retain it for 30 days, and record SHA, environment, command or collection method, result, redactions, limitations, collector, and reviewer. Raw telemetry is not committed. |
+
+These values are intentionally conservative candidate inputs. They do not clear
+`decision_blocked`. After Faiz explicitly approves or amends them, the approval
+record must be updated; only then may a separate Project Owner gate be requested
+for source implementation.
 
 ## 1. Purpose and decision boundary
 
@@ -481,8 +576,9 @@ payloads remain prohibited.
 
 Eligibility, low-traffic handling, maintenance windows, burn-rate windows,
 percentiles, objective numbers, error budgets, and alert thresholds require
-Operations/SRE/Product approval. This packet deliberately does not invent
-them.
+Operations/SRE/Product approval. The recommended sandbox values in the
+candidate baseline above are proposal inputs only; they do not become approved
+objectives until explicit approval is recorded.
 
 ### Required decision fields
 
@@ -604,6 +700,7 @@ implementation remain separately gated.
 | --- | --- | --- | --- |
 | Planning and commit/push/PR authorization | Project Owner | Granted for documentation-only proposal | 2 August 2026 |
 | PR reconciliation and merge | Project Owner | Granted for this documentation-only proposal | 3 August 2026 |
+| Candidate sandbox baseline proposal | Faiz review required | Concrete provider-neutral values prepared in this package; not an approval and no source gate | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
 | DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
 | Data classification and redaction contract | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
 | Structured logging contract | Faiz (delegated Ops/SRE + Security/Data) | Approved high-level Option B: JSON Lines to stdout/stderr; schema/redaction details pending | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
