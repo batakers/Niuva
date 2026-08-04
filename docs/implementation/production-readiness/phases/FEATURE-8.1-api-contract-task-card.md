@@ -145,9 +145,10 @@ remaining review/CI/merge requirements.
 - No migration, database write, provider operation, deployment, frontend
   change, or production verification was performed.
 
-PR CI and review remain separate gates. The transaction-test workflow will run
-against its isolated replica set after the branch is pushed. This stacked
-branch must not merge before PR #106.
+PR #106 was merged before PR #109. The backend, frontend, secret-scan, and
+transaction-tests checks passed on merged PR #109 as `770a4c3`. The prior
+transaction-test-before-merge and stacked-branch wording is historical gate
+evidence, not an outstanding requirement.
 
 ## Reconciliation evidence — 3 August 2026
 

@@ -41,7 +41,7 @@ provider, or operations input. This slice does not change runtime code.
 - [x] Run Markdown/path checks, `git diff --check`, and backend regression
   evidence against the unchanged selected baseline.
 - [x] Review exact changed paths and stage only approved documentation files.
-- [ ] Commit, push, and open a PR; do not merge.
+- [x] Commit, push, and open PR #129; do not merge.
 
 ## Risks and mitigations
 

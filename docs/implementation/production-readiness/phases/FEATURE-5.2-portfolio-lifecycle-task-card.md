@@ -102,4 +102,5 @@ production-readiness, and go-live remain unauthorized.
 
 The replica-set result is disposable local evidence. It is not migration,
 shared-environment, deployment, production-readiness, release, or go-live
-evidence. Independent review remains pending.
+evidence. Independent-review evidence is not recorded in this packet; the
+merged PR does not establish independent review or production readiness.

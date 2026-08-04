@@ -7,5 +7,5 @@
 - [x] Add current-main residual decision packet.
 - [x] Run documentation and unchanged-baseline backend checks.
 - [x] Stage only approved documentation paths.
-- [ ] Commit and push the bounded documentation slice.
-- [ ] Open PR to `main`; leave it unmerged.
+- [x] Commit and push the bounded documentation slice.
+- [x] Open PR #129 to `main`; leave it unmerged.
