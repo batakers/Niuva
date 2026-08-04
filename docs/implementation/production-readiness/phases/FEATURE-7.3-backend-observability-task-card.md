@@ -34,13 +34,13 @@ Decision dependency: `DR-014`
 
 **Planning driver:** Project Owner / backend planning driver.
 
-**Delegated DR-014 authority:** On 5 August 2026, Yanuar/Owner delegated to
+**Delegated DR-014 authority:** On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Yanuar/Owner delegated to
 Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
 decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
 Product input for customer-visible service objectives is covered by the
 delegated DR-014 decision-maker role. The concrete telemetry, SLO, capacity,
-threshold, and retention/access values remain pending. On 5 August 2026, Faiz
+threshold, and retention/access values remain pending. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz
 approved JSON Lines to stdout/stderr and no external telemetry provider at
 high level; exporter and numerical observability values remain pending. The
 approved worker values are 15-second maximum operation, 5-second

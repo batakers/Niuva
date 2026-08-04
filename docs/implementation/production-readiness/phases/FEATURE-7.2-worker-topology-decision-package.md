@@ -23,7 +23,7 @@ Related roadmap task: `PHASE-08C`; `TASK-08C-01`; `TASK-08C-02`
 
 ## Decision authority
 
-On 5 August 2026, Yanuar/Owner delegated to Faiz the Ops/SRE accountable
+On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Yanuar/Owner delegated to Faiz the Ops/SRE accountable
 role, Security/Data reviewer role, and DR-014 decision-maker responsibility for
 Commerce Transaction 1A through 30 August 2026. No backup owner exists; the
 single-person ownership risk is accepted.
@@ -34,7 +34,7 @@ retention/access policy, SLO, threshold, provider, production credential,
 migration, deployment, or go-live, and it does not replace the separate source
 implementation authorization.
 
-On 5 August 2026, Faiz approved the following high-level DR-014 direction for
+On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved the following high-level DR-014 direction for
 Commerce Transaction 1A: Option B (separate staging/production worker and
 development/test co-location only), no external queue/scheduler provider,
 at-least-once delivery, and bounded shutdown. The approved lease and worker
@@ -163,7 +163,7 @@ Select **Option B**:
 - no external queue/scheduler provider in Feature 7.2.
 
 **Approval field:** High-level Option B and the bounded lease/worker values in
-section 4 are approved by Faiz on 5 August 2026; SLO, capacity, alert,
+section 4 are approved by Faiz on 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC); SLO, capacity, alert,
 retention/access, and evidence values remain pending.
 
 ## 4. Decision 2 — Lease duration, fencing, and batch behavior
@@ -403,7 +403,7 @@ on-call, capacity, or scheduler fields.
 ## 10. High-level and lease/worker values approved; remaining values require decision
 
 The high-level direction and bounded lease/worker values below were approved
-by Faiz on 5 August 2026. SLO, capacity, alert, retention/access, and evidence
+by Faiz on 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC). SLO, capacity, alert, retention/access, and evidence
 fields still require explicit values before source implementation:
 
 1. Separate worker process for staging/production; co-located only for
@@ -478,7 +478,7 @@ The later implementation is not complete until evidence demonstrates:
 No choice below is approved by the existence of this file or branch.
 
 On 2 August 2026, the Project Owner explicitly approved the recommended
-planning direction in section 10. On 5 August 2026, Faiz approved the
+planning direction in section 10. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved the
 high-level DR-014 direction and bounded lease/worker values listed in sections
 3, 4, and 6. SLO, threshold, capacity, destination, retention/access, and
 evidence values remain open, and source implementation is not authorized.
@@ -486,11 +486,11 @@ evidence values remain open, and source implementation is not authorized.
 | Approval | Owner | Value / evidence | Date |
 | --- | --- | --- | --- |
 | Recommended package direction | Project Owner | Approved section 10 as the preferred planning direction; bounded as stated above | 2 August 2026 |
-| DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 5 August 2026 |
-| Worker topology | Faiz (delegated DR-014) | Approved Option B: separate staging/production worker; development/test co-location only; no external queue/scheduler provider | 5 August 2026 |
-| Lease/timing contract | Faiz (delegated Ops/SRE) | Approved: 15-second operation, 5-second acknowledgement, 40-second margin, 60-second lease, and 30-second renewal; concurrency 1 and claim-ahead 0 | 5 August 2026 |
-| Multi-instance/replay contract | Faiz (delegated Ops/SRE + Security/Data) | Approved at-least-once delivery, concurrency 1, and claim-ahead 0 at bounded level; exact fencing, idempotency, replay, and capacity evidence remain pending | 5 August 2026 |
-| Shutdown contract | Faiz (delegated Ops/SRE) | Approved bounded shutdown with a 30-second worker drain deadline; platform termination grace and claimed-work disposition remain pending | 5 August 2026 |
+| DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
+| Worker topology | Faiz (delegated DR-014) | Approved Option B: separate staging/production worker; development/test co-location only; no external queue/scheduler provider | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
+| Lease/timing contract | Faiz (delegated Ops/SRE) | Approved: 15-second operation, 5-second acknowledgement, 40-second margin, 60-second lease, and 30-second renewal; concurrency 1 and claim-ahead 0 | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
+| Multi-instance/replay contract | Faiz (delegated Ops/SRE + Security/Data) | Approved at-least-once delivery, concurrency 1, and claim-ahead 0 at bounded level; exact fencing, idempotency, replay, and capacity evidence remain pending | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
+| Shutdown contract | Faiz (delegated Ops/SRE) | Approved bounded shutdown with a 30-second worker drain deadline; platform termination grace and claimed-work disposition remain pending | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
 | Required/optional dependency policy | Faiz (delegated DR-014) | Pending value | Pending |
 | Scheduler ownership | Faiz (delegated Ops/SRE) | Pending value | Pending |
 | Telemetry/SLO/alert/capacity inputs | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |

@@ -36,14 +36,14 @@ approved the recommended package recorded in
 planning direction only and does not fill pending numerical fields or authorize
 source implementation.
 
-**Delegated DR-014 authority:** On 5 August 2026, Yanuar/Owner delegated to
+**Delegated DR-014 authority:** On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Yanuar/Owner delegated to
 Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
 decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
 This resolves role attribution and the bounded topology/lease/worker values.
 The remaining capacity, telemetry, SLO, threshold, retention/access, alert,
 evidence, and separate source-implementation decisions still require explicit
-values and evidence. On 5 August 2026, Faiz approved Option B,
+values and evidence. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved Option B,
 no external queue/scheduler provider, at-least-once delivery, bounded shutdown,
 15-second maximum operation, 5-second acknowledgement, 40-second margin,
 60-second lease, 30-second renewal, concurrency 1, claim-ahead 0, and a
