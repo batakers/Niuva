@@ -489,6 +489,7 @@ async def run_staff_invitation_and_access_lifecycle():
     customer = make_user(
         "customer-lifecycle", "customer-lifecycle@example.com", ["retail_customer"]
     )
+    customer["version"] = 1
     database = FakeDatabase([owner, warehouse, customer])
     server.db = database
     guard = FakeTransactionGuard(database)
@@ -547,7 +548,15 @@ async def run_staff_invitation_and_access_lifecycle():
         assert stored_invite["token_hash"] != setup_token
         assert stored_invite["roles"] == ["warehouse", "manager_approver"]
         assert stored_invite["status"] == "pending"
-        assert database.audit_events.items[-1]["reason"] == invite_payload["reason"]
+        invite_event = database.audit_events.items[-1]
+        assert invite_event["action"] == "identity.staff_invited"
+        assert invite_event["target_type"] == "staff_invitation"
+        assert invite_event["result"] == {
+            "roles": ["warehouse", "manager_approver"],
+            "status": "pending",
+        }
+        assert "reason" not in invite_event
+        assert "actor_email" not in invite_event
 
         accepted = await api.post(
             "/api/auth/staff-invitations/accept",
@@ -643,6 +652,76 @@ async def run_staff_invitation_and_access_lifecycle():
             "token_version"
         ] == 3
 
+        customer_deactivated = await owner_api.request(
+            "POST",
+            f"/api/admin/customers/{customer['id']}/deactivate",
+            json={
+                "expected_version": 1,
+                "reason": "Customer access temporarily disabled",
+            },
+        )
+        assert customer_deactivated.status_code == 200, customer_deactivated.text
+        assert customer_deactivated.json()["status"] == "disabled"
+
+        customer_reactivated = await owner_api.request(
+            "POST",
+            f"/api/admin/customers/{customer['id']}/reactivate",
+            json={
+                "expected_version": 2,
+                "reason": "Customer access restored",
+            },
+        )
+        assert customer_reactivated.status_code == 200, customer_reactivated.text
+        assert customer_reactivated.json()["status"] == "active"
+
+    expected_actions = [
+        "identity.staff_invited",
+        "identity.staff_invitation_accepted",
+        "identity.staff_roles_updated",
+        "identity.staff_deactivated",
+        "identity.staff_reactivated",
+        "identity.customer_disabled",
+        "identity.customer_active",
+    ]
+    expected_reason_codes = [
+        "staff_invitation_created",
+        "staff_invitation_accepted",
+        "staff_roles_updated",
+        "staff_access_deactivated",
+        "staff_access_reactivated",
+        "customer_access_disabled",
+        "customer_access_reactivated",
+    ]
+    assert [
+        event["action"] for event in database.audit_events.items
+    ] == expected_actions
+    assert [
+        event["reason_code"] for event in database.audit_events.items
+    ] == expected_reason_codes
+    assert all(
+        set(event)
+        == {
+            "id",
+            "actor_user_id",
+            "action",
+            "target_type",
+            "target_id",
+            "previous",
+            "result",
+            "reason_code",
+            "policy_version",
+            "created_at",
+        }
+        for event in database.audit_events.items
+    )
+    assert all(
+        "actor_email" not in event
+        and "reason" not in event
+        and "before" not in event
+        and "after" not in event
+        for event in database.audit_events.items
+    )
+
     session_updates = [
         options
         for operation, options in database.admin_sessions.operations
@@ -660,6 +739,8 @@ async def run_staff_invitation_and_access_lifecycle():
         "identity.deactivate_staff",
         "identity.deactivate_staff",
         "identity.reactivate_staff",
+        "identity.customer_disabled",
+        "identity.customer_active",
     ]
 
 
