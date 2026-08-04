@@ -1,6 +1,6 @@
 # Feature 4.2 — B2B Quote Lifecycle Task Card
 
-Status: **bounded source complete — PR #100 CI green, review pending**
+Status: **bounded source complete — PR #100 merged as `a2b7be0`; operational gates remain separate**
 
 Branch: `fix/backend-quote-lifecycle`
 
@@ -99,11 +99,11 @@ Executed from the isolated task worktree against the selected branch source:
   `@testing-library/jest-dom` because dependencies are intentionally not
   installed in worktrees.
 - Critical backend lint (`E9,F63,F7,F82`) and `git diff --check`: passed.
-- Local Gitleaks was unavailable; the repository secret-scan CI gate remains
-  authoritative and passed on PR #100 together with backend, frontend, and
-  transaction-tests.
-- CodeRabbit reported a rate limit and did not provide substantive review;
-  independent review remains required before merge.
+- Local Gitleaks was unavailable; the repository secret-scan, backend,
+  frontend, and transaction-tests checks passed on merged PR #100.
+- CodeRabbit reported a rate limit and did not provide substantive review. A
+  separate independent-review record is not attached to this packet; that is a
+  residual evidence gap, not an outstanding pre-merge statement.
 
 These are local source and disposable replica-set results. They do not prove a
 customer Organization Portal contract, migration, deployment, production

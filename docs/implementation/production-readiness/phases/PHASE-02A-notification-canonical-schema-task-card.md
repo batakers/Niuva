@@ -1,7 +1,7 @@
 # PHASE-02A — Notification Canonical Schema Task Card
 
-Status: **bounded source and reconciliation review complete — current-head CI
-and merge pending; operational activation excluded**
+Status: **bounded source complete — PR #103 merged as `146c945`; operational
+activation excluded**
 Selected baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, 2 August 2026, Asia/Jakarta)
 
@@ -81,7 +81,7 @@ readability for unambiguous historical records and refusing unsafe projections.
 - Full backend regression suite, compile, formatter check, dependency check,
   `git diff --check`, and final security/diff review.
 - Commit, push, PR reconciliation, and merge only when all required local and
-  current-head CI gates pass.
+  current-head CI gates passed before PR #103 merged.
 
 ## Remaining risks
 

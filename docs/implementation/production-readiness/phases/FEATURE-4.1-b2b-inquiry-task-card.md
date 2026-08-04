@@ -1,6 +1,6 @@
 # Feature 4.1 — B2B Inquiry and RFQ Task Card
 
-Status: **bounded source complete — commit/PR delivery pending**
+Status: **bounded source complete — PR #98 merged as `d080480`; operational gates remain separate**
 
 Branch: `audit/backend-b2b-inquiry`
 
@@ -98,8 +98,8 @@ Executed from the isolated task worktree against the selected branch source:
 - Critical backend lint (`E9,F63,F7,F82`), backend compile, and
   `git diff --check`: passed.
 - Local Gitleaks was not available because this machine has neither the
-  `gitleaks` binary nor Docker. The repository secret-scan CI gate remains
-  required on the pull request.
+  `gitleaks` binary nor Docker. The repository `secret-scan`, backend,
+  frontend, and transaction-tests checks passed on merged PR #98.
 
 These are local source and disposable replica-set results. They do not prove a
 deployed proxy topology, production limiter policy, provider activation,

@@ -1,6 +1,6 @@
 # Feature 5.2 — Portfolio Lifecycle Task Card
 
-Status: **bounded source complete — PR #101 open, review pending**
+Status: **bounded source complete — PR #101 merged as `aff3d11`; operational gates remain separate**
 
 Branch: `fix/backend-portfolio-lifecycle`
 
@@ -102,4 +102,5 @@ production-readiness, and go-live remain unauthorized.
 
 The replica-set result is disposable local evidence. It is not migration,
 shared-environment, deployment, production-readiness, release, or go-live
-evidence. Independent review remains pending.
+evidence. Independent-review evidence is not recorded in this packet; the
+merged PR does not establish independent review or production readiness.

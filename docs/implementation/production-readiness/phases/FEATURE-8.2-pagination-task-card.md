@@ -1,7 +1,7 @@
 # Task Card — Feature 8.2 Pagination and Stable Ordering
 
-Status: **reconciled with current main — local review and verification passed;
-exact-head CI and merge pending**
+Status: **bounded source complete — PR #110 merged as `ad800d9`; operational
+and production gates remain separate**
 
 ## Identity and authorization
 
@@ -59,8 +59,10 @@ Approved rules:
 - Feature 8.1 API envelope/OpenAPI contract from PR #109.
 
 PR #106 and PR #109 are merged. Feature 8.2 has been reconciled and locally
-revalidated against their resulting `main`; exact-head review and mandatory CI
-remain required before merge.
+revalidated against their resulting `main`; PR #110 was merged as `ad800d9`
+after its backend, frontend, secret-scan, transaction-tests, and CodeRabbit
+checks passed. The prior exact-head review and mandatory-CI wording is
+historical merge-gate evidence, not an outstanding requirement.
 
 ## In scope
 

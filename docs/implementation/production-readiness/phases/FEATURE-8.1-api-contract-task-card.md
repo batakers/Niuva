@@ -1,7 +1,7 @@
 # Task Card — Feature 8.1 API Contract and OpenAPI
 
-Status: **reconciled review and local verification complete — exact-head PR
-CI and merge pending**
+Status: **bounded source complete — PR #109 merged as `770a4c3`; operational
+and production gates remain separate**
 
 ## Identity and baseline
 
@@ -145,9 +145,10 @@ remaining review/CI/merge requirements.
 - No migration, database write, provider operation, deployment, frontend
   change, or production verification was performed.
 
-PR CI and review remain separate gates. The transaction-test workflow will run
-against its isolated replica set after the branch is pushed. This stacked
-branch must not merge before PR #106.
+PR #106 was merged before PR #109. The backend, frontend, secret-scan, and
+transaction-tests checks passed on merged PR #109 as `770a4c3`. The prior
+transaction-test-before-merge and stacked-branch wording is historical gate
+evidence, not an outstanding requirement.
 
 ## Reconciliation evidence — 3 August 2026
 
@@ -166,7 +167,7 @@ branch must not merge before PR #106.
 - Current-head critical Flake8, expanded focused MyPy (`18` source files),
   Black/isort (`32` files), compileall/py_compile, `pip check`, Markdown, and
   diff checks passed. `pip-audit` was not available in the local environment
-  and remains an exact-head CI gate.
+  and passed before PR #109 merged.
 - No database mutation, migration/index execution, provider operation,
   shared/staging/production probe, deployment, production-readiness
   declaration, or go-live occurred.

@@ -1,7 +1,7 @@
 # PHASE-02B — Migration Hardening Plan
 
-Status: **planning packet reviewed — current-head CI and merge pending;
-execution remains blocked**
+Status: **planning packet merged through PR #112 as `a98463a` — execution
+remains blocked**
 
 Phase / tasks: `PHASE-02B` / `TASK-02B-01`, `TASK-02B-02`
 

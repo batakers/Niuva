@@ -1,7 +1,7 @@
 # Task Card — Feature 8.3 Compatibility Endpoint Governance
 
-Status: **planning complete — reconciliation review passed; current-head CI and
-merge pending**
+Status: **planning complete — PR #111 merged as `b16a30b`; runtime retirement
+and compatibility changes remain separately gated**
 
 ## Identity and authorization
 
@@ -58,8 +58,8 @@ sunset, tombstone, or retirement implementation.
 - Define sunset prerequisites without inventing a sunset date.
 - Define rollback-compatibility evidence and stop conditions for any future
   source-changing task.
-- Record PR #106, PR #109, and PR #110 as pending contract overlays, not
-  current-main behavior.
+- Record PR #106, PR #109, and PR #110 as merged current-main contract
+  overlays, not unmerged candidates.
 - Update consolidated readiness tracking with the bounded planning result.
 
 ## Explicit exclusions
@@ -118,7 +118,7 @@ No backend or frontend runtime file is owned by this task.
 - Deprecated aliases name a successor when one is evidenced.
 - Every sunset candidate has prerequisites, owner decisions, monitoring,
   rollback evidence, and a stop condition; no date is invented.
-- Pending PR #106/#109/#110 overlays are recorded. Merged PR #101 tracker
+- Merged PR #106/#109/#110 overlays are recorded. Merged PR #101 tracker
   changes are reconciled without altering the endpoint inventory.
 - `git diff --check`, link/path checks, route-to-register reconciliation, and
   documentation consistency checks pass.

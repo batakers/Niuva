@@ -1,7 +1,7 @@
 # PHASE-02B Migration Hardening Task Card
 
-Status: **planning and current-source expert review complete; current-head CI
-and merge pending; migration execution prohibited**
+Status: **planning packet merged through PR #112 as `a98463a`; migration
+execution prohibited**
 
 | Field | Task brief |
 | --- | --- |

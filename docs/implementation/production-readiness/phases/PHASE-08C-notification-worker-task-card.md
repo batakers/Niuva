@@ -1,7 +1,7 @@
 # PHASE-08C — Notification Worker Fault-Hardening Task Card
 
-Status: **bounded source and reconciliation review complete — current-head CI
-and merge pending; staging remains blocked**
+Status: **bounded source complete — PR #104 merged as `9ded3e8`; staging
+remains blocked**
 Selected dependency: `146c945831864857dff8c9448deafad96e346f2d`
 (PR #103 merged, canonical notification schema)
 
