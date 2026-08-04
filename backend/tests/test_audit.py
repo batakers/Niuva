@@ -1,13 +1,13 @@
 import asyncio
 
 import pytest
-from bson import ObjectId
-
 from audit import (
     AuditValidationError,
     append_audit_event,
     append_identity_audit_event,
+    append_identity_governance_event,
 )
+from bson import ObjectId
 
 
 class AuditCollection:
@@ -194,6 +194,142 @@ def test_identity_audit_event_stores_only_allowlisted_access_projection_and_forw
     assert "before" not in event and "after" not in event and "reason" not in event
     assert db.audit_events.items == [event]
     assert db.audit_events.insert_options == [{"session": session}]
+
+
+@pytest.mark.parametrize(
+    ("action", "target_type", "reason_code"),
+    [
+        (
+            "identity.staff_invited",
+            "staff_invitation",
+            "staff_invitation_created",
+        ),
+        (
+            "identity.staff_invitation_accepted",
+            "user",
+            "staff_invitation_accepted",
+        ),
+        ("identity.staff_roles_updated", "user", "staff_roles_updated"),
+        ("identity.staff_deactivated", "user", "staff_access_deactivated"),
+        ("identity.staff_reactivated", "user", "staff_access_reactivated"),
+        ("identity.customer_disabled", "user", "customer_access_disabled"),
+        ("identity.customer_active", "user", "customer_access_reactivated"),
+        (
+            "identity.granular_role_migrated",
+            "user",
+            "policy_migration_v1",
+        ),
+        (
+            "identity.granular_role_migration_rolled_back",
+            "user",
+            "policy_migration_v1",
+        ),
+    ],
+)
+def test_identity_governance_adapter_uses_strict_contract(
+    action, target_type, reason_code
+):
+    db = AuditDatabase()
+    invitation = target_type == "staff_invitation"
+    target_id = "invitation-1" if invitation else "user-2"
+    before = (
+        None
+        if invitation
+        else {
+            "id": target_id,
+            "email": "private-before@example.com",
+            "name": "Private Before",
+            "roles": ["retail_customer"],
+            "access_state": "approved",
+            "status": "active",
+            "password_hash": "never-audit",
+        }
+    )
+    after = {
+        "id": target_id,
+        "email": "private-after@example.com",
+        "name": "Private After",
+        "roles": ["warehouse"],
+        "access_state": "approved",
+        "status": "pending" if invitation else "active",
+        "token_hash": "never-audit",
+    }
+    expected_previous = (
+        None
+        if invitation
+        else {
+            "roles": ["retail_customer"],
+            "access_state": "approved",
+            "status": "active",
+        }
+    )
+    expected_result = (
+        {"roles": ["warehouse"], "status": "pending"}
+        if invitation
+        else {
+            "roles": ["warehouse"],
+            "access_state": "approved",
+            "status": "active",
+        }
+    )
+
+    event = asyncio.run(
+        append_identity_governance_event(
+            db,
+            actor={"id": "owner-1", "email": "owner@example.com"},
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            before=before,
+            after=after,
+            reason="Free text must not be persisted private@example.com",
+        )
+    )
+
+    assert set(event) == {
+        "id",
+        "actor_user_id",
+        "action",
+        "target_type",
+        "target_id",
+        "previous",
+        "result",
+        "reason_code",
+        "policy_version",
+        "created_at",
+    }
+    assert event["actor_user_id"] == "owner-1"
+    assert event["action"] == action
+    assert event["target_type"] == target_type
+    assert event["target_id"] == target_id
+    assert event["previous"] == expected_previous
+    assert event["result"] == expected_result
+    assert event["reason_code"] == reason_code
+    assert event["policy_version"] == "2026-07-26-v2"
+    assert "actor_email" not in event
+    assert "before" not in event and "after" not in event and "reason" not in event
+    assert "private@example.com" not in repr(event)
+    assert db.audit_events.items == [event]
+
+
+def test_identity_governance_adapter_rejects_noncanonical_runtime_roles():
+    db = AuditDatabase()
+
+    with pytest.raises(AuditValidationError, match="canonical"):
+        asyncio.run(
+            append_identity_governance_event(
+                db,
+                actor={"id": "owner-1", "email": "owner@example.com"},
+                action="identity.staff_roles_updated",
+                target_type="user",
+                target_id="user-2",
+                before={"roles": ["warehouse"], "status": "active"},
+                after={"roles": ["operations"], "status": "active"},
+                reason="Invalid legacy role must fail closed",
+            )
+        )
+
+    assert db.audit_events.items == []
 
 
 @pytest.mark.parametrize(

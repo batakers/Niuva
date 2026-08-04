@@ -149,6 +149,30 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
     assert by_id["legacy-granular-marker"]["roles"] == []
     assert by_id["legacy-granular-marker"]["access_state"] == "access_review_required"
     assert len(database.audit_events.items) == 4
+    assert all(
+        set(event)
+        == {
+            "id",
+            "actor_user_id",
+            "action",
+            "target_type",
+            "target_id",
+            "previous",
+            "result",
+            "reason_code",
+            "policy_version",
+            "created_at",
+        }
+        for event in database.audit_events.items
+    )
+    assert all(
+        event["reason_code"] == "policy_migration_v1"
+        for event in database.audit_events.items
+    )
+    assert all(
+        "reason" not in event and "actor_email" not in event
+        for event in database.audit_events.items
+    )
 
     backup = json.loads(backup_path.read_text(encoding="utf-8"))
     assert backup["migration"] == "006_granular_role_policy"
@@ -191,6 +215,27 @@ def test_apply_requires_backup_is_idempotent_and_rollback_restores_fields(tmp_pa
             assert restored[user_id].get(field) == original_by_id[user_id].get(field)
     assert canonical_roles(restored["aggregate-operations"]) == ()
     assert canonical_roles(restored["bootstrap-owner"]) == ("super_admin",)
+    rollback_events = database.audit_events.items[4:]
+    assert rollback_events
+    assert all(
+        set(event)
+        == {
+            "id",
+            "actor_user_id",
+            "action",
+            "target_type",
+            "target_id",
+            "previous",
+            "result",
+            "reason_code",
+            "policy_version",
+            "created_at",
+        }
+        for event in rollback_events
+    )
+    assert all(
+        event["reason_code"] == "policy_migration_v1" for event in rollback_events
+    )
 
 
 def test_apply_requires_one_explicit_eligible_bootstrap_owner(tmp_path):
