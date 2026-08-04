@@ -1,13 +1,14 @@
 # Task Card — Feature 7.2 Worker Topology
 
-Status: **Project Owner approved recommendation / Operations-SRE decision-blocked — source implementation not authorized**
+Status: **High-level DR-014 direction approved / numerical values pending — source implementation not authorized**
 
 Date: 2 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-worker-topology`
 
 PR: `#107` merged as `fe1d8a0`; CI passed; reconciliation is complete and
-source implementation remains Operations/SRE/Security decision-blocked.
+Faiz's DR-014 decision authority and high-level direction are recorded, while
+source implementation remains `decision_blocked`.
 
 Worktree: `/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-worker-topology`
 
@@ -31,17 +32,24 @@ Decision dependency: `DR-014`
 **Project Owner approval:** On 2 August 2026, the Project Owner explicitly
 approved the recommended package recorded in
 `FEATURE-7.2-worker-topology-decision-package.md` section 10. This approves the
-planning direction only. It does not identify the Project Owner as an
-Operations/SRE or Security approver, fill pending numerical/ownership fields,
-or authorize source implementation.
+planning direction only and does not fill pending numerical fields or authorize
+source implementation.
 
-**Required decision approvers:** Operations/SRE and Security owners. The
-accountable people, review date, and approval evidence are pending.
+**Delegated DR-014 authority:** On 5 August 2026, Yanuar/Owner delegated to
+Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
+decision-maker responsibility for Commerce Transaction 1A through 30 August
+2026. No backup owner exists; the single-person ownership risk is accepted.
+This resolves role attribution only. The topology, timing, capacity,
+telemetry, SLO, threshold, and separate source-implementation decisions still
+require explicit values and evidence. On 5 August 2026, Faiz approved Option B,
+no external queue/scheduler provider, at-least-once delivery, and bounded
+shutdown at high level; numerical values remain pending.
 
 **Existing bounded owner:** `DEC-DATA-003` names Faiz as the temporary owner
-for general-notification backlog and delivery-exhaustion alerts only. That
-assignment does not make Faiz the approved scheduler, telemetry, SLA, on-call,
-or topology owner.
+for general-notification backlog and delivery-exhaustion alerts. The 5 August
+delegation additionally covers the broader DR-014 scope above; it does not
+authorize provider activation, production credentials, migration, deployment,
+or go-live.
 
 ## Objective
 
