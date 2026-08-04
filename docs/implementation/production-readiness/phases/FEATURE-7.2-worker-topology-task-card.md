@@ -1,14 +1,15 @@
 # Task Card — Feature 7.2 Worker Topology
 
-Status: **High-level DR-014 direction approved / numerical values pending — source implementation not authorized**
+Status: **High-level DR-014 direction and bounded lease/worker values approved / remaining values pending — source implementation not authorized**
 
 Date: 2 August 2026 (Asia/Jakarta)
 
 Branch: `plan/backend-worker-topology`
 
 PR: `#107` merged as `fe1d8a0`; CI passed; reconciliation is complete and
-Faiz's DR-014 decision authority and high-level direction are recorded, while
-source implementation remains `decision_blocked`.
+Faiz's DR-014 decision authority, high-level direction, and bounded lease/
+worker values are recorded, while source implementation remains
+`decision_blocked`.
 
 Worktree: `/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-worker-topology`
 
@@ -35,15 +36,19 @@ approved the recommended package recorded in
 planning direction only and does not fill pending numerical fields or authorize
 source implementation.
 
-**Delegated DR-014 authority:** On 5 August 2026, Yanuar/Owner delegated to
+**Delegated DR-014 authority:** On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Yanuar/Owner delegated to
 Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
 decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
-This resolves role attribution only. The topology, timing, capacity,
-telemetry, SLO, threshold, and separate source-implementation decisions still
-require explicit values and evidence. On 5 August 2026, Faiz approved Option B,
-no external queue/scheduler provider, at-least-once delivery, and bounded
-shutdown at high level; numerical values remain pending.
+This resolves role attribution and the bounded topology/lease/worker values.
+The remaining capacity, telemetry, SLO, threshold, retention/access, alert,
+evidence, and separate source-implementation decisions still require explicit
+values and evidence. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved Option B,
+no external queue/scheduler provider, at-least-once delivery, bounded shutdown,
+15-second maximum operation, 5-second acknowledgement, 40-second margin,
+60-second lease, 30-second renewal, concurrency 1, claim-ahead 0, and a
+30-second worker drain. SLO, capacity, alert, retention/access, and evidence
+values remain pending.
 
 **Existing bounded owner:** `DEC-DATA-003` names Faiz as the temporary owner
 for general-notification backlog and delivery-exhaustion alerts. The 5 August
@@ -99,7 +104,9 @@ does not answer the production topology decision:
 The source currently claims up to 50 entries before sequential delivery. A
 later entry can therefore consume most or all of its lease while waiting for
 earlier entries. The decision package must prohibit interpreting the existing
-60-second value or batch size as approved production policy.
+hard-coded 60-second value or batch size as production evidence; the approved
+60-second value is a bounded decision input and still requires implementation
+and verification before any production claim.
 
 The separate `fix/backend-notification-worker` branch exists and is ahead of
 this baseline. It is not silently incorporated into this plan. Any later
