@@ -119,6 +119,26 @@ class FakeRateLimitCollection:
             item[field] = item.get(field, 0) + amount
         return types.SimpleNamespace(matched_count=1)
 
+    async def find_one_and_update(
+        self,
+        query,
+        update,
+        upsert=False,
+        return_document=False,
+        **_options,
+    ):
+        key = query["_id"]
+        item = self.items.get(key)
+        before = dict(item) if item is not None else None
+        if item is None:
+            if not upsert:
+                return None
+            item = {"_id": key, **update.get("$setOnInsert", {})}
+            self.items[key] = item
+        for field, amount in update.get("$inc", {}).items():
+            item[field] = item.get(field, 0) + amount
+        return dict(item) if return_document else before
+
     async def find_one(self, query, projection=None):
         item = self.items.get(query["_id"])
         return dict(item) if item else None

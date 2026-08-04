@@ -304,6 +304,37 @@ def test_recovery_request_contract_origin_and_policy_routes(monkeypatch, tmp_pat
     asyncio.run(scenario())
 
 
+def test_recovery_resend_enforces_the_approved_60_second_cooldown(
+    monkeypatch, tmp_path
+):
+    async def scenario():
+        customer = build_customer()
+        with configured_runtime(monkeypatch, tmp_path, [customer]) as (
+            database,
+            provider,
+        ):
+            transport = httpx.ASGITransport(app=server.app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="https://testserver"
+            ) as api:
+                first = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+                second = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+
+                assert first.status_code == 200
+                assert second.status_code == 429
+                assert int(second.headers["Retry-After"]) >= 1
+                assert len(database.password_reset_tokens.items) == 1
+                assert len(provider.messages) == 1
+
+    asyncio.run(scenario())
+
+
 def test_reset_route_revokes_old_session_and_keeps_auth_email_out_of_general_feed(
     monkeypatch, tmp_path
 ):

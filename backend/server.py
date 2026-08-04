@@ -1528,11 +1528,14 @@ async def me(user: dict = Depends(get_current_user)):
 @api.post("/auth/forgot-password")
 async def forgot_password(req: ForgotPasswordReq, request: Request):
     client_host = client_ip(request)
-    await rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
-    await rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
+    email = req.email.lower()
+    if _public_site_origin() is not None:
+        await rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
+        await rate_limit(f"forgot_password_resend:{email}", limit=1, window=60)
+        await rate_limit(f"forgot_password_email:{email}", limit=3, window=900)
 
     result = await get_recovery_module().request_password_reset(
-        req.email.lower(),
+        email,
         {"client_ip": client_host},
     )
     await _emit_auth_security_event(

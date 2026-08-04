@@ -5,15 +5,42 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
+from pymongo import ReturnDocument
 
 WINDOW_SECONDS = 15 * 60
 ACCOUNT_FAILURE_LIMIT = 5
 PEER_FAILURE_LIMIT = 20
 GENERIC_LIMIT_MESSAGE = "Terlalu banyak percobaan login. Coba lagi nanti."
 logger = logging.getLogger("niuva.auth_rate_limit")
+
+
+async def _increment_counter(
+    collection,
+    *,
+    key: str,
+    scope: str,
+    bucket: int,
+    now: datetime,
+    expires_at: datetime,
+) -> dict:
+    """Increment and return a limiter document as one MongoDB operation."""
+    return await collection.find_one_and_update(
+        {"_id": key},
+        {
+            "$inc": {"count": 1},
+            "$setOnInsert": {
+                "scope": scope,
+                "window": bucket,
+                "created_at": now,
+                "expires_at": expires_at,
+            },
+        },
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
 
 
 class LoginRateLimiter:
@@ -77,25 +104,23 @@ class LoginRateLimiter:
         now = datetime.now(timezone.utc)
         bucket, expires_at = self._window(now)
         limits = (
-            (self._key("account", account, bucket), "account", ACCOUNT_FAILURE_LIMIT),
+            (
+                self._key("account", account, bucket),
+                "account",
+                ACCOUNT_FAILURE_LIMIT,
+            ),
             (self._key("peer", peer_ip, bucket), "peer", PEER_FAILURE_LIMIT),
         )
         exhausted = False
         for key, scope, limit in limits:
-            await self.collection.update_one(
-                {"_id": key},
-                {
-                    "$inc": {"count": 1},
-                    "$setOnInsert": {
-                        "scope": scope,
-                        "window": bucket,
-                        "created_at": now,
-                        "expires_at": expires_at,
-                    },
-                },
-                upsert=True,
+            record = await _increment_counter(
+                self.collection,
+                key=key,
+                scope=scope,
+                bucket=bucket,
+                now=now,
+                expires_at=expires_at,
             )
-            record = await self.collection.find_one({"_id": key}, {"count": 1})
             exhausted = exhausted or bool(
                 record and int(record.get("count", 0)) >= limit
             )
@@ -105,7 +130,9 @@ class LoginRateLimiter:
     async def clear_account(self, *, account: str) -> None:
         now = datetime.now(timezone.utc)
         bucket, _expires_at = self._window(now)
-        await self.collection.delete_one({"_id": self._key("account", account, bucket)})
+        await self.collection.delete_one(
+            {"_id": self._key("account", account, bucket)}
+        )
 
 
 class PublicRateLimiter:
@@ -138,20 +165,14 @@ class PublicRateLimiter:
             tz=timezone.utc,
         )
         key = f"{scope}:{self._digest(identifier)}:{bucket}"
-        await self.collection.update_one(
-            {"_id": key},
-            {
-                "$inc": {"count": 1},
-                "$setOnInsert": {
-                    "scope": scope,
-                    "window": bucket,
-                    "created_at": now,
-                    "expires_at": expires_at,
-                },
-            },
-            upsert=True,
+        record = await _increment_counter(
+            self.collection,
+            key=key,
+            scope=scope,
+            bucket=bucket,
+            now=now,
+            expires_at=expires_at,
         )
-        record = await self.collection.find_one({"_id": key}, {"count": 1})
         if record and int(record.get("count", 0)) > limit:
             retry_after = max(1, int((expires_at - now).total_seconds()))
             logger.warning(

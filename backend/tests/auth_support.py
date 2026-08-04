@@ -82,6 +82,35 @@ class AuthCollection:
             upserted_id=None,
         )
 
+    async def find_one_and_update(
+        self,
+        query,
+        update,
+        upsert=False,
+        return_document=False,
+        **_options,
+    ):
+        for item in self.items:
+            if self._matches(item, query):
+                before = dict(item)
+                item.update(update.get("$set", {}))
+                for key, amount in update.get("$inc", {}).items():
+                    item[key] = item.get(key, 0) + amount
+                return dict(item) if return_document else before
+        if not upsert:
+            return None
+        item = {
+            key: value
+            for key, value in query.items()
+            if not isinstance(value, dict)
+        }
+        item.update(update.get("$setOnInsert", {}))
+        item.update(update.get("$set", {}))
+        for key, amount in update.get("$inc", {}).items():
+            item[key] = item.get(key, 0) + amount
+        self.items.append(item)
+        return dict(item) if return_document else None
+
     async def update_many(self, query, update, **_options):
         matched = 0
         for item in self.items:
