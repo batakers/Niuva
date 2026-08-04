@@ -215,23 +215,24 @@ but may not restore legacy Order creation/mutation, manual transfer,
 payment-proof, provider, upload, checkout, or fulfilment capability. No rollback
 may depend on deleting or rewriting historical records.
 
-## Pending-PR overlay
+## Merged-PR overlay
 
-This register describes current `origin/main`, not unmerged candidates:
+This register describes current `origin/main`; the following contract overlays
+are already merged and are not unmerged candidates:
 
-- PR #106 changes readiness implementation/evidence but does not retire
-  `GET /api/health`.
-- PR #109 standardizes API errors/OpenAPI while retaining the compatibility
-  `detail` field; it does not add or remove compatibility routes.
-- PR #110 changes five active Admin/B2B list response contracts and their
-  current consumers. It does not make those active routes legacy or retire
-  them.
+- PR #106 (`5eaf14c`) changes readiness implementation/evidence but does not
+  retire `GET /api/health`.
+- PR #109 (`770a4c3`) standardizes API errors/OpenAPI while retaining the
+  compatibility `detail` field; it does not add or remove compatibility routes.
+- PR #110 (`ad800d9`) changes five active Admin/B2B list response contracts and
+  their current consumers. It does not make those active routes legacy or
+  retire them.
 
-All three PRs were open with green checks when this register was prepared. The
-inventory must be refreshed after their eventual merge or closure. PR #101
-merged as `aff3d117`; its tracker changes were reconciled, and a fresh OpenAPI
-check confirmed that the 151-operation inventory and 21 candidate dispositions
-did not change.
+The three merged overlays are recorded against the current baseline. The
+inventory must be refreshed only if a later source or contract change affects
+them. PR #101 merged as `aff3d117`; its tracker changes were reconciled, and a
+fresh OpenAPI check confirmed that the 151-operation inventory and 21 candidate
+dispositions did not change.
 
 ## Decision queue and exact next gates
 
