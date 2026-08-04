@@ -1,6 +1,6 @@
 # Feature 4.2 — B2B Quote Lifecycle Task Card
 
-Status: **bounded source complete — PR #100 CI green, review pending**
+Status: **bounded source complete — PR #100 merged as `a2b7be0`; operational gates remain separate**
 
 Branch: `fix/backend-quote-lifecycle`
 

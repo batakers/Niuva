@@ -1,7 +1,7 @@
 # PHASE-02A — Notification Schema Report Hardening Task Card
 
-Status: **bounded source and reconciliation review complete — current-head CI
-and merge pending; representative execution gated**
+Status: **bounded source complete — PR #102 merged as `e5376b9`; representative
+execution remains gated**
 Selected baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026, Asia/Jakarta)
 
@@ -86,4 +86,4 @@ stop the report; migration and production status remain open.
   backup/restore, deployment, and browser checks.
 - Original Git delivery state: local uncommitted work only. PR #102 was later
   opened, and the Project Owner separately authorized its reconciliation and
-  merge on 3 August 2026; current-head CI remains the merge gate.
+  merge on 3 August 2026; representative execution remains a separate gate.

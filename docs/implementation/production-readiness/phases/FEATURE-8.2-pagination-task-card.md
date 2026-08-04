@@ -1,7 +1,7 @@
 # Task Card — Feature 8.2 Pagination and Stable Ordering
 
-Status: **reconciled with current main — local review and verification passed;
-exact-head CI and merge pending**
+Status: **bounded source complete — PR #110 merged as `ad800d9`; operational
+and production gates remain separate**
 
 ## Identity and authorization
 

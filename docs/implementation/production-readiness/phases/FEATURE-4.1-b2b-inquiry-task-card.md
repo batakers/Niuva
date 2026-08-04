@@ -1,6 +1,6 @@
 # Feature 4.1 — B2B Inquiry and RFQ Task Card
 
-Status: **bounded source complete — commit/PR delivery pending**
+Status: **bounded source complete — PR #98 merged as `d080480`; operational gates remain separate**
 
 Branch: `audit/backend-b2b-inquiry`
 

@@ -1,6 +1,6 @@
 # PHASE-02A — Notification Retention Cleanup Task Card
 
-Status: **PR #105 bounded source candidate validated — execution blocked**
+Status: **PR #105 merged as `6eb380f` — data-bearing execution remains blocked**
 Selected dependencies: PR #103 (`146c945`, canonical notification schema) and
 PR #104 (`9ded3e8`, notification worker)
 Reconciliation baseline: `9ded3e8fb84f2897dad706f5787c38592ee5f28d`
@@ -95,7 +95,8 @@ without migrating, backfilling, scheduling, or deleting real data.
 - Final privacy, schema-v1, transaction, deletion-query, and history-exclusion
   review closed truthful partial/exclusion dispositions and strict canonical
   field-set handling.
-- Current-head CI must pass before the authorized exact-head merge.
+- Current-head CI passed before the authorized PR #105 merge; data-bearing
+  cleanup execution remains separately blocked.
 
 ## Remaining risks
 

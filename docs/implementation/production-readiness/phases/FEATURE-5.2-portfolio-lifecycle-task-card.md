@@ -1,6 +1,6 @@
 # Feature 5.2 — Portfolio Lifecycle Task Card
 
-Status: **bounded source complete — PR #101 open, review pending**
+Status: **bounded source complete — PR #101 merged as `aff3d11`; operational gates remain separate**
 
 Branch: `fix/backend-portfolio-lifecycle`
 

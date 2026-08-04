@@ -1,7 +1,7 @@
 # Task Card — Feature 8.3 Compatibility Endpoint Governance
 
-Status: **planning complete — reconciliation review passed; current-head CI and
-merge pending**
+Status: **planning complete — PR #111 merged as `b16a30b`; runtime retirement
+and compatibility changes remain separately gated**
 
 ## Identity and authorization
 

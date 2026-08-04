@@ -1,6 +1,6 @@
 # PHASE-08A — Liveness and Readiness Health Task Card
 
-Status: **PR #106 bounded source candidate validated — environment evidence pending**
+Status: **PR #106 merged as `5eaf14c` — environment evidence pending**
 Branch / worktree: `fix/backend-readiness-health` /
 `C:\tmp\niuva-pr106-review`
 Reconciliation baseline: `6eb380f4269918be986ee4f0d2bcad86c4ff80d9`

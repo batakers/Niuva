@@ -1,7 +1,7 @@
 # Task Card — Feature 8.1 API Contract and OpenAPI
 
-Status: **reconciled review and local verification complete — exact-head PR
-CI and merge pending**
+Status: **bounded source complete — PR #109 merged as `770a4c3`; operational
+and production gates remain separate**
 
 ## Identity and baseline
 
@@ -166,7 +166,7 @@ branch must not merge before PR #106.
 - Current-head critical Flake8, expanded focused MyPy (`18` source files),
   Black/isort (`32` files), compileall/py_compile, `pip check`, Markdown, and
   diff checks passed. `pip-audit` was not available in the local environment
-  and remains an exact-head CI gate.
+  and passed before PR #109 merged.
 - No database mutation, migration/index execution, provider operation,
   shared/staging/production probe, deployment, production-readiness
   declaration, or go-live occurred.
