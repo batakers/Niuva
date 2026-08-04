@@ -51,7 +51,7 @@ const PUBLIC_ROUTE_META = {
   "/privacy": {
     title: "Privacy Policy - PT Niuva Inovasi Utama",
     description:
-      "Kebijakan privasi Niuva menjelaskan data yang dikumpulkan melalui form contact, pendaftaran magang, dan pemesanan, serta hak pengguna terkait data tersebut.",
+      "Kebijakan privasi Niuva menjelaskan data yang dikumpulkan melalui form contact dan pemesanan, serta hak pengguna terkait data tersebut.",
     canonical: "/privacy",
   },
   "/faq": {
