@@ -1,6 +1,6 @@
 # Feature 7.2 — Worker Topology Decision Package
 
-Status: **High-level DR-014 direction approved by Faiz — numerical values required before source implementation**
+Status: **High-level DR-014 direction and bounded lease/worker values approved by Faiz — remaining values required before source implementation**
 
 Date: 2 August 2026 (Asia/Jakarta)
 
@@ -37,8 +37,16 @@ implementation authorization.
 On 5 August 2026, Faiz approved the following high-level DR-014 direction for
 Commerce Transaction 1A: Option B (separate staging/production worker and
 development/test co-location only), no external queue/scheduler provider,
-at-least-once delivery, and bounded shutdown. Numerical lease, concurrency,
-capacity, alert, and SLO values remain pending.
+at-least-once delivery, and bounded shutdown. The approved lease and worker
+values are listed below; SLO, capacity, alert, and evidence values remain
+pending.
+
+On the same date, Faiz approved the bounded lease/worker values: 15-second
+maximum delivery operation time, 5-second result-acknowledgement budget,
+40-second clock/network margin, 60-second lease duration, 30-second renewal
+threshold, maximum active concurrency of 1 per worker, maximum claim-ahead of
+0, and a 30-second worker drain deadline. These values are decision inputs for
+the bounded worker contract; they do not establish production readiness.
 
 ## 1. Purpose and decision boundary
 
@@ -154,8 +162,9 @@ Select **Option B**:
 - same immutable application artifact for API and worker initially; and
 - no external queue/scheduler provider in Feature 7.2.
 
-**Approval field:** High-level Option B approved by Faiz on 5 August 2026;
-numeric lease and timing values remain pending.
+**Approval field:** High-level Option B and the bounded lease/worker values in
+section 4 are approved by Faiz on 5 August 2026; SLO, capacity, alert,
+retention/access, and evidence values remain pending.
 
 ## 4. Decision 2 — Lease duration, fencing, and batch behavior
 
@@ -190,24 +199,26 @@ cannot satisfy this invariant.
 - Use UTC-aware timestamps and record the approved clock-synchronization or
   database-time assumption. Clock skew must be included in the margin.
 
-### Candidate initial values — not approved policy
+### Approved initial values for the bounded worker contract
 
-If later provider-neutral delivery enforces a maximum 15-second delivery call
-and a 5-second result-acknowledgement budget, a 60-second lease leaves a
-40-second margin. These values are review inputs only. Operations/SRE must
-approve the final timeout, lease, margin, and renewal threshold together.
+For the bounded Commerce Transaction 1A worker contract, Faiz approved a
+maximum 15-second delivery call, a 5-second result-acknowledgement budget, a
+40-second clock/network margin, and a 60-second lease. The 30-second renewal
+threshold, concurrency of 1, claim-ahead of 0, and 30-second drain deadline
+are approved with the same bounded scope. These values do not select a
+provider, activate production credentials, or establish production readiness.
 
 ### Lease approval fields
 
 | Field | Approved value |
 | --- | --- |
-| Maximum delivery operation time | Pending |
-| Result acknowledgement budget | Pending |
-| Clock/network margin | Pending |
-| Lease duration | Pending |
-| Renewal threshold | Pending |
-| Maximum active concurrency per worker | Pending |
-| Maximum claim-ahead count | Pending; recommendation `0` |
+| Maximum delivery operation time | 15 seconds |
+| Result acknowledgement budget | 5 seconds |
+| Clock/network margin | 40 seconds |
+| Lease duration | 60 seconds |
+| Renewal threshold | 30 seconds |
+| Maximum active concurrency per worker | 1 |
+| Maximum claim-ahead count | 0 |
 
 ## 5. Decision 3 — Multi-instance and delivery guarantee
 
@@ -274,7 +285,7 @@ lease duration.
 | Field | Approved value |
 | --- | --- |
 | Platform termination grace | Pending |
-| Worker drain deadline | Pending |
+| Worker drain deadline | 30 seconds |
 | Claimed-not-started disposition | Pending; recommendation fenced release |
 | Forced-termination evidence owner | Faiz (delegated Ops/SRE); evidence location pending |
 
@@ -389,11 +400,11 @@ Faiz remains the temporary general-notification backlog/exhaustion alert owner
 under `DEC-DATA-003`. This does not fill the pending destination, SLA, backup,
 on-call, capacity, or scheduler fields.
 
-## 10. High-level package approved; remaining values require decision
+## 10. High-level and lease/worker values approved; remaining values require decision
 
-The high-level direction below was approved by Faiz on 5 August 2026. The
-listed numerical, capacity, alert, and evidence fields still require explicit
-values before source implementation:
+The high-level direction and bounded lease/worker values below were approved
+by Faiz on 5 August 2026. SLO, capacity, alert, retention/access, and evidence
+fields still require explicit values before source implementation:
 
 1. Separate worker process for staging/production; co-located only for
    development/test.
@@ -468,25 +479,24 @@ No choice below is approved by the existence of this file or branch.
 
 On 2 August 2026, the Project Owner explicitly approved the recommended
 planning direction in section 10. On 5 August 2026, Faiz approved the
-high-level DR-014 direction: Option B, no external queue/scheduler provider,
-at-least-once delivery, and bounded shutdown. These approvals do not fill the
-pending timing, threshold, capacity, destination, SLO, or evidence values and
-do not authorize source implementation.
+high-level DR-014 direction and bounded lease/worker values listed in sections
+3, 4, and 6. SLO, threshold, capacity, destination, retention/access, and
+evidence values remain open, and source implementation is not authorized.
 
 | Approval | Owner | Value / evidence | Date |
 | --- | --- | --- | --- |
 | Recommended package direction | Project Owner | Approved section 10 as the preferred planning direction; bounded as stated above | 2 August 2026 |
 | DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 5 August 2026 |
 | Worker topology | Faiz (delegated DR-014) | Approved Option B: separate staging/production worker; development/test co-location only; no external queue/scheduler provider | 5 August 2026 |
-| Lease/timing contract | Faiz (delegated Ops/SRE) | Pending; numeric operation, acknowledgement, margin, lease, renewal, concurrency, and claim-ahead values remain open | Pending |
-| Multi-instance/replay contract | Faiz (delegated Ops/SRE + Security/Data) | Approved at-least-once delivery at high level; exact fencing, idempotency, replay, and capacity values pending | 5 August 2026 |
-| Shutdown contract | Faiz (delegated Ops/SRE) | Approved bounded shutdown at high level; termination grace, drain deadline, and claimed-work disposition pending | 5 August 2026 |
+| Lease/timing contract | Faiz (delegated Ops/SRE) | Approved: 15-second operation, 5-second acknowledgement, 40-second margin, 60-second lease, and 30-second renewal; concurrency 1 and claim-ahead 0 | 5 August 2026 |
+| Multi-instance/replay contract | Faiz (delegated Ops/SRE + Security/Data) | Approved at-least-once delivery, concurrency 1, and claim-ahead 0 at bounded level; exact fencing, idempotency, replay, and capacity evidence remain pending | 5 August 2026 |
+| Shutdown contract | Faiz (delegated Ops/SRE) | Approved bounded shutdown with a 30-second worker drain deadline; platform termination grace and claimed-work disposition remain pending | 5 August 2026 |
 | Required/optional dependency policy | Faiz (delegated DR-014) | Pending value | Pending |
 | Scheduler ownership | Faiz (delegated Ops/SRE) | Pending value | Pending |
 | Telemetry/SLO/alert/capacity inputs | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
 | Separate source implementation authorization | Project Owner | Pending | Pending |
 
 Until the remaining fields have explicit values and approval evidence, Feature
-7.2 remains `decision_blocked`; the high-level approval does not replace
-the remaining decision values or separate source authorization, and source
-implementation must not begin.
+7.2 remains `decision_blocked`; the approved lease/worker values do not replace
+the remaining SLO, capacity, alert, retention/access, evidence, or separate
+source authorization, and source implementation must not begin.

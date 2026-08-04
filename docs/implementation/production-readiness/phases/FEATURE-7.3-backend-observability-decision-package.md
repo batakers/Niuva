@@ -1,6 +1,6 @@
 # Feature 7.3 — Backend Observability Decision Package
 
-Status: **High-level DR-014 direction approved by Faiz — values required before source implementation**
+Status: **High-level DR-014 direction and bounded worker values approved by Faiz — observability values required before source implementation**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -37,6 +37,12 @@ it does not replace separate source implementation authorization.
 On 5 August 2026, Faiz approved JSON Lines application emission to stdout/stderr
 and no external telemetry provider at high level. External collection,
 destination, retention, metrics, SLO, alert, and capacity values remain pending.
+
+The dependent Feature 7.2 worker values are also approved for the bounded
+contract: 15-second maximum delivery operation, 5-second acknowledgement,
+40-second clock/network margin, 60-second lease, 30-second renewal threshold,
+concurrency 1, claim-ahead 0, and 30-second worker drain. This does not approve
+the remaining observability or production-readiness values.
 
 ## 1. Purpose and decision boundary
 
@@ -551,8 +557,9 @@ The Project Owner authorized planning and Git delivery of this proposal on
 2 August 2026, then separately authorized PR reconciliation and merge on
 3 August 2026. On 5 August 2026, Yanuar/Owner delegated the DR-014 decision
 authority recorded in section 2 to Faiz, who approved the high-level JSON
-Lines/stdout/stderr and no-external-provider direction. Numerical observability
-values and source implementation remain separately gated.
+Lines/stdout/stderr and no-external-provider direction plus the bounded
+Feature 7.2 lease/worker values. Numerical observability values and source
+implementation remain separately gated.
 
 | Approval | Owner | Value / evidence | Date |
 | --- | --- | --- | --- |
@@ -564,7 +571,7 @@ values and source implementation remain separately gated.
 | Metric inventory/cardinality contract | Faiz (delegated DR-014) | Pending value | Pending |
 | Export model/provider/destination | Faiz (delegated Ops/SRE + Security/Data) | No external provider approved; local stdout/stderr emission approved at high level; destination/export details pending | 5 August 2026 |
 | Timeout visibility contract | Faiz (delegated DR-014) | Pending value | Pending |
-| Worker observability contract | Faiz (delegated Ops/SRE) | Pending Feature 7.2 acceptance/value | Pending |
+| Worker observability contract | Faiz (delegated Ops/SRE) | Feature 7.2 high-level and bounded lease/worker values approved; metric/query/capacity evidence pending | 5 August 2026 |
 | Transaction diagnostic/alert contract | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
 | Retention/access policy | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
 | SLI/SLO/error-budget/threshold package | Faiz (delegated DR-014) | Pending value | Pending |
@@ -572,6 +579,6 @@ values and source implementation remain separately gated.
 | Separate source implementation authorization | Project Owner | Pending | Pending |
 
 Until the remaining fields have explicit values and approval evidence, Feature
-7.3 remains `decision_blocked`; the high-level approval does not replace
-the remaining decision values. Source implementation, provider activation,
+7.3 remains `decision_blocked`; the approved worker values do not replace the
+remaining observability values. Source implementation, provider activation,
 deployment, production-readiness claims, and go-live must not begin.
