@@ -27,12 +27,24 @@ resend_module.api_key = ""
 resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"})
 sys.modules.setdefault("resend", resend_module)
 
+import auth_rate_limit  # noqa: E402
 import emailer  # noqa: E402
 import server  # noqa: E402
 
 from tests.auth_support import AuthCollection  # noqa: E402
 
 ORIGIN = {"Origin": "https://testserver"}
+
+
+class MutableLimiterDatetime(datetime):
+    current = None
+
+    @classmethod
+    def now(cls, tz=None):
+        current = cls.current
+        if tz is None:
+            return current.replace(tzinfo=None)
+        return current.astimezone(tz)
 
 
 class FakeCollection:
@@ -331,6 +343,48 @@ def test_recovery_resend_enforces_the_approved_60_second_cooldown(
                 assert int(second.headers["Retry-After"]) >= 1
                 assert len(database.password_reset_tokens.items) == 1
                 assert len(provider.messages) == 1
+
+    asyncio.run(scenario())
+
+
+def test_recovery_resend_cooldown_survives_fixed_window_rollover(monkeypatch, tmp_path):
+    start = datetime(2026, 8, 4, 12, 0, 59, 500000, tzinfo=timezone.utc)
+    monkeypatch.setattr(auth_rate_limit, "datetime", MutableLimiterDatetime)
+    MutableLimiterDatetime.current = start
+
+    async def scenario():
+        customer = build_customer()
+        with configured_runtime(monkeypatch, tmp_path, [customer]) as (
+            database,
+            provider,
+        ):
+            transport = httpx.ASGITransport(app=server.app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="https://testserver"
+            ) as api:
+                first = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+
+                MutableLimiterDatetime.current = start + timedelta(seconds=1)
+                across_bucket = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+
+                MutableLimiterDatetime.current = start + timedelta(seconds=60)
+                after_cooldown = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+
+                assert first.status_code == 200
+                assert across_bucket.status_code == 429
+                assert int(across_bucket.headers["Retry-After"]) >= 59
+                assert after_cooldown.status_code == 200
+                assert len(database.password_reset_tokens.items) == 2
+                assert len(provider.messages) == 2
 
     asyncio.run(scenario())
 

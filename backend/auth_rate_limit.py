@@ -5,10 +5,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 WINDOW_SECONDS = 15 * 60
 ACCOUNT_FAILURE_LIMIT = 5
@@ -130,9 +131,7 @@ class LoginRateLimiter:
     async def clear_account(self, *, account: str) -> None:
         now = datetime.now(timezone.utc)
         bucket, _expires_at = self._window(now)
-        await self.collection.delete_one(
-            {"_id": self._key("account", account, bucket)}
-        )
+        await self.collection.delete_one({"_id": self._key("account", account, bucket)})
 
 
 class PublicRateLimiter:
@@ -148,6 +147,34 @@ class PublicRateLimiter:
             value.casefold().strip().encode("utf-8"),
             hashlib.sha256,
         ).hexdigest()
+
+    @staticmethod
+    def _as_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    @classmethod
+    def _retry_after(cls, expires_at: datetime, now: datetime) -> int:
+        return max(1, int((cls._as_utc(expires_at) - now).total_seconds()))
+
+    @staticmethod
+    def _raise_limited(*, scope: str, retry_after: int, detail: str) -> None:
+        logger.warning(
+            "public_rate_limit_blocked",
+            extra={
+                "public_rate_limit": {
+                    "event": "blocked",
+                    "scope": scope,
+                    "retry_after_seconds": retry_after,
+                }
+            },
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=detail,
+            headers={"Retry-After": str(retry_after)},
+        )
 
     async def consume(
         self,
@@ -174,19 +201,77 @@ class PublicRateLimiter:
             expires_at=expires_at,
         )
         if record and int(record.get("count", 0)) > limit:
-            retry_after = max(1, int((expires_at - now).total_seconds()))
-            logger.warning(
-                "public_rate_limit_blocked",
-                extra={
-                    "public_rate_limit": {
-                        "event": "blocked",
-                        "scope": scope,
-                        "retry_after_seconds": retry_after,
-                    }
-                },
-            )
-            raise HTTPException(
-                status_code=429,
+            self._raise_limited(
+                scope=scope,
+                retry_after=self._retry_after(expires_at, now),
                 detail=detail,
-                headers={"Retry-After": str(retry_after)},
             )
+
+    async def consume_cooldown(
+        self,
+        *,
+        scope: str,
+        identifier: str,
+        cooldown_seconds: int,
+        detail: str = "Terlalu banyak permintaan. Coba lagi sesaat.",
+    ) -> None:
+        """Atomically accept one request per identifier for a rolling cooldown."""
+        if cooldown_seconds <= 0:
+            raise ValueError("cooldown_seconds must be positive")
+
+        key = f"{scope}:{self._digest(identifier)}"
+        for _attempt in range(2):
+            now = datetime.now(timezone.utc)
+            cooldown_until = now + timedelta(seconds=cooldown_seconds)
+            query = {
+                "_id": key,
+                "$or": [
+                    {"cooldown_until": {"$lte": now}},
+                    {"cooldown_until": {"$exists": False}},
+                ],
+            }
+            try:
+                record = await self.collection.find_one_and_update(
+                    query,
+                    {
+                        "$set": {
+                            "scope": scope,
+                            "last_accepted_at": now,
+                            "cooldown_until": cooldown_until,
+                            "expires_at": cooldown_until,
+                        },
+                        "$setOnInsert": {"created_at": now},
+                    },
+                    upsert=True,
+                    return_document=ReturnDocument.AFTER,
+                )
+            except DuplicateKeyError:
+                record = None
+
+            if record is not None:
+                return
+
+            current = await self.collection.find_one(
+                {"_id": key}, {"cooldown_until": 1}
+            )
+            if current is None:
+                continue
+
+            blocked_until = current.get("cooldown_until")
+            if isinstance(blocked_until, datetime):
+                self._raise_limited(
+                    scope=scope,
+                    retry_after=self._retry_after(blocked_until, now),
+                    detail=detail,
+                )
+            self._raise_limited(
+                scope=scope,
+                retry_after=cooldown_seconds,
+                detail=detail,
+            )
+
+        self._raise_limited(
+            scope=scope,
+            retry_after=cooldown_seconds,
+            detail=detail,
+        )

@@ -1116,6 +1116,23 @@ async def rate_limit(
     )
 
 
+async def rate_limit_cooldown(
+    scope: str,
+    identifier: str,
+    cooldown_seconds: int,
+    detail: str = "Terlalu banyak permintaan. Coba lagi sesaat.",
+):
+    await PublicRateLimiter(
+        collection=db.public_rate_limits,
+        secret=JWT_SECRET,
+    ).consume_cooldown(
+        scope=scope,
+        identifier=identifier,
+        cooldown_seconds=cooldown_seconds,
+        detail=detail,
+    )
+
+
 def client_ip(request: Request) -> str:
     """Resolve the caller address used to key public rate limits."""
     return request.client.host if request.client else "unknown"
@@ -1531,7 +1548,11 @@ async def forgot_password(req: ForgotPasswordReq, request: Request):
     email = req.email.lower()
     if _public_site_origin() is not None:
         await rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
-        await rate_limit(f"forgot_password_resend:{email}", limit=1, window=60)
+        await rate_limit_cooldown(
+            "forgot_password_resend",
+            email,
+            cooldown_seconds=60,
+        )
         await rate_limit(f"forgot_password_email:{email}", limit=3, window=900)
 
     result = await get_recovery_module().request_password_reset(

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import types
 
+from pymongo.errors import DuplicateKeyError
+
 
 class AuthCollection:
     def __init__(self, items=None):
@@ -12,11 +14,21 @@ class AuthCollection:
     @classmethod
     def _matches(cls, item, query):
         for key, expected in query.items():
+            if key == "$or":
+                if not any(cls._matches(item, branch) for branch in expected):
+                    return False
+                continue
             actual = item.get(key)
             if isinstance(expected, dict):
                 if "$gt" in expected and not (
                     actual is not None and actual > expected["$gt"]
                 ):
+                    return False
+                if "$lte" in expected and not (
+                    actual is not None and actual <= expected["$lte"]
+                ):
+                    return False
+                if "$exists" in expected and (key in item) != expected["$exists"]:
                     return False
                 if "$in" in expected and actual not in expected["$in"]:
                     return False
@@ -100,14 +112,14 @@ class AuthCollection:
         if not upsert:
             return None
         item = {
-            key: value
-            for key, value in query.items()
-            if not isinstance(value, dict)
+            key: value for key, value in query.items() if not isinstance(value, dict)
         }
         item.update(update.get("$setOnInsert", {}))
         item.update(update.get("$set", {}))
         for key, amount in update.get("$inc", {}).items():
             item[key] = item.get(key, 0) + amount
+        if any(existing.get("_id") == item.get("_id") for existing in self.items):
+            raise DuplicateKeyError("duplicate _id")
         self.items.append(item)
         return dict(item) if return_document else None
 
