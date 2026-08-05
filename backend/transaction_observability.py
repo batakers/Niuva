@@ -5,6 +5,7 @@ from typing import Any, TypeVar, cast
 from uuid import UUID
 
 from observability import ALLOWED_OPERATION_CLASSES
+
 ALLOWED_EVENTS = {
     "transaction_rejected",
     "transaction_start",
@@ -33,7 +34,11 @@ EnumValue = TypeVar("EnumValue")
 
 
 def safe_operation_name(value: object, *, fallback: str = "redacted") -> str:
-    return value if isinstance(value, str) and value in ALLOWED_OPERATION_CLASSES else fallback
+    return (
+        value
+        if isinstance(value, str) and value in ALLOWED_OPERATION_CLASSES
+        else fallback
+    )
 
 
 def safe_enum(
@@ -58,6 +63,14 @@ def safe_correlation_id(value: object) -> str | None:
         return None
 
 
+def safe_duration_ms(value: object) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return min(value, 60000)
+    if isinstance(value, float) and math.isfinite(value) and value >= 0:
+        return min(int(value), 60000)
+    return None
+
+
 class TransactionLogSink:
     def __init__(self, logger: logging.Logger, telemetry=None):
         self.logger = logger
@@ -78,14 +91,16 @@ class TransactionLogSink:
             "outcome": safe_enum(
                 fields.get("outcome"), ALLOWED_OUTCOMES, fallback="aborted"
             ),
-            "attempt": min(
-                int(cast(Any, fields.get("attempt", 0))),
-                1_000_000,
-            )
-            if isinstance(fields.get("attempt", 0), int)
-            and not isinstance(fields.get("attempt", 0), bool)
-            and fields.get("attempt", 0) >= 0
-            else 0,
+            "attempt": (
+                min(
+                    int(cast(Any, fields.get("attempt", 0))),
+                    1_000_000,
+                )
+                if isinstance(fields.get("attempt", 0), int)
+                and not isinstance(fields.get("attempt", 0), bool)
+                and fields.get("attempt", 0) >= 0
+                else 0
+            ),
             "retry_mode": safe_enum(
                 fields.get("retry_mode"), ALLOWED_RETRY_MODES, fallback="never"
             ),
@@ -96,14 +111,9 @@ class TransactionLogSink:
                 fallback="database_error",
             ),
         }
-        duration_ms = fields.get("duration_ms")
-        if (
-            isinstance(duration_ms, (int, float))
-            and not isinstance(duration_ms, bool)
-            and math.isfinite(float(duration_ms))
-            and duration_ms >= 0
-        ):
-            transaction["duration_ms"] = min(int(duration_ms), 60000)
+        duration_ms = safe_duration_ms(fields.get("duration_ms"))
+        if duration_ms is not None:
+            transaction["duration_ms"] = duration_ms
         self.logger.info(
             "mongodb_transaction",
             extra={"transaction": transaction},
