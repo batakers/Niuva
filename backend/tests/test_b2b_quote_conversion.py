@@ -167,6 +167,16 @@ def test_conversion_creates_exactly_one_quote_and_immutable_revision():
             )
         assert duplicate.value.code == "inquiry_already_converted"
 
+        with pytest.raises(B2BDomainError) as stale_duplicate:
+            await service.convert_inquiry(
+                inquiry["id"],
+                expected_version=inquiry["version"],
+                operation_id="op-convert-stale",
+                reason="Stale duplicate conversion",
+                actor=actor,
+            )
+        assert stale_duplicate.value.code == "version_conflict"
+
         for changed_request in (
             {
                 "expected_version": inquiry["version"],
