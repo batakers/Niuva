@@ -1,16 +1,15 @@
-from enum import Enum
 import time
+from enum import Enum
 from typing import Awaitable, Callable, NoReturn, TypeVar
 
+from database_capabilities import DatabaseCapabilities
 from pymongo.errors import (
-    ConnectionFailure,
     ConfigurationError,
+    ConnectionFailure,
     OperationFailure,
     PyMongoError,
     ServerSelectionTimeoutError,
 )
-
-from database_capabilities import DatabaseCapabilities
 
 T = TypeVar("T")
 TransactionCallback = Callable[[object], Awaitable[T]]

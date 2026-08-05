@@ -2,7 +2,6 @@ import asyncio
 import logging
 
 import pytest
-
 from database_capabilities import DatabaseCapabilities
 from transaction_execution import (
     TransactionExecutor,

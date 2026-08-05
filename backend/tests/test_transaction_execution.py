@@ -1,9 +1,8 @@
 import asyncio
 
 import pytest
-from pymongo.errors import ConnectionFailure, OperationFailure
-
 from database_capabilities import DatabaseCapabilities
+from pymongo.errors import ConnectionFailure, OperationFailure
 from transaction_execution import (
     RetryMode,
     TransactionCommitOutcomeUnknownError,
