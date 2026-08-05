@@ -86,8 +86,23 @@ The historical OPS-011 statement is stale at the selected SHA:
   independent authority.
 - This corrects the active runbook pointer, but does not prove that every
   historical/reference document has been normalized or that an automated
-  link/path gate exists. OPS-011 therefore remains a documentation
-  revalidation item rather than a production-readiness pass.
+link/path gate exists. OPS-011 therefore remains a documentation
+revalidation item rather than a production-readiness pass.
+
+### Historical integration finding revalidation
+
+The following historical Layer 05 statements also require current-head
+treatment rather than being copied into a new implementation backlog:
+
+| Historical area | Current-head evidence | Correct treatment |
+| --- | --- | --- |
+| INT-001 customer authentication entrypoint | `App.js` has separate `/login` and `/admin/login` routes; `ProtectedRoute` selects the customer route for non-Admin surfaces; `CustomerLogin` calls `/auth/login`; `AuthContext` bootstraps customer state from `/auth/me`. | Historical “wired to Admin login/no customer page” statement is stale. Customer role/browser/API environment evidence remains a separate gate. |
+| INT-003 inactive Retail payment boundary | `RetailOrderDetail.jsx` renders the inactive transaction state without `retail-action-*` controls; `retail-order.contract.test.js` asserts the lockdown; payment capability remains provider-neutral. | Bounded inactive-state evidence is present. Provider, Finance, payment activation, and production evidence remain open. |
+| INT-004 auth/recovery transport | `api.js` uses credentialed cookie transport and CSRF handling; `AuthContext` uses customer/admin session endpoints; `ResetPassword` consumes the validation endpoint; auth contract and session tests pass in the current suite. | Historical localStorage/JWT/reset-token statement is stale for current source. Replica-set, browser-cookie, delivery, and dynamic recovery evidence remain open. |
+
+These rows do not authorize customer registration, checkout, payment,
+provider activation, migration, deployment, or go-live. They only prevent
+older audit snapshots from being mistaken for current source truth.
 
 ## Production-readiness verdict
 
