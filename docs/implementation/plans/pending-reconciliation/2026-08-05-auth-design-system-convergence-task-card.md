@@ -1,7 +1,7 @@
 # Auth Design-System Convergence Task Card
 
-Status: **Local implementation and verification complete — Auth slice only;
-Git publication not authorized**
+Status: **Auth implementation evidence integrated through PR #137; original
+slice branch was not separately published**
 
 ## Identity and baseline
 
@@ -165,3 +165,14 @@ slice changes frontend presentation and tests only.
   the focused Auth result.
 - External action still gated: no commit, push, PR, merge, deployment, or
   production action has been performed.
+
+## Post-merge reconciliation — 5 August 2026
+
+This task card predates Git publication. Its task-card record and integrated
+Auth scope were included in PR #137, now merged into `origin/main` at
+`18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1`. The original slice branch was not
+published as a separate PR; the current publication and verification record is
+the [integration task card](2026-08-05-frontend-design-system-integration-task-card.md).
+
+The original local handover statements above remain historical evidence for the
+pre-merge worktree. They do not describe the current merged-source state.

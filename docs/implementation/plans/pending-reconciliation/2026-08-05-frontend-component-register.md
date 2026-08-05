@@ -1,13 +1,13 @@
 # Niuva Frontend Component Register
 
-Status: **Active foundation register — selected-baseline implementation evidence;
+Status: **Active integration register — merged-scope evidence at `origin/main`;
 not independent product or Git-delivery authority**
 
-Selected baseline: `origin/main` at
-`e2a79690a09a1002f8d0b98ab5ee608e99691735`, plus the uncommitted correction
-diff in `C:/tmp/niuva-frontend-design-system-integration-latest`, inspected 5
-August 2026 (Asia/Jakarta). The local diff is implementation evidence only; it
-is not merged-source or Git-publication evidence.
+Current merged baseline: `origin/main` at
+`18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1` through PR #137, inspected 5 August
+2026 (Asia/Jakarta). The selected baseline and local-diff wording retained in
+this register is historical provenance for the pre-merge integration worktree;
+the current merged-source state is authoritative for implementation evidence.
 
 ## Purpose
 

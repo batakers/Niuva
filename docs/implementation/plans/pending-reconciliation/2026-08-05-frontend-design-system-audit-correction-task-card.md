@@ -2,8 +2,8 @@
 
 ## Status and ownership
 
-- **Status:** Local correction and bounded re-audit complete; commit, push, and
-  PR gated
+- **Status:** Bounded correction scope integrated through PR #137; post-merge
+  reconciliation complete
 - **Selected baseline:** `e2a79690a09a1002f8d0b98ab5ee608e99691735`
 - **Branch:** `frontend/design-system-integration-latest`
 - **Worktree:** `C:/tmp/niuva-frontend-design-system-integration-latest`
@@ -243,3 +243,18 @@ and `frontend/output/` remain user-owned and must not be discarded.
 
 After all checks and the pre-commit report, Faiz must decide separately whether
 to authorize commit. Push and PR remain additional explicit gates.
+
+## Post-merge reconciliation — 5 August 2026
+
+The pre-merge correction record above is retained as provenance. Its exact
+correction scope was included in [PR #137](https://github.com/batakers/Niuva/pull/137),
+which merged into `origin/main` at
+`18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1`. The original integration branch is
+the publication record; no separate audit-correction PR was required.
+
+The eight CodeRabbit review items were reconciled in the merged source,
+tests, or task-card evidence. This does not close the broader `FE-001` through
+`FE-009` or `FE-ENV-001` production-readiness findings automatically, and it
+does not authorize deployment or go-live. Current bounded verification is
+recorded in the [integration task card](2026-08-05-frontend-design-system-integration-task-card.md)
+and the Layer 01 audit overlay.
