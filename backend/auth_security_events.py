@@ -161,7 +161,7 @@ class AuthenticationSecurityEvent:
             or not _CORRELATION_ID.fullmatch(correlation_id)
         ):
             raise SecurityEventValidationError("Invalid correlation ID")
-        key_version = _opaque(self.key_version, "key version")
+        key_version = _opaque(self.key_version, "key version", required=True)
         occurred_at = _utc(self.occurred_at or datetime.now(timezone.utc))
         return {
             "id": str(uuid.uuid4()),
