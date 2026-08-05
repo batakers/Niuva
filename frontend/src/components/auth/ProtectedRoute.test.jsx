@@ -3,6 +3,7 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { useAuth } from "../../context/AuthContext";
 import { I18nProvider } from "../../i18n";
+import { ADMIN_ROUTE_PERMISSIONS } from "../../lib/permissions";
 
 jest.mock("../../context/AuthContext", () => ({
   useAuth: jest.fn(),
@@ -15,6 +16,14 @@ function renderProtected({ initialPath = "/admin", permission } = {}) {
         <Routes>
           <Route
             path="/admin"
+            element={
+              <ProtectedRoute permission={permission}>
+                <div>protected content</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/notifications"
             element={
               <ProtectedRoute permission={permission}>
                 <div>protected content</div>
@@ -78,5 +87,19 @@ test("renders a dedicated 403 page when the user lacks the required permission",
   renderProtected({ permission: "orders.read" });
   expect(screen.getByText(/403/)).toBeInTheDocument();
   expect(screen.getByText("/admin")).toBeInTheDocument();
+  expect(screen.queryByText("protected content")).not.toBeInTheDocument();
+});
+
+test("denies a customer on the Admin notification feed", () => {
+  useAuth.mockReturnValue({
+    user: { id: "customer-1", role: "customer", permissions: [] },
+    loading: false,
+  });
+  renderProtected({
+    initialPath: "/admin/notifications",
+    permission: ADMIN_ROUTE_PERMISSIONS["/admin/notifications"],
+  });
+
+  expect(screen.getByText(/403/)).toBeInTheDocument();
   expect(screen.queryByText("protected content")).not.toBeInTheDocument();
 });
