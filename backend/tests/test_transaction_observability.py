@@ -2,9 +2,8 @@ import asyncio
 import logging
 
 import pytest
-from pymongo.errors import OperationFailure
-
 from database_capabilities import DatabaseCapabilities
+from pymongo.errors import OperationFailure
 from transaction_execution import (
     TransactionCommitOutcomeUnknownError,
     TransactionExecutor,
