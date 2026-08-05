@@ -60,6 +60,20 @@ Only these paths may change:
   production readiness or go-live.
 - Merge of this new correction PR remains a separate user-controlled action.
 
+## Decision and change impact
+
+- DR-001 remains unresolved and `Open`; this correction selects no release-candidate SHA.
+- Freshness-proof risk is the only issue addressed: without this correction, the
+  queue could be read as describing the pre-merge `origin/main` rather than the
+  post-merge observation. The updated observation is not proof that the SHA is
+  suitable for release or production readiness.
+- Operational and migration impact is none. No runtime, database, migration,
+  provider, deployment, credential, environment, or go-live action occurs.
+- Rollback is a documentation revert or closure of this PR; no runtime or data
+  rollback is required.
+- Project Owner selection of the release-candidate baseline and scope requires
+  separate approval.
+
 ## Acceptance criteria
 
 - `origin/main` is freshly fetched and the exact post-merge SHA is recorded as
