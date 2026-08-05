@@ -7,3 +7,4 @@ a688329846ce67f1c5c3fc07ba7210da99f613ab:backend/tests/test_admin_notifications.
 142cbe68680cdda1d4fe249fe5f8479d5c851007:backend/tests/test_admin_notifications.py:generic-api-key:19
 b3a4684827fa129f2e84d4e516a2c4ed3c4fce2b:PRODUCT.md:generic-api-key:175
 b3a4684827fa129f2e84d4e516a2c4ed3c4fce2b:doc/PRODUCTION_DEPLOYMENT.md:generic-api-key:110
+3c3a97cc946bbfaf58ae6ae9d7faeec5d164a9d5:docs/implementation/production-readiness/phases/DR-011-PROVIDER-FINANCE-ACTIVATION-2026-08-06.md:generic-api-key:136
