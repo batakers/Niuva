@@ -3,9 +3,11 @@
 <!-- markdownlint-disable MD013 -->
 
 **Status:** Candidate documentation-only task; human decision blocked
-**Date:** 2026-08-06
+**Date:** 2026-08-06 (Asia/Jakarta; actual preparation date)
 **Baseline:** `origin/main` at `c84743c8fcbc158721037b3c02dc0dff0c872242`
 **Driver:** Faiz / delegated Codex implementation
+**Active branch:** `codex/g11-dr013-decision-20260806`
+**Active worktree:** `C:\tmp\niuva-g11-dr013-decision-20260806`
 **Decision owner:** Engineering/release/security owners, as assigned by the Project Owner
 
 ## Objective
@@ -20,6 +22,10 @@ not convert the current CI behavior into production approval.
 
 ## Applicable authority
 
+The canonical read order used for this task is: Master Spec, Document Register,
+Decision Register, applicable decision/ADR, applicable runbook, then current
+source and tests.
+
 - `docs/NIUVA_MASTER_SPEC.md`
 - `docs/context/DOCUMENT_REGISTER.md`
 - `docs/decisions/DECISION_REGISTER.md`
@@ -29,6 +35,12 @@ not convert the current CI behavior into production approval.
 - `docs/implementation/production-readiness/VERIFICATION_MATRIX.md`
 - `.github/workflows/quality-gates.yml`
 - `doc/PRODUCTION_DEPLOYMENT.md`
+
+No DR-013-specific approved decision or ADR is currently applicable; DR-013 is
+open. Approved provider-neutral constraints remain applicable where relevant,
+including ADR-002 and ADR-003, but they do not choose a toolchain or release
+policy. The applicable runbook is the provider-neutral
+`doc/PRODUCTION_DEPLOYMENT.md`; no provider-specific runbook is applicable.
 
 ## In scope
 

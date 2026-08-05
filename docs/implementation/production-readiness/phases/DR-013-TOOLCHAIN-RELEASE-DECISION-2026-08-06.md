@@ -3,7 +3,7 @@
 <!-- markdownlint-disable MD013 -->
 
 **Status:** `OPEN` / `HUMAN_DECISION_BLOCKED`
-**Prepared:** 2026-08-06
+**Prepared:** 2026-08-06 (Asia/Jakarta; actual preparation date)
 **Observed baseline:** `origin/main` at `c84743c8fcbc158721037b3c02dc0dff0c872242`
 **Decision owner:** Engineering/release/security owners, as assigned by the Project Owner
 **Scope:** Documentation and decision preparation only
@@ -27,6 +27,10 @@ decision.
 
 ## 2. Authority and evidence sources
 
+The canonical read order used for this packet is: Master Spec, Document
+Register, Decision Register, applicable decision/ADR, applicable runbook, then
+current source and tests.
+
 The packet is bounded by:
 
 - `docs/NIUVA_MASTER_SPEC.md` for canonical product and safety boundaries;
@@ -42,6 +46,13 @@ The packet is bounded by:
 - `backend/requirements.txt`, `frontend/package.json`, and
   `frontend/package-lock.json` for current dependency declarations; and
 - `doc/PRODUCTION_DEPLOYMENT.md` for the provider-neutral deployment boundary.
+
+No DR-013-specific approved decision or ADR is currently applicable; DR-013 is
+open. Approved provider-neutral constraints remain applicable where relevant,
+including ADR-002 and ADR-003, but they do not select a package manager,
+runtime, lock strategy, or release policy. The applicable runbook is the
+provider-neutral `doc/PRODUCTION_DEPLOYMENT.md`; no provider-specific runbook
+is applicable.
 
 ## 3. Current observed contract
 
