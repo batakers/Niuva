@@ -2,9 +2,18 @@
 
 Status: Planning and Assignment Context — Not Implementation Authority
 
-Last updated: 2026-08-02 (Asia/Jakarta)
+Last updated: 2026-08-02 (Asia/Jakarta); current-head freshness notice added 2026-08-06 (Asia/Jakarta)
 Planning baseline: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
-Selected release-candidate baseline: `d04e3f009d6c815c0a4d99dfa5c93553da3cef43` (Faiz / `DR-001`, 2026-07-29; local `origin/main` matched at selection, remote freshness unverified)
+Historical selected release-candidate baseline: `d04e3f009d6c815c0a4d99dfa5c93553da3cef43` (Faiz / `DR-001`, 2026-07-29; local `origin/main` matched at selection, remote freshness unverified)
+
+**Current-head freshness notice (2026-08-06):** A fresh worktree observed
+`origin/main` at `9f4d3a4ab8e499f95c501b202b18ded6a4187c7c` after merged PR #149.
+PR #149 changed documentation only. This observation does not select a new
+release candidate, replace the historical planning baseline, or authorize
+implementation, deployment, or go-live. Use the [current-main provenance
+reconciliation packet](phases/CURRENT-MAIN-READINESS-PROVENANCE-RECONCILIATION-2026-08-06.md)
+for current-head lineage and limits; the rows below remain historical planning
+context until separately revalidated.
 
 ## Progress rules
 
@@ -121,11 +130,13 @@ controlled environment; it is not a pass.
 | 18 | `PHASE-06A`; `PHASE-06D` | Untracked executable type-check/toolchain gap | `npm.cmd --prefix frontend exec -- tsc --project frontend/jsconfig.json --noEmit` stops in `frontend/node_modules/@types/node/ffi.d.ts` parse errors. The `jsconfig.json` deprecation compatibility change is present, but it does not create a working type-check gate. | Select a compatible compiler/declaration/runtime set and add a reproducible type-check command only after DR-013. Do not misclassify dependency/compiler incompatibility as a `jsconfig` alias failure. | `open` / `blocked_by_decision` under DR-013; dependency changes are not authorized here. |
 | 19 | `PHASE-06C`; `TASK-06C-01/02` | `FE-ENV-001` release/browser proof | `npm.cmd --prefix frontend run build` compiled successfully; postbuild exited successfully but skipped sitemap generation because `REACT_APP_PUBLIC_SITE_URL` is not configured. No current complete sitemap/direct-route/browser-role proof was produced. | Use an approved non-secret public origin and controlled API/role/browser topology; record artifact attribution, direct refresh, supported browsers, responsive, and accessibility results. | `blocked_by_environment`; no deployment or go-live implied. |
 
-The next bounded frontend implementation candidate is row 2 (`FE-004`), then
-row 3 for the current CMS contract-test regression. Rows 10–14 remain objective
-accessibility candidates after exact path locks. Rows 7–9 and 15–19 must retain
-their named decision or environment gates. This ordering is prioritization
-evidence only, not source authorization.
+The historical next-candidate note previously named row 2 (`FE-004`) and row 3
+for the CMS contract-test regression. FE-004 entered `main` through PR #140,
+and the current-main packets provide the source-aligned disposition; do not
+reopen it from this stale ordering note. Rows 10–14 remain historical
+accessibility candidates requiring current exact path locks. Rows 7–9 and
+15–19 must retain their named decision or environment gates. This tracker is
+prioritization evidence only, not source authorization.
 
 ## PHASE-01A bounded auth/session revalidation
 
