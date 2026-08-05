@@ -107,3 +107,40 @@ test("blocks the page behind an open mobile menu and closes from the backdrop", 
   );
   expect(screen.queryByRole("dialog", { name: "Menu navigasi" })).not.toBeInTheDocument();
 });
+
+test("contains keyboard focus and restores it when the mobile menu closes", async () => {
+  render(
+    <MemoryRouter initialEntries={["/about"]}>
+      <Navbar />
+    </MemoryRouter>,
+  );
+
+  const menuButton = screen.getByRole("button", { name: "Buka menu" });
+  menuButton.focus();
+  fireEvent.click(menuButton);
+
+  const mobilePanel = screen.getByRole("dialog", { name: "Menu navigasi" });
+  const links = within(mobilePanel).getAllByRole("link");
+  const firstLink = links[0];
+  const lastLink = links[links.length - 1];
+
+  await waitFor(() => expect(firstLink).toHaveFocus());
+
+  lastLink.focus();
+  fireEvent.keyDown(document, { key: "Tab" });
+  expect(firstLink).toHaveFocus();
+
+  firstLink.focus();
+  fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+  expect(lastLink).toHaveFocus();
+
+  menuButton.focus();
+  fireEvent.keyDown(document, { key: "Tab" });
+  expect(firstLink).toHaveFocus();
+
+  fireEvent.keyDown(document, { key: "Escape" });
+  await waitFor(() => {
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(menuButton).toHaveFocus();
+  });
+});
