@@ -165,6 +165,27 @@ def test_log_sink_rejects_nonfinite_duration_without_raising(caplog):
     assert "duration_ms" not in caplog.records[-1].transaction
 
 
+def test_log_sink_caps_arbitrarily_large_integer_duration_without_raising(
+    caplog,
+):
+    logger = logging.getLogger("niuva.transaction.large-duration")
+    sink = TransactionLogSink(logger)
+
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        sink(
+            "transaction_commit",
+            {
+                "operation_name": "inventory.reserve",
+                "outcome": "committed",
+                "attempt": 1,
+                "retry_mode": "never",
+                "duration_ms": 10**1000,
+            },
+        )
+
+    assert caplog.records[-1].transaction["duration_ms"] == 60000
+
+
 def test_safe_correlation_id_retains_canonical_uuid():
     assert safe_correlation_id(VALID_CORRELATION_ID) == VALID_CORRELATION_ID
 
@@ -258,10 +279,9 @@ def test_executor_can_expose_bounded_duration_without_replaying_callback():
         )
 
     assert asyncio.run(run()) == "ok"
-    assert all(
-        isinstance(fields.get("duration_ms"), int) and fields["duration_ms"] >= 0
-        for _event, fields in events
-    )
+    duration_values = [fields.get("duration_ms") for _, fields in events]
+    assert all(isinstance(value, int) for value in duration_values)
+    assert all(value >= 0 for value in duration_values)
 
 
 def test_executor_emits_abort_with_safe_error_class():
