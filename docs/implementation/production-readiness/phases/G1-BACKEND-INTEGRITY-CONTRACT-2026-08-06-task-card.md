@@ -48,6 +48,8 @@ explicit source gate is recorded:
 - `backend/transaction_execution.py`
 - `backend/transaction_guard.py`
 - `backend/transaction_observability.py`
+- `backend/b2b_service.py` — bounded transaction conflict boundaries;
+- `backend/catalog_service.py` — bounded publication conflict boundaries;
 - `backend/tests/test_transaction_documentation.py`
 - `backend/tests/test_transaction_error_contract.py`
 - `backend/tests/test_transaction_execution.py`
@@ -55,10 +57,16 @@ explicit source gate is recorded:
 - `backend/tests/test_transaction_integration.py`
 - `backend/tests/test_transaction_observability.py`
 - `backend/tests/test_transaction_topology_files.py`
+- `backend/tests/test_b2b_quote_conversion.py`
+- `backend/tests/test_catalog_routes.py`
 
-Do not modify `docs/implementation/production-readiness/DECISIONS_REQUIRED.md`;
-PR #162 currently owns the DR-001 freshness path. Do not modify this card from
-the implementation chat.
+At card preparation, open PR #164 exercises the B2B/catalog paths above. A
+follow-up G1 chat must review that PR and current `origin/main` before editing
+these files; it must not duplicate or silently supersede that slice.
+
+Do not modify `docs/implementation/production-readiness/DECISIONS_REQUIRED.md`
+or existing freshness task cards from G1; those are serial documentation paths
+after PR #162. Do not modify this card from the implementation chat.
 
 ## Intentionally unchanged and excluded
 
@@ -93,6 +101,8 @@ the implementation chat.
   do not add a non-atomic fallback.
 - Cover malformed telemetry, bounded duration, conflict/retry, idempotency,
   rollback, authorization, and customer-safe projection negative cases.
+- Cover stale B2B inquiry conversion and duplicate catalog publication as
+  explicit conflict contracts when those paths are in the assigned slice.
 - If a source gate is granted, keep the implementation minimal and add or
   update proportional regression tests only inside the path lock.
 - Record operational, migration, rollback, observability, security, and data
