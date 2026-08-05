@@ -31,8 +31,10 @@ The authority order used here is:
 2. `docs/context/DOCUMENT_REGISTER.md`
 3. `docs/decisions/DECISION_REGISTER.md` and DR-001/003 in
    `docs/implementation/production-readiness/DECISIONS_REQUIRED.md`
-4. `DEC-AUTH-001`, `DEC-AUTH-003`, `DEC-AUTH-004`, `DEC-AUTH-005`, and
-   `DEC-AUTH-010`
+4. `DEC-AUTH-001`, `DEC-AUTH-003`, `DEC-AUTH-004`, `DEC-AUTH-005`,
+   `DEC-AUTH-006`, and `DEC-AUTH-010`; `DEC-AUTH-006` is included only for
+   the shared abuse-control interface/privacy boundary, while DR-004 owns its
+   operational disposition.
 5. `AUTH_RECOVERY_RUNBOOK.md` and `AUTH_SESSION_RUNBOOK.md`
 6. Feature 1.1–1.4 revalidation records, current source, and tests
 

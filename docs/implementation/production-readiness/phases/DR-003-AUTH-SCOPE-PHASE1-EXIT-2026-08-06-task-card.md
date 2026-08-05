@@ -33,8 +33,9 @@ runbooks, then current source and tests.
 - `docs/context/DOCUMENT_REGISTER.md`
 - `docs/decisions/DECISION_REGISTER.md`
 - `docs/implementation/production-readiness/DECISIONS_REQUIRED.md` (DR-001/003)
-- `DEC-AUTH-001`, `DEC-AUTH-003`, `DEC-AUTH-004`, `DEC-AUTH-005`, and
-  `DEC-AUTH-010`
+- `DEC-AUTH-001`, `DEC-AUTH-003`, `DEC-AUTH-004`, `DEC-AUTH-005`,
+  `DEC-AUTH-006`, and `DEC-AUTH-010` (the shared abuse-control
+  interface/privacy boundary only; DR-004 owns its operational disposition)
 - `docs/runbooks/AUTH_RECOVERY_RUNBOOK.md`
 - `docs/runbooks/AUTH_SESSION_RUNBOOK.md`
 - `FEATURE-1.1` through `FEATURE-1.4` revalidation records
@@ -82,8 +83,12 @@ change:
 
 ## Delivery authorization and handover
 
-The user authorizes commit, push, and opening a PR. Merge, source/runtime
-implementation, migration, credential/provider use, deployment,
+**Publication authorization record:** Faiz (user/authorizing requester) granted
+the bounded authorization recorded in the active task request on 2026-08-06
+(Asia/Jakarta): commit, push, and open a PR. This is publication authorization,
+not a DR-003 or Phase 1 decision; the `Phase 1 exit approver` remains `Open` in
+`docs/implementation/production-readiness/DECISIONS_REQUIRED.md`. Merge,
+source/runtime implementation, migration, credential/provider use, deployment,
 production-readiness approval, and go-live remain unauthorized.
 
 The PR must list changed and intentionally unchanged files, passed and unrun
