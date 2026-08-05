@@ -3161,7 +3161,9 @@ async def reservation_expiry_loop(stop_event: asyncio.Event | None = None):
                         job_name="reservation_expiry",
                         outcome="success",
                         duration_ms=int(
-                            (datetime.now(timezone.utc) - job_started_at).total_seconds()
+                            (
+                                datetime.now(timezone.utc) - job_started_at
+                            ).total_seconds()
                             * 1000
                         ),
                     )
@@ -3200,9 +3202,7 @@ async def readiness_probe_loop():
             database_available = bool(
                 getattr(dependencies, "database_available", False)
             )
-            duration_ms = int(
-                (asyncio.get_running_loop().time() - started_at) * 1000
-            )
+            duration_ms = int((asyncio.get_running_loop().time() - started_at) * 1000)
             observability.record_dependency(
                 dependency="mongodb",
                 operation="unknown",
