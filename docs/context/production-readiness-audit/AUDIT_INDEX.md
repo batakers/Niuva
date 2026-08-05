@@ -4,7 +4,7 @@ Status: Context Only — Audit Evidence and Progress Tracker — Not Implementat
 
 Baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
 Initialized: 2026-07-28 01:53:32 WIB (UTC+07:00)
-Last updated: 2026-07-28 14:01:25 WIB (UTC+07:00)
+Last updated: 2026-08-05 (UTC+07:00)
 Audit system state: `layer_11_provisional_snapshot_synthesis_complete_revalidation_required`
 
 ## Purpose
@@ -60,7 +60,7 @@ below and remains audit context rather than implementation authority.
 | [AUDIT_METHODOLOGY.md](AUDIT_METHODOLOGY.md) | Evidence rules, scoring, finding vocabulary, revalidation, and audit gates |
 | [AUDIT_BASELINE.md](AUDIT_BASELINE.md) | Git snapshot, environment, tooling, old-tracker reconciliation, and initial limitations |
 | [evidence/README.md](evidence/README.md) | Evidence storage, redaction, naming, and provenance rules |
-| [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | Frontend engineering — complete repository/static audit; `FE-001`–`FE-009`, `FE-ENV-001` |
+| [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | Frontend engineering — historical complete repository/static audit plus bounded PR #137 post-merge overlay; current full layer requires revalidation |
 | [layers/02-ui-ux-accessibility.md](layers/02-ui-ux-accessibility.md) | UI, UX, responsive behavior, and accessibility — bounded complete audit; `UX-001`–`UX-011` |
 | [layers/03-backend-api-business-logic.md](layers/03-backend-api-business-logic.md) | Backend API and business logic |
 | [layers/04-database-data-integrity.md](layers/04-database-data-integrity.md) | Database and data integrity |
@@ -98,6 +98,19 @@ below and remains audit context rather than implementation authority.
 
 See [AUDIT_BASELINE.md](AUDIT_BASELINE.md) for the full baseline and
 reconciliation.
+
+## Current bounded frontend overlay
+
+Layer 01 contains the current bounded reconciliation for PR #137 at
+`origin/main` `18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1`. It records 62 Jest
+suites / 368 tests, a successful production compilation with sitemap
+configuration noted, report-only bundle checks, and 12/12 synthetic Home and
+Retail browser checks. It also maps the eight bounded CodeRabbit review items
+to merged source, tests, or task-card evidence.
+
+This overlay does not replace the historical `c28684d` baseline, recalculate
+Layer 01 readiness, close `FE-001`–`FE-009` or `FE-ENV-001`, or authorize
+production readiness, provider activation, migration, deployment, or go-live.
 
 ## Recommended audit order
 

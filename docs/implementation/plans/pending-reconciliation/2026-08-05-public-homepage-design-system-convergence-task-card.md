@@ -1,7 +1,7 @@
 # Public Homepage Design-System Convergence Task Card
 
-Status: **Completed locally — approved Homepage composition and cross-public
-navigation semantics; Git publication not authorized**
+Status: **Homepage implementation evidence integrated through PR #137;
+original slice branch was not separately published**
 
 ## Identity and baseline
 
@@ -188,3 +188,14 @@ Before publication, remove or revert only the listed Homepage task paths in
 this worktree. There is no data, backend, dependency, environment, provider, or
 migration rollback because this slice changes Home presentation, shared opt-in
 rendering variants, navigation semantics, tests, and evidence only.
+
+## Post-merge reconciliation — 5 August 2026
+
+This task card predates Git publication. Its task-card record and integrated
+Homepage scope were included in PR #137, now merged into `origin/main` at
+`18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1`. The original slice branch was not
+published as a separate PR; the current publication and verification record is
+the [integration task card](2026-08-05-frontend-design-system-integration-task-card.md).
+
+The original local handover statements above remain historical evidence for the
+pre-merge worktree. They do not describe the current merged-source state.

@@ -1,7 +1,7 @@
 # Frontend Design-System Integration Task Card
 
-Status: **Local audit correction and bounded verification complete —
-commit/push/PR gate pending explicit authorization**
+Status: **Merged through PR #137 — post-merge bounded reconciliation complete;
+production and go-live gates remain separate**
 
 ## Identity and baseline
 
@@ -174,3 +174,32 @@ design acceptance and human screen-reader review are also not claimed.
 Before publication, revert or remove only the integration worktree changes.
 The source slice worktrees remain untouched and provide the source handoff
 points for any selective rollback.
+
+## Post-merge reconciliation — 5 August 2026
+
+The pre-merge task-card record above is retained as provenance. The integration
+scope was subsequently published through [PR #137](https://github.com/batakers/Niuva/pull/137)
+and merged into `origin/main`.
+
+- **Merge commit:** `18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1`
+- **Corrective PR head:** `c1571ba2a9137fa15b8c82db6658c23d8c2950fa`
+- **Merged scope:** 86 files from the pre-merge integration baseline; 0 backend
+  files, 0 package manifest/lockfile files, and 0 `frontend/output` files.
+- **Reconciled review items:** all eight PR #137 CodeRabbit findings are
+  present in the merged source, tests, or task-card evidence. The bounded
+  mapping is recorded in Layer 01's post-merge overlay.
+- **Full Jest:** 62 suites and 368 tests passed with `--runInBand`.
+- **Production build:** passed. Sitemap generation was skipped because
+  `REACT_APP_PUBLIC_SITE_URL` was not configured; no deployment was attempted.
+- **Bundle checks:** `test:bundle` passed 4/4. Report-only measurement was
+  581.26 kB total gzip, 203.10 kB largest entrypoint, and 100.14 kB largest
+  async asset; no budget decision was applied.
+- **Browser checks:** Home design-system integration passed 4/4 viewports;
+  Retail discovery passed 8/8 viewports/scenarios with a synthetic
+  `REACT_APP_BACKEND_URL`. No real credentials or production API were used.
+
+The initial Retail browser attempt without the synthetic backend variable
+rendered the intentional disconnected-catalog state and failed before mocks
+were exercised; it is environment diagnosis, not merged-source regression.
+Admin role-matrix, human screen-reader, production data, provider, migration,
+deployment, readiness, and go-live evidence remain outside this closure.
