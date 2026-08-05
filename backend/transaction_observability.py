@@ -42,7 +42,10 @@ def safe_enum(
     *,
     fallback: EnumValue,
 ) -> EnumValue:
-    return cast(EnumValue, value) if value in allowed else fallback
+    try:
+        return cast(EnumValue, value) if value in allowed else fallback
+    except TypeError:
+        return fallback
 
 
 def safe_correlation_id(value: object) -> str | None:

@@ -121,6 +121,31 @@ def test_log_sink_maps_unregistered_operation_names_to_redacted(caplog):
     assert caplog.records[-1].transaction["operation_name"] == "redacted"
 
 
+def test_log_sink_maps_unhashable_enum_values_to_safe_fallbacks(caplog):
+    logger = logging.getLogger("niuva.transaction.unhashable")
+    sink = TransactionLogSink(logger)
+
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        sink(
+            {"unexpected": "event"},
+            {
+                "outcome": {"unexpected": "outcome"},
+                "retry_mode": ["unexpected"],
+                "error_class": {"unexpected": "error"},
+            },
+        )
+
+    assert caplog.records[-1].transaction == {
+        "event": "transaction_abort",
+        "operation_name": "redacted",
+        "outcome": "aborted",
+        "attempt": 0,
+        "retry_mode": "never",
+        "correlation_id": None,
+        "error_class": "database_error",
+    }
+
+
 def test_log_sink_rejects_nonfinite_duration_without_raising(caplog):
     logger = logging.getLogger("niuva.transaction.nonfinite")
     sink = TransactionLogSink(logger)
