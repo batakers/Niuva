@@ -20,8 +20,8 @@ Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 
 Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
 (`origin/main`, merged 3 August 2026 after PR #107). The current proposal
-baseline is `5dd611297f8db5db03872d10b605536e2da462cf` (`origin/main`, fetched
-5 August 2026).
+baseline is `0b699fea676d285a749f7bf41765b542238c3def` (`origin/main`, fetched
+4 August 2026 UTC (5 August 2026 Asia/Jakarta)).
 
 Related roadmap task: `PHASE-08B`; `TASK-08B-01`; `TASK-08B-02`
 
@@ -37,7 +37,7 @@ Decision dependency: `DR-014`
 
 **Planning driver:** Project Owner / backend planning driver.
 
-**Delegated DR-014 authority:** On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Yanuar/Owner delegated to
+**Delegated DR-014 authority:** On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner delegated to
 Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
 decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
@@ -45,7 +45,7 @@ Product input for customer-visible service objectives is covered by the
 delegated DR-014 decision-maker role. The concrete telemetry, SLO, capacity,
 threshold, and retention/access values remain pending approval. This revision
 adds a bounded candidate baseline and explicit approval worksheet for those
-areas; it does not convert a proposal into an approval. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz
+areas; it does not convert a proposal into an approval. On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Faiz
 approved JSON Lines to stdout/stderr and no external telemetry provider at
 high level; exporter and numerical observability values remain pending. The
 approved worker values are 15-second maximum operation, 5-second
