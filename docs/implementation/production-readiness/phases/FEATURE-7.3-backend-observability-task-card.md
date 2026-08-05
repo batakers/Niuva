@@ -1,6 +1,6 @@
 # Task Card — Feature 7.3 Backend Observability
 
-Status: **Planning / candidate observability contract and sandbox baseline prepared; high-level DR-014 direction and bounded worker values approved; explicit approval pending — source implementation not authorized**
+Status: **Planning / approved DR-014 observability baseline recorded; source implementation remains separately gated**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -9,9 +9,10 @@ Reconciliation date: 3 August 2026 (Asia/Jakarta)
 Branch: `plan/backend-observability`
 
 PR: `#108` merged as `b336198`; worksheet reconciliation PR `#133` merged as
-`5dd6112`; CI passed; reconciliation is complete and
-Faiz's DR-014 decision authority, high-level direction, and bounded worker
-values are recorded, while source implementation remains `decision_blocked`.
+`5dd6112`; candidate-baseline PR `#134` and remediation PR `#135` merged as
+`0b699fe` and `819a4ef`; CI passed. Faiz's complete DR-014 baseline approval
+is recorded in `DEC-OBS-001`, while source implementation remains separately
+gated.
 
 Worktree: contributor-local isolated worktree for `plan/backend-observability`
 
@@ -19,9 +20,9 @@ Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
 
 Reconciliation baseline: `fe1d8a0274ae106f9ca400570d53a44bc23e149a`
-(`origin/main`, merged 3 August 2026 after PR #107). The current proposal
-baseline is `0b699fea676d285a749f7bf41765b542238c3def` (`origin/main`, fetched
-4 August 2026 UTC (5 August 2026 Asia/Jakarta)).
+(`origin/main`, merged 3 August 2026 after PR #107). The approved-decision
+baseline is `819a4effd2def557e1485fe919eceb70d69123c3` (`origin/main`, PR
+`#135`, fetched 4 August 2026 UTC (5 August 2026 Asia/Jakarta)).
 
 Related roadmap task: `PHASE-08B`; `TASK-08B-01`; `TASK-08B-02`
 
@@ -42,17 +43,15 @@ Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
 decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
 Product input for customer-visible service objectives is covered by the
-delegated DR-014 decision-maker role. The concrete telemetry, SLO, capacity,
-threshold, and retention/access values remain pending approval. This revision
-adds a bounded candidate baseline and explicit approval worksheet for those
-areas; it does not convert a proposal into an approval. On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Faiz
-approved JSON Lines to stdout/stderr and no external telemetry provider at
-high level; exporter and numerical observability values remain pending. The
+delegated DR-014 decision-maker role. On 4 August 2026 UTC (5 August 2026
+Asia/Jakarta), Faiz approved the complete Feature 7.3 candidate baseline
+without amendment after PR `#135` merged, including telemetry, SLO, capacity,
+threshold, retention/access, responder, and evidence values. The
 approved worker values are 15-second maximum operation, 5-second
 acknowledgement, 40-second margin, 60-second lease, 30-second renewal,
 concurrency 1, claim-ahead 0, and 30-second drain.
-The concrete candidate values are recorded in the decision package's
-"Recommended sandbox baseline" section and remain approval-gated.
+The approved values are recorded in `DEC-OBS-001` and the decision package.
+Source implementation and operational execution remain separately gated.
 
 **Planning and Git delivery authorization:** The Project Owner explicitly
 authorized continuation of Feature 7.3 planning and authorized commit, push,
@@ -91,9 +90,8 @@ Prepare one provider-neutral Operations/SRE decision package for:
 
 The package must define safe schemas, cardinality constraints, ownership,
 objective formulas, approval fields, later source acceptance tests, and stop
-conditions. Any proposed provider-neutral destination, threshold, SLO, or
-response value must remain explicitly candidate until approved and must not
-create an on-call commitment.
+conditions. The approved values are bounded to sandbox validation and do not
+create a production SLA or 24/7 on-call commitment.
 
 ## Current-source baseline
 
@@ -123,15 +121,13 @@ production telemetry system:
 ## Dependency on Feature 7.2
 
 PR `#107` merged as `fe1d8a0` and records the Project Owner-approved
-worker-topology planning direction. Faiz's delegated DR-014 authority,
-high-level Option B direction, and bounded lease/worker values are now
-recorded; telemetry/SLO, capacity, destination, and remaining decision values
-remain pending under DR-014, and source implementation remains unauthorized.
+worker-topology planning direction. Faiz's delegated DR-014 authority and the
+complete Feature 7.3 baseline are now recorded in `DEC-OBS-001`; source
+implementation and environment evidence remain unauthorized.
 
 This task may define provider-neutral worker signal names and decision fields.
-It must not treat the still-pending Operations/SRE contract as final, copy the
-planning proposal into source, or finalize worker thresholds before the
-required decisions are accepted.
+It must not copy the approved planning contract into source before the
+separate implementation gate, or treat sandbox values as production evidence.
 
 ## In scope
 
@@ -156,7 +152,7 @@ required decisions are accepted.
 - Adding credentials, telemetry URLs, production routes, public metric
   endpoints, retention configuration, or alert delivery.
 - Inventing KPI/SLO numbers, capacity limits, incident owners, on-call
-  rotations, or escalation destinations.
+  rotations, or escalation destinations beyond the approved sandbox baseline.
 - Reusing application logs as audit records or authentication security-event
   storage.
 - Logging request/response bodies, query strings, raw paths containing
@@ -170,12 +166,16 @@ required decisions are accepted.
 - `docs/implementation/production-readiness/phases/FEATURE-7.3-backend-observability-task-card.md`
 - `docs/implementation/production-readiness/phases/FEATURE-7.3-backend-observability-decision-package.md`
 - `docs/implementation/production-readiness/phases/README.md`
+- `docs/decisions/architecture/DEC-OBS-001-commerce-transaction-sandbox-observability-contract.md`
+- `docs/decisions/DECISION_REGISTER.md`
+- `docs/context/DOCUMENT_REGISTER.md`
 
 The phase evidence index is reconciled after PR #107 merged, preserving Feature
-7.2 and adding Feature 7.3 without importing any source implementation.
+7.2 and recording the approved Feature 7.3 baseline without importing any
+source implementation.
 
-All source, test, dependency, configuration, decision-register, canonical,
-migration, runbook, CI, and deployment files remain intentionally unchanged.
+All source, test, dependency, configuration, migration, runbook, CI, and
+deployment files remain intentionally unchanged.
 
 ## Planning acceptance criteria
 
@@ -194,34 +194,35 @@ The planning packet is ready for review only when it:
 - makes worker signals conditional on the approved Feature 7.2 contract;
 - preserves `UnknownTransactionCommitResult` ambiguity and never suggests
   replaying the business callback;
-- provides SLI formulas and a clearly labeled candidate numerical baseline while
-  keeping approval status visibly pending;
-- names retention, access, dashboard, alert, response, capacity, and evidence
-  owners as required approval fields;
+- provides approved sandbox SLI formulas, objectives, thresholds, and error
+  budgets without converting them into production SLA claims;
+- names approved retention, access, dashboard, alert, response, capacity, and
+  evidence ownership for the sandbox boundary;
 - includes privacy, spoofing, cardinality, dependency-failure, and exporter-
   outage negative cases; and
 - makes no implementation, provider, production, or finding-resolution claim;
-- separates candidate contract text from the explicit approval evidence needed
-  to leave `decision_blocked`.
+- records explicit approval evidence in `DEC-OBS-001` while keeping source
+  implementation separately gated.
 
 ## Stop conditions
 
 Stop before source implementation if:
 
-- the delegated Operations/SRE/Security decision authority or accountable
-  ownership evidence is absent;
-- the telemetry destination/exposure model and retention/access boundary are
-  unresolved;
+- the separate source-implementation authorization on a fresh baseline is
+  absent;
+- a proposed source change exceeds the approved provider-neutral sandbox
+  boundary or requires a new provider, destination, credential, or route;
 - metric names, units, labels, cardinality bounds, or SLI formulas remain
-  ambiguous;
+  ambiguous relative to `DEC-OBS-001`;
 - alerts have no threshold, deduplication, destination, responder, or response
   objective;
 - the implementation would add a provider SDK or public metric route without
   separate approval;
-- worker signals conflict with the accepted Feature 7.2 topology;
+- worker signals conflict with the accepted Feature 7.2 topology or approved
+  Feature 7.3 baseline;
 - authentication-event, audit, notification, and telemetry stores are being
   conflated;
-- an exporter outage could block required business writes without an approved
+- an exporter outage could block required business writes despite the approved
   failure contract; or
 - raw sensitive or unbounded values are proposed as logs, labels, events, or
   alert payloads.
