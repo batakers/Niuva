@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, CircleAlert, History, Lock } from "lucide-react"
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { RetailOrderStatusBadge } from "@/components/admin/RetailOrderStatusBadge";
 import { OperationalState } from "@/components/ui/operational-state";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { TechnicalLabel } from "@/components/ui/technical-label";
@@ -93,7 +93,9 @@ export default function RetailOrderDetail() {
             <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="type-label text-text-secondary">{t("b2b.currentStatus")}</p>
-                <div className="mt-2"><StatusBadge status={record.status} /></div>
+                <div className="mt-2">
+                  <RetailOrderStatusBadge status={record.status} />
+                </div>
               </div>
               <p className="font-mono text-xs text-text-secondary">
                 {record.order_number}
@@ -178,9 +180,11 @@ export default function RetailOrderDetail() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      {event.from_status && <StatusBadge status={event.from_status} />}
+                      {event.from_status && (
+                        <RetailOrderStatusBadge status={event.from_status} />
+                      )}
                       <ArrowRight className="h-3.5 w-3.5 text-text-disabled" aria-hidden="true" />
-                      <StatusBadge status={event.to_status} />
+                      <RetailOrderStatusBadge status={event.to_status} />
                     </div>
                     <p className="mt-2 text-sm text-text-secondary">{event.reason}</p>
                     <p className="mt-1 font-mono text-[11px] text-text-disabled">

@@ -18,8 +18,8 @@ const badgeSource = read(
   "..",
   "..",
   "components",
-  "operational",
-  "StatusStepper.jsx"
+  "admin",
+  "PortfolioStatusBadge.jsx"
 );
 
 const LIFECYCLE = [

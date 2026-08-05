@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CheckCircle2, Download, Eye, Layers, Package } from "lucide-react";
+import { CheckCircle2, Download, Eye, Package } from "lucide-react";
 import { toast } from "sonner";
 
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { LegacyOrderStatusBadge } from "@/components/operational/LegacyOrderStatusBadge";
 import { useI18n } from "@/i18n";
 import {
   api,
@@ -42,14 +43,6 @@ import {
 } from "@/lib/api";
 import { fmtDay, rupiah } from "@/lib/format";
 import { AdminLayout } from "./AdminLayout";
-
-const BULK_STATUS_OPTIONS = [
-  { value: "in_process", labelKey: "status.in_process" },
-  { value: "completed", labelKey: "status.completed" },
-  { value: "cancelled", labelKey: "status.cancelled" },
-  { value: "awaiting_payment", labelKey: "status.awaiting_payment" },
-  { value: "pending_estimate", labelKey: "status.pending_estimate" },
-];
 
 const STATUS_FILTER_OPTIONS = [
   { value: "all", labelKey: "orders.filterAllStatus" },
@@ -69,9 +62,6 @@ export default function AdminOrders() {
   const [sel, setSel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkStatus, setBulkStatus] = useState("in_process");
-  const [bulkBusy, setBulkBusy] = useState(false);
   const [filters, setFilters] = useState(() => {
     const statusParam = searchParams.get("status");
     if (statusParam && STATUS_FILTER_OPTIONS.some((o) => o.value === statusParam)) {
@@ -115,12 +105,6 @@ export default function AdminOrders() {
     });
   }, [orders, filters]);
 
-  const orderIds = useMemo(
-    () => filteredOrders.filter((o) => o.mutations_enabled).map((o) => o.id),
-    [filteredOrders]
-  );
-  const mutationsEnabled = orderIds.length > 0;
-
   const hasActiveFilters =
     filters.status !== "all" ||
     filters.search.trim() !== "" ||
@@ -130,18 +114,6 @@ export default function AdminOrders() {
   const updateFilter = (key) => (value) =>
     setFilters((current) => ({ ...current, [key]: value }));
 
-  const toggleOne = (id) =>
-    setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((value) => value !== id)
-        : [...current, id]
-    );
-
-  const toggleAll = () =>
-    setSelectedIds((current) =>
-      current.length === orderIds.length ? [] : orderIds
-    );
-
   const exportCsv = async () => {
     try {
       await downloadCsv("/admin/orders/export", "niuva-orders.csv");
@@ -150,31 +122,16 @@ export default function AdminOrders() {
     }
   };
 
-  const bulkUpdateStatus = async () => {
-    setBulkBusy(true);
-    try {
-      const { data } = await api.post("/admin/orders/bulk-status", {
-        order_ids: selectedIds,
-        status: bulkStatus,
-        note: t("orders.bulkStatusNote"),
-      });
-      const failed = data.results.filter((row) => !row.success).length;
-      if (failed === 0) {
-        toast.success(t("orders.bulkSuccess").replace("{count}", String(data.results.length)));
-      } else {
-        toast.warning(`${data.results.length - failed} OK, ${failed} failed.`);
-      }
-      setSelectedIds([]);
-      load();
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    } finally {
-      setBulkBusy(false);
-    }
-  };
-
   return (
-    <AdminLayout title={t("admin.orders")} subtitle={t("orders.subtitle")}>
+    <AdminLayout title={t("admin.orders")} subtitle={t("orders.legacySubtitle")}>
+      <Alert tone="warning" role="status" className="mb-4">
+        <p className="font-semibold text-text-primary">
+          {t("orders.legacyArchiveTitle")}
+        </p>
+        <p className="mt-1 text-sm leading-6 text-text-secondary">
+          {t("orders.legacyArchiveBody")}
+        </p>
+      </Alert>
       <SurfacePanel className="overflow-hidden">
         {/* Header */}
         <SurfacePanelHeader className="flex items-center justify-between">
@@ -211,7 +168,7 @@ export default function AdminOrders() {
                 value={filters.status}
                 onValueChange={updateFilter("status")}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px]" aria-label={t("common.status")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -251,51 +208,12 @@ export default function AdminOrders() {
           </div>
         )}
 
-        {/* Bulk actions bar - sticky */}
-        {mutationsEnabled && selectedIds.length > 0 && (
-          <div className="sticky top-16 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-action-primary/20 bg-action-primary/5 px-6 py-3">
-            <span className="type-body-small font-medium text-action-primary">
-              {selectedIds.length} {t("orders.selectedCount")}
-            </span>
-            <div className="flex items-center gap-2">
-              <Select value={bulkStatus} onValueChange={setBulkStatus}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BULK_STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {t(option.labelKey)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setSelectedIds([])}
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button 
-                size="sm" 
-                loading={bulkBusy} 
-                onClick={bulkUpdateStatus}
-              >
-                <Layers className="mr-2 h-3.5 w-3.5" />
-                {t("orders.applyBulkStatus")}
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Content */}
         {loading ? (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10" />
                   <TableHead>{t("orders.col.number")}</TableHead>
                   <TableHead>{t("orders.col.client")}</TableHead>
                   <TableHead>{t("orders.col.config")}</TableHead>
@@ -306,7 +224,7 @@ export default function AdminOrders() {
               </TableHeader>
               <TableBody>
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <SkeletonTableRow key={i} columns={7} />
+                  <SkeletonTableRow key={i} columns={6} />
                 ))}
               </TableBody>
             </Table>
@@ -328,20 +246,6 @@ export default function AdminOrders() {
               <Table data-testid="admin-orders-table">
                 <TableHeader>
                   <TableRow>
-                    {mutationsEnabled && <TableHead className="w-10">
-                      <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
-                        <input
-                          type="checkbox"
-                          aria-label={t("orders.selectAll")}
-                          checked={
-                            orderIds.length > 0 &&
-                            selectedIds.length === orderIds.length
-                          }
-                          onChange={toggleAll}
-                          className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
-                        />
-                      </label>
-                    </TableHead>}
                     <TableHead>{t("orders.col.number")}</TableHead>
                     <TableHead>{t("orders.col.client")}</TableHead>
                     <TableHead>{t("orders.col.config")}</TableHead>
@@ -354,21 +258,7 @@ export default function AdminOrders() {
                 </TableHeader>
                 <TableBody>
                   {filteredOrders.map((o) => (
-                    <TableRow 
-                      key={o.id}
-                      data-state={selectedIds.includes(o.id) ? "selected" : undefined}
-                    >
-                      {mutationsEnabled && <TableCell>
-                        <label className="flex h-6 w-6 cursor-pointer items-center justify-center">
-                          <input
-                            type="checkbox"
-                            aria-label={`${t("orders.select")} ${o.order_number}`}
-                            checked={selectedIds.includes(o.id)}
-                            onChange={() => toggleOne(o.id)}
-                            className="h-4 w-4 rounded border-border-default text-action-primary focus:ring-action-primary/20"
-                          />
-                        </label>
-                      </TableCell>}
+                    <TableRow key={o.id}>
                       <TableCell className="whitespace-nowrap font-mono text-sm font-medium text-action-primary">
                         {o.order_number}
                       </TableCell>
@@ -379,7 +269,7 @@ export default function AdminOrders() {
                         {o.material_name}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        <StatusBadge status={o.status} />
+                        <LegacyOrderStatusBadge status={o.status} />
                       </TableCell>
                       <TableCell className="whitespace-nowrap font-mono text-xs text-text-secondary">
                         {fmtDay(o.created_at)}
@@ -414,7 +304,7 @@ export default function AdminOrders() {
                     <span className="font-mono text-sm font-medium text-action-primary">
                       {o.order_number}
                     </span>
-                    <StatusBadge status={o.status} />
+                    <LegacyOrderStatusBadge status={o.status} />
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-text-primary truncate">
@@ -440,10 +330,6 @@ export default function AdminOrders() {
         <OrderManageDialog
           order={sel}
           onClose={() => setSel(null)}
-          onUpdated={(o) => {
-            setSel(o);
-            load();
-          }}
         />
       )}
     </AdminLayout>
@@ -454,28 +340,14 @@ export default function AdminOrders() {
  * Order Management Dialog
  * ────────────────────────────────────────────────────────────────────────── */
 
-function OrderManageDialog({ order, onClose, onUpdated }) {
+function OrderManageDialog({ order, onClose }) {
   const { t } = useI18n();
-  const [busy, setBusy] = useState(false);
 
   const downloadStoredFile = async (path, filename) => {
     try {
       await downloadFile(path, filename);
     } catch {
       toast.error(t("orders.fileDownloadFailed"));
-    }
-  };
-
-  const act = async (fn) => {
-    setBusy(true);
-    try {
-      const { data } = await fn();
-      onUpdated(data);
-      toast.success(t("orders.statusUpdated"));
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -494,7 +366,7 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
               </h2>
             </DialogHeader>
           </div>
-          <StatusBadge status={order.status} />
+          <LegacyOrderStatusBadge status={order.status} />
         </div>
 
         {/* Body */}
@@ -621,53 +493,14 @@ function OrderManageDialog({ order, onClose, onUpdated }) {
             </div>
           )}
 
-          {/* Action Buttons */}
-          {order.mutations_enabled ? (
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <Button
-              loading={busy}
-              variant="outline"
-              size="lg"
-              data-testid="mark-process"
-              onClick={() =>
-                act(() =>
-                  api.post(`/admin/orders/${order.id}/status`, {
-                    status: "in_process",
-                    note: "Set to in process",
-                  })
-                )
-              }
-            >
-              {t("orders.markInProcess")}
-            </Button>
-            <Button
-              loading={busy}
-              variant="success"
-              size="lg"
-              data-testid="mark-complete"
-              onClick={() =>
-                act(() =>
-                  api.post(`/admin/orders/${order.id}/status`, {
-                    status: "completed",
-                    note: "Order completed",
-                  })
-                )
-              }
-            >
-              {t("orders.markCompleted")}
-            </Button>
-          </div>
-          ) : (
-            <div className="rounded-control border border-status-warning/40 bg-status-warning/10 p-4">
-              <p className="font-semibold text-text-primary">
-                Data historis · hanya baca
-              </p>
-              <p className="mt-1 text-sm text-text-secondary">
-                Mutation pesanan legacy dinonaktifkan. Gunakan flow B2B atau
-                Retail canonical untuk pekerjaan baru.
-              </p>
-            </div>
-          )}
+          <Alert tone="warning" role="status">
+            <p className="font-semibold text-text-primary">
+              {t("orders.legacyArchiveTitle")}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-text-secondary">
+              {t("orders.legacyArchiveBody")}
+            </p>
+          </Alert>
         </div>
       </DialogContent>
     </Dialog>

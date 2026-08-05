@@ -106,7 +106,11 @@ const ROLE_HOME = Object.freeze({
   },
   quality_control: {
     labelKey: "admin.roleHome.qualityControl",
-    queuePaths: ["/admin/b2b/work-orders", "/admin/b2b/projects", "/admin/orders"],
+    queuePaths: [
+      "/admin/b2b/work-orders",
+      "/admin/b2b/projects",
+      "/admin/retail-orders",
+    ],
   },
   sales_estimator: {
     labelKey: "admin.roleHome.sales",
@@ -114,12 +118,12 @@ const ROLE_HOME = Object.freeze({
       "/admin/inquiries",
       "/admin/b2b/quotes",
       "/admin/b2b/projects",
-      "/admin/orders",
+      "/admin/retail-orders",
     ],
   },
   order_admin: {
     labelKey: "admin.roleHome.orderAdmin",
-    queuePaths: ["/admin/customers", "/admin/retail-orders", "/admin/orders"],
+    queuePaths: ["/admin/customers", "/admin/retail-orders"],
   },
   catalog_manager: {
     labelKey: "admin.roleHome.catalog",
@@ -134,17 +138,21 @@ const ROLE_HOME = Object.freeze({
     queuePaths: [
       "/admin/b2b/work-orders",
       "/admin/b2b/projects",
-      "/admin/orders",
+      "/admin/retail-orders",
       "/admin/inventory",
     ],
   },
   designer_engineer: {
     labelKey: "admin.roleHome.design",
-    queuePaths: ["/admin/b2b/projects", "/admin/inquiries", "/admin/orders"],
+    queuePaths: [
+      "/admin/b2b/projects",
+      "/admin/inquiries",
+      "/admin/retail-orders",
+    ],
   },
   finance: {
     labelKey: "admin.roleHome.finance",
-    queuePaths: ["/admin/b2b/projects", "/admin/orders"],
+    queuePaths: ["/admin/b2b/projects", "/admin/retail-orders"],
   },
 });
 

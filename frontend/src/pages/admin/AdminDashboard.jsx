@@ -5,6 +5,7 @@ import {
   BarChart3,
   CircleAlert,
   CircleCheck,
+  CircleHelp,
   Clock,
 } from "lucide-react";
 import {
@@ -78,7 +79,8 @@ function WorkQueueRow({ path, index, count, loading }) {
     );
   }
 
-  const hasItems = count > 0;
+  const measured = Number.isFinite(count);
+  const hasItems = measured && count > 0;
 
   return (
     <div className="relative flex gap-4 pb-5 last:pb-0">
@@ -98,12 +100,14 @@ function WorkQueueRow({ path, index, count, loading }) {
             {t(item.label)}
           </p>
           <p className="mt-1 text-sm text-text-secondary">
-            {hasItems
-              ? t("admin.queueNeedsAction").replace("{count}", count)
-              : t("admin.queueReady")}
+            {!measured
+              ? t("admin.queueNeedsReview")
+              : hasItems
+                ? t("admin.queueNeedsAction").replace("{count}", count)
+                : t("admin.queueReady")}
           </p>
         </div>
-        <span className="text-[10px] font-semibold tabular-nums text-text-disabled">
+        <span className="text-[10px] font-semibold tabular-nums text-text-secondary">
           {String(index + 1).padStart(2, "0")}
         </span>
         <ArrowRight className="h-4 w-4 shrink-0 text-text-secondary transition-transform duration-fast group-hover:translate-x-1 motion-reduce:transition-none" />
@@ -113,8 +117,8 @@ function WorkQueueRow({ path, index, count, loading }) {
 }
 
 function queueCount(path, stats) {
-  if (!stats) return 0;
-  if (path === "/admin/orders") {
+  if (!stats) return null;
+  if (path === "/admin/retail-orders") {
     return ["pending_estimate", "awaiting_payment", "in_process"].reduce(
       (sum, key) => sum + (Number(stats[key]) || 0),
       0
@@ -124,7 +128,7 @@ function queueCount(path, stats) {
     return Number(stats.inquiries ?? stats.contacts) || 0;
   }
   if (path === "/admin/inventory") return Number(stats.low_stock) || 0;
-  return 0;
+  return null;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -142,6 +146,7 @@ function columnsOf(rows) {
 }
 
 function TrendChart({
+  id,
   title,
   rows,
   value,
@@ -163,8 +168,13 @@ function TrendChart({
     .replace("{to}", dateTo || "");
 
   return (
-    <SurfacePanel className="p-4 sm:p-6">
-      <p className="type-label text-text-secondary mb-4">{title}</p>
+    <section
+      className="border-t border-border-default py-6 sm:py-8"
+      aria-labelledby={id}
+    >
+      <h3 id={id} className="font-heading text-lg font-semibold text-text-primary">
+        {title}
+      </h3>
       {loading ? (
         <div className="h-[200px] sm:h-[220px] flex items-center justify-center">
           <Skeleton className="h-full w-full rounded-control" />
@@ -279,7 +289,7 @@ function TrendChart({
                       {row.date}
                     </th>
                     {columns.map((column) => (
-                      <td key={column} className="py-2 pr-4 font-mono text-xs tabular-nums text-text-primary">
+                      <td key={column} className="py-2 pr-4 text-xs tabular-nums text-text-primary">
                         {row[column] ?? "-"}
                       </td>
                     ))}
@@ -290,7 +300,7 @@ function TrendChart({
           </div>
         </details>
       )}
-    </SurfacePanel>
+    </section>
   );
 }
 
@@ -341,6 +351,13 @@ export default function AdminDashboard() {
   const canSeeInventory = hasPermission(user, "inventory.read");
   const statsLoading = !stats && !loadError;
   const roleHome = getRoleHome(user);
+  const measuredQueueCounts = stats
+    ? roleHome.queuePaths
+        .map((path) => queueCount(path, stats))
+        .filter(Number.isFinite)
+    : [];
+  const hasMeasuredQueues = measuredQueueCounts.length > 0;
+  const hasQueuedWork = measuredQueueCounts.some((count) => count > 0);
 
   if (loadError) {
     return (
@@ -369,8 +386,20 @@ export default function AdminDashboard() {
             </h2>
           </div>
           <div className="flex items-center gap-2 text-xs text-text-secondary">
-            {statsLoading ? <Clock className="h-4 w-4" /> : roleHome.queuePaths.some((path) => queueCount(path, stats) > 0) ? <CircleAlert className="h-4 w-4 text-status-warning" /> : <CircleCheck className="h-4 w-4 text-status-success" />}
-            {statsLoading ? t("common.loading") : t("admin.queueLive")}
+            {statsLoading ? (
+              <Clock className="h-4 w-4" />
+            ) : hasQueuedWork ? (
+              <CircleAlert className="h-4 w-4 text-status-warning" />
+            ) : hasMeasuredQueues ? (
+              <CircleCheck className="h-4 w-4 text-status-success" />
+            ) : (
+              <CircleHelp className="h-4 w-4 text-text-secondary" />
+            )}
+            {statsLoading
+              ? t("common.loading")
+              : hasMeasuredQueues
+                ? t("admin.queueLive")
+                : t("admin.queueReviewRequired")}
           </div>
         </div>
         <div data-testid="operational-spine">
@@ -390,7 +419,13 @@ export default function AdminDashboard() {
       </section>
 
       {/* ─── Date Range Filter ─── */}
-      <SurfacePanel className="mt-10 p-4">
+      <section
+        className="mt-10 border-y border-border-default py-5"
+        aria-labelledby="dashboard-date-range-title"
+      >
+        <h2 id="dashboard-date-range-title" className="sr-only">
+          {t("dashboard.dateRange")}
+        </h2>
         <div className="flex flex-wrap items-end gap-4">
           <FormField label={t("dashboard.dateFrom")}>
             <Input
@@ -409,7 +444,7 @@ export default function AdminDashboard() {
             />
           </FormField>
         </div>
-      </SurfacePanel>
+      </section>
 
       {seriesError && (
         <ErrorState
@@ -421,35 +456,53 @@ export default function AdminDashboard() {
       )}
 
       {/* ─── Trend Charts ─── */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <TrendChart
-          title={t("dashboard.ordersTrend")}
-          rows={series?.orders_by_status || []}
-          value={totalForRow}
-          loading={seriesLoading}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          emptyAction={
-            hasPermission(user, "orders.read")
-              ? { to: "/admin/retail-orders", labelKey: "dashboard.openOrders" }
-              : null
-          }
-        />
-        {canSeeInventory && (
+      <section className="mt-8" aria-labelledby="dashboard-trends-title">
+        <div className="mb-4 max-w-3xl">
+          <h2
+            id="dashboard-trends-title"
+            className="font-heading text-xl font-semibold text-text-primary"
+          >
+            {t("dashboard.operationalTrends")}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">
+            {t("dashboard.operationalTrendsBody")}
+          </p>
+        </div>
+        <div className="grid gap-x-8 lg:grid-cols-2">
           <TrendChart
-            title={t("dashboard.stockMovementsTrend")}
-            rows={series?.stock_movements || []}
-            value={(row) => Number(row.signed_quantity) || 0}
+            id="dashboard-orders-trend"
+            title={t("dashboard.ordersTrend")}
+            rows={series?.orders_by_status || []}
+            value={totalForRow}
             loading={seriesLoading}
             dateFrom={dateFrom}
             dateTo={dateTo}
-            emptyAction={{
-              to: "/admin/stock-movements",
-              labelKey: "dashboard.openStockMovements",
-            }}
+            emptyAction={
+              hasPermission(user, "orders.read")
+                ? {
+                    to: "/admin/retail-orders",
+                    labelKey: "dashboard.openOrders",
+                  }
+                : null
+            }
           />
-        )}
-      </div>
+          {canSeeInventory && (
+            <TrendChart
+              id="dashboard-stock-trend"
+              title={t("dashboard.stockMovementsTrend")}
+              rows={series?.stock_movements || []}
+              value={(row) => Number(row.signed_quantity) || 0}
+              loading={seriesLoading}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              emptyAction={{
+                to: "/admin/stock-movements",
+                labelKey: "dashboard.openStockMovements",
+              }}
+            />
+          )}
+        </div>
+      </section>
 
       {series?.revenue?.available === false && (
         <SurfacePanel

@@ -1,79 +1,73 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
+
 import { MarketingLayout } from "@/components/layout/Layout";
 import {
-  BrandPage,
   MarketingSection,
   PageContainer,
-  PageHero,
-  SectionHeader,
 } from "@/components/brand/BrandSystem";
-import { BrandButton } from "@/components/brand/CompanyProfileBlocks";
+import { RetailProductVisual } from "@/components/retail/RetailProductVisual";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
+import { OperationalState } from "@/components/ui/operational-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HAS_CONFIGURED_BACKEND, resolveMediaUrl } from "@/lib/api";
+import { HAS_CONFIGURED_BACKEND } from "@/lib/api";
 import {
   availabilityLabel,
   formatCatalogPrice,
   publicCatalogApi,
 } from "@/lib/catalog";
 
-
-function ProductVisual({ product }) {
-  const image = resolveMediaUrl(product.media?.[0]?.storage_path);
-  return (
-    <div
-      className="grid aspect-[4/3] place-items-center rounded-card bg-decoration-brand-soft p-6 text-center ring-1 ring-border-default"
-      role={image ? undefined : "img"}
-      aria-label={image ? undefined : (product.media?.[0]?.alt || `Visual ${product.name}`)}
-    >
-      {image ? (
-        <img
-          src={image}
-          alt={product.media?.[0]?.alt || `Visual ${product.name}`}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          decoding="async"
-        />
-      ) : <div>
-        <span className="font-mono-tech text-xs font-semibold uppercase tracking-widest text-text-primary">
-          Niuva Retail
-        </span>
-        <p className="mt-3 font-heading text-xl font-bold text-text-primary">{product.name}</p>
-      </div>}
-    </div>
-  );
-}
-
-function ProductCard({ publication }) {
+function ProductTile({ publication }) {
   const { product, variants, category } = publication;
+
   return (
-    <article className="flex h-full flex-col rounded-feature border border-border-default bg-surface-default p-4 shadow-surface">
-      <ProductVisual product={product} />
-      <div className="flex flex-1 flex-col px-1 pb-1 pt-5">
+    <article className="flex h-full flex-col border-t-2 border-brand-secondary pt-4">
+      <RetailProductVisual product={product} />
+      <div className="flex flex-1 flex-col pt-5">
         <p className="type-label text-text-secondary">{category.name}</p>
-        <h2 className="mt-2 font-heading text-xl font-bold text-text-primary">{product.name}</h2>
+        <h3 className="mt-2 font-heading text-xl font-bold text-text-primary">
+          {product.name}
+        </h3>
         <p className="mt-3 line-clamp-3 text-sm leading-6 text-text-secondary">
           {product.short_description}
         </p>
-        <div className="mt-5 flex items-center justify-between gap-3 border-t border-border-default pt-4">
+        <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border-default pt-4 text-sm">
           <div>
-            <p className="text-sm font-semibold text-text-primary">
+            <dt className="text-xs text-text-secondary">Harga publikasi</dt>
+            <dd className="mt-1 font-semibold text-text-primary">
               {formatCatalogPrice(product, variants)}
-            </p>
-            <p className="mt-1 text-xs text-text-secondary">{availabilityLabel(variants)}</p>
+            </dd>
           </div>
-          <Link
-            to={`/retail/products/${product.slug}`}
-            className="inline-flex min-h-11 items-center rounded-control bg-action-primary px-4 py-2 text-sm font-semibold text-text-inverse hover:bg-action-primary-hover"
-          >
+          <div>
+            <dt className="text-xs text-text-secondary">Ketersediaan</dt>
+            <dd className="mt-1 font-semibold text-text-primary">
+              {availabilityLabel(variants)}
+            </dd>
+          </div>
+        </dl>
+        <Button asChild variant="outline" className="mt-5 w-full">
+          <Link to={`/retail/products/${product.slug}`}>
             Lihat detail
+            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
           </Link>
-        </div>
+        </Button>
       </div>
     </article>
+  );
+}
+
+function ProductTileSkeleton() {
+  return (
+    <div className="border-t-2 border-border-default pt-4" aria-hidden="true">
+      <Skeleton className="aspect-[4/3] w-full rounded-panel" />
+      <Skeleton className="mt-5 h-4 w-24" />
+      <Skeleton className="mt-3 h-7 w-3/4" />
+      <Skeleton className="mt-4 h-16 w-full" />
+      <Skeleton className="mt-5 h-11 w-full" />
+    </div>
   );
 }
 
@@ -86,24 +80,37 @@ export default function RetailCatalogPage() {
   });
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
+  const loadRequestRef = useRef(null);
 
-  const load = useCallback(async () => {
-    if (!HAS_CONFIGURED_BACKEND) return;
+  const load = useCallback(() => {
+    if (!HAS_CONFIGURED_BACKEND) return Promise.resolve();
+    if (loadRequestRef.current) return loadRequestRef.current;
+
     setState((current) => ({ ...current, status: "loading" }));
-    try {
-      const [categories, page] = await Promise.all([
-        publicCatalogApi.categories(),
-        publicCatalogApi.products(),
-      ]);
-      setState({
-        status: "ready",
-        categories,
-        items: page.items,
-        nextCursor: page.next_cursor,
+    const request = Promise.all([
+      publicCatalogApi.categories(),
+      publicCatalogApi.products(),
+    ])
+      .then(([categories, page]) => {
+        setState({
+          status: "ready",
+          categories,
+          items: page.items,
+          nextCursor: page.next_cursor,
+        });
+      })
+      .catch(() => {
+        setState((current) => ({ ...current, status: "error" }));
+      })
+      .finally(() => {
+        if (loadRequestRef.current === request) {
+          loadRequestRef.current = null;
+        }
       });
-    } catch (error) {
-      setState((current) => ({ ...current, status: "error" }));
-    }
+
+    loadRequestRef.current = request;
+    return request;
   }, []);
 
   useEffect(() => {
@@ -124,6 +131,8 @@ export default function RetailCatalogPage() {
   const loadMore = async () => {
     if (!state.nextCursor || loadingMore) return;
     setLoadingMore(true);
+    setLoadMoreError(false);
+
     try {
       const page = await publicCatalogApi.products({
         cursor: state.nextCursor,
@@ -133,6 +142,8 @@ export default function RetailCatalogPage() {
         items: [...current.items, ...page.items],
         nextCursor: page.next_cursor,
       }));
+    } catch {
+      setLoadMoreError(true);
     } finally {
       setLoadingMore(false);
     }
@@ -140,45 +151,88 @@ export default function RetailCatalogPage() {
 
   return (
     <MarketingLayout>
-      <BrandPage>
-        <PageHero
-          label="Retail discovery"
-          title="Jelajahi produk Niuva tanpa alur transaksi."
-          body="Retail adalah jalur sekunder untuk melihat produk yang sudah dipublikasikan. Checkout, pembayaran, dan fulfilment belum diaktifkan."
-          primaryAction={<BrandButton to="/contact">Diskusikan kebutuhan</BrandButton>}
-          variant="compact"
-        />
+      <div className="retail-surface bg-surface-page">
+        <MarketingSection
+          tone="page"
+          spacing="compact"
+          className="!pt-[var(--space-page-start)]"
+        >
+          <PageContainer>
+            <div className="grid gap-8 border-b border-border-default pb-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div className="max-w-3xl">
+                <p className="type-label text-action-primary">Niuva Retail</p>
+                <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight text-text-primary sm:text-5xl">
+                  Produk yang dapat Anda pelajari sebelum bertransaksi.
+                </h1>
+                <p className="mt-5 max-w-2xl text-base leading-8 text-text-secondary sm:text-lg">
+                  Bandingkan produk, harga publikasi, dan status ketersediaan.
+                  Checkout, pembayaran, dan fulfilment belum diaktifkan.
+                </p>
+              </div>
+              <Button asChild variant="outline" className="w-full lg:w-auto">
+                <Link to="/contact">Diskusikan kebutuhan khusus</Link>
+              </Button>
+            </div>
+          </PageContainer>
+        </MarketingSection>
+
         <MarketingSection tone="default">
           <PageContainer>
-            <SectionHeader
-              title="Katalog produk terpublikasi"
-              body="Harga dan ketersediaan ditampilkan secara aman dari publication snapshot dan status inventory."
-              align="stacked"
-            />
+            <div className="mb-8 max-w-3xl">
+              <h2 className="font-heading text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
+                Katalog produk terpublikasi
+              </h2>
+              <p className="mt-3 leading-7 text-text-secondary">
+                Informasi berasal dari publication snapshot dan status inventory
+                yang aman untuk ditampilkan kepada publik.
+              </p>
+            </div>
+
             {state.status === "loading" && (
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3" role="status">
+              <div
+                className="grid gap-x-7 gap-y-12 md:grid-cols-2 xl:grid-cols-3"
+                role="status"
+                aria-label="Memuat katalog Retail"
+              >
                 {[1, 2, 3, 4, 5, 6].map((item) => (
-                  <Skeleton key={item} className="h-[28rem] rounded-feature" />
+                  <ProductTileSkeleton key={item} />
                 ))}
               </div>
             )}
+
             {state.status === "unavailable" && (
-              <ErrorState
-                error="Katalog belum terhubung pada environment ini."
-                onRetry={() => window.location.reload()}
+              <EmptyState frame="dashed">
+                Katalog belum terhubung pada environment ini.
+              </EmptyState>
+            )}
+
+            {state.status === "error" && (
+              <OperationalState
+                state="error"
+                title="Katalog belum berhasil dimuat"
+                description="Data katalog tidak diubah. Periksa koneksi Anda lalu coba lagi."
+                retryLabel="Coba lagi"
+                onRetry={load}
+                className="rounded-panel"
               />
             )}
-            {state.status === "error" && (
-              <ErrorState error="Katalog belum berhasil dimuat." onRetry={load} />
-            )}
+
             {state.status === "ready" && state.items.length === 0 && (
-              <EmptyState>Belum ada produk Retail yang dipublikasikan.</EmptyState>
+              <EmptyState frame="dashed">
+                Belum ada produk Retail yang dipublikasikan.
+              </EmptyState>
             )}
+
             {state.status === "ready" && state.items.length > 0 && (
               <>
-                <div className="mb-7 flex flex-wrap gap-2" aria-label="Filter kategori">
+                <div
+                  className="mb-9 flex flex-wrap gap-2"
+                  role="group"
+                  aria-label="Filter kategori"
+                >
                   <Button
                     variant={selectedCategory === "all" ? "default" : "outline"}
+                    aria-pressed={selectedCategory === "all"}
                     onClick={() => setSelectedCategory("all")}
                   >
                     Semua
@@ -186,26 +240,56 @@ export default function RetailCatalogPage() {
                   {state.categories.map((category) => (
                     <Button
                       key={category.id}
-                      variant={selectedCategory === category.id ? "default" : "outline"}
+                      variant={
+                        selectedCategory === category.id ? "default" : "outline"
+                      }
+                      aria-pressed={selectedCategory === category.id}
                       onClick={() => setSelectedCategory(category.id)}
                     >
                       {category.name}
                     </Button>
                   ))}
                 </div>
+
                 {visibleItems.length === 0 ? (
-                  <EmptyState>Tidak ada produk pada kategori ini.</EmptyState>
+                  <EmptyState frame="dashed">
+                    Tidak ada produk pada kategori ini.
+                  </EmptyState>
                 ) : (
-                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  <div
+                    className="grid gap-x-7 gap-y-12 md:grid-cols-2 xl:grid-cols-3"
+                    data-testid="retail-product-grid"
+                  >
                     {visibleItems.map((item) => (
-                      <ProductCard key={item.product.id} publication={item} />
+                      <ProductTile
+                        key={item.product.id}
+                        publication={item}
+                      />
                     ))}
                   </div>
                 )}
+
                 {state.nextCursor && selectedCategory === "all" && (
-                  <div className="mt-10 text-center">
-                    <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
-                      {loadingMore ? "Memuat…" : "Muat produk berikutnya"}
+                  <div className="mt-10 border-t border-border-default pt-8 text-center">
+                    {loadMoreError && (
+                      <Alert
+                        className="mx-auto mb-4 max-w-xl text-left"
+                        data-testid="retail-load-more-error"
+                      >
+                        Produk berikutnya belum berhasil dimuat. Produk yang
+                        sudah tampil tetap tersedia.
+                      </Alert>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={loadMore}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore
+                        ? "Memuat…"
+                        : loadMoreError
+                          ? "Coba muat lagi"
+                          : "Muat produk berikutnya"}
                     </Button>
                   </div>
                 )}
@@ -213,7 +297,7 @@ export default function RetailCatalogPage() {
             )}
           </PageContainer>
         </MarketingSection>
-      </BrandPage>
+      </div>
     </MarketingLayout>
   );
 }

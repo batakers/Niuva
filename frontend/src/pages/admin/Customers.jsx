@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
+import { AccountStatusBadge } from "@/components/admin/AccountStatusBadge";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
 import { fmtDay } from "@/lib/format";
 import {
@@ -38,6 +40,7 @@ import { AdminLayout } from "./AdminLayout";
 
 export default function Customers() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -75,16 +78,18 @@ export default function Customers() {
 
   return (
     <AdminLayout
-      title="Customer Management"
-      subtitle="Akun customer dipisahkan dari direktori dan governance staff."
+      title={t("admin.customers")}
+      subtitle={t("customers.subtitle")}
     >
       <SurfacePanel>
         <SurfacePanelHeader className="flex items-center justify-between gap-3">
-          <p className="type-label text-text-secondary">Total customer: {items.length}</p>
+          <p className="type-label text-text-secondary">
+            {t("customers.total").replace("{count}", items.length)}
+          </p>
           {canManage && (
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Tambah customer
+              {t("customers.add")}
             </Button>
           )}
         </SurfacePanelHeader>
@@ -93,29 +98,31 @@ export default function Customers() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Cari nama, email, atau perusahaan…"
-              aria-label="Cari customer"
+              placeholder={t("customers.searchPlaceholder")}
+              aria-label={t("customers.searchLabel")}
               className="max-w-sm"
             />
           </div>
         )}
         {loading ? (
-          <div className="p-6 text-sm text-text-secondary">Memuat customer…</div>
+          <div className="p-6 text-sm text-text-secondary">
+            {t("customers.loading")}
+          </div>
         ) : error ? (
           <ErrorState error={error} onRetry={load} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Users} className="py-16">
-            {items.length ? "Customer tidak ditemukan." : "Belum ada customer."}
+            {items.length ? t("customers.noMatch") : t("customers.empty")}
           </EmptyState>
         ) : (
           <Table data-testid="admin-customers-table">
             <TableHeader>
               <TableRow>
-                <TableHead>Identitas</TableHead>
-                <TableHead>Perusahaan</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Dibuat</TableHead>
-                {canManage && <TableHead>Aksi</TableHead>}
+                <TableHead>{t("admin.identity")}</TableHead>
+                <TableHead>{t("admin.company")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("common.created")}</TableHead>
+                {canManage && <TableHead>{t("common.actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -123,15 +130,19 @@ export default function Customers() {
                 <TableRow key={item.id}>
                   <TableCell>
                     <p className="font-semibold">{item.name}</p>
-                    <p className="font-mono text-xs text-action-primary">{item.email}</p>
+                    <p className="text-sm text-action-primary">{item.email}</p>
                   </TableCell>
                   <TableCell>{item.company || "—"}</TableCell>
-                  <TableCell>{item.status === "active" ? "Aktif" : "Nonaktif"}</TableCell>
+                  <TableCell>
+                    <AccountStatusBadge status={item.status} />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{fmtDay(item.created_at)}</TableCell>
                   {canManage && (
                     <TableCell>
                       <Button size="sm" variant="outline" onClick={() => setStatusTarget(item)}>
-                        {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+                        {item.status === "active"
+                          ? t("admin.deactivate")
+                          : t("admin.reactivate")}
                       </Button>
                     </TableCell>
                   )}
@@ -160,6 +171,7 @@ export default function Customers() {
 }
 
 function CreateCustomerDialog({ open, onOpenChange, onCreated }) {
+  const { t } = useI18n();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -184,14 +196,14 @@ function CreateCustomerDialog({ open, onOpenChange, onCreated }) {
       .catch(() => {
         if (active) {
           setPolicyError(
-            "Aturan password belum dapat dimuat. Tutup lalu buka kembali untuk mencoba lagi.",
+            t("customers.passwordPolicyError"),
           );
         }
       });
     return () => {
       active = false;
     };
-  }, [open]);
+  }, [open, t]);
 
   const canSubmit =
     form.name.trim().length >= 2 &&
@@ -213,7 +225,7 @@ function CreateCustomerDialog({ open, onOpenChange, onCreated }) {
         phone: form.phone.trim() || null,
         company: form.company.trim() || null,
       });
-      toast.success("Customer berhasil dibuat.");
+      toast.success(t("customers.createSuccess"));
       setForm({ name: "", email: "", password: "", phone: "", company: "" });
       onOpenChange(false);
       await onCreated();
@@ -228,15 +240,15 @@ function CreateCustomerDialog({ open, onOpenChange, onCreated }) {
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Tambah customer</DialogTitle>
+          <DialogTitle>{t("customers.add")}</DialogTitle>
           <DialogDescription>
-            Akun ini hanya dapat login melalui halaman customer.
+            {t("customers.createDescription")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <FormField label="Nama"><Input value={form.name} onChange={update("name")} /></FormField>
-          <FormField label="Email"><Input type="email" value={form.email} onChange={update("email")} /></FormField>
-          <FormField label="Password">
+          <FormField label={t("common.name")}><Input value={form.name} onChange={update("name")} /></FormField>
+          <FormField label={t("common.email")}><Input type="email" value={form.email} onChange={update("email")} /></FormField>
+          <FormField label={t("common.password")}>
             <Input
               type="password"
               data-testid="customer-create-password"
@@ -251,25 +263,25 @@ function CreateCustomerDialog({ open, onOpenChange, onCreated }) {
             >
               {passwordPolicy
                 ? passwordPolicySummary(passwordPolicy)
-                : "Memuat aturan password…"}
+                : t("customers.passwordPolicyLoading")}
             </p>
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Telepon"><Input value={form.phone} onChange={update("phone")} /></FormField>
-            <FormField label="Perusahaan"><Input value={form.company} onChange={update("company")} /></FormField>
+            <FormField label={t("common.phone")}><Input value={form.phone} onChange={update("phone")} /></FormField>
+            <FormField label={t("admin.company")}><Input value={form.company} onChange={update("company")} /></FormField>
           </div>
           {policyError && <Alert>{policyError}</Alert>}
           {error && <Alert>{error}</Alert>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Batal</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t("common.cancel")}</Button>
           <Button
             data-testid="customer-create-submit"
             onClick={submit}
             disabled={!canSubmit}
             loading={busy}
           >
-            Buat customer
+            {t("customers.createAction")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -278,6 +290,7 @@ function CreateCustomerDialog({ open, onOpenChange, onCreated }) {
 }
 
 function CustomerStatusDialog({ target, onOpenChange, onUpdated }) {
+  const { t } = useI18n();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -291,7 +304,7 @@ function CustomerStatusDialog({ target, onOpenChange, onUpdated }) {
         expected_version: target.version,
         reason: reason.trim(),
       });
-      toast.success("Status customer diperbarui.");
+      toast.success(t("customers.statusUpdated"));
       setReason("");
       onOpenChange(false);
       await onUpdated();
@@ -306,17 +319,21 @@ function CustomerStatusDialog({ target, onOpenChange, onUpdated }) {
     <Dialog open={Boolean(target)} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{action === "deactivate" ? "Nonaktifkan" : "Aktifkan"} customer</DialogTitle>
+          <DialogTitle>
+            {action === "deactivate"
+              ? t("admin.deactivate")
+              : t("admin.reactivate")} {t("customers.singular")}
+          </DialogTitle>
           <DialogDescription>{target?.email}</DialogDescription>
         </DialogHeader>
-        <FormField label="Alasan perubahan">
+        <FormField label={t("staff.changeReason")}>
           <Input value={reason} onChange={(event) => setReason(event.target.value)} />
         </FormField>
         {error && <Alert>{error}</Alert>}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Batal</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t("common.cancel")}</Button>
           <Button onClick={submit} disabled={reason.trim().length < 3 || busy} loading={busy}>
-            Konfirmasi
+            {t("admin.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

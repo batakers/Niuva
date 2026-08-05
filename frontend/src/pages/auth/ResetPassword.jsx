@@ -1,10 +1,11 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
 import { api, formatApiError } from "@/lib/api";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 function captureToken() {
   const url = new URL(window.location.href);
@@ -94,97 +95,96 @@ export default function ResetPassword() {
   };
 
   return (
-    <AuthShell heading={"Account\nRecovery"} tagline="Buat password baru untuk akun Anda.">
-      <div className="border border-border-default bg-surface-default p-8">
-        <h1 className="mb-2 font-heading text-2xl font-bold uppercase tracking-tight text-text-primary">
-          Reset Password
-        </h1>
+    <AuthShell audience="recovery">
+      <AuthCard
+        eyebrow="Pemulihan akun"
+        title="Buat password baru"
+        description="Link akan diperiksa sebelum Anda dapat mengubah password."
+      >
         {preparationError ? (
-          <div className="space-y-6" role="alert">
-            <p className="text-sm text-text-secondary">Link belum dapat diperiksa. Periksa koneksi, lalu coba lagi.</p>
-            <Button type="button" onClick={() => setPreparationAttempt((attempt) => attempt + 1)} className="h-12 w-full rounded-none bg-action-primary font-mono text-xs uppercase tracking-widest text-text-inverse hover:bg-action-primary-hover">
+          <div className="space-y-5">
+            <Alert>Link belum dapat diperiksa. Periksa koneksi, lalu coba lagi.</Alert>
+            <Button
+              type="button"
+              onClick={() => setPreparationAttempt((attempt) => attempt + 1)}
+              className="w-full"
+              size="lg"
+            >
               Coba Lagi
             </Button>
           </div>
         ) : validating ? (
-          <p className="text-sm text-text-secondary" role="status" aria-live="polite">Memeriksa link reset...</p>
+          <p className="text-sm text-text-secondary" role="status" aria-live="polite">
+            Memeriksa link reset…
+          </p>
         ) : (
-          <form onSubmit={submit} className="space-y-6" data-testid="reset-password-form">
-            <p className="text-sm leading-relaxed text-text-secondary">Masukkan password baru untuk akun Anda.</p>
-            <div className="space-y-2">
-              <Label htmlFor="reset-password-new" className="block font-mono text-[10px] uppercase tracking-widest text-text-secondary">
-                Password Baru
-              </Label>
-              <div className="flex">
-                <Input
-                  id="reset-password-new"
-                  data-testid="reset-password-new"
-                  type={showPassword ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  required
-                  minLength={policy.min_code_points}
-                  autoComplete="new-password"
-                  aria-describedby="reset-password-rules"
-                  aria-invalid={newPassword.length > 0 && !lengthValid ? "true" : undefined}
-                  className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-action-primary focus-visible:ring-1 focus-visible:ring-action-primary/20"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((shown) => !shown)}
-                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                  className="min-h-12 border border-l-0 border-border-default px-3 font-mono text-[10px] uppercase tracking-wider text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                >
-                  {showPassword ? "Sembunyikan" : "Tampilkan"}
-                </button>
-              </div>
-              <ul id="reset-password-rules" aria-live="polite" className="space-y-1 text-xs text-text-secondary">
-                <li className={newPassword && codePoints < policy.min_code_points ? "text-destructive" : ""}>
-                  {policy.min_code_points}-{policy.max_code_points} karakter Unicode.
-                </li>
-                <li>Maksimal {policy.max_utf8_bytes} byte; tanpa aturan kombinasi karakter.</li>
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="reset-password-confirm" className="block font-mono text-[10px] uppercase tracking-widest text-text-secondary">
-                Konfirmasi Password
-              </Label>
+          <form onSubmit={submit} className="space-y-5" data-testid="reset-password-form">
+            <FormField
+              label="Password baru"
+              required
+              hint={`${policy.min_code_points}–${policy.max_code_points} karakter Unicode, maksimal ${policy.max_utf8_bytes} byte, tanpa aturan kombinasi karakter.`}
+              error={
+                newPassword.length > 0 && !lengthValid
+                  ? "Password belum memenuhi panjang yang diperlukan."
+                  : undefined
+              }
+            >
               <Input
-                id="reset-password-confirm"
+                data-testid="reset-password-new"
+                type={showPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                required
+                minLength={policy.min_code_points}
+                autoComplete="new-password"
+              />
+            </FormField>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPassword((shown) => !shown)}
+              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+            >
+              {showPassword ? "Sembunyikan password" : "Tampilkan password"}
+            </Button>
+
+            <FormField
+              label="Konfirmasi password"
+              required
+              error={mismatch ? "Password tidak cocok." : undefined}
+            >
+              <Input
                 data-testid="reset-password-confirm"
                 type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
                 autoComplete="new-password"
-                aria-invalid={mismatch || undefined}
-                aria-describedby={mismatch ? "reset-password-mismatch" : undefined}
-                className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-action-primary focus-visible:ring-1 focus-visible:ring-action-primary/20"
               />
-              {mismatch && <p id="reset-password-mismatch" className="text-xs text-destructive">Password tidak cocok.</p>}
-            </div>
+            </FormField>
 
             {error && (
-              <div ref={errorRef} tabIndex={-1} className="border border-destructive/50 bg-destructive/10 p-3" role="alert">
-                <p className="text-sm text-destructive" data-testid="reset-password-error">{error}</p>
-              </div>
+              <Alert ref={errorRef} tabIndex={-1} data-testid="reset-password-error">
+                {error}
+              </Alert>
             )}
 
             <Button
               type="submit"
               disabled={submitting || !canSubmit}
               data-testid="reset-password-submit"
-              className="h-12 w-full rounded-none bg-action-primary font-mono text-xs uppercase tracking-widest text-text-inverse hover:bg-action-primary-hover"
+              className="w-full"
+              size="lg"
             >
-              {submitting ? "MEMPROSES..." : "Reset Password"}
+              {submitting ? "Memproses…" : "Simpan password baru"}
             </Button>
-            <Link to="/forgot-password" className="block text-center font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary">
-              Minta Link Baru
-            </Link>
+            <Button asChild variant="link" className="w-full">
+              <Link to="/forgot-password">Minta link baru</Link>
+            </Button>
           </form>
         )}
-      </div>
+      </AuthCard>
     </AuthShell>
   );
 }

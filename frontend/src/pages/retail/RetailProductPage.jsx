@@ -1,18 +1,67 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+
 import { MarketingLayout } from "@/components/layout/Layout";
-import { BrandPage, MarketingSection, PageContainer } from "@/components/brand/BrandSystem";
+import {
+  MarketingSection,
+  PageContainer,
+} from "@/components/brand/BrandSystem";
+import { RetailProductVisual } from "@/components/retail/RetailProductVisual";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
+import { OperationalState } from "@/components/ui/operational-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HAS_CONFIGURED_BACKEND, resolveMediaUrl } from "@/lib/api";
+import { HAS_CONFIGURED_BACKEND } from "@/lib/api";
 import {
   availabilityLabel,
   formatCatalogPrice,
   publicCatalogApi,
 } from "@/lib/catalog";
 
+function RetailCtaState({ state }) {
+  if (state === "quote_required") {
+    return (
+      <div className="border-l-2 border-action-primary pl-5">
+        <h2 className="font-heading text-lg font-semibold text-text-primary">
+          Produk ini memerlukan penawaran
+        </h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-text-secondary">
+          Harga final dan komitmen pengerjaan ditetapkan setelah kebutuhan
+          ditinjau. Permintaan ini tidak langsung membuat pesanan atau pembayaran.
+        </p>
+        <Button asChild className="mt-5 w-full sm:w-auto">
+          <Link to="/contact">Minta penawaran</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (state === "discovery_only") {
+    return (
+      <Alert tone="default" role="status" className="px-4 py-4">
+        <p className="font-semibold text-text-primary">
+          Transaksi Retail belum aktif
+        </p>
+        <p className="mt-1 leading-6 text-text-secondary">
+          Produk dapat dipelajari, tetapi checkout, pembayaran, upload,
+          reservasi, dan fulfilment belum tersedia.
+        </p>
+      </Alert>
+    );
+  }
+
+  return (
+    <Alert tone="warning" role="status" className="px-4 py-4">
+      <p className="font-semibold text-text-primary">
+        Permintaan Retail belum tersedia
+      </p>
+      <p className="mt-1 leading-6 text-text-secondary">
+        Produk ini tetap dapat dilihat, tetapi tidak sedang menerima tindakan
+        Retail dari halaman ini.
+      </p>
+    </Alert>
+  );
+}
 
 export default function RetailProductPage() {
   const { slug } = useParams();
@@ -20,19 +69,30 @@ export default function RetailProductPage() {
     status: HAS_CONFIGURED_BACKEND ? "loading" : "unavailable",
     value: null,
   });
+  const loadRequestRef = useRef(null);
 
-  const load = useCallback(async () => {
-    if (!HAS_CONFIGURED_BACKEND) return;
+  const load = useCallback(() => {
+    if (!HAS_CONFIGURED_BACKEND) return Promise.resolve();
+    if (loadRequestRef.current) return loadRequestRef.current;
+
     setState({ status: "loading", value: null });
-    try {
-      const value = await publicCatalogApi.product(slug);
-      setState({ status: "ready", value });
-    } catch (error) {
-      setState({
-        status: error.response?.status === 404 ? "not_found" : "error",
-        value: null,
+    const request = publicCatalogApi
+      .product(slug)
+      .then((value) => setState({ status: "ready", value }))
+      .catch((error) => {
+        setState({
+          status: error.response?.status === 404 ? "not_found" : "error",
+          value: null,
+        });
+      })
+      .finally(() => {
+        if (loadRequestRef.current === request) {
+          loadRequestRef.current = null;
+        }
       });
-    }
+
+    loadRequestRef.current = request;
+    return request;
   }, [slug]);
 
   useEffect(() => {
@@ -45,114 +105,143 @@ export default function RetailProductPage() {
       : "Produk Retail - Niuva";
   }, [state.value]);
 
-  const productImage = resolveMediaUrl(
-    state.value?.product?.media?.[0]?.storage_path,
-  );
-
   return (
     <MarketingLayout>
-      <BrandPage>
-        <MarketingSection tone="page" className="pt-32">
+      <div className="retail-surface bg-surface-page">
+        <MarketingSection
+          tone="page"
+          spacing="compact"
+          className="!pt-[var(--space-page-start)]"
+        >
           <PageContainer>
-            <Link to="/retail" className="text-sm font-semibold text-action-primary">
-              ← Kembali ke Retail
-            </Link>
+            <Button asChild variant="ghost" className="-ml-3">
+              <Link to="/retail">
+                <span aria-hidden="true">←</span>
+                Kembali ke Retail
+              </Link>
+            </Button>
+
             {state.status === "loading" && (
-              <div className="mt-8 grid gap-10 lg:grid-cols-2">
-                <Skeleton className="aspect-[4/3] rounded-feature" />
+              <div
+                className="mt-8 grid gap-10 lg:grid-cols-2"
+                role="status"
+                aria-label="Memuat detail produk"
+              >
+                <Skeleton className="aspect-[4/3] rounded-panel" />
                 <div className="space-y-5">
                   <Skeleton className="h-5 w-32" />
                   <Skeleton className="h-14 w-full" />
                   <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-24 w-full" />
                 </div>
               </div>
             )}
+
             {state.status === "unavailable" && (
-              <ErrorState
-                error="Detail produk belum terhubung pada environment ini."
-                onRetry={() => window.location.reload()}
+              <OperationalState
+                state="empty"
+                title="Detail produk belum terhubung"
+                description="Environment ini belum memiliki koneksi ke katalog publik."
+                className="mt-8 rounded-panel"
               />
             )}
+
             {state.status === "error" && (
-              <ErrorState error="Detail produk belum berhasil dimuat." onRetry={load} />
+              <OperationalState
+                state="error"
+                title="Detail produk belum berhasil dimuat"
+                description="Periksa koneksi Anda lalu coba memuat produk kembali."
+                retryLabel="Coba lagi"
+                onRetry={load}
+                className="mt-8 rounded-panel"
+              />
             )}
+
             {state.status === "not_found" && (
-              <EmptyState>Produk tidak tersedia atau tidak lagi dipublikasikan.</EmptyState>
+              <OperationalState
+                state="empty"
+                title="Produk tidak tersedia"
+                description="Produk ini tidak ditemukan atau tidak lagi dipublikasikan."
+                className="mt-8 rounded-panel"
+              />
             )}
+
             {state.status === "ready" && state.value && (
               <div className="mt-8 grid gap-10 lg:grid-cols-2 lg:items-start">
-                <div
-                  className="grid aspect-[4/3] place-items-center rounded-feature bg-decoration-brand-soft p-8 text-center ring-1 ring-border-default"
-                  role={productImage ? undefined : "img"}
-                  aria-label={productImage ? undefined : (state.value.product.media?.[0]?.alt || state.value.product.name)}
-                >
-                  {productImage ? (
-                    <img
-                      src={productImage}
-                      alt={state.value.product.media?.[0]?.alt || state.value.product.name}
-                      className="h-full w-full object-cover"
-                      decoding="async"
-                    />
-                  ) : <div>
-                    <p className="font-mono-tech text-xs font-semibold uppercase tracking-widest text-text-primary">
-                      Niuva Retail
-                    </p>
-                    <p className="mt-4 font-heading text-3xl font-bold text-text-primary">
-                      {state.value.product.name}
-                    </p>
-                  </div>}
-                </div>
+                <RetailProductVisual
+                  product={state.value.product}
+                  eager
+                  className="lg:sticky lg:top-28"
+                />
+
                 <div>
-                  <p className="type-label text-text-secondary">{state.value.category.name}</p>
-                  <h1 className="mt-3 font-heading text-4xl font-bold text-text-primary">
+                  <p className="type-label text-action-primary">
+                    {state.value.category.name}
+                  </p>
+                  <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight text-text-primary sm:text-5xl">
                     {state.value.product.name}
                   </h1>
                   <p className="mt-5 text-base leading-8 text-text-secondary">
                     {state.value.product.description}
                   </p>
-                  <div className="mt-7 border-y border-border-default py-5">
-                    <p className="font-semibold text-text-primary">
-                      {formatCatalogPrice(state.value.product, state.value.variants)}
-                    </p>
-                    <p className="mt-2 text-sm text-text-secondary">
-                      {availabilityLabel(state.value.variants)}
-                    </p>
+
+                  <dl className="mt-7 divide-y divide-border-default border-y border-border-default">
+                    <div className="grid gap-2 py-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
+                      <dt className="text-sm text-text-secondary">
+                        Harga publikasi
+                      </dt>
+                      <dd className="font-semibold text-text-primary">
+                        {formatCatalogPrice(
+                          state.value.product,
+                          state.value.variants,
+                        )}
+                      </dd>
+                    </div>
+                    <div className="grid gap-2 py-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
+                      <dt className="text-sm text-text-secondary">
+                        Ketersediaan
+                      </dt>
+                      <dd className="font-semibold text-text-primary">
+                        {availabilityLabel(state.value.variants)}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-7">
+                    <RetailCtaState state={state.value.cta_state} />
                   </div>
-                  <div className="mt-7 space-y-3">
-                    {state.value.cta_state === "quote_required" ? (
-                      <Button asChild size="lg">
-                        <Link to="/contact">Minta penawaran</Link>
-                      </Button>
-                    ) : (
-                      <Button size="lg" disabled>
-                        Transaksi Retail belum aktif
-                      </Button>
-                    )}
-                    <p className="text-sm leading-6 text-text-secondary">
-                      Checkout, pembayaran, upload, reservasi, dan fulfilment belum tersedia.
-                    </p>
-                  </div>
+
                   {state.value.variants.length > 0 && (
-                    <div className="mt-9">
-                      <h2 className="font-heading text-xl font-bold text-text-primary">Varian</h2>
+                    <section className="mt-10" aria-labelledby="retail-variants-title">
+                      <h2
+                        id="retail-variants-title"
+                        className="font-heading text-xl font-bold text-text-primary"
+                      >
+                        Varian terpublikasi
+                      </h2>
                       <ul className="mt-4 divide-y divide-border-default border-y border-border-default">
                         {state.value.variants.map((variant) => (
-                          <li key={variant.id} className="flex justify-between gap-4 py-4 text-sm">
-                            <span className="font-semibold text-text-primary">{variant.name}</span>
+                          <li
+                            key={variant.id}
+                            className="flex flex-col gap-1 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                          >
+                            <span className="font-semibold text-text-primary">
+                              {variant.name}
+                            </span>
                             <span className="text-text-secondary">
                               {availabilityLabel([variant])}
                             </span>
                           </li>
                         ))}
                       </ul>
-                    </div>
+                    </section>
                   )}
                 </div>
               </div>
             )}
           </PageContainer>
         </MarketingSection>
-      </BrandPage>
+      </div>
     </MarketingLayout>
   );
 }

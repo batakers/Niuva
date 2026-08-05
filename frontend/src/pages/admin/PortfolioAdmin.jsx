@@ -37,7 +37,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
 
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { PortfolioStatusBadge } from "@/components/admin/PortfolioStatusBadge";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
@@ -186,7 +186,7 @@ export default function AdminPortfolio() {
                     {lang === "id" ? p.title_id : p.title_en}
                   </h3>
                   <div className="mt-2">
-                    <StatusBadge status={p.status} />
+                    <PortfolioStatusBadge status={p.status} />
                   </div>
                   <p className="type-body-small text-text-secondary mt-1">
                     {p.category}

@@ -9,8 +9,10 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { B2BStatusBadge } from "@/components/admin/B2BStatusBadge";
+import { RetailOrderStatusBadge } from "@/components/admin/RetailOrderStatusBadge";
+import { WorkOrderStatusBadge } from "@/components/admin/WorkOrderStatusBadge";
 import { OperationalState } from "@/components/ui/operational-state";
-import { StatusBadge } from "@/components/operational/StatusStepper";
 import { Button } from "@/components/ui/button";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { useI18n } from "@/i18n";
@@ -78,6 +80,16 @@ const CONFIG = {
       `Project ${record.project_id.slice(0, 8)} · ${record.quantity} unit`,
   },
 };
+
+function LifecycleStatusBadge({ kind, status }) {
+  if (kind === "retail_order") {
+    return <RetailOrderStatusBadge status={status} />;
+  }
+  if (kind === "work_order") {
+    return <WorkOrderStatusBadge status={status} />;
+  }
+  return <B2BStatusBadge kind={kind} status={status} />;
+}
 
 function B2BList({ kind }) {
   const { t } = useI18n();
@@ -158,7 +170,7 @@ function B2BList({ kind }) {
                     <h2 className="font-heading text-base font-semibold text-text-primary">
                       {config.primary(record)}
                     </h2>
-                    <StatusBadge status={record.status} />
+                    <LifecycleStatusBadge kind={kind} status={record.status} />
                   </div>
                   <p className="mt-1 truncate text-sm text-text-secondary">
                     {config.secondary(record)}

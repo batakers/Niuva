@@ -125,7 +125,7 @@ export function MarketingLayout({ children, hideFooter = false }) {
     <div className="min-h-screen flex flex-col bg-surface-page selection:bg-primary/20 selection:text-text-primary">
       <a
         href="#main-content"
-        className="fixed left-4 top-3 z-[60] inline-flex min-h-11 -translate-y-24 items-center rounded-full bg-[var(--color-text-primary)] px-4 py-2 text-sm font-semibold text-text-inverse transition-transform duration-emphasis ease-snap focus:translate-y-0"
+        className="fixed left-4 top-3 z-[60] inline-flex min-h-11 -translate-y-24 items-center rounded-full bg-action-primary-hover px-4 py-2 text-sm font-semibold text-text-inverse transition-transform duration-emphasis ease-snap focus:translate-y-0"
       >
         Lewati ke konten
       </a>
@@ -158,8 +158,18 @@ export function OperationalLayout({ children, sidebar }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-page selection:bg-primary/20 selection:text-text-primary">
+      <a
+        href="#main-content"
+        className="fixed left-4 top-3 z-[60] inline-flex min-h-11 -translate-y-24 items-center rounded-control bg-action-primary-hover px-4 py-2 text-sm font-semibold text-text-inverse transition-transform duration-emphasis ease-snap focus:translate-y-0"
+      >
+        Lewati ke konten
+      </a>
       <Navbar />
-      <main className="flex-1 px-4 pb-12 pt-[var(--space-page-start)] sm:px-6 w-full max-w-7xl mx-auto flex gap-6">
+      <main
+        id="main-content"
+        tabIndex="-1"
+        className="flex-1 px-4 pb-12 pt-[var(--space-page-start)] sm:px-6 w-full max-w-7xl mx-auto flex gap-6"
+      >
         {sidebar && (
           <aside className="hidden lg:block w-64 shrink-0">
             {sidebar}
