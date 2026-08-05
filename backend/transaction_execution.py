@@ -1,4 +1,5 @@
 from enum import Enum
+import time
 from typing import Awaitable, Callable, NoReturn, TypeVar
 
 from pymongo.errors import (
@@ -68,6 +69,7 @@ class TransactionExecutor:
         max_transaction_attempts: int = 3,
         max_commit_attempts: int = 3,
         event_sink: EventSink = _noop_event_sink,
+        include_duration: bool = False,
     ):
         if max_transaction_attempts < 1 or max_commit_attempts < 1:
             message = "transaction and commit attempts must be positive"
@@ -77,6 +79,7 @@ class TransactionExecutor:
         self.max_transaction_attempts = max_transaction_attempts
         self.max_commit_attempts = max_commit_attempts
         self.event_sink = event_sink
+        self.include_duration = include_duration
 
     def _emit(
         self,
@@ -88,18 +91,19 @@ class TransactionExecutor:
         retry_mode: RetryMode,
         correlation_id: str | None,
         error_class: str | None = None,
+        duration_ms: int | None = None,
     ) -> None:
-        self.event_sink(
-            event,
-            {
-                "operation_name": operation_name,
-                "outcome": outcome,
-                "attempt": attempt,
-                "retry_mode": retry_mode.value,
-                "correlation_id": correlation_id,
-                "error_class": error_class,
-            },
-        )
+        fields = {
+            "operation_name": operation_name,
+            "outcome": outcome,
+            "attempt": attempt,
+            "retry_mode": retry_mode.value,
+            "correlation_id": correlation_id,
+            "error_class": error_class,
+        }
+        if self.include_duration and duration_ms is not None:
+            fields["duration_ms"] = max(0, min(int(duration_ms), 60000))
+        self.event_sink(event, fields)
 
     def reject_unavailable(
         self,
@@ -116,6 +120,7 @@ class TransactionExecutor:
             retry_mode=retry_mode,
             correlation_id=correlation_id,
             error_class="transaction_unavailable",
+            duration_ms=0,
         )
         raise TransactionUnavailableError()
 
@@ -152,6 +157,11 @@ class TransactionExecutor:
             )
 
         session = None
+        started_at = time.monotonic()
+
+        def elapsed_ms() -> int:
+            return max(0, min(int((time.monotonic() - started_at) * 1000), 60000))
+
         try:
             session = await self.client.start_session()
             for attempt in range(1, self.max_transaction_attempts + 1):
@@ -163,6 +173,7 @@ class TransactionExecutor:
                     attempt=attempt,
                     retry_mode=retry_mode,
                     correlation_id=correlation_id,
+                    duration_ms=elapsed_ms(),
                 )
                 try:
                     result = await callback(session)
@@ -174,6 +185,7 @@ class TransactionExecutor:
                         attempt=attempt,
                         retry_mode=retry_mode,
                         correlation_id=correlation_id,
+                        duration_ms=elapsed_ms(),
                     )
                     return result
                 except TransactionCommitOutcomeUnknownError as exc:
@@ -185,6 +197,7 @@ class TransactionExecutor:
                         retry_mode=retry_mode,
                         correlation_id=correlation_id,
                         error_class="commit_outcome_unknown",
+                        duration_ms=elapsed_ms(),
                     )
                     raise
                 except PyMongoError as exc:
@@ -197,6 +210,7 @@ class TransactionExecutor:
                         retry_mode=retry_mode,
                         correlation_id=correlation_id,
                         error_class="database_error",
+                        duration_ms=elapsed_ms(),
                     )
                     if _is_unavailable(exc):
                         raise TransactionUnavailableError() from exc
@@ -214,6 +228,7 @@ class TransactionExecutor:
                             retry_mode=retry_mode,
                             correlation_id=correlation_id,
                             error_class="database_error",
+                            duration_ms=elapsed_ms(),
                         )
                         continue
                     raise
@@ -227,6 +242,7 @@ class TransactionExecutor:
                         retry_mode=retry_mode,
                         correlation_id=correlation_id,
                         error_class="application_error",
+                        duration_ms=elapsed_ms(),
                     )
                     raise
             message = "transaction attempt loop exited unexpectedly"

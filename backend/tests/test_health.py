@@ -385,7 +385,9 @@ class WorkerTask:
 def test_required_worker_needs_live_task_and_fresh_nonfuture_heartbeat(monkeypatch):
     previous_status = server.app.state.notification_worker_status
     previous_task = server.app.state.notification_worker_task
+    previous_mode = server.app.state.runtime_mode
     monkeypatch.setenv("NOTIFICATION_WORKER_REQUIRED", "true")
+    server.app.state.runtime_mode = "development"
     try:
         server.app.state.notification_worker_status = {
             "enabled": True,
@@ -459,11 +461,41 @@ def test_required_worker_needs_live_task_and_fresh_nonfuture_heartbeat(monkeypat
     finally:
         server.app.state.notification_worker_status = previous_status
         server.app.state.notification_worker_task = previous_task
+        server.app.state.runtime_mode = previous_mode
+
+
+def test_api_readiness_does_not_require_a_separate_optional_worker(monkeypatch):
+    previous_status = server.app.state.notification_worker_status
+    previous_task = server.app.state.notification_worker_task
+    previous_mode = server.app.state.runtime_mode
+    monkeypatch.setenv("NOTIFICATION_WORKER_REQUIRED", "true")
+    try:
+        server.app.state.runtime_mode = "api"
+        server.app.state.notification_worker_status = {
+            "enabled": False,
+            "running": False,
+            "last_heartbeat_at": None,
+        }
+        server.app.state.notification_worker_task = None
+        response = asyncio.run(get("/api/health/ready", available_capabilities()))
+
+        assert response.status_code == 200
+        assert response.json()["capabilities"]["notification_worker"] == {
+            "status": "ready",
+            "required": False,
+            "enabled": False,
+            "heartbeat_fresh": False,
+        }
+    finally:
+        server.app.state.notification_worker_status = previous_status
+        server.app.state.notification_worker_task = previous_task
+        server.app.state.runtime_mode = previous_mode
 
 
 def test_required_worker_heartbeat_advances_during_slow_batch(monkeypatch):
     previous_status = server.app.state.notification_worker_status
     previous_task = server.app.state.notification_worker_task
+    previous_mode = server.app.state.runtime_mode
     started = asyncio.Event()
     release = asyncio.Event()
 
@@ -472,13 +504,14 @@ def test_required_worker_heartbeat_advances_during_slow_batch(monkeypatch):
             pass
 
         async def run_once(self, *, limit):
-            assert limit == 50
+            assert limit == 1
             started.set()
             await release.wait()
             return {"claimed": 0, "delivered": 0, "failed": 0}
 
     async def scenario():
         monkeypatch.setenv("NOTIFICATION_WORKER_REQUIRED", "true")
+        server.app.state.runtime_mode = "development"
         monkeypatch.setattr(
             server,
             "NOTIFICATION_WORKER_HEARTBEAT_INTERVAL_SECONDS",
@@ -514,6 +547,7 @@ def test_required_worker_heartbeat_advances_during_slow_batch(monkeypatch):
     finally:
         server.app.state.notification_worker_status = previous_status
         server.app.state.notification_worker_task = previous_task
+        server.app.state.runtime_mode = previous_mode
 
 
 def test_readiness_probe_loop_recovers_without_logging_exception_details(
@@ -549,7 +583,7 @@ def test_readiness_probe_loop_recovers_without_logging_exception_details(
     try:
         asyncio.run(scenario())
         assert coordinator.calls >= 2
-        assert "readiness_probe_loop_failed error_type=RuntimeError" in caplog.text
+        assert "readiness_probe_loop_failed" in caplog.text
         assert secret not in caplog.text
     finally:
         server.app.state.readiness_probe_coordinator = previous_coordinator

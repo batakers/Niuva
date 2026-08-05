@@ -28,6 +28,7 @@ from notification_service import (
 )
 from notification_worker import NotificationDeliveryWorker
 from pymongo.errors import DuplicateKeyError
+from worker_runtime import WorkerRuntimeConfig
 
 
 class FakeCollection:
@@ -789,6 +790,155 @@ def test_worker_claim_and_delivery_are_not_duplicated():
     asyncio.run(scenario())
 
 
+def test_worker_snapshot_exposes_only_aggregate_backlog_state():
+    async def scenario():
+        service, db = build_service()
+        moment = datetime(2026, 8, 5, 10, 0, tzinfo=timezone.utc)
+        db.notification_outbox.items.extend(
+            [
+                {
+                    "id": "pending-due",
+                    "status": "pending",
+                    "attempts": 0,
+                    "next_attempt_at": moment - timedelta(seconds=10),
+                },
+                {
+                    "id": "pending-future",
+                    "status": "pending",
+                    "attempts": 0,
+                    "next_attempt_at": moment + timedelta(seconds=10),
+                },
+                {
+                    "id": "processing-live",
+                    "status": "processing",
+                    "attempts": 1,
+                    "lease_until": moment + timedelta(seconds=30),
+                },
+                {
+                    "id": "processing-stale",
+                    "status": "processing",
+                    "attempts": 1,
+                    "lease_until": moment - timedelta(seconds=1),
+                },
+                {
+                    "id": "exhausted",
+                    "status": "exhausted",
+                    "attempts": MAX_DELIVERY_ATTEMPTS,
+                    "next_attempt_at": None,
+                },
+            ]
+        )
+
+        snapshot = await service.worker_snapshot(at=moment)
+
+        assert snapshot == {
+            "pending_due": 1,
+            "processing": 2,
+            "oldest_due_age_seconds": 10,
+            "stale_leases": 1,
+            "exhausted": 1,
+        }
+
+    asyncio.run(scenario())
+
+
+def test_worker_claims_only_one_item_per_execution_slot():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        for index in range(2):
+            await service.enqueue_delivery(
+                notification_id=notification["id"],
+                channel="email",
+                recipient=f"ops-{index}@niuva.test",
+                payload={},
+            )
+
+        async def deliver(_entry, *, idempotency_key):
+            assert idempotency_key
+            return True
+
+        worker = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        )
+        result = await worker.run_once(limit=50)
+
+        assert result == {"claimed": 1, "delivered": 1, "failed": 0}
+        assert sum(
+            item["status"] == "pending" for item in db.notification_outbox.items
+        ) == 1
+
+    asyncio.run(scenario())
+
+
+def test_worker_stop_claiming_prevents_new_claims():
+    async def scenario():
+        service, _db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+
+        async def deliver(_entry, *, idempotency_key):
+            assert idempotency_key
+            return True
+
+        worker = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        )
+        worker.stop_claiming()
+
+        assert await worker.run_once() == {
+            "claimed": 0,
+            "delivered": 0,
+            "failed": 0,
+        }
+
+    asyncio.run(scenario())
+
+
+def test_worker_bounds_delivery_operation_and_records_safe_timeout():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        config = WorkerRuntimeConfig.for_testing(
+            max_delivery_operation_seconds=0.01,
+            ack_budget_seconds=0.1,
+            clock_margin_seconds=0.01,
+            lease_seconds=0.2,
+            renewal_threshold_seconds=0.1,
+        )
+
+        async def deliver(_entry, *, idempotency_key):
+            assert idempotency_key
+            await asyncio.Event().wait()
+
+        result = await NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+            runtime_config=config,
+        ).run_once()
+
+        assert result == {"claimed": 1, "delivered": 0, "failed": 1}
+        assert db.notification_outbox.items[0]["last_error"] == "delivery_timeout"
+
+    asyncio.run(scenario())
+
+
 def test_concurrent_workers_have_one_claim_winner():
     async def scenario():
         service, _db = build_service()
@@ -855,6 +1005,48 @@ def test_expired_lease_reclaims_same_delivery_key_and_rejects_stale_token():
         assert (
             db.notification_outbox.items[0]["lease_token"] == reclaimed["lease_token"]
         )
+
+    asyncio.run(scenario())
+
+
+def test_lease_renewal_and_release_are_fenced_by_the_current_token():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        moment = datetime.now(timezone.utc)
+        claimed = (await service.claim_pending(worker_id="worker-a", at=moment))[0]
+
+        renewed = await service.renew_lease(
+            entry["id"],
+            lease_token=claimed["lease_token"],
+            lease_seconds=60,
+            at=moment + timedelta(seconds=20),
+        )
+        assert renewed["lease_until"] == moment + timedelta(seconds=80)
+
+        with pytest.raises(NotificationError) as stale:
+            await service.renew_lease(
+                entry["id"],
+                lease_token="stale-token",
+                lease_seconds=60,
+                at=moment + timedelta(seconds=21),
+            )
+        assert stale.value.code == "outbox_lease_lost"
+
+        released = await service.release_lease(
+            entry["id"],
+            lease_token=claimed["lease_token"],
+            at=moment + timedelta(seconds=21),
+        )
+        assert released["status"] == "pending"
+        assert released["lease_token"] is None
+        assert db.notification_outbox.items[0]["lease_owner"] is None
 
     asyncio.run(scenario())
 
@@ -993,7 +1185,7 @@ def test_provider_exception_message_is_not_logged_or_persisted(caplog):
         log_text = caplog.text
         assert "provider-secret" not in log_text
         assert "payload-secret" not in log_text
-        assert db.notification_outbox.items[0]["last_error"] == "RuntimeError"
+        assert db.notification_outbox.items[0]["last_error"] == "delivery_error"
 
     asyncio.run(scenario())
 
