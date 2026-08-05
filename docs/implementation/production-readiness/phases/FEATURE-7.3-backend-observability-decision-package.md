@@ -1,6 +1,6 @@
 # Feature 7.3 — Backend Observability Decision Package
 
-Status: **DR-014 candidate baseline approved by Faiz without amendment; source implementation remains separately gated**
+Status: **DR-014 candidate baseline approved; exact source scope authorized; Git publication and operational gates remain separate**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -11,7 +11,8 @@ Branch: `plan/backend-observability`
 PR: `#108` merged as `b336198`; the worksheet update in PR `#133` merged as
 `5dd6112`; the candidate baseline proposal in PR `#134` merged as `0b699fe`;
 review-remediation PR `#135` merged as `819a4ef`. This package records the
-approved baseline and remains separate from source implementation authority.
+approved baseline; the exact source scope is authorized in the addendum below,
+while Git publication and operational execution remain separate gates.
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
@@ -28,6 +29,12 @@ Decision dependency: `DR-014`
 
 Related roadmap task: `PHASE-08B`; `TASK-08B-01`; `TASK-08B-02`
 
+Reconciliation note: statements below that describe source work as gated or
+pending preserve the historical planning state of the decision package. The
+5 August 2026 source-gate addendum and the Feature 7.2/7.3 task cards record
+the later exact source/test authorization. Git publication, sandbox evidence,
+provider activation, migration, deployment, and go-live remain separate.
+
 ## Decision authority
 
 On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner also
@@ -35,9 +42,8 @@ delegated to Faiz the accountable Product Owner and Technical/Release Owner
 responsibility for Commerce Transaction 1A through 30 August 2026. That
 delegation covers G7-B sandbox and implementation-scope accountability,
 including product input for customer-visible service objectives. It does not
-replace the separate source-implementation gate or authorize provider
-activation, production credentials, migration, deployment, production
-readiness, or go-live.
+authorize provider activation, production credentials, migration, deployment,
+production readiness, or go-live.
 
 On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner delegated to Faiz the Ops/SRE accountable
 role, Security/Data reviewer role, and DR-014 decision-maker responsibility for
@@ -47,8 +53,7 @@ single-person ownership risk is accepted.
 This delegation resolves who may review and decide the remaining provider-
 neutral observability values. It does not itself approve a telemetry provider
 or destination, retention/access policy, SLO, error budget, threshold,
-capacity limit, production credential, migration, deployment, or go-live, and
-it does not replace separate source implementation authorization.
+capacity limit, production credential, migration, deployment, or go-live.
 
 On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Faiz approved JSON Lines
 application emission to stdout/stderr and no external telemetry provider at
@@ -56,14 +61,15 @@ high level. After PR `#135` merged as `819a4ef`, Faiz explicitly approved the
 complete Feature 7.3 candidate baseline without amendment, including the
 classification/redaction, retention/access, metrics/SLI/cardinality,
 capacity, exporter-outage, SLO/error-budget, alert, responder, and evidence
-values recorded below. The separate source implementation and operational
-execution gates remain open.
+values recorded below. The source gate for the exact source/test scope is
+recorded in the addendum below; operational execution remains separately
+gated.
 
 The dependent Feature 7.2 worker values are also approved for the bounded
 contract: 15-second maximum delivery operation, 5-second acknowledgement,
 40-second clock/network margin, 60-second lease, 30-second renewal threshold,
 concurrency 1, claim-ahead 0, and 30-second worker drain. This does not approve
-source implementation, environment execution, or production-readiness values.
+environment execution or production-readiness values.
 
 ## Decision status and approved contract
 
@@ -71,26 +77,28 @@ This section records the provider-neutral candidate contract that Faiz approved
 without amendment after PR `#135` merged. Existing high-level JSON
 Lines/stdout/stderr, no-external-provider, and Feature 7.2 worker-value
 approvals remain bounded as recorded above. The approval records the operating
-baseline but does not authorize source implementation, provider activation,
-credentials, migration, deployment, production readiness, or go-live.
+baseline; the later source gate is limited to the exact paths in the addendum.
+Provider activation, credentials, migration, deployment, production readiness,
+and go-live remain separate gates.
 
 | Decision area | Approved contract | Decision state |
 | --- | --- | --- |
-| Data classification | Operational telemetry is internal operational data. Domain audit records, authentication security events under `DEC-AUTH-009`/`DEC-AUTH-011`, and recipient notifications under `DEC-DATA-003` remain separate stores and policies. | Approved baseline; source implementation gated |
-| Redaction | Emit only closed, allowlisted event fields and safe outcome classes. Exclude credentials, tokens, cookies, contact data, customer/business payloads, concrete identifier-bearing paths, provider/database payloads, and raw exception bodies. | Approved baseline; source implementation gated |
-| Retention and access | Use least-privilege named operational/security access; do not create a general audit viewer or expose telemetry as customer data. Raw captured output is retained 7 days; redacted summaries/evidence 30 days; Faiz is the named reviewer. | Approved baseline; source implementation gated |
-| Metrics and SLI | Use the finite metric inventory and formula boundaries in Sections 5, 8, and 9. Labels remain closed/finite; unknown values map to `unknown`/`other`; no request/resource/customer identifiers become labels. | Approved baseline; source implementation gated |
-| Cardinality and capacity | Use the approved histogram, collection, multiprocess, storage, CPU, memory, latency, and buffer budgets against the representative synthetic workload. | Approved baseline; source implementation gated |
-| Telemetry model and exporter outage | Use JSON Lines to stdout/stderr with no external provider. Any later adapter is optional, bounded, observable, and must not block a successful core mutation; buffering, drop, backpressure, and degraded-signal behavior are bounded below. | Approved baseline; source implementation gated |
-| SLO, error budget, and thresholds | Use the approved SLI formulas with explicit eligibility, low-traffic, maintenance-window, percentile, objective, and burn-rate rules. | Approved baseline; source implementation gated |
-| Alerts, responder, and evidence | Use the closed alert families with safe severity, deduplication, runbook/evidence correlation, Faiz as primary responder, no backup, and the approved sandbox response objective. | Approved baseline; source implementation gated |
+| Data classification | Operational telemetry is internal operational data. Domain audit records, authentication security events under `DEC-AUTH-009`/`DEC-AUTH-011`, and recipient notifications under `DEC-DATA-003` remain separate stores and policies. | Approved baseline; exact source scope authorized below |
+| Redaction | Emit only closed, allowlisted event fields and safe outcome classes. Exclude credentials, tokens, cookies, contact data, customer/business payloads, concrete identifier-bearing paths, provider/database payloads, and raw exception bodies. | Approved baseline; exact source scope authorized below |
+| Retention and access | Use least-privilege named operational/security access; do not create a general audit viewer or expose telemetry as customer data. Raw captured output is retained 7 days; redacted summaries/evidence 30 days; Faiz is the named reviewer. | Approved baseline; operational evidence remains gated |
+| Metrics and SLI | Use the finite metric inventory and formula boundaries in Sections 5, 8, and 9. Labels remain closed/finite; unknown values map to `unknown`/`other`; no request/resource/customer identifiers become labels. | Approved baseline; exact source scope authorized below |
+| Cardinality and capacity | Use the approved histogram, collection, multiprocess, storage, CPU, memory, latency, and buffer budgets against the representative synthetic workload. | Approved baseline; sandbox evidence remains gated |
+| Telemetry model and exporter outage | Use JSON Lines to stdout/stderr with no external provider. Any later adapter is optional, bounded, observable, and must not block a successful core mutation; buffering, drop, backpressure, and degraded-signal behavior are bounded below. | Approved baseline; exact source scope authorized below |
+| SLO, error budget, and thresholds | Use the approved SLI formulas with explicit eligibility, low-traffic, maintenance-window, percentile, objective, and burn-rate rules. | Approved baseline; sandbox evidence remains gated |
+| Alerts, responder, and evidence | Use the closed alert families with safe severity, deduplication, runbook/evidence correlation, Faiz as primary responder, no backup, and the approved sandbox response objective. | Approved baseline; exact source scope authorized below |
 
 ### Approval worksheet
 
 Faiz, acting under the recorded Yanuar/Owner delegation, explicitly approved
 each candidate area without amendment after PR `#135` merged. A PR merge or
 green CI is not itself the approval; the approval is recorded here and in
-`DEC-OBS-001`. The source implementation gate remains separate.
+`DEC-OBS-001`. The exact source/test scope is authorized in the addendum below;
+Git publication and sandbox evidence remain separate.
 
 | Required approval | Current record | Required output |
 | --- | --- | --- |
@@ -101,7 +109,7 @@ green CI is not itself the approval; the approval is recorded here and in
 | Telemetry destination/exporter outage | Approved without amendment: local JSON Lines; no external provider | Export/exposure model, destination decision, outage/drop/backpressure limits |
 | SLO/error budget/threshold | Approved without amendment; numerical objectives and alert thresholds below | Numerical objectives, windows, low-traffic/maintenance treatment, burn-rate policy |
 | Alerts/responder/runbook | Approved without amendment; Faiz primary, no backup, sandbox response objective below | Severity, threshold/window, deduplication, response objective, destination, runbook/evidence location |
-| Source implementation gate | Not authorized | Separate explicit Project Owner authorization after approved records |
+| Source implementation gate | Historical planning state | Not authorized at the time of this worksheet; superseded by the 5 August 2026 source-gate addendum below |
 
 ### Approved sandbox baseline (implementation-gated)
 
@@ -343,7 +351,8 @@ safe event outcome.
 
 **Approval field:** JSON Lines/stdout/stderr, no external provider, retention,
 and exporter-outage behavior are approved for the bounded sandbox baseline by
-Faiz without amendment. Source schema/adapter implementation remains gated.
+Faiz without amendment. The exact source schema scope is authorized in the
+source-gate addendum; adapter/provider activation and evidence remain gated.
 
 ## 4. Decision 2 — Request correlation and HTTP signals
 
@@ -368,8 +377,9 @@ Faiz without amendment. Source schema/adapter implementation remains gated.
 ### Request-correlation implementation inputs
 
 The safe correlation and route-template requirements above are part of the
-approved baseline. The exact source framework configuration and tests remain a
-separate implementation-gated design task.
+approved baseline. At planning time the exact source framework configuration
+and tests were a separate implementation-gated design task; the bounded source
+paths are now recorded in the source-gate addendum.
 
 | Field | Approved value |
 | --- | --- |
@@ -446,13 +456,14 @@ system and describe it as operational observability.
 ### Metrics implementation inputs
 
 The metric model, finite registries, buckets, cardinality formula, and resource
-budgets below are approved by `DEC-OBS-001`. Adapter dependencies and source
-aggregation tests remain implementation-gated.
+budgets below are approved by `DEC-OBS-001`. No adapter dependency is selected;
+the source aggregation tests are covered by the exact source-gate scope, while
+evidence and any later adapter remain gated.
 
 | Field | Approved value |
 | --- | --- |
-| Export model (pull/export) | Approved internal metric port; no external provider; source adapter gated |
-| Metrics dependency/adapter | Source implementation detail; separate gate |
+| Export model (pull/export) | Approved internal metric port; no external provider; no adapter is selected |
+| Metrics dependency/adapter | No dependency or external adapter selected; any later adapter is a separate gate |
 | Endpoint/network/access boundary | Approved no external endpoint/network destination in sandbox; source detail separate gate |
 | Collection interval | Approved 60-second gauge/histogram flush direction; source detail separate gate |
 | Histogram buckets | Approved 12 buckets: 10, 50, 100, 250, 500, 1000, 2000, 5000, 10000, 15000, 30000, 60000 ms |
@@ -541,7 +552,8 @@ aggregation tests remain implementation-gated.
 | Retry-attempt visibility | Approved bounded per-attempt/per-logical-operation direction; source detail separate gate |
 
 Feature 7.2's bounded worker delivery timing is an approved control input; the
-source implementation and acceptance evidence remain separately gated.
+source implementation is covered by the exact addendum scope, while acceptance
+evidence remains separately gated.
 
 ## 8. Decision 6 — Worker backlog and exhaustion visibility
 
@@ -561,20 +573,21 @@ source implementation and acceptance evidence remain separately gated.
 - Worker class, safe state/outcome, channel enum, and named scheduled job are
   the only proposed dimensions.
 - The approved sandbox alert thresholds and backlog objectives are recorded in
-  `DEC-OBS-001`; query, index, schema, and source implementation work remains
-  separately gated.
+  `DEC-OBS-001`; source query work is covered by the exact addendum scope, while
+  index/schema changes and evidence remain separately gated.
 - General-notification ownership remains distinct from authentication cleanup
   and alert operations.
 
 ### Dependency on Feature 7.2
 
-Instrumentation implementation waits for the separate source gate and must
-describe the approved bounded runtime, not assume that the current in-process
-loop is production-ready.
+The historical planning text waited for the separate source gate and must be
+read with the later addendum: the bounded instrumentation is now prepared, but
+the current in-process loop is not production-ready evidence.
 
 **Approval field:** Feature 7.2 bounded controls and the Feature 7.3 worker
-observability baseline are approved; source implementation and environment
-acceptance remain separate gates.
+observability baseline are approved; source/test implementation is authorized
+within the exact addendum scope, while environment acceptance remains a
+separate gate.
 
 ## 9. Decision 7 — Transaction diagnostics
 
@@ -735,36 +748,49 @@ This list is planning context, not permission to edit those files now.
 - CPU, memory, latency, storage, and cardinality overhead stay inside the
   approved capacity budget.
 
-## 15. Approval record
+## 15. Approval record — historical planning state
 
-The Project Owner authorized planning and Git delivery of this proposal on
+The Project Owner authorized planning and documentation-only Git delivery of this proposal on
 2 August 2026, then separately authorized PR reconciliation and merge on
 3 August 2026. On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner
 delegated the DR-014 decision authority recorded in section 2 to Faiz. After
 PR `#135` merged as `819a4ef`, Faiz approved the complete Feature 7.3 candidate
-baseline without amendment. The approved baseline and source implementation
-remain separate gates.
+baseline without amendment. The following table preserves the historical
+planning-state approvals; the source-gate addendum below records the later
+exact implementation authorization.
 
 | Approval | Owner | Value / evidence | Date |
 | --- | --- | --- | --- |
 | Planning and commit/push/PR authorization | Project Owner | Granted for documentation-only proposal | 2 August 2026 |
 | PR reconciliation and merge | Project Owner | Granted for this documentation-only proposal | 3 August 2026 |
-| Candidate sandbox baseline approval | Faiz (delegated Ops/SRE + Security/Data + DR-014 decision-maker) | Complete Feature 7.3 baseline approved without amendment; recorded in `DEC-OBS-001` after PR `#135` merged as `819a4ef`; no source gate | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
+| Candidate sandbox baseline approval | Faiz (delegated Ops/SRE + Security/Data + DR-014 decision-maker) | Complete Feature 7.3 baseline approved without amendment; recorded in `DEC-OBS-001` after PR `#135` merged as `819a4ef`; source gate recorded separately below | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | DR-014 delegated decision authority | Yanuar/Owner -> Faiz | Ops/SRE accountable, Security/Data reviewer, and DR-014 decision-maker through 30 August 2026; no backup owner; single-person risk accepted | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | Data classification and redaction contract | Faiz (delegated Ops/SRE + Security/Data) | Approved without amendment; `DEC-OBS-001` closed allowlist and prohibited-field boundary | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
-| Structured logging contract | Faiz (delegated Ops/SRE + Security/Data) | Approved JSON Lines to stdout/stderr, closed schema/redaction boundary, and no external provider; source schema remains gated | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
-| Metric inventory/cardinality contract | Faiz (delegated DR-014) | Approved finite inventory, labels, buckets, cardinality formula, and SLI boundaries; source adapter remains gated | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
+| Structured logging contract | Faiz (delegated Ops/SRE + Security/Data) | Approved JSON Lines to stdout/stderr, closed schema/redaction boundary, and no external provider; exact source scope recorded below | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
+| Metric inventory/cardinality contract | Faiz (delegated DR-014) | Approved finite inventory, labels, buckets, cardinality formula, and SLI boundaries; exact source scope recorded below | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | Export model/provider/destination | Faiz (delegated Ops/SRE + Security/Data) | Approved local stdout/stderr only, no external provider, and bounded outage/drop behavior | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
-| Timeout visibility contract | Faiz (delegated DR-014) | Approved safe duration/outcome visibility boundary; exact dependency timeout implementation values remain a source-gated detail | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
-| Worker observability contract | Faiz (delegated Ops/SRE) | Approved bounded worker signals, thresholds, lease/control inputs, and evidence boundary; source/query work remains gated | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
-| Transaction diagnostic/alert contract | Faiz (delegated Ops/SRE + Security/Data) | Approved safe transaction signals and immediate commit-unknown alertability; source instrumentation remains gated | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
+| Timeout visibility contract | Faiz (delegated DR-014) | Approved safe duration/outcome visibility boundary; exact source scope is recorded below | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
+| Worker observability contract | Faiz (delegated Ops/SRE) | Approved bounded worker signals, thresholds, lease/control inputs, and evidence boundary; exact source scope is recorded below | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
+| Transaction diagnostic/alert contract | Faiz (delegated Ops/SRE + Security/Data) | Approved safe transaction signals and immediate commit-unknown alertability; exact source scope is recorded below | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | Retention/access policy | Faiz (delegated Ops/SRE + Security/Data) | Approved 7-day raw capture, 30-day redacted evidence, Faiz-only named access, and review cadence | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | SLI/SLO/error-budget/threshold package | Faiz (delegated DR-014) | Approved sandbox SLI/SLO objectives, sample rules, error budgets, burn-rate policy, and alert thresholds; not a production SLA | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
 | Alert responder/runbook/evidence ownership | Faiz (delegated Ops/SRE) | Approved Faiz primary/no backup, sandbox response objective, safe deduplication, and existing evidence guide | 4 August 2026 UTC (5 August 2026 Asia/Jakarta) |
-| Separate source implementation authorization | Project Owner | Pending | Pending |
+| Separate source implementation authorization | Historical planning state | Pending at the time of this record; superseded by the source-gate addendum below | 5 August 2026 update |
 
 The candidate baseline is now an approved DR-014 decision under `DEC-OBS-001`.
-Feature 7.3 remains implementation-gated: source implementation, provider
+Feature 7.3 remains operationally gated: provider activation, production
+credentials, migration, deployment, production-readiness claims, and go-live
+require separate approval and evidence. The later explicit source gate
+approved the exact source/test scope recorded in the Feature 7.2 and Feature
+7.3 task cards; current Git publication remains separately gated.
+
+## Source-gate implementation addendum — 5 August 2026
+
+The historical approval record above described the state before source
+authorization. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz
+approved the exact Feature 7.2 and Feature 7.3 source/test scopes recorded in
+their task cards. That authorization covers only the prepared local/test
+source and proportional tests on the fresh `origin/main` worktree. It does
+not authorize Git publication, sandbox evidence collection, provider
 activation, production credentials, migration, deployment,
-production-readiness claims, and go-live require separate approval and
-evidence.
+production-readiness, or go-live.

@@ -1,24 +1,28 @@
 # Task Card — Feature 7.2 Worker Topology
 
-Status: **High-level DR-014 direction and bounded lease/worker values approved / remaining values pending — source implementation not authorized**
+Status: **Source-gate implementation prepared; sandbox evidence and all production gates remain separate**
 
 Date: 2 August 2026 (Asia/Jakarta)
 
+Reconciled: 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), against
+`origin/main` `e2a7969` after PR `#136` merged `DEC-OBS-001`.
+
 Branch: `plan/backend-worker-topology`
 
-PR: `#107` merged as `fe1d8a0`; CI passed; reconciliation is complete and
-Faiz's DR-014 decision authority, high-level direction, and bounded lease/
-worker values are recorded, while source implementation remains
-`decision_blocked`.
+PR: `#107` merged as `fe1d8a0`; CI passed. The later `DEC-OBS-001` decision
+recorded in PR `#136` resolves the bounded Feature 7.3 observability inputs
+consumed by this worker packet. The exact source scope is authorized below;
+sandbox evidence and Git publication remain separately gated.
 
 Worktree: `/Users/macintoshhd/NIUVA/Niuva-worktrees/backend-worker-topology`
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
 
-Reconciliation baseline: `aff3d1177b2be1288b0682ae376eadd1c8029816`
-(`origin/main`, merged 3 August 2026 after PR #101). The Project Owner
-authorized PR reconciliation and merge; source implementation remains blocked.
+Reconciliation baseline: `e2a79690a09a1002f8d0b98ab5ee608e99691735`
+(`origin/main`, merged 5 August 2026 through PR `#136`). This reconciliation
+imports no source behavior; it aligns the worker planning record with the
+approved sandbox observability contract.
 
 Related roadmap task: `PHASE-08C`; `TASK-08C-01`; `TASK-08C-02`
 
@@ -41,14 +45,23 @@ Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
 decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
 This resolves role attribution and the bounded topology/lease/worker values.
-The remaining capacity, telemetry, SLO, threshold, retention/access, alert,
-evidence, and separate source-implementation decisions still require explicit
-values and evidence. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved Option B,
-no external queue/scheduler provider, at-least-once delivery, bounded shutdown,
+`DEC-OBS-001` now also approves the Feature 7.3 sandbox observability inputs
+consumed by this packet: closed redaction and access rules, local JSON Lines,
+finite metrics and capacity budgets, exporter-failure behavior, worker SLI/SLO
+and alert thresholds, responder, and evidence custody. Those values are
+approved only for the stated local/test/sandbox scope. The exact source-gate
+authorization for the worker implementation is recorded below.
+
+The remaining Feature 7.2-specific fields are platform termination grace,
+claimed-but-not-started disposition, API/worker required-versus-optional
+classification and outbound-delivery release requirement, named scheduler
+service/run evidence details, schedule/catch-up policy, and implementation
+evidence for fencing, idempotency/replay, capacity, and bounded shutdown. On
+5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved Option B, no
+external queue/scheduler provider, at-least-once delivery, bounded shutdown,
 15-second maximum operation, 5-second acknowledgement, 40-second margin,
 60-second lease, 30-second renewal, concurrency 1, claim-ahead 0, and a
-30-second worker drain. SLO, capacity, alert, retention/access, and evidence
-values remain pending.
+30-second worker drain.
 
 **Existing bounded owner:** `DEC-DATA-003` names Faiz as the temporary owner
 for general-notification backlog and delivery-exhaustion alerts. The 5 August
@@ -124,6 +137,8 @@ then-current `origin/main`.
 - Provider-neutral timing and idempotency requirements.
 - Readiness separation between API processes, delivery workers, and scheduled
   jobs.
+- Reconciliation of worker observability, SLO, capacity, alert, retention/access,
+  and evidence references to the approved `DEC-OBS-001` sandbox contract.
 - A bounded post-approval implementation and verification outline.
 
 ## Out of scope
@@ -145,9 +160,74 @@ then-current `origin/main`.
 - `docs/implementation/production-readiness/phases/FEATURE-7.2-worker-topology-task-card.md`
 - `docs/implementation/production-readiness/phases/FEATURE-7.2-worker-topology-decision-package.md`
 - `docs/implementation/production-readiness/phases/README.md`
+- `docs/implementation/production-readiness/TEAM_ASSIGNMENT.md`
 
-All source, test, configuration, migration, decision-register, canonical, and
-runbook files remain intentionally unchanged.
+Before the explicit source gate, this planning packet intentionally left all
+source, test, configuration, migration, decision-register, canonical, and
+runbook files unchanged. The approved implementation scope and its evidence
+are recorded below.
+
+## Approved source-implementation scope
+
+On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved this exact
+source scope after the `DEC-OBS-001` source gate was explicitly granted. The
+implementation was applied serially on a fresh `origin/main` worktree before
+the dependent Feature 7.3 instrumentation. `backend/server.py` and the worker
+runtime paths remained serial ownership, not parallel edit paths.
+
+### Source paths
+
+- `backend/notification_service.py` — just-in-time single-item claim,
+  validated 60-second lease configuration, renewal/release fencing, reclaim,
+  and stale-owner behavior.
+- `backend/notification_worker.py` — concurrency 1, bounded operation handling,
+  stop-claiming/drain state, and aggregate worker outcomes.
+- `backend/server.py` — explicit API-versus-worker runtime mode, development/
+  test co-location only, independent readiness, scheduler startup boundaries,
+  and bounded shutdown wiring.
+- `backend/worker_runtime.py` *(new)* — separate worker entrypoint and named
+  periodic-job lease coordination without an external queue/scheduler provider.
+
+### Test paths
+
+- `backend/tests/test_notification_feed.py`
+- `backend/tests/test_health.py`
+- `backend/tests/test_inventory_service.py`
+- `backend/tests/test_worker_runtime.py` *(new)*
+
+No other source, test, dependency, configuration, migration, provider, or
+deployment path is authorized by this scope. The 30-second drain, lease
+invariant, at-least-once replay, scheduler ownership, and required/optional
+dependency fields must remain within their approved or explicitly pending
+boundaries.
+
+## Implementation evidence (prepared for Git; not committed)
+
+Worktree: `C:\tmp\niuva-dr014-backend-next-20260805`
+
+Branch: `codex/dr014-backend-next-20260805`
+Baseline: `origin/main` `e2a79690a09a1002f8d0b98ab5ee608e99691735`
+
+Implemented in the approved source scope:
+
+- just-in-time one-item notification claims, validated timing configuration,
+  renewal/release fencing, timeout/ack bounds, at-least-once replay, and safe
+  stop-claiming/drain behavior;
+- explicit API/worker/development/test runtime modes, separate worker runtime
+  construction, named reservation-expiry lease coordination, and API readiness
+  independence from an optional separately managed worker; and
+- focused tests for stale owners, lease reclaim, timeout, concurrency,
+  shutdown, scheduler ownership, and readiness boundaries.
+
+Verification at this worktree: `941 passed, 15 skipped, 14 subtests passed`
+using the repository suite in serial mode (`-n 0`) because the available
+Python 3.14 environment could not start the configured xdist workers. Python
+compilation passed for 160 backend files and `git diff --check` passed.
+
+This is source/test evidence only. Platform termination grace, claimed-work
+disposition policy, provider idempotency validation, environment evidence,
+provider activation, production credentials, migration, deployment,
+production readiness, release, and go-live remain separate gates.
 
 ## Acceptance criteria for planning
 
@@ -167,7 +247,8 @@ The planning packet is ready for Operations/SRE review only when it:
 - preserves in-app notifications as required product state and outbound email
   as optional delivery;
 - records pending owners, objectives, thresholds, evidence location, and
-  approval fields without inventing them;
+  approval fields without inventing them, while linking approved sandbox values
+  to `DEC-OBS-001`;
 - gives testable multi-instance, crash, shutdown, backlog, and dependency-loss
   acceptance scenarios; and
 - retains explicit source, provider, migration, deployment, production, and
@@ -177,16 +258,18 @@ The planning packet is ready for Operations/SRE review only when it:
 
 Stop before source implementation if any of the following remains unresolved:
 
-- Operations/SRE has not approved topology, scheduler ownership, and shutdown
-  behavior.
+- The approved topology or bounded shutdown contract is changed, or the
+  topology-specific scheduler, dependency, termination, or claimed-work fields
+  remain ambiguous.
 - Maximum provider-operation time and process termination grace cannot support
   the selected lease invariant.
 - The deployment platform cannot run or probe a separate worker process.
 - Provider idempotency behavior is unknown but the design is being described
   as exactly once.
 - Required/optional dependency semantics conflict with `DEC-DATA-003`.
-- Alert/backlog ownership, review evidence, or incident handoff has no
-  accountable owner.
+- The source plan cannot consume the approved `DEC-OBS-001` redaction,
+  alert, retention/access, or evidence boundary without inventing a provider,
+  destination, or production objective.
 - A schema/index change is discovered without an approved migration plan.
 
 ## Minimum verification and handoff

@@ -27,7 +27,6 @@ from api_contract import (
     error_response,
     error_responses,
     normalize_request_id,
-    request_id_for,
 )
 from audit import append_audit_event, append_identity_governance_event
 from auth_password import (
@@ -104,6 +103,7 @@ from material_routes import build_material_router
 from motor.motor_asyncio import AsyncIOMotorClient
 from notification_service import NotificationError, NotificationService
 from notification_worker import NotificationDeliveryWorker
+from observability import Observability, route_template_for_request
 from permissions import (
     CUSTOMER_ROLES,
     ROLE_LABELS,
@@ -147,11 +147,26 @@ from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
 from transaction_observability import TransactionLogSink
+from worker_runtime import (
+    APPROVED_DRAIN_SECONDS,
+    NamedJobLease,
+    WorkerRuntime,
+    WorkerRuntimeConfig,
+    cancel_task_with_deadline,
+    is_co_located_mode,
+    is_worker_mode,
+    renew_lease_until_stopped,
+    resolve_runtime_mode,
+    wait_for_stop,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("niuva")
+observability = Observability(
+    environment=os.environ.get("APP_ENV", "sandbox").strip().lower()
+)
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
@@ -219,6 +234,7 @@ async def lifespan(_application: FastAPI):
 
 
 app = FastAPI(title="NIUVA API", lifespan=lifespan)
+app.state.observability = observability
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
 app.state.readiness_probe_coordinator = ReadinessProbeCoordinator(
     client,
@@ -228,11 +244,18 @@ app.state.readiness_probe_coordinator = ReadinessProbeCoordinator(
 app.state.readiness_probe_task = None
 app.state.reservation_expiry_task = None
 app.state.notification_worker_task = None
+app.state.runtime_mode = "api"
+app.state.worker_runtime_config = WorkerRuntimeConfig()
+app.state.scheduler_stop_event = None
+app.state.observability_metrics_task = None
+app.state.worker_runtime = None
 app.state.notification_worker_status = {
     "enabled": False,
     "running": False,
+    "draining": False,
     "last_heartbeat_at": None,
     "last_result": None,
+    "last_error_type": None,
 }
 app.state.schema_status = {
     "required_version": "unknown",
@@ -248,7 +271,11 @@ app.state.schema_status = {
 app.state.transaction_executor = TransactionExecutor(
     client,
     lambda: current_database_capabilities(),
-    event_sink=TransactionLogSink(logging.getLogger("niuva.transaction")),
+    event_sink=TransactionLogSink(
+        logging.getLogger("niuva.transaction"),
+        telemetry=observability,
+    ),
+    include_duration=True,
 )
 app.state.transaction_guard = TransactionMutationGuard(
     app.state.transaction_executor,
@@ -356,13 +383,8 @@ async def validation_error_envelope(request: Request, exc: RequestValidationErro
 
 @app.exception_handler(Exception)
 async def unhandled_error_envelope(request: Request, exc: Exception):
-    logger.exception(
-        "unhandled_request_error request_id=%s method=%s path=%s",
-        request_id_for(request),
-        request.method,
-        request.url.path,
-        exc_info=exc,
-    )
+    del exc
+    logger.error("unhandled_request_error")
     detail = {
         "code": "internal_server_error",
         "message": "Terjadi kesalahan internal.",
@@ -384,23 +406,26 @@ async def request_context(request: Request, call_next):
     try:
         response = await call_next(request)
     except Exception:
-        logger.exception(
-            "request_failed request_id=%s method=%s path=%s",
-            request.state.request_id,
-            request.method,
-            request.url.path,
+        elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+        observability.record_http(
+            request_id=request.state.request_id,
+            route_template=route_template_for_request(request),
+            method=request.method.upper(),
+            status_code=500,
+            duration_ms=elapsed_ms,
         )
+        logger.error("request_failed")
         raise
     elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
     response.headers["X-Request-ID"] = request.state.request_id
-    logger.info(
-        "request_complete request_id=%s method=%s path=%s status=%s elapsed_ms=%s",
-        request.state.request_id,
-        request.method,
-        request.url.path,
-        response.status_code,
-        elapsed_ms,
+    observability.record_http(
+        request_id=request.state.request_id,
+        route_template=route_template_for_request(request),
+        method=request.method.upper(),
+        status_code=response.status_code,
+        duration_ms=elapsed_ms,
     )
+    logger.info("request_complete")
     return response
 
 
@@ -1254,7 +1279,7 @@ async def store_upload(
     except storage.StorageUnavailableError as exc:
         raise HTTPException(status_code=503, detail="File storage unavailable") from exc
     except storage.StorageError as exc:
-        logger.exception("Unable to store uploaded file")
+        logger.error("storage_upload_failed")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     finally:
         spool.close()
@@ -1967,7 +1992,7 @@ async def upload_admin_media(
                 },
             )
         except Exception as resolution_exc:
-            logger.exception("Unable to resolve file metadata write outcome")
+            logger.error("file_metadata_outcome_resolution_failed")
             raise HTTPException(
                 status_code=503,
                 detail={
@@ -1991,8 +2016,7 @@ async def upload_admin_media(
             ):
                 return document
             logger.error(
-                "File metadata write resolved to a conflicting record",
-                extra={"file_id": document["id"]},
+                "file_metadata_outcome_conflict",
             )
             raise HTTPException(
                 status_code=503,
@@ -2007,7 +2031,7 @@ async def upload_admin_media(
         try:
             storage.delete_object(metadata["storage_path"])
         except storage.StorageError as compensation_exc:
-            logger.exception("Unable to compensate failed file metadata write")
+            logger.error("file_metadata_compensation_failed")
             raise HTTPException(
                 status_code=503,
                 detail={
@@ -2097,7 +2121,7 @@ async def download_public_media(file_id: str):
             status_code=503, detail="Media storage unavailable"
         ) from exc
     except storage.StorageError as exc:
-        logger.exception("Unable to read public media object")
+        logger.error("public_media_read_failed")
         raise HTTPException(
             status_code=500, detail="Media storage unavailable"
         ) from exc
@@ -2157,7 +2181,7 @@ async def _stream_authorized_file(metadata: dict) -> StreamingResponse:
     except storage.StorageNotFoundError as exc:
         raise HTTPException(status_code=404, detail="File not found") from exc
     except storage.StorageError as exc:
-        logger.exception("Unable to read stored file")
+        logger.error("stored_file_read_failed")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     filename = safe_original_filename(metadata.get("original_filename"))
     return StreamingResponse(
@@ -2220,10 +2244,7 @@ async def contact(req: ContactReq, request: Request):
             ),
         )
     except Exception:
-        logger.exception(
-            "Contact inquiry stored, but notification enqueue failed (contact_id=%s)",
-            doc["id"],
-        )
+        logger.error("contact_notification_enqueue_failed")
     return {"ok": True, "message": "Pesan berhasil dikirim"}
 
 
@@ -2774,16 +2795,44 @@ async def health_ready():
     dependencies = await app.state.readiness_probe_coordinator.probe()
     capabilities = dependencies.capabilities
     database_available = dependencies.database_available
+    probe_duration_ms = int((loop.time() - started_at) * 1000)
+    observability.record_dependency(
+        dependency="mongodb",
+        operation="unknown",
+        outcome="success" if database_available else "unavailable",
+        duration_ms=probe_duration_ms,
+    )
+    observability.record_readiness(
+        dependency="mongodb",
+        ready=database_available,
+        duration_ms=probe_duration_ms,
+    )
+    observability.metrics.set_gauge(
+        "transaction_capability",
+        {
+            "safe_capability_reason": getattr(
+                capabilities.transaction_reason, "value", "unknown"
+            )
+        },
+        1 if capabilities.transactions else 0,
+    )
     schema_status = public_schema_status(dependencies.schema_status)
     transaction_status = public_transaction_status(capabilities)
     transaction_required = _environment_flag("TRANSACTION_MUTATIONS_ENABLED")
     transaction_ready = bool(
         not transaction_required or transaction_status["available"]
     )
-    worker_required = _environment_flag("NOTIFICATION_WORKER_REQUIRED")
+    runtime_mode = getattr(app.state, "runtime_mode", "api")
     worker_status_value = app.state.notification_worker_status
     worker_status = worker_status_value if isinstance(worker_status_value, dict) else {}
     worker_task = app.state.notification_worker_task
+    # API mode is intentionally independent from an optional, separately
+    # managed delivery worker. A task present in a test/co-located runtime is
+    # still evaluated so the local readiness contract remains truthful.
+    worker_is_co_located = is_co_located_mode(runtime_mode) or worker_task is not None
+    worker_required = bool(
+        _environment_flag("NOTIFICATION_WORKER_REQUIRED") and worker_is_co_located
+    )
     heartbeat = worker_status.get("last_heartbeat_at")
     heartbeat_fresh = False
     if isinstance(heartbeat, datetime) and heartbeat.tzinfo is not None:
@@ -2795,10 +2844,13 @@ async def health_ready():
         )
     worker_task_active = bool(worker_task is not None and not worker_task.done())
     worker_available = bool(
-        worker_status.get("enabled")
-        and worker_status.get("running")
-        and heartbeat_fresh
-        and worker_task_active
+        not worker_is_co_located
+        or (
+            worker_status.get("enabled")
+            and worker_status.get("running")
+            and heartbeat_fresh
+            and worker_task_active
+        )
     )
     worker_ready = bool(not worker_required or worker_available)
     email_required = _environment_flag("EMAIL_DELIVERY_REQUIRED")
@@ -3059,52 +3111,130 @@ async def seed():
     logger.info("Seed complete")
 
 
-async def reservation_expiry_loop():
+async def reservation_expiry_loop(stop_event: asyncio.Event | None = None):
     system_actor = {
         "id": "system:reservation-expiry",
         "email": "system@niuva.local",
         "roles": ["system"],
     }
-    while True:
+    owner_id = f"scheduler:reservation-expiry:{uuid.uuid4()}"
+    runtime_config = getattr(app.state, "worker_runtime_config", None)
+    if not isinstance(runtime_config, WorkerRuntimeConfig):
+        runtime_config = WorkerRuntimeConfig()
+    lease = NamedJobLease(
+        collection=db.runtime_job_leases,
+        job_name="reservation_expiry",
+        owner_id=owner_id,
+        lease_seconds=runtime_config.lease_seconds,
+    )
+    while stop_event is None or not stop_event.is_set():
+        acquired = False
+        renewal_stop = None
+        renewal_task = None
+        job_started_at = datetime.now(timezone.utc)
         try:
-            service = InventoryService(
-                db=db,
-                client=client,
-                capabilities=current_database_capabilities(),
-                guard=app.state.transaction_guard,
-            )
-            result = await service.expire_due_reservations(actor=system_actor)
-            if result.get("expired"):
-                logger.info(
-                    "reservation_expiry_batch",
-                    extra={"reservation_expiry": result},
+            acquired = await lease.acquire() is not None
+            if acquired:
+                renewal_stop = asyncio.Event()
+                renewal_task = asyncio.create_task(
+                    renew_lease_until_stopped(
+                        lease=lease,
+                        stop_event=renewal_stop,
+                        interval_seconds=max(
+                            0.001,
+                            runtime_config.lease_seconds
+                            - runtime_config.renewal_threshold_seconds,
+                        ),
+                    )
                 )
-        except Exception as exc:
-            logger.error("reservation_expiry_loop error: %s", exc)
-        await asyncio.sleep(60)
+                try:
+                    service = InventoryService(
+                        db=db,
+                        client=client,
+                        capabilities=current_database_capabilities(),
+                        guard=app.state.transaction_guard,
+                    )
+                    result = await service.expire_due_reservations(actor=system_actor)
+                    if result.get("expired"):
+                        logger.info("reservation_expiry_batch")
+                    observability.record_scheduler(
+                        job_name="reservation_expiry",
+                        outcome="success",
+                        duration_ms=int(
+                            (datetime.now(timezone.utc) - job_started_at).total_seconds()
+                            * 1000
+                        ),
+                    )
+                    await lease.release(status="completed", result=result)
+                finally:
+                    renewal_stop.set()
+                    renewal_task.cancel()
+                    await asyncio.gather(renewal_task, return_exceptions=True)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.error("reservation_expiry_loop_failed")
+            if acquired:
+                observability.record_scheduler(
+                    job_name="reservation_expiry",
+                    outcome="failed_safe",
+                    duration_ms=int(
+                        (datetime.now(timezone.utc) - job_started_at).total_seconds()
+                        * 1000
+                    ),
+                )
+                await lease.release(status="failed")
+        if stop_event is None:
+            await asyncio.sleep(60)
+        elif await wait_for_stop(stop_event, 60):
+            break
 
 
 async def readiness_probe_loop():
     while True:
+        started_at = asyncio.get_running_loop().time()
         try:
-            await app.state.readiness_probe_coordinator.probe(refresh_transaction=True)
-        except Exception as exc:
-            logger.error(
-                "readiness_probe_loop_failed error_type=%s",
-                type(exc).__name__,
+            dependencies = await app.state.readiness_probe_coordinator.probe(
+                refresh_transaction=True
             )
+            database_available = bool(
+                getattr(dependencies, "database_available", False)
+            )
+            duration_ms = int(
+                (asyncio.get_running_loop().time() - started_at) * 1000
+            )
+            observability.record_dependency(
+                dependency="mongodb",
+                operation="unknown",
+                outcome="success" if database_available else "unavailable",
+                duration_ms=duration_ms,
+            )
+            observability.record_readiness(
+                dependency="mongodb",
+                ready=database_available,
+                duration_ms=duration_ms,
+            )
+        except Exception:
+            observability.record_dependency(
+                dependency="mongodb",
+                operation="unknown",
+                outcome="failed_safe",
+                duration_ms=int(
+                    (asyncio.get_running_loop().time() - started_at) * 1000
+                ),
+            )
+            logger.error("readiness_probe_loop_failed")
         await asyncio.sleep(READINESS_PROBE_INTERVAL_SECONDS)
 
 
-async def notification_worker_heartbeat_loop():
-    while True:
-        status_value = app.state.notification_worker_status
-        status = status_value if isinstance(status_value, dict) else {}
-        app.state.notification_worker_status = {
-            **status,
-            "last_heartbeat_at": datetime.now(timezone.utc),
-        }
-        await asyncio.sleep(NOTIFICATION_WORKER_HEARTBEAT_INTERVAL_SECONDS)
+async def observability_metrics_loop(stop_event: asyncio.Event):
+    while not stop_event.is_set():
+        if await wait_for_stop(stop_event, 60):
+            break
+        try:
+            observability.flush_metrics()
+        except Exception:
+            logger.error("observability_metrics_flush_failed")
 
 
 async def notification_outbox_loop():
@@ -3123,95 +3253,127 @@ async def notification_outbox_loop():
             raise RuntimeError("email_delivery_failed")
         return True
 
+    runtime_config = getattr(app.state, "worker_runtime_config", None)
+    if not isinstance(runtime_config, WorkerRuntimeConfig):
+        runtime_config = WorkerRuntimeConfig.from_environment()
+
+    def publish_worker_status(status: dict) -> None:
+        app.state.notification_worker_status = status
+        result = status.get("last_result")
+        if isinstance(result, dict) and result.get("claimed"):
+            logger.info("notification_outbox_batch")
+        error_type = status.get("last_error_type")
+        if isinstance(error_type, str):
+            logger.error("notification_outbox_loop_failed")
+
+    async def publish_worker_result(result: dict) -> None:
+        snapshot = {}
+        try:
+            snapshot = await asyncio.wait_for(
+                NotificationService(db=db).worker_snapshot(),
+                timeout=1,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.error("notification_worker_snapshot_failed")
+        observability.record_worker(result=result, snapshot=snapshot)
+
     worker = NotificationDeliveryWorker(
         service=NotificationService(db=db),
         worker_id=worker_id,
         deliverers={"email": deliver_email},
+        runtime_config=runtime_config,
     )
-    heartbeat_task = asyncio.create_task(notification_worker_heartbeat_loop())
+    runtime = WorkerRuntime(
+        worker=worker,
+        config=runtime_config,
+        status_sink=publish_worker_status,
+        result_sink=publish_worker_result,
+        heartbeat_interval_seconds=NOTIFICATION_WORKER_HEARTBEAT_INTERVAL_SECONDS,
+    )
+    app.state.worker_runtime = runtime
     try:
-        while True:
-            status_value = app.state.notification_worker_status
-            status = status_value if isinstance(status_value, dict) else {}
-            app.state.notification_worker_status = {
-                **status,
-                "enabled": True,
-                "running": True,
-                "last_heartbeat_at": datetime.now(timezone.utc),
-            }
-            try:
-                result = await worker.run_once(limit=50)
-                app.state.notification_worker_status = {
-                    "enabled": True,
-                    "running": True,
-                    "last_heartbeat_at": datetime.now(timezone.utc),
-                    "last_result": result,
-                }
-                if result.get("claimed"):
-                    logger.info(
-                        "notification_outbox_batch",
-                        extra={"notification_outbox": result},
-                    )
-            except Exception as exc:
-                logger.error(
-                    "notification_outbox_loop_failed error_type=%s", type(exc).__name__
-                )
-                app.state.notification_worker_status = {
-                    **app.state.notification_worker_status,
-                    "enabled": True,
-                    "running": False,
-                    "last_heartbeat_at": datetime.now(timezone.utc),
-                }
-            await asyncio.sleep(5)
+        await runtime.run()
     finally:
-        heartbeat_task.cancel()
-        await asyncio.gather(heartbeat_task, return_exceptions=True)
+        app.state.worker_runtime = None
 
 
 async def _startup_runtime():
     validate_cookie_configuration()
+    runtime_mode = resolve_runtime_mode()
+    runtime_config = WorkerRuntimeConfig.from_environment()
+    app.state.runtime_mode = runtime_mode
+    app.state.worker_runtime_config = runtime_config
+    app.state.scheduler_stop_event = asyncio.Event()
+    app.state.observability_metrics_task = asyncio.create_task(
+        observability_metrics_loop(app.state.scheduler_stop_event)
+    )
     storage.init_storage()
     await seed()
     dependencies = await app.state.readiness_probe_coordinator.probe()
     app.state.database_capabilities = dependencies.capabilities
     app.state.schema_status = dependencies.schema_status
-    logger.info(
-        "database capability checked transactions=%s reason=%s",
-        app.state.database_capabilities.transactions,
-        app.state.database_capabilities.transaction_reason.value,
-    )
+    logger.info("database_capability_checked")
     app.state.readiness_probe_task = asyncio.create_task(readiness_probe_loop())
-    app.state.reservation_expiry_task = asyncio.create_task(reservation_expiry_loop())
+    app.state.reservation_expiry_task = None
+    if is_worker_mode(runtime_mode):
+        app.state.reservation_expiry_task = asyncio.create_task(
+            reservation_expiry_loop(app.state.scheduler_stop_event)
+        )
     worker_enabled = (
         os.environ.get("NOTIFICATION_WORKER_ENABLED", "false").lower() == "true"
     )
     app.state.notification_worker_status = {
-        "enabled": worker_enabled,
+        "enabled": bool(worker_enabled and is_worker_mode(runtime_mode)),
         "running": False,
+        "draining": False,
         "last_heartbeat_at": None,
         "last_result": None,
+        "last_error_type": None,
     }
-    if worker_enabled:
+    app.state.notification_worker_task = None
+    app.state.worker_runtime = None
+    if worker_enabled and is_worker_mode(runtime_mode):
         app.state.notification_worker_task = asyncio.create_task(
             notification_outbox_loop(),
         )
 
 
 async def _shutdown_runtime():
-    tasks = [
+    scheduler_stop_event = getattr(app.state, "scheduler_stop_event", None)
+    if scheduler_stop_event is not None:
+        scheduler_stop_event.set()
+    runtime = getattr(app.state, "worker_runtime", None)
+    if isinstance(runtime, WorkerRuntime):
+        runtime.request_shutdown()
+
+    immediate_tasks = [
         app.state.readiness_probe_task,
         app.state.reservation_expiry_task,
-        app.state.notification_worker_task,
+        app.state.observability_metrics_task,
     ]
-    for task in tasks:
+    for task in immediate_tasks:
         if task is not None:
             task.cancel()
-    for task in tasks:
+    for task in immediate_tasks:
         if task is None:
             continue
         try:
             await task
         except asyncio.CancelledError:
             pass
+
+    worker_task = app.state.notification_worker_task
+    if worker_task is not None:
+        runtime_config = getattr(app.state, "worker_runtime_config", None)
+        drain_seconds = (
+            runtime_config.drain_seconds
+            if isinstance(runtime_config, WorkerRuntimeConfig)
+            else APPROVED_DRAIN_SECONDS
+        )
+        completed = await cancel_task_with_deadline(worker_task, drain_seconds)
+        if not completed:
+            logger.error("notification_worker_drain_timeout")
     await app.state.readiness_probe_coordinator.close()
     client.close()

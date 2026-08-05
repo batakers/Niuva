@@ -1,6 +1,6 @@
 # DEC-OBS-001 — Commerce Transaction 1A Sandbox Observability Contract
 
-Status: **Approved Decision — Source Implementation Gated**
+Status: **Approved Decision — Source Gate Recorded; Operational Gates Separate**
 
 Decision ID: `DEC-OBS-001`
 
@@ -142,7 +142,17 @@ The following remain separate gates and are not authorized by this decision:
 - production-readiness, release, incident/on-call, SLA, or go-live claims; and
 - production or shared/staging evidence.
 
-The next gate is a separate explicit source-implementation authorization on a
-freshly fetched `origin/main`, followed by proportional source tests and
-bounded sandbox evidence. The package and this decision must not be treated as
-runtime or production evidence.
+The source gate below is a separate authorization from this decision. The
+package and this decision must not be treated as runtime or production
+evidence.
+
+## Source-gate implementation addendum — 5 August 2026
+
+On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved the exact
+Feature 7.2 and Feature 7.3 source/test scopes recorded in their task cards.
+The implementation was prepared on a fresh `origin/main` worktree and remains
+limited to local/test source and proportional tests. This addendum supersedes
+only the earlier source-implementation gate for those exact paths; it does not
+authorize Git publication, sandbox evidence collection, provider activation,
+production credentials, migration, deployment, production-readiness, or
+go-live.

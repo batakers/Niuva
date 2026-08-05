@@ -1,3 +1,4 @@
+import math
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -20,10 +21,19 @@ from notification_domain import (
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
-MAX_CLAIM_BATCH = 200
+MAX_CLAIM_BATCH = 1
 DEFAULT_LEASE_SECONDS = 60
 MAX_BACKOFF_SECONDS = 300
 DELIVERY_ERROR_CODE_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
+SAFE_DELIVERY_ERROR_CODES = frozenset(
+    {
+        "delivery_error",
+        "delivery_timeout",
+        "delivery_rejected",
+        "unsupported_channel",
+        "invalid_delivery_entry",
+    }
+)
 WORKER_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9:._-]{0,199}$")
 
 
@@ -46,7 +56,11 @@ def delivery_backoff_seconds(attempt: int) -> int:
 
 
 def safe_delivery_error_code(error: str | None) -> str:
-    if isinstance(error, str) and DELIVERY_ERROR_CODE_PATTERN.fullmatch(error):
+    if (
+        isinstance(error, str)
+        and DELIVERY_ERROR_CODE_PATTERN.fullmatch(error)
+        and error in SAFE_DELIVERY_ERROR_CODES
+    ):
         return error
     return "delivery_error"
 
@@ -462,7 +476,7 @@ class NotificationService:
         self,
         *,
         worker_id: str,
-        limit: int = 50,
+        limit: int = 1,
         lease_seconds: int = DEFAULT_LEASE_SECONDS,
         at: datetime | None = None,
     ) -> list[dict]:
@@ -476,8 +490,9 @@ class NotificationService:
                 422, "invalid_claim_limit", "Batas claim outbox tidak valid."
             )
         if (
-            not isinstance(lease_seconds, int)
-            or isinstance(lease_seconds, bool)
+            isinstance(lease_seconds, bool)
+            or not isinstance(lease_seconds, (int, float))
+            or not math.isfinite(float(lease_seconds))
             or lease_seconds <= 0
         ):
             raise NotificationError(
@@ -524,15 +539,55 @@ class NotificationService:
             claimed.append(entry)
         return claimed
 
-    async def record_delivery_result(
-        self,
-        entry_id: str,
-        *,
-        lease_token: str,
-        delivered: bool,
-        error: str | None = None,
-        at: datetime | None = None,
-    ) -> dict:
+    async def worker_snapshot(self, *, at: datetime | None = None) -> dict[str, int]:
+        """Return aggregate delivery state without exposing payloads or recipients."""
+        moment = at or now_utc()
+        retryable = {"attempts": {"$lt": MAX_DELIVERY_ATTEMPTS}}
+        pending_due_query = {
+            "status": "pending",
+            **retryable,
+            "next_attempt_at": {"$lte": moment},
+        }
+        processing_query = {"status": "processing"}
+        stale_query = {
+            "status": "processing",
+            "lease_until": {"$lte": moment},
+        }
+        exhausted_query = {"status": "exhausted"}
+        oldest_due = await self.db.notification_outbox.find(
+            pending_due_query,
+            {"_id": 0, "next_attempt_at": 1},
+        ).sort("next_attempt_at", 1).limit(1).to_list(1)
+        oldest_due_age_seconds = 0
+        if oldest_due:
+            due_at = oldest_due[0].get("next_attempt_at")
+            if isinstance(due_at, datetime):
+                oldest_due_age_seconds = max(
+                    0,
+                    min(1_000_000, int((moment - due_at).total_seconds())),
+                )
+        return {
+            "pending_due": min(
+                1_000_000,
+                await self.db.notification_outbox.count_documents(pending_due_query),
+            ),
+            "processing": min(
+                1_000_000,
+                await self.db.notification_outbox.count_documents(processing_query),
+            ),
+            "oldest_due_age_seconds": oldest_due_age_seconds,
+            "stale_leases": min(
+                1_000_000,
+                await self.db.notification_outbox.count_documents(stale_query),
+            ),
+            "exhausted": min(
+                1_000_000,
+                await self.db.notification_outbox.count_documents(exhausted_query),
+            ),
+        }
+
+    @staticmethod
+    def _validate_lease_identity(entry_id: object, lease_token: object) -> None:
         if (
             not isinstance(entry_id, str)
             or not entry_id
@@ -546,6 +601,112 @@ class NotificationService:
                 "invalid_outbox_identity",
                 "Identitas entri atau lease outbox tidak valid.",
             )
+
+    @staticmethod
+    def _validate_lease_duration(lease_seconds: object) -> None:
+        if (
+            isinstance(lease_seconds, bool)
+            or not isinstance(lease_seconds, (int, float))
+            or not math.isfinite(float(lease_seconds))
+            or lease_seconds <= 0
+        ):
+            raise NotificationError(
+                422, "invalid_lease_duration", "Durasi lease outbox tidak valid."
+            )
+
+    async def renew_lease(
+        self,
+        entry_id: str,
+        *,
+        lease_token: str,
+        lease_seconds: int | float = DEFAULT_LEASE_SECONDS,
+        at: datetime | None = None,
+    ) -> dict:
+        """Extend a live lease only when the current fencing token still owns it."""
+        self._validate_lease_identity(entry_id, lease_token)
+        self._validate_lease_duration(lease_seconds)
+        timestamp = at or now_utc()
+        result = await self.db.notification_outbox.update_one(
+            {
+                "id": entry_id,
+                "status": "processing",
+                "lease_token": lease_token,
+                "lease_until": {"$gt": timestamp},
+            },
+            {
+                "$set": {
+                    "lease_until": timestamp + timedelta(seconds=lease_seconds),
+                    "updated_at": timestamp,
+                }
+            },
+        )
+        if not result.matched_count:
+            raise NotificationError(
+                409,
+                "outbox_lease_lost",
+                "Lease outbox tidak lagi dimiliki worker ini.",
+            )
+        entry = await self.db.notification_outbox.find_one(
+            {"id": entry_id}, {"_id": 0}
+        )
+        if not entry:
+            raise NotificationError(
+                404, "outbox_entry_not_found", "Entri outbox tidak ditemukan."
+            )
+        return entry
+
+    async def release_lease(
+        self,
+        entry_id: str,
+        *,
+        lease_token: str,
+        at: datetime | None = None,
+    ) -> dict:
+        """Return an unstarted claimed item to pending with token fencing."""
+        self._validate_lease_identity(entry_id, lease_token)
+        timestamp = at or now_utc()
+        changes = {
+            "status": "pending",
+            "next_attempt_at": timestamp,
+            "lease_owner": None,
+            "lease_token": None,
+            "lease_until": None,
+            "updated_at": timestamp,
+        }
+        result = await self.db.notification_outbox.update_one(
+            {
+                "id": entry_id,
+                "status": "processing",
+                "lease_token": lease_token,
+                "lease_until": {"$gt": timestamp},
+            },
+            {"$set": changes},
+        )
+        if not result.matched_count:
+            raise NotificationError(
+                409,
+                "outbox_lease_lost",
+                "Lease outbox tidak lagi dimiliki worker ini.",
+            )
+        entry = await self.db.notification_outbox.find_one(
+            {"id": entry_id}, {"_id": 0}
+        )
+        if not entry:
+            raise NotificationError(
+                404, "outbox_entry_not_found", "Entri outbox tidak ditemukan."
+            )
+        return entry
+
+    async def record_delivery_result(
+        self,
+        entry_id: str,
+        *,
+        lease_token: str,
+        delivered: bool,
+        error: str | None = None,
+        at: datetime | None = None,
+    ) -> dict:
+        self._validate_lease_identity(entry_id, lease_token)
         if not isinstance(delivered, bool):
             raise NotificationError(
                 422,

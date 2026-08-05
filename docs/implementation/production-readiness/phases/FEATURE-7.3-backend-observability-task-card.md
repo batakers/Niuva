@@ -1,6 +1,6 @@
 # Task Card — Feature 7.3 Backend Observability
 
-Status: **Planning / approved DR-014 observability baseline recorded; source implementation remains separately gated**
+Status: **Source-gate implementation prepared; sandbox evidence and all production gates remain separate**
 
 Original planning date: 2 August 2026 (Asia/Jakarta)
 
@@ -11,8 +11,8 @@ Branch: `plan/backend-observability`
 PR: `#108` merged as `b336198`; worksheet reconciliation PR `#133` merged as
 `5dd6112`; candidate-baseline PR `#134` and remediation PR `#135` merged as
 `0b699fe` and `819a4ef`; CI passed. Faiz's complete DR-014 baseline approval
-is recorded in `DEC-OBS-001`, while source implementation remains separately
-gated.
+is recorded in `DEC-OBS-001`; the exact source scope is authorized below, while
+Git publication and operational execution remain separate gates.
 
 Worktree: contributor-local isolated worktree for `plan/backend-observability`
 
@@ -43,9 +43,8 @@ Asia/Jakarta), Yanuar/Owner delegated to Faiz the accountable Product Owner
 and Technical/Release Owner responsibility for Commerce Transaction 1A through
 30 August 2026. The delegation covers G7-B sandbox and implementation-scope
 accountability, including product input for customer-visible service
-objectives. It does not replace the separate source-implementation gate or
-authorize provider activation, production credentials, migration, deployment,
-production readiness, or go-live.
+objectives. It does not authorize provider activation, production credentials,
+migration, deployment, production readiness, or go-live.
 
 **Delegated DR-014 authority:** On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner delegated to
 Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
@@ -60,14 +59,17 @@ approved worker values are 15-second maximum operation, 5-second
 acknowledgement, 40-second margin, 60-second lease, 30-second renewal,
 concurrency 1, claim-ahead 0, and 30-second drain.
 The approved values are recorded in `DEC-OBS-001` and the decision package.
-Source implementation and operational execution remain separately gated.
+The separate source gate for the exact source/test scope is recorded below;
+operational execution remains separately gated.
 
-**Planning and Git delivery authorization:** The Project Owner explicitly
-authorized continuation of Feature 7.3 planning and authorized commit, push,
-and pull-request creation on 2 August 2026. On 3 August 2026, the Project Owner
-separately authorized PR reconciliation and merge. Neither authorization
-approves the proposed observability decisions, source implementation, provider
-selection, deployment, production readiness, or go-live.
+**Historical planning and Git delivery authorization:** The Project Owner
+authorized continuation of Feature 7.3 planning and documentation-only Git
+delivery on 2 August 2026. On 3 August 2026, the Project Owner separately
+authorized PR reconciliation and merge for that planning packet. Those earlier
+authorizations did not approve source implementation, provider selection,
+deployment, production readiness, or go-live. The later explicit source gate
+authorizes only the exact source/test paths recorded in this card; publication
+of this implementation remains a separate Git gate.
 
 Read authority in this order:
 
@@ -179,12 +181,78 @@ separate implementation gate, or treat sandbox values as production evidence.
 - `docs/decisions/DECISION_REGISTER.md`
 - `docs/context/DOCUMENT_REGISTER.md`
 
-The phase evidence index is reconciled after PR #107 merged, preserving Feature
-7.2 and recording the approved Feature 7.3 baseline without importing any
-source implementation.
+The phase evidence index was reconciled after PR #107 merged, preserving
+Feature 7.2 and recording the approved Feature 7.3 baseline. The source gate
+was subsequently approved explicitly for the exact scope below; this task card
+now records the prepared source/test evidence without converting it into
+production evidence.
 
-All source, test, dependency, configuration, migration, runbook, CI, and
-deployment files remain intentionally unchanged.
+Before the explicit source gate, this planning packet intentionally left all
+source, test, dependency, configuration, migration, runbook, CI, and deployment
+files unchanged. The approved implementation scope and its evidence are
+recorded below.
+
+## Approved source-implementation scope
+
+On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved this exact
+scope after Feature 7.2 was implemented and tested. It was applied serially on
+a freshly fetched `origin/main`; it does not select a provider or create a
+public metric endpoint.
+
+### Source paths
+
+- `backend/observability.py` *(new)* — closed event envelope, finite label and
+  bucket registries, provider-neutral metric port, bounded JSON Lines emission,
+  buffering/drop rules, and `telemetry_pipeline_degraded` behavior.
+- `backend/transaction_observability.py` — preserve the existing safe
+  transaction sink while adapting it to the approved common observability
+  contract.
+- `backend/transaction_execution.py` — expose only bounded transaction timing
+  and lifecycle signals; preserve transaction-unknown ambiguity and never
+  replay the business callback.
+- `backend/server.py` — wire HTTP, dependency, readiness, transaction, and
+  accepted worker/scheduler signals with route templates and finite labels.
+- `backend/notification_worker.py` and `backend/worker_runtime.py` — add only
+  the approved aggregate worker/scheduler signals after Feature 7.2 behavior
+  is accepted.
+
+### Test paths
+
+- `backend/tests/test_observability.py` *(new)*
+- `backend/tests/test_transaction_observability.py`
+- `backend/tests/test_transaction_guard.py`
+- `backend/tests/test_health.py`
+- `backend/tests/test_notification_feed.py`
+- `backend/tests/test_worker_runtime.py`
+
+No `emailer.py`, provider adapter, migration, dependency manifest, deployment
+configuration, frontend, or public telemetry endpoint is included. The source
+gate remains separate from sandbox evidence, provider activation, production
+credentials, migration, deployment, production readiness, and go-live.
+
+## Implementation evidence (prepared for Git; not committed)
+
+Worktree: `C:\tmp\niuva-dr014-backend-next-20260805`
+
+Branch: `codex/dr014-backend-next-20260805`
+Baseline: `origin/main` `e2a79690a09a1002f8d0b98ab5ee608e99691735`
+
+Implemented in the approved source scope:
+
+- closed redacted JSON Lines envelopes to local stdout/stderr, finite metric
+  registries and histogram buckets, bounded buffering/drop behavior, and
+  non-recursive `telemetry_pipeline_degraded` signaling;
+- transaction lifecycle timing/unknown-commit signals, route-template HTTP
+  signals, readiness/dependency signals, and aggregate worker/scheduler
+  signals; and
+- negative tests for prohibited values, unsafe request IDs/routes, finite
+  labels/cardinality, exporter failure, transaction ambiguity, and optional
+  telemetry isolation.
+
+Verification at this worktree: `941 passed, 15 skipped, 14 subtests passed`
+using serial repository tests (`-n 0`); Python compilation passed for 160
+backend files and `git diff --check` passed. No provider, endpoint, credential,
+migration, deployment, or production target was used.
 
 ## Planning acceptance criteria
 
@@ -245,7 +313,9 @@ Stop before source implementation if:
 - Record PR state and CI separately from decision approval and implementation
   readiness.
 
-**Commit / push / PR authorization:** granted for this documentation-only
-planning packet. **PR reconciliation and merge authorization:** granted by the
-Project Owner on 3 August 2026. **Source implementation, provider activation,
-deployment, production readiness, and go-live authorization:** not granted.
+**Historical commit / push / PR authorization:** granted for the
+documentation-only planning packet. **Historical PR reconciliation and merge
+authorization:** granted by the Project Owner on 3 August 2026.
+**Current source-implementation Git publication authorization:** pending.
+**Provider activation, production credentials, migration, deployment,
+production readiness, and go-live authorization:** not granted.

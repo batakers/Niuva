@@ -1,19 +1,25 @@
 # Feature 7.2 — Worker Topology Decision Package
 
-Status: **High-level DR-014 direction and bounded lease/worker values approved by Faiz — remaining values required before source implementation**
+Status: **Reconciled against approved `DEC-OBS-001`; exact source scope authorized; topology-specific evidence and Git publication remain gated**
 
 Date: 2 August 2026 (Asia/Jakarta)
 
+Reconciled: 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), against
+`origin/main` `e2a7969` after PR `#136` merged `DEC-OBS-001`.
+
 Branch: `plan/backend-worker-topology`
 
-PR: `#107` merged as `fe1d8a0`; CI passed; this package remains a planning
-record and does not authorize source implementation.
+PR: `#107` merged as `fe1d8a0`; CI passed. PR `#136` later merged the
+approved `DEC-OBS-001` sandbox observability contract. This package remains a
+planning record; the exact source scope is authorized in the addendum below.
 
 Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
 (`origin/main`, fetched 2 August 2026)
 
-Reconciliation baseline: `aff3d1177b2be1288b0682ae376eadd1c8029816`
-(`origin/main`, merged 3 August 2026). This changes no decision or source gate.
+Reconciliation baseline: `e2a79690a09a1002f8d0b98ab5ee608e99691735`
+(`origin/main`, merged 5 August 2026 through PR `#136`). This changes no
+source behavior and preserves the historical baseline; the source-gate
+addendum below records the later prepared source scope.
 
 Decision dependency: `DR-014`
 
@@ -28,18 +34,19 @@ role, Security/Data reviewer role, and DR-014 decision-maker responsibility for
 Commerce Transaction 1A through 30 August 2026. No backup owner exists; the
 single-person ownership risk is accepted.
 
-This delegation records who may decide the remaining DR-014 values. It does
-not itself approve a topology, timing, capacity, telemetry destination,
-retention/access policy, SLO, threshold, provider, production credential,
-migration, deployment, or go-live, and it does not replace the separate source
-implementation authorization.
+This delegation records who may decide the remaining DR-014 values. The
+approved sandbox observability values are recorded authoritatively in
+`DEC-OBS-001`; this package does not replace that decision. Provider
+activation, production credentials, migration, deployment, production
+readiness, and go-live remain separate gates.
 
-On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved the following high-level DR-014 direction for
-Commerce Transaction 1A: Option B (separate staging/production worker and
-development/test co-location only), no external queue/scheduler provider,
-at-least-once delivery, and bounded shutdown. The approved lease and worker
-values are listed below; SLO, capacity, alert, and evidence values remain
-pending.
+On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved the following
+high-level DR-014 direction for Commerce Transaction 1A: Option B (separate
+staging/production worker and development/test co-location only), no external
+queue/scheduler provider, at-least-once delivery, and bounded shutdown. The
+approved lease and worker values are listed below. The Feature 7.3 sandbox
+observability values are now approved by `DEC-OBS-001`; this package consumes
+them without widening their scope.
 
 On the same date, Faiz approved the bounded lease/worker values: 15-second
 maximum delivery operation time, 5-second result-acknowledgement budget,
@@ -50,8 +57,10 @@ the bounded worker contract; they do not establish production readiness.
 
 ## 1. Purpose and decision boundary
 
-This packet asks Operations/SRE to select a worker and scheduler operating
-contract. It is a proposal, not an approved ADR and not source authorization.
+This packet records the approved worker direction and the remaining
+topology-specific scheduler/dependency contract. It is not a replacement for
+`DEC-OBS-001`; the exact source authorization is recorded in the addendum
+below.
 
 The contract covers two different workload classes:
 
@@ -99,8 +108,9 @@ committed core transaction. This packet does not reopen those decisions.
   owner lease.
 - Cancellation is awaited, but graceful drain and claimed-work disposition are
   not specified.
-- Backlog age, exhausted volume, stale lease count, repeated lease loss, and
-  scheduler-run evidence have no approved thresholds or destination.
+- The approved sandbox thresholds, destination, responder, retention/access,
+  and evidence rules now come from `DEC-OBS-001`; source queries/evaluation and
+  topology-specific scheduler-run evidence remain gated.
 
 ## 3. Decision 1 — Co-located or separate worker
 
@@ -163,8 +173,10 @@ Select **Option B**:
 - no external queue/scheduler provider in Feature 7.2.
 
 **Approval field:** High-level Option B and the bounded lease/worker values in
-section 4 are approved by Faiz on 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC); SLO, capacity, alert,
-retention/access, and evidence values remain pending.
+section 4 are approved by Faiz on 5 August 2026 (Asia/Jakarta; 4 August 2026
+UTC). The bounded sandbox SLO, capacity, alert, retention/access, and evidence
+values are approved by `DEC-OBS-001`; source evaluation and production claims
+remain separately gated.
 
 ## 4. Decision 2 — Lease duration, fencing, and batch behavior
 
@@ -253,7 +265,10 @@ provider, activate production credentials, or establish production readiness.
 - Multiple workers drain a backlog without starvation, duplicate healthy
   ownership, or unbounded database load.
 
-**Approval field:** `Pending Operations/SRE decision`
+**Approval field:** The bounded at-least-once worker contract is approved for
+the sandbox scope. Exact source behavior and multi-process evidence remain
+separately gated; provider idempotency and activation remain outside this
+decision.
 
 ## 6. Decision 4 — Shutdown and crash behavior
 
@@ -387,24 +402,29 @@ payloads, provider payloads, credentials, tokens, and raw exception bodies.
 
 | Field | Approved value |
 | --- | --- |
-| Telemetry destination | Pending |
-| Retention and access | Pending |
-| Backlog/exhaustion alert destination | Pending |
+| Telemetry destination | `DEC-OBS-001`: provider-neutral JSON Lines to local stdout/stderr for the bounded sandbox; no external provider, endpoint, credential, or network destination |
+| Retention and access | `DEC-OBS-001`: captured raw output 7 days; redacted aggregate summaries/evidence 30 days; Faiz-only named access with review before validation and at least every 30 days |
+| Backlog/exhaustion alert destination | `DEC-OBS-001`: redacted JSON Lines to local stdout/stderr for the bounded sandbox; no external provider |
 | Alert responder and backup | Faiz primary (delegated Ops/SRE); no backup; single-person risk accepted |
-| Response objective | Pending |
-| Delivery/backlog SLI and objective | Pending |
-| Capacity model and scaling trigger | Pending |
-| Error budget / accepted degradation | Pending |
+| Response objective | `DEC-OBS-001`: critical alerts within 15 minutes during an active validation session, otherwise before the next run and within one business day; warnings within one business day |
+| Delivery/backlog SLI and objective | `DEC-OBS-001`: worker freshness 99% within 60 seconds; worker exhaustion 99.5%; low-traffic sample rule applies |
+| Capacity model and scaling trigger | `DEC-OBS-001`: finite labels/cardinality, CPU, memory, latency, output, buffer, and synthetic-workload ceilings; scaling/production trigger remains a separate operational decision |
+| Error budget / accepted degradation | `DEC-OBS-001`: approved sandbox error budgets and bounded `telemetry_pipeline_degraded` behavior; not a production SLA |
 
 Faiz remains the temporary general-notification backlog/exhaustion alert owner
-under `DEC-DATA-003`. This does not fill the pending destination, SLA, backup,
-on-call, capacity, or scheduler fields.
+under `DEC-DATA-003`, and is the named sandbox responder under `DEC-OBS-001`.
+This does not decide platform termination grace, claimed-work disposition,
+dependency classification, scheduler catch-up, provider activation, or
+production on-call.
 
-## 10. High-level and lease/worker values approved; remaining values require decision
+## 10. Approved worker and observability baseline; topology-specific fields remain
 
 The high-level direction and bounded lease/worker values below were approved
-by Faiz on 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC). SLO, capacity, alert, retention/access, and evidence
-fields still require explicit values before source implementation:
+by Faiz on 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC). The bounded
+observability values are approved by `DEC-OBS-001` for local/test/sandbox
+validation. The remaining fields below are topology-specific operational
+details or implementation evidence, not a reopening of the observability
+decision:
 
 1. Separate worker process for staging/production; co-located only for
    development/test.
@@ -422,8 +442,15 @@ fields still require explicit values before source implementation:
    worker health and backlog degradation.
 8. Named, fenced scheduler leases for periodic jobs, with distinct domain
    policies and owners.
-9. Aggregate, redacted operational signals with approved objectives,
-   thresholds, responders, and evidence custody.
+9. Aggregate, redacted operational signals using the approved objectives,
+   thresholds, responders, retention/access, and evidence custody in
+   `DEC-OBS-001`.
+
+The remaining topology-specific fields are platform termination grace,
+claimed-but-not-started disposition, API/worker required-versus-optional
+classification and outbound-delivery release requirement, scheduler service
+and catch-up details, and source/evidence proof for fencing, idempotency/replay,
+capacity, and bounded shutdown.
 
 ## 11. Post-approval implementation outline
 
@@ -473,15 +500,16 @@ The later implementation is not complete until evidence demonstrates:
 - no provider, migration, deployment, production, or go-live claim exceeds its
   separate approval and evidence.
 
-## 13. Approval record
+## 13. Approval record — historical planning state
 
 No choice below is approved by the existence of this file or branch.
 
 On 2 August 2026, the Project Owner explicitly approved the recommended
-planning direction in section 10. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved the
-high-level DR-014 direction and bounded lease/worker values listed in sections
-3, 4, and 6. SLO, threshold, capacity, destination, retention/access, and
-evidence values remain open, and source implementation is not authorized.
+planning direction in section 10. On 5 August 2026 (Asia/Jakarta; 4 August
+2026 UTC), Faiz approved the high-level DR-014 direction and bounded
+lease/worker values listed in sections 3, 4, and 6. `DEC-OBS-001` separately
+approved the complete bounded sandbox observability baseline. At the time of
+this historical planning record, source implementation was not authorized.
 
 | Approval | Owner | Value / evidence | Date |
 | --- | --- | --- | --- |
@@ -491,12 +519,23 @@ evidence values remain open, and source implementation is not authorized.
 | Lease/timing contract | Faiz (delegated Ops/SRE) | Approved: 15-second operation, 5-second acknowledgement, 40-second margin, 60-second lease, and 30-second renewal; concurrency 1 and claim-ahead 0 | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
 | Multi-instance/replay contract | Faiz (delegated Ops/SRE + Security/Data) | Approved at-least-once delivery, concurrency 1, and claim-ahead 0 at bounded level; exact fencing, idempotency, replay, and capacity evidence remain pending | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
 | Shutdown contract | Faiz (delegated Ops/SRE) | Approved bounded shutdown with a 30-second worker drain deadline; platform termination grace and claimed-work disposition remain pending | 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC) |
-| Required/optional dependency policy | Faiz (delegated DR-014) | Pending value | Pending |
-| Scheduler ownership | Faiz (delegated Ops/SRE) | Pending value | Pending |
-| Telemetry/SLO/alert/capacity inputs | Faiz (delegated Ops/SRE + Security/Data) | Pending value | Pending |
-| Separate source implementation authorization | Project Owner | Pending | Pending |
+| Required/optional dependency policy | Faiz (delegated DR-014) | Topology-specific API/worker classification and outbound-delivery release requirement remain pending; `DEC-OBS-001` governs required-dependency SLO treatment for sandbox validation | Pending detail |
+| Scheduler ownership | Faiz (delegated Ops/SRE) | Named owner is recorded; service/run evidence, termination, and schedule/catch-up details remain pending | Pending detail |
+| Telemetry/SLO/alert/capacity inputs | Faiz (delegated Ops/SRE + Security/Data) | Approved in `DEC-OBS-001` for local/test/sandbox scope; source evaluation and evidence collection remain gated | Approved baseline / source scope authorized |
+| Separate source implementation authorization | Historical planning state | Pending at the time of this record; superseded by the source-gate addendum below | 5 August 2026 update |
 
-Until the remaining fields have explicit values and approval evidence, Feature
-7.2 remains `decision_blocked`; the approved lease/worker values do not replace
-the remaining SLO, capacity, alert, retention/access, evidence, or separate
-source authorization, and source implementation must not begin.
+At the time of this planning reconciliation, Feature 7.2 was no longer blocked
+on the Feature 7.3 sandbox observability values, but remained implementation-
+gated while the topology-specific fields and source authorization above were
+unresolved. No source implementation could begin from that planning record
+alone.
+
+## Source-gate implementation addendum — 5 August 2026
+
+The preceding planning record describes the state before the explicit source
+gate. On 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC), Faiz approved the
+exact Feature 7.2 and Feature 7.3 source/test scopes recorded in their task
+cards. The implementation was prepared on a fresh `origin/main` worktree and
+verified locally; this addendum does not retroactively convert the planning
+record into provider, migration, deployment, production-readiness, or go-live
+authority.
