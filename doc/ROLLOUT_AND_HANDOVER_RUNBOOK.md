@@ -28,7 +28,9 @@ it, the steps are already decided rather than invented under pressure.
 ## Smoke, immediately after deploy
 
 ```powershell
-python scripts\staging_smoke.py --base-url https://staging.example
+if (-not $env:NIUVA_STAGING_API_ORIGIN) { throw "Approved staging API origin is required" }
+python scripts\staging_smoke.py --base-url $env:NIUVA_STAGING_API_ORIGIN --json
+if ($LASTEXITCODE -ne 0) { throw "Staging smoke failed; stop rollout" }
 ```
 
 Exit 0 or stop the rollout. The checks are deliberately unauthenticated: every
@@ -145,3 +147,54 @@ Closed since this document was first written:
   reference an active variant, which is what lets a work order be opened
   against them. A line may still carry no variant, and the editor says what
   that costs.
+
+## G4 external workflow gates and handover
+
+Provider and staging URL are intentionally not selected in this repository. Use
+`STAGING_DECISION_PACKET.md` to close target, access, data, owner, SLO, alert,
+rollback, and restore decisions before execution. The value supplied to the
+smoke command must be the actual approved origin in the release record; the
+an unapproved value is not a target.
+
+The smoke script requires HTTPS for external targets, rejects credentials,
+paths, placeholder/test hosts, and redirects, and allows HTTP only when an
+operator explicitly adds `--allow-http-local` to a local check.
+
+1. Dispatch `external-smoke` with the approved backend origin. Its protected
+   `staging` Environment approval, origin validation, unauthenticated smoke,
+   public read contracts, and JSON/JUnit artifact are mandatory.
+2. Dispatch `external-admin-e2e` with approved frontend/backend origins. It
+   validates origin separation, API liveness/CORS, all ten role credentials, and
+   browser role/accessibility/responsive contracts.
+3. Attach workflow run URLs, commit SHA, artifact IDs, approver, verifier, and
+   failed/held/rolled-back disposition to the release record.
+
+### Owner and alert record
+
+Before dispatch, name release owner, staging operator, rollback owner, restore
+evidence owner, database owner, on-call/incident commander, security/secret
+custodian, and independent verifier. Rollback owner records trigger, affected
+SHA, previous immutable artifact, redeploy time, and post-rollback checks.
+Restore evidence owner records snapshot custody, restore target, compare-before/
+after result, corrective action, and independent review. On-call acknowledges
+alerts and keeps the incident open until evidence is attached.
+
+Proposed staging thresholds (not production SLOs) are API 5xx `>2%` for five
+minutes, p95 `>1,000 ms` for ten minutes or `>50%` above baseline, readiness not
+ready for five minutes, required transaction capability unavailable, a blocking
+browser/role failure, data-integrity evidence, or a security event. Alert route,
+escalation, RPO/RTO, and production SLO still require operations approval.
+
+### Backup and restore drill
+
+The drill is required for any data-changing staging rollout and must use an
+approved non-live target. G4 does not apply migrations or restore shared,
+staging, or production data. Capture and verify the snapshot, run only the
+separately approved integrity/migration-shaped exercise, compare, restore,
+compare again, retain BSON/data-integrity results, and obtain independent review.
+An un-restored backup file is not evidence of recoverability.
+
+If any owner, target approval, readiness evidence, rollback artifact, or restore
+evidence is missing, stop before dispatch. The valid status remains **staging
+package prepared / deployment not executed / production readiness not
+established**.

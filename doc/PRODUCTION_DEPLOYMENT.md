@@ -1,6 +1,6 @@
 # Production deployment runbook
 
-Status dokumen: provider-neutral. Repository belum memuat konfigurasi Vercel, Netlify, Render, Nginx, atau provider lain yang dapat dijadikan sumber kebenaran. Isi domain dan host API yang telah dikonfirmasi sebelum release.
+Status dokumen: provider-neutral dan belum production-ready. Repository belum memuat konfigurasi provider yang dapat dijadikan sumber kebenaran. Isi domain dan host API yang telah dikonfirmasi sebelum release. Lihat `STAGING_DECISION_PACKET.md` untuk keputusan dan owner yang wajib ditutup sebelum workflow external dijalankan.
 
 ## 1. Release configuration
 
@@ -71,7 +71,7 @@ Jangan memberi cache immutable pada `index.html`; deployment baru harus dapat me
 Terapkan lewat host/CDN dan uji di staging. Ganti placeholder API/PostHog sesuai host final. `unsafe-inline` masih diperlukan oleh template dan beberapa inline style saat ini; hardening lanjutan sebaiknya memakai nonce/hash sebelum menghapusnya.
 
 ```txt
-Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://API_HOST.example https://us.i.posthog.com; frame-src https://www.google.com https://maps.google.com; worker-src 'self' blob:; upgrade-insecure-requests
+Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' ${REACT_APP_BACKEND_URL} https://us.i.posthog.com; frame-src https://www.google.com https://maps.google.com; worker-src 'self' blob:; upgrade-insecure-requests
 Referrer-Policy: strict-origin-when-cross-origin
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
@@ -152,3 +152,90 @@ Jika release gagal:
 4. Jangan rollback database secara otomatis. Restore hanya bila migrasi/data corruption terkonfirmasi dan backup tervalidasi.
 5. Purge hanya `index.html`/HTML edge cache; aset hash lama tetap aman disajikan.
 6. Verifikasi route publik, login, API health, dan contact path setelah rollback, lalu dokumentasikan penyebab dan timeline insiden.
+
+## G4 staging execution contract
+
+Dokumen ini menyediakan kontrak release provider-neutral; workflow yang berhasil,
+artifact yang tersedia, atau PR yang merged tidak dengan sendirinya menjadi
+otorisasi deployment, production readiness, atau go-live.
+
+Provider dan staging URL belum dipilih di repository. Target external hanya boleh
+dimasukkan saat dispatch workflow melalui GitHub Environment `staging` yang
+memiliki required reviewer dan approval target. Jangan menulis URL aktual,
+credential, atau secret ke source control.
+
+Sebelum target dipakai, release record wajib memuat:
+
+- commit SHA yang benar-benar dibangun;
+- frontend origin exact HTTPS tanpa path, credential, query, atau fragment;
+- backend origin exact HTTPS tanpa `/api`, credential, query, atau fragment;
+- environment approver, target-approval reference, rollback owner, restore
+evidence owner, on-call, dan independent verifier;
+- kebijakan data staging dan bukti artifact rollback sebelumnya.
+
+### Origin, TLS, CORS, and secret injection
+
+- `REACT_APP_PUBLIC_SITE_URL` dan `PUBLIC_SITE_URL` menggunakan frontend origin
+  yang sama; `REACT_APP_BACKEND_URL` menggunakan backend origin tanpa `/api`.
+- Backend `CORS_ORIGINS` harus berisi exact frontend origin, tidak wildcard, dan
+  harus mengembalikan `Access-Control-Allow-Origin` serta credentials header pada
+  request dari frontend origin.
+- Kedua origin wajib HTTPS dengan certificate chain valid. Smoke gate menolak
+  HTTP, local/placeholder host, credential, path, query, fragment, dan redirect
+  target external.
+- Backend secret diinjeksikan provider secret/configuration store saat process
+  start; tidak memakai `.env` lokal, tidak dicetak di log, dan tidak dimasukkan
+  ke GitHub Actions. GitHub Environment `staging` hanya memuat disposable role
+  credentials untuk Admin E2E.
+
+### Mongo replica-set and readiness
+
+Staging mutation flows memerlukan MongoDB persistent authenticated replica set.
+Release inventory mencatat replica-set name, persistence boundary, TLS/auth
+policy, backup scope, schema/index state, dan database owner tanpa credential.
+Standalone MongoDB bukan evidence transaction readiness.
+
+Before enabling transaction-dependent mutations:
+
+1. `GET /api/health/live` returns HTTP 200 with `status=ok`.
+2. `GET /api/health/ready` returns HTTP 200 with `status=ready`,
+   `database=ready`, `schema.ready=true`, and `transaction_mutations=ready`.
+3. Required indexes are present and no retired/missing index remains.
+4. Required worker/email capabilities are either explicitly disabled by decision
+   or ready in the response.
+
+### External workflow and evidence checklist
+
+- [ ] `external-smoke` ran with the approved backend origin and uploaded smoke
+      JSON/JUnit evidence.
+- [ ] `external-admin-e2e` ran with approved frontend/backend origins and uploaded
+      role/accessibility/responsive browser evidence.
+- [ ] All five disposable role account pairs exist; a missing credential fails,
+      never skips, the role matrix.
+- [ ] Release record contains run URLs, SHA, target approval, artifact IDs,
+      verifier, and failed/held/rolled-back disposition.
+- [ ] Backup/restore evidence has owner, custody, timestamp, restore comparison,
+      corrective action, and independent verification.
+
+### Ownership, SLO, and alerts
+
+The release record must name release owner, staging operator, rollback owner,
+restore evidence owner, database owner, on-call/incident commander, security
+secret custodian, and independent verifier. Proposed staging thresholds (not
+approved production SLOs) are: API 5xx `>2%` for 5 minutes; p95 `>1,000 ms` for
+10 minutes or `>50%` over baseline; readiness not ready for 5 minutes;
+`transaction_mutations=unavailable` when required; backup older than approved
+RPO; or a blocking browser/role assertion. These stop or page the named owner.
+Alert destination, escalation, RPO/RTO, and production SLO remain open decisions.
+
+### Backup/restore boundary
+
+Follow `MIGRATION_BACKUP_RESTORE_RUNBOOK.md` only on an approved non-live target.
+G4 does not apply migrations or restore shared/staging/production data. A restore
+gate is complete only with snapshot capture/verify, restore-and-compare result,
+BSON/data-integrity result, custody, corrective action, and restore evidence owner.
+A backup file without restore evidence is not recoverability evidence.
+
+Until named owners and environment evidence exist, the valid status is
+**staging package prepared / deployment not executed / production readiness not
+established**.
