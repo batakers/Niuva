@@ -51,10 +51,13 @@ deployment, production activation, or go-live.
 
 ## Scope
 
-Only these two documentation files may change:
+Only these two documentation files and one exact scan-fingerprint entry may
+change:
 
 1. `docs/implementation/production-readiness/phases/DR-005-INTERNAL-MFA-DECISION-2026-08-06-task-card.md`
 2. `docs/implementation/production-readiness/phases/DR-005-INTERNAL-MFA-DECISION-2026-08-06.md`
+3. `.gitleaksignore` for the verified historical false-positive fingerprint
+   from the already-published DR-011 packet commit only
 
 ## Explicit exclusions
 
@@ -83,7 +86,8 @@ Only these two documentation files may change:
   production readiness.
 - No secret, token, credential value, provider activation, dependency, or
   external operation is introduced.
-- Only the two approved paths are staged.
+- Only the three approved paths are staged; the `.gitleaksignore` entry must be
+  an exact fingerprint and must not disable a rule or path broadly.
 - `git diff --check`, markdownlint, exact-path verification, and staged secret
   scanning pass.
 

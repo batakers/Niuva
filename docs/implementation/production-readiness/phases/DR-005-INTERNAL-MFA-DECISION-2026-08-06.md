@@ -279,6 +279,9 @@ Intentionally unchanged by this packet:
   `DEC-AUTH-011`, `DEC-AUTH-012`, the Decision Register, and DR-005 status;
 - backend/frontend source, schemas, migrations, dependencies, configuration,
   tests, CI, and deployment manifests;
+- all scan rules and configuration except `.gitleaksignore`, which carries only
+  the exact verified historical false-positive fingerprint required by the
+  published PR history;
 - credentials, key material, provider activation, shared/staging/production
   data, deployment, readiness, and go-live state;
 - the dirty `main` worktree and unrelated worktrees.
