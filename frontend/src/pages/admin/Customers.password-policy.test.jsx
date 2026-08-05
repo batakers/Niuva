@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { useAuth } from "@/context/AuthContext";
+import { I18nProvider } from "@/i18n";
 import { api } from "@/lib/api";
 import Customers from "./Customers";
 
@@ -45,8 +46,12 @@ beforeEach(() => {
 afterEach(() => jest.resetAllMocks());
 
 test("customer creation accepts a policy-valid password beyond 72 bytes", async () => {
-  render(<Customers />);
-  fireEvent.click(await screen.findByRole("button", { name: "Tambah customer" }));
+  render(
+    <I18nProvider>
+      <Customers />
+    </I18nProvider>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Tambah pelanggan" }));
   await screen.findByText(/15–128 karakter Unicode/);
 
   const inputs = screen.getAllByRole("textbox");

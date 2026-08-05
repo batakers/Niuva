@@ -31,7 +31,7 @@ export function AdminLayout({ children, title, subtitle }) {
   const accessLevel =
     Array.isArray(user?.role_labels) && user.role_labels.length > 0
       ? user.role_labels.join(" + ")
-      : "No approved role";
+      : t("admin.noApprovedRole");
 
   // Filter menu groups based on permissions
   const visibleGroups = visibleAdminMenuGroups(user);
@@ -120,6 +120,7 @@ export function AdminLayout({ children, title, subtitle }) {
       <button
         type="button"
         tabIndex={sidebarOpen ? 0 : -1}
+        aria-hidden={!sidebarOpen}
         className={`fixed inset-0 z-40 bg-text-primary/50 transition-opacity duration-standard motion-reduce:transition-none lg:hidden ${
           sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
@@ -131,12 +132,11 @@ export function AdminLayout({ children, title, subtitle }) {
       <aside
         ref={sidebarRef}
         id="admin-navigation-drawer"
-        role={!desktopNav ? "dialog" : undefined}
+        role={!desktopNav && sidebarOpen ? "dialog" : undefined}
         aria-modal={!desktopNav && sidebarOpen ? "true" : undefined}
         aria-label={t("admin.navigation")}
-        aria-hidden={!desktopNav && !sidebarOpen ? "true" : undefined}
-        inert={!desktopNav && !sidebarOpen ? "" : undefined}
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border-default bg-surface-default shadow-navigation transition-transform duration-standard ease-snap motion-reduce:transition-none lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${
+        inert={!desktopNav && !sidebarOpen}
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border-default bg-surface-default shadow-navigation transition-transform duration-standard ease-snap motion-reduce:transition-none lg:static lg:w-72 lg:translate-x-0 lg:shadow-none ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -172,7 +172,7 @@ export function AdminLayout({ children, title, subtitle }) {
               key={group.label} 
               className={groupIndex > 0 ? "mt-4 pt-4 border-t border-border-default/50" : ""}
             >
-              <p className="mb-2 px-3 type-label text-text-disabled uppercase text-[11px] tracking-wide">
+              <p className="mb-2 px-3 type-label text-text-secondary uppercase text-[11px] tracking-wide">
                 {t(group.label)}
               </p>
               <div className="space-y-0.5">
@@ -183,19 +183,21 @@ export function AdminLayout({ children, title, subtitle }) {
                       key={path}
                       to={path}
                       aria-current={active ? "page" : undefined}
-                      className={`flex min-h-11 items-center gap-3 rounded-control px-3 py-2.5 type-navigation transition-all duration-fast motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
+                      className={`flex min-h-11 items-start gap-3 rounded-control px-3 py-2.5 type-navigation transition-colors duration-fast motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
                         active
                           ? "bg-action-primary text-text-inverse shadow-sm"
                           : "text-text-secondary hover:bg-surface-muted hover:text-text-primary"
                       }`}
                     >
-                      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                      <span className="min-w-0 flex-1 truncate">{t(label)}</span>
-                      {badge && (
-                        <span className="border border-current/30 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide opacity-80">
-                          {t(badge)}
-                        </span>
-                      )}
+                      <Icon className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block leading-snug">{t(label)}</span>
+                        {badge && (
+                          <span className="mt-1 inline-flex border border-current/50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide">
+                            {t(badge)}
+                          </span>
+                        )}
+                      </span>
                     </Link>
                   );
                 })}
@@ -244,17 +246,17 @@ export function AdminLayout({ children, title, subtitle }) {
           </button>
 
           {/* Breadcrumb / Page title */}
-          <nav className="flex items-center gap-1.5 text-text-secondary" aria-label="Breadcrumb">
+          <nav className="flex min-w-0 items-center gap-1.5 text-text-secondary" aria-label="Breadcrumb">
             <Link
               to="/admin"
-              className="inline-flex min-h-11 items-center type-body-small transition-colors duration-fast hover:text-action-primary"
+              className="inline-flex min-h-11 shrink-0 items-center type-body-small transition-colors duration-fast hover:text-action-primary"
             >
               {t("admin.console")}
             </Link>
             {title && (
               <>
-                <ChevronRight className="h-3.5 w-3.5 text-text-disabled" />
-                <span className="type-body-small text-text-primary font-medium">
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-disabled" />
+                <span className="truncate type-body-small font-medium text-text-primary">
                   {title}
                 </span>
               </>
@@ -274,7 +276,10 @@ export function AdminLayout({ children, title, subtitle }) {
               </p>
               <p className="text-xs text-text-secondary">{accessLevel}</p>
             </div>
-            <div className="h-9 w-9 rounded-full bg-action-primary flex items-center justify-center text-text-inverse font-heading font-bold text-sm ring-2 ring-transparent transition-all duration-fast hover:ring-action-primary/30 hover:ring-offset-2">
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-action-primary font-heading text-sm font-bold text-text-inverse"
+              aria-hidden="true"
+            >
               {user?.name?.charAt(0)?.toUpperCase() || "A"}
             </div>
           </div>
@@ -299,7 +304,7 @@ export function AdminLayout({ children, title, subtitle }) {
           )}
 
           {/* Page children */}
-          <div className="w-full">{children}</div>
+          <div className="mx-auto w-full max-w-[96rem]">{children}</div>
         </main>
       </div>
     </div>

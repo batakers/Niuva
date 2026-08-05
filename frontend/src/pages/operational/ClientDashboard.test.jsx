@@ -29,15 +29,26 @@ jest.mock("@/i18n", () => {
     "dash.errorDescription":
       "Periksa koneksi Anda, lalu coba muat kembali riwayat pesanan.",
     "dash.errorTitle": "Riwayat pesanan belum dapat dimuat",
+    "dash.emptyTitle": "Belum ada riwayat pesanan",
     "dash.headerLabel": "Dasbor",
+    "dash.historyCaption": "Riwayat pesanan akun",
+    "dash.historyTitle": "Riwayat pesanan",
+    "dash.legacyDescription": "Pesanan lama hanya dapat dibaca.",
+    "dash.legacyTitle": "Riwayat pesanan lama tetap tersedia",
+    "dash.loadingDescription": "Mohon tunggu.",
+    "dash.loadingTitle": "Memuat riwayat pesanan",
     "dash.material": "Material",
     "dash.noOrders": "Belum ada pesanan.",
+    "dash.openRetail": "Lihat katalog Retail",
     "dash.orderNo": "No. Pesanan",
     "dash.ordersTotal": "Pesanan",
+    "dash.portalLabel": "Portal pelanggan",
     "dash.status": "Status",
+    "dash.subtitle": "Lihat status dan riwayat.",
     "dash.systemActive": "Aktif",
     "dash.title": "Pesanan Saya",
     "dash.welcomeBack": "Selamat datang",
+    "status.pending_estimate": "Menunggu estimasi",
   };
 
   return {
@@ -99,7 +110,7 @@ test("retries the same read and restores the orders list after recovery", async 
           order_number: "ORD-2026-001",
           material_name: "PLA",
           created_at: "2026-07-29T08:00:00Z",
-          status: "submitted",
+          status: "pending_estimate",
           file: { original_filename: "housing.stl" },
         },
       ],
@@ -114,7 +125,9 @@ test("retries the same read and restores the orders list after recovery", async 
   );
 
   expect(await screen.findByTestId("orders-list")).toBeInTheDocument();
-  expect(screen.getByText("ORD-2026-001")).toBeInTheDocument();
+  expect(screen.getAllByText("ORD-2026-001")).toHaveLength(2);
+  expect(screen.getByTestId("orders-table")).toBeInTheDocument();
+  expect(screen.getByTestId("orders-mobile-list")).toBeInTheDocument();
   expect(screen.queryByTestId("operational-state-error")).not.toBeInTheDocument();
   expect(api.get).toHaveBeenCalledTimes(2);
   expect(api.get).toHaveBeenNthCalledWith(1, "/orders");

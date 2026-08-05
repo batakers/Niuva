@@ -47,6 +47,7 @@ module.exports = {
         'decoration-brand-soft': 'var(--color-decoration-brand-soft)',
         'decoration-brand-line': 'var(--color-decoration-brand-line)',
         'decoration-brand-strong': 'var(--color-decoration-brand-strong)',
+        'decoration-inverse-line': 'var(--color-decoration-inverse-line)',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

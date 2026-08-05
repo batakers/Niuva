@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
 import { useAuth } from "../../context/AuthContext";
 import { api, formatApiError } from "../../lib/api";
 import { hasPermission } from "../../lib/permissions";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
+import { FormField } from "../../components/ui/form-field";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { useI18n } from "../../i18n";
@@ -68,89 +69,73 @@ export default function AdminLogin() {
   };
 
   return (
-    <AuthShell>
-      <div className="rounded-panel border border-border-default bg-surface-default shadow-surface overflow-hidden">
-        <div className="bg-surface-muted border-b border-border-default px-6 py-4">
-          <p className="type-label text-text-secondary">{t("admin.console")}</p>
-        </div>
+    <AuthShell audience="staff">
+      <AuthCard
+        eyebrow={t("admin.console")}
+        title={t("auth.adminLogin")}
+        description={t("auth.adminLoginSubtitle")}
+      >
+        <form onSubmit={submit} className="space-y-5" data-testid="admin-login-form">
+          <FormField label={t("common.email")} required>
+            <Input
+              id="admin-login-email"
+              data-testid="admin-login-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              autoComplete="username"
+            />
+          </FormField>
 
-        <div className="p-8">
-          <h1 className="mb-2 font-heading text-2xl font-bold tracking-tight text-text-primary">
-            {t("auth.adminLogin")}
-          </h1>
-          <p className="mb-8 type-body-small text-text-secondary">
-            {t("auth.adminLoginSubtitle")}
-          </p>
+          <FormField label={t("common.password")} required>
+            <Input
+              id="admin-login-password"
+              data-testid="admin-login-password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              autoComplete="current-password"
+            />
+          </FormField>
 
-          <form onSubmit={submit} className="space-y-5" data-testid="admin-login-form">
-            <div className="space-y-1.5">
-              <Label htmlFor="admin-login-email" className="type-label text-text-secondary">
-                {t("common.email")}
-              </Label>
-              <Input
-                id="admin-login-email"
-                data-testid="admin-login-email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                autoComplete="username"
-              />
-            </div>
+          <div className="flex items-center gap-3">
+            <input
+              id="admin-login-remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+              className="h-4 w-4 rounded-control border-border-strong text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+            />
+            <Label htmlFor="admin-login-remember-me" className="type-body-small text-text-secondary">
+              Ingat saya
+            </Label>
+          </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="admin-login-password" className="type-label text-text-secondary">
-                {t("common.password")}
-              </Label>
-              <Input
-                id="admin-login-password"
-                data-testid="admin-login-password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
+          {error && (
+            <Alert className="type-body-small" data-testid="admin-login-error">
+              {error}
+            </Alert>
+          )}
 
-            <div className="flex items-center gap-3">
-              <input
-                id="admin-login-remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(event) => setRememberMe(event.target.checked)}
-                className="h-4 w-4 rounded border-border-strong text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
-              />
-              <Label htmlFor="admin-login-remember-me" className="type-body-small text-text-secondary">
-                Ingat saya
-              </Label>
-            </div>
+          <Button
+            type="submit"
+            disabled={submitting || authLoading}
+            data-testid="admin-login-submit"
+            className="w-full"
+            size="lg"
+          >
+            {submitting ? t("auth.verifying") : t("auth.loginAction")}
+          </Button>
 
-            {error && (
-              <Alert className="type-body-small" data-testid="admin-login-error">
-                {error}
-              </Alert>
-            )}
-
-            <Button
-              type="submit"
-              disabled={submitting || authLoading}
-              data-testid="admin-login-submit"
-              className="w-full"
-              size="lg"
-            >
-              {submitting ? t("auth.verifying") : t("auth.loginAction")}
-            </Button>
-
-            <Link
-              to="/forgot-password"
-              className="block text-center type-body-small text-text-secondary transition-colors hover:text-text-primary"
-            >
+          <Button asChild variant="link" className="w-full">
+            <Link to="/forgot-password?audience=staff">
               {t("auth.forgotPassword")}
             </Link>
-          </form>
-        </div>
-      </div>
+          </Button>
+        </form>
+      </AuthCard>
     </AuthShell>
   );
 }

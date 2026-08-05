@@ -52,6 +52,75 @@ HSL compatibility layer (`--background`, `--foreground`, `--primary`,
 public work should use the public semantic roles; the compatibility layer is not
 a license to create a second public visual system.
 
+## Canonical Frontend Component Architecture
+
+Keep the current React, Tailwind, shadcn-style/Radix, CVA, Lucide, and Sonner
+foundation. Design-system convergence is an architecture and usage migration;
+it is not authorization to add a replacement UI kit or a second set of visual
+primitives.
+
+The canonical dependency direction is:
+
+```text
+semantic CSS tokens
+-> Tailwind semantic mappings
+-> shared UI contracts in components/ui
+-> surface or domain compositions
+-> route pages
+```
+
+The layers have distinct responsibilities:
+
+1. `frontend/src/index.css` and `frontend/tailwind.config.js` own semantic visual
+   roles. Components consume those roles; they do not create local palettes or
+   radius systems.
+2. `frontend/src/components/ui/` owns reusable presentation and interaction
+   contracts. These components may own variants, accessibility behavior, and
+   responsive presentation, but not route decisions, network requests, or a
+   product lifecycle that belongs to one domain.
+3. Surface and domain directories such as `components/brand`,
+   `components/auth`, `components/operational`, `components/admin`, and future
+   Retail or customer-specific directories compose shared contracts for one
+   bounded experience. Public editorial composition must not leak into Admin;
+   Admin density must not leak into customer or public journeys.
+4. Route pages orchestrate route state, data loading, mutations, permissions,
+   and page-level composition. When a page repeats a visual or interaction
+   pattern, it should extract or reuse a lower-layer contract instead of
+   recreating the pattern with page-local utility strings.
+
+Shared appearance does not make lifecycle meaning global. Status order, label,
+allowed transition, and customer-safe wording remain owned by the Retail Order,
+B2B Inquiry/Quote/Project, Work Order, Portfolio, or other applicable lifecycle.
+A shared status-tone helper may be reused, but a single unbounded status map
+must not become product authority for unrelated lifecycles.
+
+The current component inventory, adoption state, and migration constraints are
+recorded in
+`docs/implementation/plans/pending-reconciliation/2026-08-05-frontend-component-register.md`.
+That register is implementation evidence, not independent product authority.
+
+## Composition and Visual Restraint
+
+Use a panel only when it communicates one meaningful region, task, or state.
+Do not wrap every field, label/value pair, timeline event, or explanatory line
+in its own card. Prefer hierarchy, spacing, dividers, lists, and definition
+groups inside one containing surface. Nested panels require a distinct
+interaction or state boundary, not decoration.
+
+Radius follows component meaning: controls use the control radius, panels use
+the panel radius, and pills are reserved for compact statuses, filters, or
+other genuinely pill-shaped controls. Avoid arbitrary per-page radius values
+and mixtures of square, rounded, and pill containers without a semantic reason.
+
+Use elevation flat-first. Borders and surface contrast establish most grouping;
+shadows are reserved for navigation, overlays, or a clear layer transition.
+Do not turn repeated hover lift, drop shadows, colored header strips, or uniform
+card grids into the default visual language.
+
+Brand blue identifies Niuva and important actions or active states. It must not
+fill every neutral container. Mobile layouts must preserve task priority and
+readability by recomposing content, not merely shrinking the desktop card grid.
+
 ## Typography by Surface
 
 Use Poppins for approved display and UI emphasis; use Inter for body copy, metadata, forms, and dense operational text.
@@ -153,6 +222,14 @@ guidance.
 continues to represent loading, no-data, and configuration states, but its
 content must be clear, meaningful, and non-decorative. Button variants retain
 their current API, focus treatment, disabled state, and semantic action roles.
+
+New work must reuse the current component foundation before adding a primitive.
+An existing file is not automatically canonical: unused, untested, or
+dependency-incomplete components remain provisional until their contract and
+adoption are reviewed. Route pages must not directly copy a shared component's
+class list to create a near-duplicate. Lifecycle-specific status presentation
+must use a scoped domain composition rather than extending one global badge map
+indefinitely.
 
 All surfaces require readable contrast, semantic structure, keyboard reach,
 visible focus, labels that do not rely on color alone, responsive behavior, and

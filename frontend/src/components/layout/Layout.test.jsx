@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-import { MarketingLayout } from "./Layout";
+import { MarketingLayout, OperationalLayout } from "./Layout";
 
 jest.mock("./Navbar", () => ({
   Navbar: () => <nav aria-label="Primary navigation" />,
@@ -50,5 +50,28 @@ describe("MarketingLayout public metadata", () => {
       "href",
       "#main-content",
     );
+  });
+});
+
+describe("OperationalLayout accessibility", () => {
+  beforeEach(() => {
+    document.head.innerHTML = "";
+  });
+
+  test("provides a skip link and one focusable main-content target", () => {
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <OperationalLayout>
+          <p>Customer workspace</p>
+        </OperationalLayout>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "Lewati ke konten" })).toHaveAttribute(
+      "href",
+      "#main-content",
+    );
+    expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
+    expect(screen.getByRole("main")).toHaveAttribute("tabindex", "-1");
   });
 });

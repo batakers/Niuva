@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { WorkOrderStatusBadge } from "@/components/admin/WorkOrderStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,7 +121,7 @@ export default function ProjectWorkOrders({ project, onChanged }) {
                     <span className="font-mono text-sm font-semibold text-text-primary">
                       {workOrder.id.slice(0, 8)}
                     </span>
-                    <StatusBadge status={workOrder.status} />
+                    <WorkOrderStatusBadge status={workOrder.status} />
                   </div>
                   <p className="mt-1 text-sm text-text-secondary">
                     {workOrder.quantity} unit ·{" "}

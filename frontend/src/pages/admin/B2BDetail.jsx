@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { B2BStatusBadge } from "@/components/admin/B2BStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OperationalState } from "@/components/ui/operational-state";
@@ -254,7 +254,9 @@ function B2BDetail({ kind }) {
             <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="type-label text-text-secondary">{t("b2b.currentStatus")}</p>
-                <div className="mt-2"><StatusBadge status={record.status} /></div>
+                <div className="mt-2">
+                  <B2BStatusBadge kind={kind} status={record.status} />
+                </div>
               </div>
               <p className="font-mono text-xs text-text-secondary">
                 {record.id}
@@ -309,9 +311,11 @@ function B2BDetail({ kind }) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      {event.from_status && <StatusBadge status={event.from_status} />}
+                      {event.from_status && (
+                        <B2BStatusBadge kind={kind} status={event.from_status} />
+                      )}
                       <ArrowRight className="h-3.5 w-3.5 text-text-disabled" />
-                      <StatusBadge status={event.to_status} />
+                      <B2BStatusBadge kind={kind} status={event.to_status} />
                     </div>
                     <p className="mt-2 text-sm text-text-secondary">{event.reason}</p>
                     <p className="mt-1 font-mono text-[11px] text-text-disabled">
