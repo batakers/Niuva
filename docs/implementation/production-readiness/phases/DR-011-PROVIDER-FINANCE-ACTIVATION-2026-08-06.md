@@ -133,7 +133,8 @@ Complete these fields only if the owner chooses a payment-enabled scope:
 - provider-neutral state mapping for pending, processing, succeeded, failed,
   expired, cancelled, review, refunded, and reconciliation states;
 - idempotency identity, event deduplication, conflict handling, webhook
-  authentication, signature/key rotation, replay protection, and outage mode;
+  authentication, signature-verification credential lifecycle, replay
+  protection, and outage mode;
 - authoritative amount/currency/tax/fulfillment snapshots and customer-safe
   projection; never expose raw provider payloads or sensitive Finance data;
 - payment intent/attempt, refund, underpayment, overpayment, duplicate/late
