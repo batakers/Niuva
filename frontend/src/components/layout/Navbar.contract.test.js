@@ -20,6 +20,8 @@ describe("public navigation semantics", () => {
     expect(shellSource).toContain('role={open ? "dialog" : undefined}');
     expect(shellSource).toContain('aria-modal={open ? "true" : undefined}');
     expect(shellSource).toContain("inert={!open}");
+    expect(shellSource).toContain('data-testid="mobile-navigation-backdrop"');
+    expect(shellSource).toContain("onClick={() => setOpen(false)}");
     expect(shellSource).not.toContain('aria-hidden={!open}');
   });
 

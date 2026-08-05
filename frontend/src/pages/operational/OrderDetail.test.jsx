@@ -1,6 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 
 import OrderDetail from "./OrderDetail";
 import { api, downloadApiFile } from "@/lib/api";
@@ -89,6 +89,26 @@ function renderDetail() {
   );
 }
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
+}
+
+function OrderRouteWithSwitcher() {
+  const navigate = useNavigate();
+  return (
+    <>
+      <button type="button" onClick={() => navigate("/orders/order-second")}>
+        Buka pesanan kedua
+      </button>
+      <OrderDetail />
+    </>
+  );
+}
+
 afterEach(() => jest.resetAllMocks());
 
 test("renders a customer-safe read-only order and preserves controlled file download", async () => {
@@ -138,4 +158,45 @@ test("keeps a failed detail read generic and recoverable", async () => {
     await screen.findByRole("heading", { name: "Detail Pesanan" }),
   ).toBeInTheDocument();
   expect(api.get).toHaveBeenCalledTimes(2);
+});
+
+test("ignores an older response after the order route id changes", async () => {
+  const first = deferred();
+  const second = deferred();
+  const secondOrder = {
+    ...order,
+    id: "order-second",
+    order_number: "NV-SECOND",
+    material_name: "PLA Putih",
+  };
+
+  api.get.mockImplementation((path) =>
+    path.endsWith("order-abcdef123456") ? first.promise : second.promise,
+  );
+
+  render(
+    <MemoryRouter initialEntries={["/orders/order-abcdef123456"]}>
+      <Routes>
+        <Route path="/orders/:id" element={<OrderRouteWithSwitcher />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Buka pesanan kedua" }));
+  await waitFor(() => {
+    expect(api.get).toHaveBeenCalledWith("/orders/order-second");
+  });
+
+  await act(async () => {
+    second.resolve({ data: secondOrder });
+    await second.promise;
+  });
+  expect(await screen.findByText("NV-SECOND")).toBeInTheDocument();
+
+  await act(async () => {
+    first.resolve({ data: order });
+    await first.promise;
+  });
+  expect(screen.getByText("NV-SECOND")).toBeInTheDocument();
+  expect(screen.queryByText("NV-2026-0042")).not.toBeInTheDocument();
 });

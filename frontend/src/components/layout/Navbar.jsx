@@ -104,7 +104,7 @@ export function Navbar() {
 
   return (
     <header className="fixed left-0 right-0 top-0 z-40 bg-navigation-backdrop px-4 pb-3 pt-3 sm:px-6 lg:px-8">
-      <div className="mx-auto flex h-16 max-w-[var(--container-wide)] items-center justify-between rounded-panel bg-surface-default px-4 shadow-navigation ring-1 ring-border-default sm:px-6">
+      <div className="relative z-10 mx-auto flex h-16 max-w-[var(--container-wide)] items-center justify-between rounded-panel bg-surface-default px-4 shadow-navigation ring-1 ring-border-default sm:px-6">
         <Link to="/" className="-ml-2 flex min-h-11 items-center rounded-control px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring" aria-label="Niuva Inovasi Utama - Beranda">
           <BrandIdentity />
         </Link>
@@ -150,6 +150,15 @@ export function Navbar() {
         </button>
       </div>
 
+      {open && (
+        <div
+          data-testid="mobile-navigation-backdrop"
+          aria-hidden="true"
+          className="fixed inset-0 z-0 bg-text-primary/20 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <div
         ref={mobilePanelRef}
         id="mobile-navigation-panel"
@@ -157,7 +166,7 @@ export function Navbar() {
         aria-modal={open ? "true" : undefined}
         aria-label="Menu navigasi"
         inert={!open}
-        className={`fixed inset-x-4 top-[5.5rem] max-h-[calc(100dvh-6.5rem)] overflow-y-auto rounded-feature bg-surface-default p-5 shadow-overlay ring-1 ring-border-default transition-[opacity,transform] duration-emphasis ease-snap sm:inset-x-6 lg:hidden ${
+        className={`fixed inset-x-4 top-[5.5rem] z-10 max-h-[calc(100dvh-6.5rem)] overflow-y-auto rounded-feature bg-surface-default p-5 shadow-overlay ring-1 ring-border-default transition-[opacity,transform] duration-emphasis ease-snap sm:inset-x-6 lg:hidden ${
           open
             ? "visible translate-y-0 opacity-100"
             : "invisible pointer-events-none -translate-y-4 opacity-0"

@@ -70,28 +70,43 @@ export default function RetailProductPage() {
     value: null,
   });
   const loadRequestRef = useRef(null);
+  const latestSlugRef = useRef(slug);
+  latestSlugRef.current = slug;
 
   const load = useCallback(() => {
     if (!HAS_CONFIGURED_BACKEND) return Promise.resolve();
-    if (loadRequestRef.current) return loadRequestRef.current;
+    const requestSlug = slug;
+    const activeRequest = loadRequestRef.current;
+    if (activeRequest?.slug === requestSlug) return activeRequest.promise;
 
     setState({ status: "loading", value: null });
     const request = publicCatalogApi
       .product(slug)
-      .then((value) => setState({ status: "ready", value }))
+      .then((value) => {
+        if (latestSlugRef.current === requestSlug) {
+          setState({ status: "ready", value });
+        }
+      })
       .catch((error) => {
-        setState({
-          status: error.response?.status === 404 ? "not_found" : "error",
-          value: null,
-        });
+        if (latestSlugRef.current === requestSlug) {
+          setState({
+            status: error.response?.status === 404 ? "not_found" : "error",
+            value: null,
+          });
+        }
       })
       .finally(() => {
-        if (loadRequestRef.current === request) {
+        const currentRequest = loadRequestRef.current;
+        if (
+          latestSlugRef.current === requestSlug &&
+          currentRequest?.slug === requestSlug &&
+          currentRequest.promise === request
+        ) {
           loadRequestRef.current = null;
         }
       });
 
-    loadRequestRef.current = request;
+    loadRequestRef.current = { slug: requestSlug, promise: request };
     return request;
   }, [slug]);
 

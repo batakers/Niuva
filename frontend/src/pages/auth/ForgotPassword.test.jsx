@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ForgotPassword from "./ForgotPassword";
 import { api, formatApiError } from "@/lib/api";
@@ -36,6 +36,39 @@ test("masks the submitted email locally and starts resend cooldown", async () =>
   expect(screen.queryByText("person@example.com")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Kirim ulang (60)" })).toBeDisabled();
   expect(api.post).toHaveBeenCalledWith("/auth/forgot-password", { email: "person@example.com" });
+});
+
+test("shows a resend failure while keeping the sent state recoverable", async () => {
+  jest.useFakeTimers();
+  try {
+    api.post
+      .mockResolvedValueOnce({ data: { ok: true } })
+      .mockRejectedValueOnce({ response: { data: { detail: "unavailable" } } });
+    renderPage();
+
+    fireEvent.change(screen.getByTestId("forgot-password-email"), {
+      target: { value: "person@example.com" },
+    });
+    fireEvent.click(screen.getByTestId("forgot-password-submit"));
+    await screen.findByTestId("forgot-password-sent");
+
+    for (let second = 0; second < 60; second += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(1_000);
+      });
+    }
+
+    const resend = screen.getByRole("button", { name: "Kirim ulang" });
+    expect(resend).not.toBeDisabled();
+    fireEvent.click(resend);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Terjadi kesalahan. Coba lagi.",
+    );
+    expect(screen.getByTestId("forgot-password-sent")).toBeInTheDocument();
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("can return from check-email state to the request form", async () => {

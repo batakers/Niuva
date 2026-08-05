@@ -1,6 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 
 import RetailProductPage from "./RetailProductPage";
 import { publicCatalogApi } from "@/lib/catalog";
@@ -48,6 +48,26 @@ function renderProduct() {
         <Route path="/retail/products/:slug" element={<RetailProductPage />} />
       </Routes>
     </MemoryRouter>,
+  );
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
+}
+
+function ProductRouteWithSwitcher() {
+  const navigate = useNavigate();
+  return (
+    <>
+      <button type="button" onClick={() => navigate("/retail/products/desk-lamp")}>
+        Buka produk kedua
+      </button>
+      <RetailProductPage />
+    </>
   );
 }
 
@@ -103,4 +123,48 @@ test("keeps a failed product read generic and recoverable", async () => {
     await screen.findByRole("heading", { name: "Desk Sign" }),
   ).toBeInTheDocument();
   expect(publicCatalogApi.product).toHaveBeenCalledTimes(2);
+});
+
+test("ignores an older response after the product route slug changes", async () => {
+  const first = deferred();
+  const second = deferred();
+  const secondPublication = {
+    ...publication,
+    product: {
+      ...publication.product,
+      id: "product-2",
+      name: "Desk Lamp",
+      slug: "desk-lamp",
+    },
+  };
+
+  publicCatalogApi.product.mockImplementation((requestedSlug) =>
+    requestedSlug === "desk-sign" ? first.promise : second.promise,
+  );
+
+  render(
+    <MemoryRouter initialEntries={["/retail/products/desk-sign"]}>
+      <Routes>
+        <Route path="/retail/products/:slug" element={<ProductRouteWithSwitcher />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Buka produk kedua" }));
+  await waitFor(() => {
+    expect(publicCatalogApi.product).toHaveBeenCalledWith("desk-lamp");
+  });
+
+  await act(async () => {
+    second.resolve(secondPublication);
+    await second.promise;
+  });
+  expect(await screen.findByRole("heading", { name: "Desk Lamp" })).toBeInTheDocument();
+
+  await act(async () => {
+    first.resolve(publication);
+    await first.promise;
+  });
+  expect(screen.getByRole("heading", { name: "Desk Lamp" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Desk Sign" })).not.toBeInTheDocument();
 });

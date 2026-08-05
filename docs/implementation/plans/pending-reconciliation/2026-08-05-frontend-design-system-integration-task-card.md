@@ -24,6 +24,22 @@ shared-file conflicts and stale contract assertions while preserving existing
 routes, API contracts, authentication boundaries, Retail discovery-only state,
 and the retained React/Tailwind/shadcn-style/Radix/CVA/Lucide/Sonner stack.
 
+## Acceptance Criteria
+
+- The integrated frontend preserves existing routes, API payloads, authentication
+  boundaries, and the Retail discovery-only state.
+- Public and operational navigation remain separate compositions with keyboard,
+  focus, modal, and background-interaction behavior covered by tests.
+- Lifecycle-owned status presentation, semantic design tokens, adopted Select
+  usage, ordinary typography roles, and the documented component register remain
+  enforced by source or contract tests.
+- Auth, Customer Portal, Retail, Admin Studio, and Public surfaces have focused
+  regression coverage for the corrected behavior, with bounded browser evidence
+  recorded separately from production-readiness or go-live claims.
+- The retained React/Tailwind/shadcn-style/Radix/CVA/Lucide/Sonner stack is
+  preserved without backend, provider, migration, deployment, or production
+  changes.
+
 ## Integrated scope
 
 - Foundation documentation, component register, semantic contract tests, and

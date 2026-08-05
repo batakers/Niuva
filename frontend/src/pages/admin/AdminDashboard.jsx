@@ -116,18 +116,28 @@ function WorkQueueRow({ path, index, count, loading }) {
   );
 }
 
-function queueCount(path, stats) {
+function finiteCount(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const count = Number(value);
+  return Number.isFinite(count) ? count : null;
+}
+
+export function queueCount(path, stats) {
   if (!stats) return null;
   if (path === "/admin/retail-orders") {
-    return ["pending_estimate", "awaiting_payment", "in_process"].reduce(
-      (sum, key) => sum + (Number(stats[key]) || 0),
-      0
+    const counts = ["pending_estimate", "awaiting_payment", "in_process"].map(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(stats, key)
+          ? finiteCount(stats[key])
+          : null,
     );
+    if (counts.some((count) => count === null)) return null;
+    return counts.reduce((sum, count) => sum + count, 0);
   }
   if (path === "/admin/inquiries") {
-    return Number(stats.inquiries ?? stats.contacts) || 0;
+    return finiteCount(stats.inquiries ?? stats.contacts);
   }
-  if (path === "/admin/inventory") return Number(stats.low_stock) || 0;
+  if (path === "/admin/inventory") return finiteCount(stats.low_stock);
   return null;
 }
 
@@ -351,13 +361,17 @@ export default function AdminDashboard() {
   const canSeeInventory = hasPermission(user, "inventory.read");
   const statsLoading = !stats && !loadError;
   const roleHome = getRoleHome(user);
-  const measuredQueueCounts = stats
+  const queueCounts = stats
     ? roleHome.queuePaths
         .map((path) => queueCount(path, stats))
-        .filter(Number.isFinite)
     : [];
-  const hasMeasuredQueues = measuredQueueCounts.length > 0;
+  const measuredQueueCounts = queueCounts.filter(Number.isFinite);
   const hasQueuedWork = measuredQueueCounts.some((count) => count > 0);
+  const hasCompleteQueueCoverage =
+    stats &&
+    roleHome.queuePaths.length > 0 &&
+    queueCounts.length === roleHome.queuePaths.length &&
+    queueCounts.every(Number.isFinite);
 
   if (loadError) {
     return (
@@ -390,14 +404,14 @@ export default function AdminDashboard() {
               <Clock className="h-4 w-4" />
             ) : hasQueuedWork ? (
               <CircleAlert className="h-4 w-4 text-status-warning" />
-            ) : hasMeasuredQueues ? (
+            ) : hasCompleteQueueCoverage ? (
               <CircleCheck className="h-4 w-4 text-status-success" />
             ) : (
               <CircleHelp className="h-4 w-4 text-text-secondary" />
             )}
             {statsLoading
               ? t("common.loading")
-              : hasMeasuredQueues
+              : hasCompleteQueueCoverage
                 ? t("admin.queueLive")
                 : t("admin.queueReviewRequired")}
           </div>

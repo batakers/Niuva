@@ -80,6 +80,7 @@ approved quote route.
 - `frontend/src/pages/retail/RetailProductPage.jsx`
 - `frontend/src/pages/retail/RetailProductPage.test.jsx`
 - `frontend/src/pages/retail/retail-surface.contract.test.js`
+- `frontend/e2e/retail-discovery.spec.js`
 - Retail-only browser evidence under `output/playwright/`
 
 `docs/context/DOCUMENT_REGISTER.md` remains unchanged in this worktree to avoid

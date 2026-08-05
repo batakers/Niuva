@@ -123,6 +123,7 @@ export default function ForgotPassword() {
               Jika email {maskedEmail || "yang Anda masukkan"} terdaftar,
               instruksi reset password telah dikirim.
             </Alert>
+            {error && <Alert id="forgot-password-error">{error}</Alert>}
             {email && (
               <Button
                 type="button"

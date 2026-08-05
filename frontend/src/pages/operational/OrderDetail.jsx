@@ -35,25 +35,39 @@ export default function OrderDetail() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const loadRequestRef = useRef(null);
+  const latestIdRef = useRef(id);
+  latestIdRef.current = id;
 
   const load = useCallback(() => {
-    if (loadRequestRef.current) return loadRequestRef.current;
+    const requestId = id;
+    const activeRequest = loadRequestRef.current;
+    if (activeRequest?.id === requestId) return activeRequest.promise;
 
     setLoading(true);
     setLoadError(false);
+    setOrder(null);
 
     const request = api
       .get(`/orders/${id}`)
-      .then((response) => setOrder(response.data))
-      .catch(() => setLoadError(true))
+      .then((response) => {
+        if (latestIdRef.current === requestId) setOrder(response.data);
+      })
+      .catch(() => {
+        if (latestIdRef.current === requestId) setLoadError(true);
+      })
       .finally(() => {
-        if (loadRequestRef.current === request) {
+        const currentRequest = loadRequestRef.current;
+        if (
+          latestIdRef.current === requestId &&
+          currentRequest?.id === requestId &&
+          currentRequest.promise === request
+        ) {
           loadRequestRef.current = null;
+          setLoading(false);
         }
-        setLoading(false);
       });
 
-    loadRequestRef.current = request;
+    loadRequestRef.current = { id: requestId, promise: request };
     return request;
   }, [id]);
 

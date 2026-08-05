@@ -85,3 +85,25 @@ test("keeps the public navigation available outside operational routes", () => {
     "page",
   );
 });
+
+test("blocks the page behind an open mobile menu and closes from the backdrop", () => {
+  render(
+    <MemoryRouter initialEntries={["/about"]}>
+      <Navbar />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Buka menu" }));
+
+  const backdrop = screen.getByTestId("mobile-navigation-backdrop");
+  expect(backdrop).toHaveAttribute("aria-hidden", "true");
+  expect(screen.getByRole("dialog", { name: "Menu navigasi" })).toBeInTheDocument();
+
+  fireEvent.click(backdrop);
+
+  expect(screen.getByRole("button", { name: "Buka menu" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  expect(screen.queryByRole("dialog", { name: "Menu navigasi" })).not.toBeInTheDocument();
+});
