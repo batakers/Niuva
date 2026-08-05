@@ -30,6 +30,15 @@ Related roadmap task: `PHASE-08B`; `TASK-08B-01`; `TASK-08B-02`
 
 ## Decision authority
 
+On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner also
+delegated to Faiz the accountable Product Owner and Technical/Release Owner
+responsibility for Commerce Transaction 1A through 30 August 2026. That
+delegation covers G7-B sandbox and implementation-scope accountability,
+including product input for customer-visible service objectives. It does not
+replace the separate source-implementation gate or authorize provider
+activation, production credentials, migration, deployment, production
+readiness, or go-live.
+
 On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner delegated to Faiz the Ops/SRE accountable
 role, Security/Data reviewer role, and DR-014 decision-maker responsibility for
 Commerce Transaction 1A through 30 August 2026. No backup owner exists; the

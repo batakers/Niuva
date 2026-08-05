@@ -38,12 +38,21 @@ Decision dependency: `DR-014`
 
 **Planning driver:** Project Owner / backend planning driver.
 
+**Product and technical delegation:** On 4 August 2026 UTC (5 August 2026
+Asia/Jakarta), Yanuar/Owner delegated to Faiz the accountable Product Owner
+and Technical/Release Owner responsibility for Commerce Transaction 1A through
+30 August 2026. The delegation covers G7-B sandbox and implementation-scope
+accountability, including product input for customer-visible service
+objectives. It does not replace the separate source-implementation gate or
+authorize provider activation, production credentials, migration, deployment,
+production readiness, or go-live.
+
 **Delegated DR-014 authority:** On 4 August 2026 UTC (5 August 2026 Asia/Jakarta), Yanuar/Owner delegated to
 Faiz the Ops/SRE accountable role, Security/Data reviewer role, and DR-014
 decision-maker responsibility for Commerce Transaction 1A through 30 August
 2026. No backup owner exists; the single-person ownership risk is accepted.
-Product input for customer-visible service objectives is covered by the
-delegated DR-014 decision-maker role. On 4 August 2026 UTC (5 August 2026
+Product input is covered by the delegated Product Owner and DR-014
+decision-maker roles. On 4 August 2026 UTC (5 August 2026
 Asia/Jakarta), Faiz approved the complete Feature 7.3 candidate baseline
 without amendment after PR `#135` merged, including telemetry, SLO, capacity,
 threshold, retention/access, responder, and evidence values. The

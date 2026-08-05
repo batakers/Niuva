@@ -9,10 +9,15 @@ Decision date: 5 August 2026 (Asia/Jakarta; 4 August 2026 UTC)
 Scope: Commerce Transaction 1A, local/test, and explicitly named sandbox
 validation through 30 August 2026
 
-Approval source: Yanuar/Owner delegated DR-014 Ops/SRE accountability,
-Security/Data review, and decision-maker responsibility to Faiz through
-30 August 2026. After PR `#135` merged as `819a4ef`, Faiz explicitly approved
-the complete Feature 7.3 candidate baseline without amendment.
+Approval source: Yanuar/Owner delegated accountable Product Owner,
+Technical/Release Owner, DR-014 Ops/SRE, Security/Data reviewer, and
+decision-maker responsibility to Faiz through 30 August 2026 for Commerce
+Transaction 1A. The delegation covers G7-B sandbox and implementation-scope
+accountability; it does not replace the separate source-implementation gate or
+authorize provider activation, production credentials, migration, deployment,
+production readiness, or go-live. After PR `#135` merged as `819a4ef`, Faiz
+explicitly approved the complete Feature 7.3 candidate baseline without
+amendment.
 
 Source package: `docs/implementation/production-readiness/phases/FEATURE-7.3-backend-observability-decision-package.md`
 
