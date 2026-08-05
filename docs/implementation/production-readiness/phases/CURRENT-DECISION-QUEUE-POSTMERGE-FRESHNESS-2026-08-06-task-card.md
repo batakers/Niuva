@@ -2,21 +2,22 @@
 
 <!-- markdownlint-disable MD013 -->
 
-**Status:** Documentation-only freshness correction; DR-001 remains `Open`
+**Status:** Documentation-only freshness correction; DR-001 remains unresolved and `Open`; no release candidate is selected
 **Date:** 2026-08-06 (Asia/Jakarta; post-merge verification)
-**Observed baseline:** `origin/main` at `a99687222cea4a573c1e191a64445885d9f2dfca`
-**Active branch:** `codex/g18-dr001-postmerge-freshness-20260806`
-**Active worktree:** `C:\tmp\niuva-g18-dr001-postmerge-freshness-20260806`
+**Observed baseline:** `origin/main` at `ca8b1947327fdaa1f8df562a8d437d7d628ead21`
+**Active branch:** `codex/g20-dr001-impact-postmerge-20260806`
+**Active worktree:** `C:\tmp\niuva-g20-dr001-impact-postmerge-20260806`
 **Driver:** Faiz / delegated Codex implementation
 
 ## Objective
 
 Record the latest `origin/main` observation after the documentation-only merges
-of PRs #151–#159. PR #154 accurately corrected the DR-001 row to the SHA that
-was current before those merges (`c84743c8fcbc158721037b3c02dc0dff0c872242`).
-Those merges advanced the default branch to
-`a99687222cea4a573c1e191a64445885d9f2dfca`; this task updates the observation
-without selecting a release candidate.
+of PRs #151–#160. PR #154 accurately corrected the DR-001 row to the SHA that
+was current before those merges (`c84743c8fcbc158721037b3c02dc0dff0c872242`),
+and PR #160 recorded the next observation at
+`a99687222cea4a573c1e191a64445885d9f2dfca`. PR #160 then advanced the default
+branch to `ca8b1947327fdaa1f8df562a8d437d7d628ead21`; this follow-up updates the
+current observation without selecting a release candidate.
 
 This is a freshness correction, not a release decision. It does not authorize
 source implementation, migration, provider activation, deployment,
@@ -58,16 +59,31 @@ Only these paths may change:
   deployment configuration, or environment state.
 - Do not apply migration, use production credentials, deploy, or claim
   production readiness or go-live.
-- Merge of this new correction PR remains a separate user-controlled action.
+- Merge of this follow-up correction PR remains a separate user-controlled action.
+
+## Decision and change impact
+
+- DR-001 remains unresolved and `Open`; this correction selects no release-candidate SHA.
+- Freshness-proof risk is the only issue addressed: without this correction, the
+  queue could be read as describing the pre-merge `origin/main` rather than the
+  post-merge observation. The updated observation is not proof that the SHA is
+  suitable for release or production readiness.
+- Operational and migration impact is none. No runtime, database, migration,
+  provider, deployment, credential, environment, or go-live action occurs.
+- Rollback is a documentation revert or closure of this PR; no runtime or data
+  rollback is required.
+- Project Owner selection of the release-candidate baseline and scope requires
+  separate approval.
 
 ## Acceptance criteria
 
 - `origin/main` is freshly fetched and the exact post-merge SHA is recorded as
-  `a99687222cea4a573c1e191a64445885d9f2dfca`.
-- The DR-001 row remains `Open` and explicitly says the observation does not
-  select a release candidate.
-- The earlier `c84743c8fcbc158721037b3c02dc0dff0c872242` observation remains
-  identifiable as historical context.
+  `ca8b1947327fdaa1f8df562a8d437d7d628ead21`.
+- The DR-001 row remains unresolved and `Open` and explicitly says the
+  observation does not select a release candidate.
+- The earlier `a99687222cea4a573c1e191a64445885d9f2dfca` and
+  `c84743c8fcbc158721037b3c02dc0dff0c872242` observations remain identifiable
+  as historical context.
 - Only the two approved paths are staged.
 - `git diff --check`, markdownlint, exact-path verification, and staged secret
   scanning pass.
@@ -75,7 +91,7 @@ Only these paths may change:
 ## Authorization and handover
 
 The user authorizes commit, push, and opening a pull request for this bounded
-correction. Merge of the new PR, source/runtime implementation, migration,
+follow-up correction. Merge of the new PR, source/runtime implementation, migration,
 provider activation, credential use, deployment, production-readiness
 approval, and go-live require separate approval.
 
