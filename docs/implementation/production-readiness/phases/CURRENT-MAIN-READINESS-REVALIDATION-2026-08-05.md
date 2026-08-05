@@ -74,6 +74,21 @@ This table is a revalidation map, not a finding-closure declaration. The
 historical layer documents still contain the original snapshot and should be
 reconciled only through a separately reviewed current-layer update.
 
+### OPS-011 documentation-pointer revalidation
+
+The historical OPS-011 statement is stale at the selected SHA:
+
+- `doc/TRANSACTION_CAPABILITY_RUNBOOK.md:6` currently points to
+  `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`.
+- The canonical ADR exists at that path. The formerly named
+  `doc/decisions/ADR-001-mongodb-transaction-capability.md` path also exists,
+  but only as an explicit “MOVED — Compatibility pointer only” file with no
+  independent authority.
+- This corrects the active runbook pointer, but does not prove that every
+  historical/reference document has been normalized or that an automated
+  link/path gate exists. OPS-011 therefore remains a documentation
+  revalidation item rather than a production-readiness pass.
+
 ## Production-readiness verdict
 
 The selected SHA remains **NOT READY for production, deployment, activation,
