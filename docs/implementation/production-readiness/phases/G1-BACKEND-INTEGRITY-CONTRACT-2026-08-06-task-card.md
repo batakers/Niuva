@@ -5,7 +5,7 @@
 **Status:** Proposed child task card; source-gate and environment evidence remain
 separate
 **Planning baseline:** `origin/main` observed at
-`7810a38ef00d2076bf651ca07502c8b15d9d6590`; the driver must fetch again before
+`c705a4413c02eef6b31f4e0e76e144733453e0af`; the driver must fetch again before
 creating its implementation worktree
 **Owner:** Project Owner to assign
 **Independent verifier:** Project Owner to assign
