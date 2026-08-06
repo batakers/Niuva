@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "status": "approved",
+  "scope": "G3 release candidate",
+  "baseline": {
+    "ref": "origin/main",
+    "sha": "f43eea6",
+    "measurement": {
+      "totalGzip": 595362,
+      "largestEntrypointGzip": 208120,
+      "largestAsyncGzip": 102544
+    }
+  },
+  "budgets": {
+    "BUNDLE_TOTAL_GZIP_BUDGET": 655000,
+    "BUNDLE_ENTRY_GZIP_BUDGET": 229000,
+    "BUNDLE_ASYNC_GZIP_BUDGET": 113000
+  },
+  "enforcement": "npm run build:release",
+  "policy": "Do not raise budgets silently. Any increase requires a new owner decision."
+}
