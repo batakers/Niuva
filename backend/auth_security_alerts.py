@@ -103,14 +103,20 @@ def _validate_alert_document(alert: Mapping[str, object]) -> dict[str, object]:
         raise ValueError("Alert document fields are not allowlisted")
     _safe_reference(alert.get("id"), "ID")
     family = _safe_reference(alert.get("family"), "family")
-    if family not in AuthenticationAlertPolicy._POLICIES:
+    policy = AuthenticationAlertPolicy._POLICIES.get(family)
+    if policy is None:
         raise ValueError("Unsupported authentication alert family")
-    if alert.get("severity") not in {"critical", "high", "medium"}:
-        raise ValueError("Unsupported alert severity")
+    if (
+        alert.get("severity") != policy.severity
+        or alert.get("window_seconds") != policy.window_seconds
+    ):
+        raise ValueError("Alert fields do not match the approved alert policy")
     _safe_reference(alert.get("event_reference"), "event reference")
     matching_count = alert.get("matching_count")
     if not isinstance(matching_count, int) or isinstance(matching_count, bool):
         raise ValueError("Invalid alert matching count")
+    if matching_count < policy.threshold:
+        raise ValueError("Alert matching count is below the approved threshold")
     if matching_count < 0:
         raise ValueError("Invalid alert matching count")
     window_seconds = alert.get("window_seconds")
