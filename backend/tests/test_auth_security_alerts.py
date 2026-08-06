@@ -6,6 +6,7 @@ from pymongo.errors import DuplicateKeyError
 
 from auth_security_alerts import (
     ALERT_RETRY_SECONDS,
+    AlertDecision,
     AuthenticationAlertPolicy,
     AuthSecurityCleanupWorker,
     AuthSecurityOperationError,
@@ -36,6 +37,14 @@ def test_alert_thresholds_are_deterministic(family, below, at_threshold, severit
     assert policy.decision(family, matching_count=below) is None
     decision = policy.decision(family, matching_count=at_threshold)
     assert decision.severity == severity
+
+
+@pytest.mark.parametrize("matching_count", [True, False])
+def test_alert_policy_rejects_boolean_matching_count(matching_count):
+    with pytest.raises(ValueError, match="Invalid alert matching count"):
+        AuthenticationAlertPolicy().decision(
+            "admin_session_replay", matching_count=matching_count
+        )
 
 
 def test_alert_document_contains_references_not_event_payload():
@@ -69,6 +78,48 @@ def test_alert_references_reject_raw_identifier_material():
             matching_count=1,
             now=NOW,
         )
+
+
+def test_alert_builder_rejects_subthreshold_alerts():
+    decision = AlertDecision(
+        "admin_session_replay", "critical", threshold=1, window_seconds=900
+    )
+    with pytest.raises(ValueError, match="threshold"):
+        build_alert_document(
+            decision=decision,
+            event_reference="event-1",
+            fingerprint_source="session-pseudonym",
+            matching_count=0,
+            now=NOW,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("severity", "high"), ("window_seconds", 60)],
+)
+def test_alert_store_rejects_family_policy_mismatch_before_persistence(field, value):
+    class Collection:
+        def __init__(self):
+            self.calls = 0
+
+        async def update_one(self, *_args, **_kwargs):
+            self.calls += 1
+            raise AssertionError("invalid alert reached storage")
+
+    decision = AuthenticationAlertPolicy().decision(
+        "admin_session_replay", matching_count=1
+    )
+    alert = build_alert_document(
+        decision=decision,
+        event_reference="event-1",
+        fingerprint_source="session-pseudonym",
+        matching_count=1,
+        now=NOW,
+    )
+    alert[field] = value
+    with pytest.raises(ValueError, match="approved alert policy"):
+        asyncio.run(MongoAlertOutboxStore(Collection()).enqueue(alert))
 
 
 def test_alert_store_rejects_unknown_fields_before_persistence():
