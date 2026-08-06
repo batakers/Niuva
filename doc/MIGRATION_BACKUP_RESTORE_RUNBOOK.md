@@ -53,6 +53,9 @@ python -m migration_backup compare  --snapshot .\snapshots\pre-006.json
   Restoring over live data by accident is the failure this exists to prevent.
 - **Verification compares content, not counts.** A digest per collection
   catches a mutated document that a count would call intact.
+- **Snapshot writes report SHA-256.** The checksum binds custody evidence to
+  the exact snapshot file bytes without putting raw snapshot contents in the
+  evidence record.
 - **Collections created after the snapshot are dropped on restore.** Leaving
   them would not return the database to the captured point.
 - **BSON types survive.** Snapshots use `bson.json_util`, so Decimal128 comes
@@ -72,10 +75,13 @@ python -m pytest -n 0 -q backend\tests\test_migration_backup_restore.py
 docker compose -f docker-compose.transaction-test.yml down --volumes --remove-orphans
 ```
 
-That suite seeds decimal balances, versions, and users; captures; applies a
-migration-shaped change including a dropped document and a new collection;
-confirms the comparison reports every touched collection; restores; and checks
-the database is byte-for-byte back, with Decimal128 still Decimal128.
+That suite seeds synthetic decimal balances, accepted Quote history, Project
+references, materials, and users; captures; applies a migration-shaped change
+including a dropped historical record and a new collection; confirms the
+comparison reports every touched collection; restores into a distinct empty
+database; and checks the restored database is content-identical, with exact
+Quote-line references and Decimal128 still preserved. Both generated databases
+and the raw snapshot are removed before the proof completes.
 
 ## Before running against real data
 

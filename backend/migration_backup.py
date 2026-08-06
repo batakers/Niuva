@@ -42,13 +42,18 @@ def collection_digest(documents: list[dict]) -> str:
     return hashlib.sha256(_canonical(documents).encode("utf-8")).hexdigest()
 
 
+def snapshot_file_digest(path: Path) -> str:
+    """Return a custody-safe checksum for the exact snapshot file bytes."""
+    digest = hashlib.sha256()
+    with path.open("rb") as snapshot_file:
+        for chunk in iter(lambda: snapshot_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 async def collection_names(database) -> list[str]:
     names = await database.list_collection_names()
-    return sorted(
-        name
-        for name in names
-        if not name.startswith(EXCLUDED_PREFIXES)
-    )
+    return sorted(name for name in names if not name.startswith(EXCLUDED_PREFIXES))
 
 
 async def capture(database) -> dict:
@@ -78,6 +83,10 @@ def write_snapshot(snapshot: dict, path: Path) -> dict:
         "path": str(path),
         "collections": len(snapshot["collections"]),
         "documents": sum(len(items) for items in snapshot["collections"].values()),
+        "checksum": {
+            "algorithm": "sha256",
+            "value": snapshot_file_digest(path),
+        },
     }
 
 
@@ -139,9 +148,10 @@ async def restore(database, snapshot: dict, *, allow_non_empty: bool = False) ->
         if name not in snapshot["collections"]:
             await database[name].drop()
 
-    return {"restored": restored, "dropped": [
-        name for name in existing if name not in snapshot["collections"]
-    ]}
+    return {
+        "restored": restored,
+        "dropped": [name for name in existing if name not in snapshot["collections"]],
+    }
 
 
 async def compare(database, snapshot: dict) -> dict:
@@ -178,14 +188,15 @@ async def run_cli(args) -> dict:
             written = write_snapshot(snapshot, Path(args.snapshot))
             return {"command": "capture", **written}
         if args.command == "verify":
-            return {"command": "verify", **verify_snapshot(read_snapshot(Path(args.snapshot)))}
+            return {
+                "command": "verify",
+                **verify_snapshot(read_snapshot(Path(args.snapshot))),
+            }
         if args.command == "restore":
             snapshot = read_snapshot(Path(args.snapshot))
             check = verify_snapshot(snapshot)
             if not check["intact"]:
-                raise ValueError(
-                    f"snapshot failed verification: {check['mismatched']}"
-                )
+                raise ValueError(f"snapshot failed verification: {check['mismatched']}")
             result = await restore(
                 database, snapshot, allow_non_empty=args.allow_non_empty
             )
@@ -208,9 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
             "prove you can get back."
         )
     )
-    parser.add_argument(
-        "command", choices=["capture", "verify", "restore", "compare"]
-    )
+    parser.add_argument("command", choices=["capture", "verify", "restore", "compare"])
     parser.add_argument("--snapshot", required=True)
     parser.add_argument("--url", default=os.environ.get("MONGO_URL"))
     parser.add_argument("--database", default=os.environ.get("DB_NAME"))
