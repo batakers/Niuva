@@ -4,7 +4,7 @@
 
 **Status:** `OPEN` / `HUMAN_DECISION_BLOCKED`
 **Prepared:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Observed baseline:** `origin/main` at `9f6fe38398836b44158783684d23e6455c3cc6c2`
+**Observed baseline:** `origin/main` at `cccc1e8c06abf1eba57854166c01598bd8db2246`
 **Decision owner:** Incident owner, credential owner, repository administrator,
 independent verifier, and Final Approver as assigned by the Project Owner
 **Scope:** Redaction-safe decision preparation only
@@ -63,16 +63,17 @@ remote changes, or status closure.
 | NIV-001 runbook state | The runbook states `Implemented, verification pending` and requires redacted evidence before `Verified`. | A runbook is procedural authority; its checklist is not evidence that a step occurred. |
 | Credential action | No credential value was inspected or used in this packet. No rotation or revocation was performed. | A redacted owner-controlled revocation/rotation record is still required before closure. |
 | History rewrite | No rewrite, force-push, ref deletion, or remote publication was performed. | The full-history rewrite and post-rewrite proof remain entirely unverified. |
-| Current repository checks | Focused auth/security/permission/projection tests on current `origin/main` passed `175`; Gitleaks full-history scan was run with `--redact=100` and returned two unresolved `generic-api-key` findings in two documentation paths. A value-free structural review found no placeholder/env markers; the GitHub secret-scanning alert API returned `404`. | Local tests and a redacted scan do not prove revocation, remote-cache/fork/clone cleanup, history publication, or final incident closure. The two findings and unavailable GitHub alert inventory require owner review. |
-| Remote/PR state | Current read-only inventory: 43 remote heads, 0 remote tags, 0 open PRs, 180 total PRs, 168 PR head refs, 0 forks, 0 rulesets, and 3 collaborator accounts by count. | The inventory is not a write freeze or approval. PR refs, cached views, old clones, and backups remain separate closure gates. |
-| Worktrees/clones | Current local inventory records 93 worktrees: 73 clean, 20 dirty, 0 missing, and 6 detached. | The runbook requires owner acknowledgments, quarantine/recreation, and a fresh inventory; local worktree listing is not collaborator/old-clone closure evidence. |
+| Current repository checks | On exact `origin/main` `cccc1e8`, bounded G2 tests passed `163`; full backend passed `972`, with `15` skips and `14` subtests; relevant auth/event/migration files compiled. Local Gitleaks was unavailable, so no exact-current-main scan is claimed. | Source/test evidence and a redacted scan do not prove revocation, remote-cache/fork/clone cleanup, history publication, or final incident closure. Historical #182 findings remain owner-review items. |
+| Remote/PR state | Timestamped read-only inventory at `2026-08-06T05:41:38Z`: 47 remote heads, 0 remote tags, 0 open PRs, 184 total PRs, 172 PR-head refs, 0 forks, 0 rulesets, and 3 collaborator accounts by count. | The inventory is not a write freeze or approval. PR refs, cached views, old clones, and backups remain separate closure gates and must be rechecked before execution. |
+| Worktrees/clones | Current local inventory records 98 worktrees: 77 clean, 21 dirty, 0 missing, and 6 detached. | The runbook requires owner acknowledgments, quarantine/recreation, and a fresh inventory; local worktree listing is not collaborator/old-clone closure evidence. |
 | GitHub surfaces | Read-only PR/fork/ruleset counts were collected; no GitHub Support, cache cleanup, collaborator-clone, or backup evidence was collected. | Those external records are required by the runbook and must remain redacted. |
 | Production boundary | No deployment, provider, migration, secret rotation, or go-live action was performed. | DR-002 remains a P0 release/go-live blocker until a final disposition is approved. |
 
 Historical counts and ref snapshots inside the NIV-001 runbook are planning
 snapshots, not current inventory. The current redacted inventory is linked
 above, but it must be rechecked at execution time and must not be copied into a
-closure claim.
+closure claim. The inventory timestamp predates this replacement PR; its
+open-PR count intentionally excludes that later PR.
 
 The runbook's recorded introducing commit is absent from the current checkout's
 object database, so an exact-value scan could not be reconstructed without
@@ -185,21 +186,22 @@ No step above is authorized by this packet.
 
 ## 8. Handover and current verdict
 
-Changed for this revalidation: the disposition packet, the linked redacted
-inventory, the value-free revoke/rotate evidence template, and the
-`FINDING_TRACEABILITY.md` addendum.
+Changed for this post-merge revalidation: the task card, disposition packet,
+linked redacted inventory, value-free revoke/rotate evidence template,
+`FINDING_TRACEABILITY.md` addendum, and the current-main revalidation packet.
 
 Intentionally unchanged: credential values and secret stores, Git history and
 refs, branches/tags, `main`, worktrees/clones/backups, GitHub settings/support
 state, source/tests/dependencies/CI, migrations, providers, deployment state,
 and decision-register status.
 
-Local validation for this revalidation includes a redacted Gitleaks
-full-history scan and focused auth/security/permission/projection tests. The
-credential action, controlled authentication with a new account, exact-value
-scan, history rewrite, migration commands, staging, deployment, provider
-operations, GitHub Support, and production actions were not run and are not
-implied.
+Local validation for this revalidation includes bounded G2 (`163 passed`), full
+backend (`972 passed, 15 skipped, 14 subtests passed`), compileall, markdownlint,
+whitespace, exact-path, and staged secret-pattern checks. Local Gitleaks was
+unavailable. Credential action, controlled authentication with a new account,
+exact-value scan, history rewrite, migration commands, staging, deployment,
+provider operations, GitHub Support, and production actions were not run and
+are not implied.
 
 Current verdict: **NOT READY for release, production deployment, or go-live**.
 NIV-001 remains a P0 incident disposition blocker; the existing accepted risk
