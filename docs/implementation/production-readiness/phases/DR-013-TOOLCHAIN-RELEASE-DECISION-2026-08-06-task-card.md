@@ -4,10 +4,12 @@
 
 **Status:** Candidate documentation-only task; human decision blocked
 **Date:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Baseline:** `origin/main` at `9f6fe38398836b44158783684d23e6455c3cc6c2`
+**Baseline:** `origin/main` at
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, Git tree
+`6d2154bd52785bbc749345c0346651f9752d1646`.
 **Driver:** Faiz / delegated Codex implementation
-**Active branch:** `codex/continuation-followup-20260806`
-**Active worktree:** `C:\tmp\niuva-continuation-followup-20260806`
+**Active branch:** `codex/continuation-current-main-20260806`
+**Active worktree:** `C:\tmp\niuva-continuation-current-main-20260806`
 **Decision owner:** Engineering/release/security owners, as assigned by the Project Owner
 
 ## Objective
