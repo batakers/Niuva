@@ -2,7 +2,7 @@
 
 <!-- markdownlint-disable MD013 -->
 
-**Status:** `PREPARATION_ONLY`
+**Status:** `OWNER_EXCEPTION_RECORDED` / `PREPARATION_ONLY`
 **Prepared:** 2026-08-06 (Asia/Jakarta)
 **Scope:** Redacted procedure and evidence template; no credential action
 **Authority:** `docs/runbooks/NIV-001_GIT_HISTORY_REWRITE_RUNBOOK.md`
@@ -27,17 +27,23 @@ repository document.
 
 | Role | Required responsibility | Current state |
 | --- | --- | --- |
-| Incident owner | Owns freeze, evidence package, escalation, and status proposal | Unassigned in current packet |
-| Credential owner | Revokes/rotates old credential and provisions non-production test account | Unassigned in current packet |
-| Repository administrator | Approves exact ref set and repository maintenance window | Unassigned in current packet |
-| Rewrite operator | Operates only in approved isolated mirrors | Not assigned |
-| Independent verifier | Reviews backup, scans, refs, tests, publication, and redaction without operating | Not assigned |
-| Application owner | Runs controlled non-production authentication | Not assigned |
-| Final Approver | Records `Verified`, renewed accepted risk, or another disposition | Assignment required |
+| Incident owner | Owns freeze, evidence package, escalation, and status proposal | Faiz; sole-owner exception recorded 2026-08-06 |
+| Credential owner | Revokes/rotates old credential and provisions non-production test account | Faiz; credential action still not run |
+| Repository administrator | Approves exact ref set and repository maintenance window | Faiz; no history operation authorized by this document |
+| Rewrite operator | Operates only in approved isolated mirrors | Faiz; no rewrite operation authorized or run |
+| Independent verifier | Reviews backup, scans, refs, tests, publication, and redaction without operating | Unavailable; explicit sole-owner exception; not equivalent to independent verification |
+| Application owner | Runs controlled non-production authentication | Faiz; no approved account/config reference available |
+| Final Approver | Records `Verified`, renewed accepted risk, or another disposition | Faiz; owner decision recorded 2026-08-06 |
 
 Before proceeding, obtain redacted approvals for the exact environment,
 maintenance window, ref inventory, non-production config reference, rollback
 owner, evidence retention, and the decision to run each command class.
+
+For the current solo-owner situation, Faiz selected a bounded
+self-verification exception. This records the owner decision and permits
+owner-reviewed redacted repository evidence, but it does not satisfy the
+independent-verifier requirement and must not be used to label NIV-001
+`Verified` or to lift the release/go-live block.
 
 ## 3. Revoke/rotate sequence
 
@@ -129,12 +135,13 @@ object in one clone, or self-review as incident closure evidence.
 
 ## 6. Current completion state
 
-The current `2026-08-06T05:41:38Z` inventory at `cccc1e8` found no
-credential-action proof, no approved non-production account reference, no
-exact-current-main local Gitleaks run, 98 registered worktrees with 21 dirty,
-and no independent verification. The two redacted Gitleaks findings retained
-from the superseded #182 snapshot remain unresolved pending owner review.
-Therefore this procedure is prepared but not executed, and NIV-001 remains a
-P0 release/go-live blocker.
+The revalidated `2026-08-06T09:44:01Z` inventory at `9472537` found no
+credential-action proof, no approved non-production account reference, and no
+independent verification. The latest available pinned redacted scan is
+historical at `f43eea6`; no current-main Gitleaks scan was available on the
+host. Focused test results are recorded in the linked inventory, and any
+unresolved findings remain pending owner review. Faiz's self-verification
+exception is recorded, but the procedure remains unexecuted and NIV-001
+remains a P0 release/go-live blocker.
 
 <!-- markdownlint-enable MD013 -->
