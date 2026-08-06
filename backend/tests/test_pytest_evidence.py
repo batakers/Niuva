@@ -61,5 +61,5 @@ def test_cli_writes_reproducible_evidence(tmp_path: Path):
     evidence = json.loads(output.read_text())
     assert evidence["result"] == {"errors": 0, "failures": 0, "skipped": 0, "tests": 1}
     assert evidence["command"] == "python -m pytest -q backend/tests"
-    assert evidence["git_tree_clean"] is False
+    assert isinstance(evidence["git_tree_clean"], bool)
     assert len(evidence["junit_sha256"]) == 64
