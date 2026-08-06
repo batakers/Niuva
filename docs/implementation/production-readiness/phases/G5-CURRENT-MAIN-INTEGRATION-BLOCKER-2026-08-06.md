@@ -8,14 +8,14 @@ selection, production-readiness approval, deployment approval, or go-live
 approval.
 
 **Observed baseline:** `origin/main` at
-`9736d617ca4399e5533be60c919814341e0b1ea9`, with Git tree
-`f11dbde6f335404adfe285a66ed88737335a53df`, after a fresh fetch on 6 August
-2026 and merges of PRs #175–#178.
+`6cd5a6417e1f4e72b1fbcce5d11801358b424d82`, with Git tree
+`77ce7bceb0eeb237ead9ad9591c7160c28d7e76`, after a fresh fetch on 6 August
+2026 and the merge of PR #174 after PRs #175–#178.
 
-**Update branch/worktree:** `codex/g34-g5-integration-20260806` /
-`C:\tmp\niuva-g34-g5-integration-20260806`. Exact-current-main verification
-was performed separately in fresh worktree
-`C:\tmp\niuva-g42-current-main-g5-revalidation-20260806`.
+**Update branch/worktree:** `codex/g44-postmerge-g5-freshness-20260806` /
+`C:\tmp\niuva-g44-postmerge-g5-freshness-20260806`. Exact-current-main
+verification was performed separately in fresh worktree
+`C:\tmp\niuva-g43-postmerge-current-main-20260806`.
 
 The G0 staging contract defines G5 as a serial integration gate after the
 relevant G1–G4 handovers. Current evidence does not satisfy that prerequisite,
@@ -51,12 +51,12 @@ post-merge revalidation:
 
 | Evidence | Result | Limit |
 | --- | --- | --- |
-| `origin/main` | `9736d617ca4399e5533be60c919814341e0b1ea9` | Point-in-time source identity; DR-001 does not select it |
-| Git tree | `f11dbde6f335404adfe285a66ed88737335a53df` | Source tree identity; not an artifact digest |
-| Current-main merge parents | `90368e4cff96dac80b5ce6c91acbab0b5c02d340`, `559e4b6b69abd58806801aced44af469f7d44d63` | Git ancestry only |
-| Merges since the earlier G5 observation | PR #175 G3 docs, #176 G1 docs, #177 G2 docs, and #178 release-script gate | #175–#177 are documentation-only; #178 changes only the frontend release contract and its test |
-| Verification worktree | `C:\tmp\niuva-g42-current-main-g5-revalidation-20260806`, `HEAD = origin/main` | Does not prove any external environment state |
-| Update branch base | `codex/g34-g5-integration-20260806` remains based on the earlier `d4bf4ac` and changes only this packet | The packet is refreshed against the exact current main before merge |
+| `origin/main` | `6cd5a6417e1f4e72b1fbcce5d11801358b424d82` | Point-in-time source identity; DR-001 does not select it |
+| Git tree | `77ce7bceb0eeb237ead9ad9591c7160c28d7e76` | Source tree identity; not an artifact digest |
+| Current-main merge parents | `9736d617ca4399e5533be60c919814341e0b1ea9`, `3cc821a8d0b5c9990c57c85f3879445c3ac9d8fe` | Git ancestry only |
+| Merge since the earlier G5 update | PR #174 merged the post-child G5 reconciliation packet | Documentation-only; no runtime change is inferred |
+| Verification worktree | `C:\tmp\niuva-g43-postmerge-current-main-20260806`, `HEAD = origin/main` | Does not prove any external environment state |
+| Update branch base | `codex/g44-postmerge-g5-freshness-20260806` is based on `6cd5a64` and changes only this packet | The packet is refreshed against the exact current main |
 
 PR #173 is now merged at `d4bf4ac`:
 [`#173`](https://github.com/batakers/Niuva/pull/173). Its G4 packet was
@@ -72,6 +72,7 @@ The child handovers were then merged in this order:
 | #176 | `d812f957f3b5457874b54912e067912a9497b6c2` | G1 current-main backend integrity evidence, documentation-only |
 | #177 | `90368e4cff96dac80b5ce6c91acbab0b5c02d340` | G2 current-main auth/security evidence, documentation-only |
 | #178 | `9736d617ca4399e5533be60c919814341e0b1ea9` | Frontend release bundle gate wiring and contract test |
+| #174 | `6cd5a6417e1f4e72b1fbcce5d11801358b424d82` | Post-child G5 reconciliation and current-main freshness correction |
 
 The four merge commits are repository integration evidence only. They do not
 select a release candidate or establish staging, production, or go-live proof.
@@ -154,8 +155,8 @@ backend job
 [`92489477033`](https://github.com/batakers/Niuva/actions/runs/31061245165/job/92489477033),
 also passed with `961 passed, 15 skipped, 14 subtests passed in 20.56s` at
 `d4bf4ac`. PRs #175–#178 do not change the backend runtime paths, so this
-quality result carries to `9736d61` by path preservation; it is not a new
-exact-`9736d61` backend workflow run. The isolated transaction workflow
+quality result carries to `6cd5a64` by path preservation; it is not a new
+exact-`6cd5a64` backend workflow run. The isolated transaction workflow
 remains path-preserving evidence rather than an exact-current-SHA transaction
 workflow run.
 
@@ -229,7 +230,7 @@ not be used as unqualified current-candidate evidence:
 | --- | --- | --- |
 | `CURRENT-RELEASE-CANDIDATE-SELECTION-2026-08-06.md` | `c84743c8` | DR-001 packet is stale; owner selection remains blank |
 | `CURRENT-MAIN-DR001-FRESHNESS-2026-08-06.md` | `5d5abcf` | Freshness packet is superseded by later main lineage |
-| `CURRENT-MAIN-READINESS-PROVENANCE-RECONCILIATION-2026-08-06.md` | `9f4d3a4` | Carried evidence requires revalidation at `9736d61` |
+| `CURRENT-MAIN-READINESS-PROVENANCE-RECONCILIATION-2026-08-06.md` | `9f4d3a4` | Carried evidence requires revalidation at `6cd5a64` |
 | `G3-BROWSER-EVIDENCE-SOURCE-GATE-2026-08-06.md` | `5254641c` | Historical residual record; current findings are revalidated in merged PR #175 |
 | `G4-CURRENT-MAIN-ARTIFACT-ROLLBACK-EVIDENCE-2026-08-06.md` | `b1564b0` | Merged current-main packet; source-path evidence carries, external evidence remains absent |
 
@@ -241,7 +242,7 @@ reconcile all applicable evidence against that tree.
 
 | Required G5 item | Current result | Verdict |
 | --- | --- | --- |
-| Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `9736d61` is only observed main | `BLOCKED_BY_DECISION` |
+| Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `6cd5a64` is only observed main | `BLOCKED_BY_DECISION` |
 | G1 exact-SHA handover with changed/unchanged paths and verifier | PR #176 packet is merged at `d812f95` and tied to `d4bf4ac`; path-preserving transaction evidence and current-tree backend quality carry by unchanged paths; independent verifier and external role matrix absent | `PARTIAL_PASS` |
 | G2 exact-SHA auth/security matrix and human decision closure | PR #177 packet is merged at `90368e4` and tied to `d4bf4ac`; local auth/security `99` passed, authorization/privacy `197 passed, 2 skipped`, frontend auth `65 passed`, and exact-main CI passed; DR-003/004/005 and external role/staging evidence remain open | `BLOCKED_BY_DECISION` |
 | G3 browser, accessibility, role, and negative-path evidence | Hermetic design-system suite `4/4` and audit runner pass; real-role/external/manual evidence absent | `PARTIAL_PASS` |
@@ -281,7 +282,7 @@ accepted by the named authority before the corresponding gate can pass:
 Until those inputs exist, the exact stop conditions are: do not enable Retail
 checkout, upload, payment, provider integrations, or production mutations; do
 not use real credentials or data; do not apply or restore migrations; do not
-publish an untracked artifact as a release; and do not declare `9736d61` or any
+publish an untracked artifact as a release; and do not declare `6cd5a64` or any
 other SHA production-ready.
 
 ## 8. Handover
@@ -302,13 +303,13 @@ other SHA production-ready.
 
 ### Verification and limits
 
-- fresh fetch, exact `origin/main` SHA/tree (`9736d61` / `f11dbde`), fresh
-  worktree `g42`, and zero divergence before this update: passed;
+- fresh fetch, exact `origin/main` SHA/tree (`6cd5a64` / `77ce7b`), fresh
+  worktree `g43`, and zero divergence before this update: passed;
 - current-main-equivalent PR #172 backend/frontend/browser/secret checks:
   passed at the cited PR head;
 - backend quality run `31061245165` at the prior runtime tree: passed with
   `961 passed, 15 skipped, 14 subtests passed`; PRs #175–#178 do not change
-  backend runtime paths, so the result carries to `9736d61` by path
+  backend runtime paths, so the result carries to `6cd5a64` by path
   preservation rather than a new exact-head backend run;
 - PR #164 follow-up and PR #166 isolated transaction runs: passed with `76`
   each, with relevant paths unchanged through current `main`;
