@@ -2,9 +2,9 @@
 
 <!-- markdownlint-disable MD013 -->
 
-**Status:** `EVIDENCE_ONLY` / `NOT INCIDENT CLOSURE`
-**Prepared:** 2026-08-06 12:02 WIB (Asia/Jakarta)
-**Observed baseline:** `origin/main` at `9f6fe38398836b44158783684d23e6455c3cc6c2`
+**Status:** `EVIDENCE_PLUS_OWNER_EXCEPTION` / `NOT INCIDENT CLOSURE`
+**Prepared:** 2026-08-06 13:00 WIB (Asia/Jakarta)
+**Observed baseline:** `origin/main` at `cccc1e8c06abf1eba57854166c01598bd8db2246`
 **Repository:** `batakers/Niuva` (public)
 **Evidence rule:** No credential, token, cookie, authorization header, raw
 scanner match, secret-manager output, or secret-bearing line is retained.
@@ -28,12 +28,12 @@ Identities and response bodies not needed for the counts were not retained.
 
 | Surface | Redacted result | Interpretation |
 | --- | --- | --- |
-| Default branch / head | `main` / `9f6fe38` | Current main includes the merge of PR #180. |
-| Remote heads | `43` | Branch names and SHAs require a fresh freeze inventory before any operation. |
+| Default branch / head | `main` / `cccc1e8` | Current main includes the merged auth/security work and subsequent PR updates. |
+| Remote heads | `47` | Branch names and SHAs require a fresh freeze inventory before any operation. |
 | Remote tags | `0` | No remote tags were advertised at collection time. |
 | Open pull requests | `0` | This satisfies the count observation only; it is not an approval to rewrite. |
-| All pull requests | `180` total; `176` merged | Historical PR refs remain a separate contamination surface. |
-| PR head refs | `168` | `refs/pull/*/head` was observed through the Git remote; cached views and server-side objects remain unverified. |
+| All pull requests | `184` total; `180` merged | Historical PR refs remain a separate contamination surface. |
+| PR head refs | `172` | `refs/pull/*/head` was observed through the Git remote; cached views and server-side objects remain unverified. |
 | Forks | `0` metadata / `0` API results | A current zero count does not prove absence of old clones or backups. |
 | Rulesets | `0` | No ruleset was returned by the read-only API query. |
 | Main branch protection | `not returned (HTTP 404)` | No protection response was available in this query; do not infer a setting change. |
@@ -49,10 +49,10 @@ history surfaces.
 | --- | --- | --- |
 | Local branches | `147` | Branch names/owners were not copied into this evidence artifact. |
 | Local tags | `0` | This is the current checkout's local ref namespace only. |
-| Registered worktrees | `93` | Worktree paths are omitted from the retained artifact. |
-| Worktree state | `73` clean, `20` dirty, `0` missing, `6` detached | Dirty-work ownership and disposition are not known. No worktree was changed. |
+| Registered worktrees | `99` | Worktree paths are omitted from the retained artifact. |
+| Worktree state | `76` clean, `23` dirty, `0` missing, `6` detached | Dirty-work ownership and disposition are not known. No worktree was changed. |
 | `git fsck --full --no-reflogs` | exit `0` | No missing or unreachable object lines were reported. |
-| Dangling objects | `219` | Dangling objects are not proof of contamination or cleanup; do not delete them without a separate approved retention/cleanup decision. |
+| Dangling objects | `220` | Dangling objects are not proof of contamination or cleanup; do not delete them without a separate approved retention/cleanup decision. |
 
 The dirty main worktree and unrelated worktrees remain untouched. The count
 does not replace owner-by-owner quarantine or fresh-clone acknowledgments.
@@ -77,7 +77,7 @@ A pinned Gitleaks binary was run against the current Git history with
 | Findings | `2` redacted `generic-api-key` findings |
 | Paths | `PRODUCT.md`; `doc/PRODUCTION_DEPLOYMENT.md` |
 | Commit prefix | `d595b7d9f251` |
-| Report SHA-256 | `322e4e3e004980e3a26e45e451dd448377a0093f09572b0a56e356c368fe824b` |
+| Report SHA-256 | `e85e2d0d27cdde3c1d70f6f9020a9d559d5e12d0ead3e1a0dc7cac50344a91d0` |
 | Retained report | Temporary path outside repository; retention/destruction remains an owner decision |
 
 The two findings are **unresolved potential findings**, not automatically
@@ -120,7 +120,7 @@ python -B -m pytest `
   -n 0 -q
 ```
 
-Result: **`175 passed`** in `21.44s`.
+Result: **`180 passed`** in `18.41s`.
 
 This validates bounded local source behavior only. It does not prove
 credential revocation, controlled authentication with a newly provisioned
@@ -143,10 +143,12 @@ does not query or disprove an external secret manager reference.
 | Old credential revocation/rotation | `NOT RUN` — no credential value or secret manager accessed |
 | Controlled non-production authentication | `NOT RUN` — required local config names were absent and no approved external account/config reference was supplied |
 | History rewrite/publication | `NOT RUN` — no isolated rewrite approval or exact-value evidence |
-| Independent verification | `NOT RUN` |
-| NIV-001 / DR-002 | `OPEN` / `HUMAN_DECISION_BLOCKED` |
+| Independent verification | `EXCEPTION_APPROVED / NOT AVAILABLE` — Faiz is sole owner; this is not independent verification |
+| NIV-001 / DR-002 | `DECIDED` / `ACCEPTED_RISK_SELF_VERIFICATION_EXCEPTION` — incident remains open |
 
-No evidence in this inventory changes the accepted-risk expiry of
-**2026-08-30** or removes the P0 release/go-live block.
+Faiz's owner decision resolves the human-decision gap for this packet but does
+not change the accepted-risk expiry of **2026-08-30** or remove the P0
+release/go-live block. No evidence in this inventory establishes `Verified`
+incident closure.
 
 <!-- markdownlint-enable MD013 -->
