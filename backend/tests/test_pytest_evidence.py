@@ -36,7 +36,9 @@ def test_transaction_and_external_profiles_require_zero_skips():
 def test_cli_writes_reproducible_evidence(tmp_path: Path, monkeypatch):
     junit = tmp_path / "result.xml"
     output = tmp_path / "evidence.json"
-    ET.ElementTree(_report(("tests.test_unit", "test_passes", False))).write(junit)
+    ET.ElementTree(
+        _report(("tests.test_unit.SomeTestCase", "test_passes", False))
+    ).write(junit)
 
     monkeypatch.setattr(
         sys,

@@ -94,13 +94,25 @@ def _unexpected_skips(root: ET.Element, profile: str) -> list[str]:
     return unexpected
 
 
-def _observed_modules(root: ET.Element) -> set[str]:
+def _observed_modules(
+    root: ET.Element, expected_modules: set[str] | None = None
+) -> set[str]:
     modules = set()
     for case in root.iter("testcase"):
         classname = case.get("classname", "")
         name = case.get("name", "")
         if classname:
-            modules.add(classname)
+            module = next(
+                (
+                    candidate
+                    for candidate in sorted(
+                        expected_modules or (), key=len, reverse=True
+                    )
+                    if classname == candidate or classname.startswith(candidate + ".")
+                ),
+                None,
+            )
+            modules.add(module or classname)
         elif name.startswith("tests."):
             modules.add(name.split("::", 1)[0])
     return modules
@@ -198,7 +210,7 @@ def main() -> int:
     totals = _totals(root)
     unexpected = _unexpected_skips(root, args.profile)
     expected_modules = set(args.expected_module or _expected_modules(args.profile))
-    observed_modules = _observed_modules(root)
+    observed_modules = _observed_modules(root, expected_modules)
     missing_modules = sorted(expected_modules - observed_modules)
     evidence = {
         "schema_version": 1,
