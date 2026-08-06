@@ -170,8 +170,20 @@ Hermetic suite:
 ```bash
 cd ..
 backend/.venv/bin/python -m pytest \
-  -c backend/pytest.ini backend/tests -q
+  -c backend/pytest.ini backend/tests -q \
+  --junitxml=backend-hermetic-junit.xml
+backend/.venv/bin/python scripts/verify_pytest_evidence.py \
+  --junit backend-hermetic-junit.xml \
+  --profile hermetic \
+  --command "python -m pytest -q backend/tests" \
+  --output backend-hermetic-evidence.json
 ```
+
+The verifier allows only the declared real-transaction skips in the hermetic
+profile. Transaction and external profiles require zero skips. Its JSON output
+records the exact repository SHA, clean/dirty tree state, runtime,
+credential-free command label, result counts, and JUnit checksum; CI uploads
+both files together.
 
 The pytest filename contract excludes `backend_test.py`, which is a legacy
 external-live-server smoke suite. Run that only through the explicit external
@@ -185,4 +197,7 @@ find backend -path 'backend/.venv' -prune -o -name '*.py' -print0 \
 ```
 
 Real transaction tests are mandatory in
-`.github/workflows/transaction-tests.yml`.
+`.github/workflows/transaction-tests.yml`, including the isolated backup and
+restore exercise. The explicit external live-server command and evidence
+artifact are defined in `.github/workflows/external-smoke.yml`; it accepts only
+an approved non-production HTTPS origin and no credentials.
