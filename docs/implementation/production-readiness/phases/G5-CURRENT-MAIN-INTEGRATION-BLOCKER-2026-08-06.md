@@ -72,15 +72,16 @@ current exact-SHA acceptance automatically.
 | --- | --- | --- | --- |
 | G0 | Bounded staging contract is present in `main` through the earlier G0 documentation lineage | Planning contract only; it does not select a candidate or grant operations authority | Scope is frozen, but G5 still needs child handovers and owner decisions |
 | G1 | G1 task card; PR #166 backend/transaction changes and CI evidence; current-main handover in open PR [#176](https://github.com/batakers/Niuva/pull/176) | Packet is tied to `d4bf4ac`; required PR #176 backend, frontend, and secret-scan checks passed, but the packet is not yet merged | Bounded repository/path evidence passes; staging, independent review, and operational reconciliation remain open |
-| G2 | G2 task card; DR-003, DR-004, and DR-005 decision packets; existing auth source/test history | No final G2 handover packet tied to `d4bf4ac` was found; the human decisions remain open | Auth/security acceptance cannot be declared |
+| G2 | G2 task card; DR-003, DR-004, and DR-005 decision packets; current-main handover in open PR [#177](https://github.com/batakers/Niuva/pull/177) | Packet is tied to `d4bf4ac`; auth/security, authorization/privacy, frontend-auth, and exact-main CI evidence are recorded, while DR-003/004/005 remain open | Bounded repository evidence passes with limits; human security decisions and production evidence remain blocking |
 | G3 | Historical packet at `5254641c`; current revalidation packet in open PR #175; PR #172 current-main-equivalent frontend CI | Current source revalidation passes `design-system-integration.spec.js` in 4/4 viewports and `npm run audit:production`; PR #175 is not yet merged | Bounded hermetic gate passes; serial handover and external role/staging/manual accessibility evidence remain open |
 | G4 | Current-main G4 packet merged by PR #173; packet baseline is `b1564b0`, while the merge itself changed documentation only | Source-path evidence carries to `d4bf4ac`; external staging, artifact publication, restore, and rollback evidence remain absent | G4 is documented, but not operationally accepted |
 | G5 | This packet | Final acceptance intentionally not attempted | Blocked until the relevant child handovers, exact-SHA evidence, and owner/verifier decisions exist |
 
-G1 now has a current-main handover in open PR #176, but it is not yet part of
-the `main` phase inventory. G2 still has no final current-main handover. This
-is evidence that the serial G5 handover record remains incomplete, not evidence
-that the underlying backend source is defective.
+G1 and G2 now have current-main handovers in open PRs #176 and #177, but they
+are not yet part of the `main` phase inventory. G2 also remains decision-
+blocked by DR-003/004/005. This is evidence that the serial G5 handover record
+and human security closure remain incomplete, not evidence that the underlying
+backend source is defective.
 
 ## 4. Verification evidence that can be carried
 
@@ -194,10 +195,10 @@ reconcile all applicable evidence against that tree.
 | --- | --- | --- |
 | Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `d4bf4ac` is only observed main | `BLOCKED_BY_DECISION` |
 | G1 exact-SHA handover with changed/unchanged paths and verifier | PR #176 packet is tied to `d4bf4ac`; path-preserving transaction evidence and exact-current-main backend quality passed; independent verifier and external role matrix absent | `PARTIAL_PASS` |
-| G2 exact-SHA auth/security matrix and human decision closure | DR-003/004/005 remain open; no final current-SHA G2 handover | `BLOCKED_BY_DECISION` |
+| G2 exact-SHA auth/security matrix and human decision closure | PR #177 packet is tied to `d4bf4ac`; local auth/security `99` passed, authorization/privacy `197 passed, 2 skipped`, frontend auth `65 passed`, and exact-main CI passed; DR-003/004/005 and external role/staging evidence remain open | `BLOCKED_BY_DECISION` |
 | G3 browser, accessibility, role, and negative-path evidence | Hermetic design-system suite `4/4` and audit runner pass; real-role/external/manual evidence absent | `PARTIAL_PASS` |
 | G4 artifact, environment, rollback, and operations evidence | Packet is merged, but no external target or immutable published artifact exists | `BLOCKED_BY_EXTERNAL_EVIDENCE` |
-| Backend/frontend/transaction quality gates | Exact-current-main backend quality run passed; PR #175 and PR #176 required checks passed; relevant isolated transaction runs passed | `PARTIAL_PASS` |
+| Backend/frontend/transaction quality gates | Exact-current-main backend quality run passed; PR #175, PR #176, and PR #177 required checks passed; relevant isolated transaction runs passed | `PARTIAL_PASS` |
 | Exact external origin/TLS/proxy/CORS/cookie verification | No approved target or credentials | `NOT_RUN` |
 | Migration dry run/apply/backup/restore/rollback | No approved target or mutation authorization | `NOT_RUN` |
 | Immutable artifact registry/attestation and previous-known-good identity | Not present | `MISSING` |
@@ -263,6 +264,10 @@ other SHA production-ready.
   each, with relevant paths unchanged through current `main`;
 - current G1 handover PR #176: backend, frontend, and secret-scan checks
   passed; the documentation packet is not yet merged;
+- current G2 handover PR #177: backend, frontend, and secret-scan checks
+  passed; local auth/security and authorization/privacy selections passed, while
+  auth transaction integration remained skipped without an approved isolated
+  replica-set target; the documentation packet is not yet merged;
 - G3 hermetic browser/audit findings: revalidated in open PR #175; external and
   manual accessibility evidence remains unrun;
 - G4 current-main packet: merged by PR #173, with external operational gaps
