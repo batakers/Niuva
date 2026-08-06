@@ -129,9 +129,11 @@ object in one clone, or self-review as incident closure evidence.
 
 ## 6. Current completion state
 
-The 2026-08-06 inventory found no credential-action proof, no approved
-non-production account reference, two unresolved redacted Gitleaks findings,
-93 registered worktrees with 20 dirty, and no independent verification.
+The current `2026-08-06T05:41:38Z` inventory at `cccc1e8` found no
+credential-action proof, no approved non-production account reference, no
+exact-current-main local Gitleaks run, 98 registered worktrees with 21 dirty,
+and no independent verification. The two redacted Gitleaks findings retained
+from the superseded #182 snapshot remain unresolved pending owner review.
 Therefore this procedure is prepared but not executed, and NIV-001 remains a
 P0 release/go-live blocker.
 

@@ -1,5 +1,7 @@
 # Niuva Production-Readiness Finding Traceability
 
+<!-- markdownlint-disable MD013 -->
+
 Status: Planning and Progress Context — Not Implementation Authority Unless Explicitly Approved
 
 Audit source baseline: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
@@ -99,9 +101,12 @@ matrix, commit history, or test presence alone.
 
 ## NIV-001 current evidence addendum — 2026-08-06
 
-Current baseline: `origin/main` at `9f6fe38398836b44158783684d23e6455c3cc6c2`.
-The merged PR #180 auth/security change is source evidence only and does not
-close `SEC-001`/`OPS-010`.
+Current baseline: `origin/main` at `cccc1e8c06abf1eba57854166c01598bd8db2246`
+(`cccc1e8`), observed at `2026-08-06T05:41:38Z`. PRs #181–#184 are merged;
+their source and documentation changes are evidence only and do not close
+`SEC-001`/`OPS-010`.
+No PR was open at that inventory timestamp; any replacement PR opened after it
+is intentionally not included in the count.
 
 Evidence is recorded in
 [`DR-002-NIV-001-REDACTED-GIT-INVENTORY-2026-08-06.md`](phases/DR-002-NIV-001-REDACTED-GIT-INVENTORY-2026-08-06.md)
@@ -110,10 +115,10 @@ and the safe procedure is recorded in
 
 | Evidence group | Current result | Traceability interpretation |
 | --- | --- | --- |
-| Repository/GitHub inventory | 43 remote heads, 0 tags, 0 open PRs, 168 PR-head refs, 0 forks, 0 rulesets, 3 collaborator accounts by count | Current read-only snapshot only; freeze, old-clone, cache, backup, and Support evidence remain open. |
-| Local worktrees/object database | 93 registered worktrees, 20 dirty, 219 dangling objects, no missing/unreachable object lines | No worktree or object cleanup was performed; owner disposition is still required. |
-| Redacted history scan | Gitleaks `8.30.1`, exit `1`, 2 unresolved `generic-api-key` findings in `PRODUCT.md` and `doc/PRODUCTION_DEPLOYMENT.md`; value-free review found no placeholder/env markers and GitHub alert API returned `404` | Findings require secret-safe owner review; they are not automatically false positives or closure evidence. |
-| Focused non-production verification | Auth/security/permission/projection test set: `175 passed`; required local test-config names were absent in process/machine/user scopes | Bounded local source evidence only; no controlled new-account authentication was run. |
+| Repository/GitHub inventory | 47 remote heads, 0 tags, 0 open PRs, 172 PR-head refs, 0 forks, 0 rulesets, 3 collaborator accounts by count | Timestamped read-only snapshot only; freeze, old-clone, cache, backup, and Support evidence remain open. |
+| Local worktrees/object database | 98 registered worktrees, 21 dirty, 220 dangling objects, no missing/unreachable object lines | No worktree or object cleanup was performed; owner disposition is still required. |
+| Redacted history scan | Historical #182 scan recorded 2 unresolved `generic-api-key` findings; local Gitleaks was unavailable for the `cccc1e8` re-inventory | Findings require secret-safe owner review; no exact-current-main scan or closure claim is made. |
+| Exact-main source verification | Bounded G2: `163 passed`; full backend: `972 passed, 15 skipped, 14 subtests passed`; compileall passed | Bounded local source evidence only; no controlled new-account authentication was run. |
 | Credential/history action | No credential inspected, revoked, rotated, rewritten, force-pushed, or deleted | `NIV-001` remains `accepted_risk_approved_until_2026-08-30`; verified closure remains open. |
 
 The current status therefore remains **P0 / release-blocking / go-live-blocking**.
@@ -129,3 +134,5 @@ plus `FE-ENV-001`; `UX-001`-`UX-011`; `BE-001`-`BE-012`;
 `GOV-001`-`GOV-017`.
 
 No source finding has been deleted or marked resolved by this normalization.
+
+<!-- markdownlint-enable MD013 -->
