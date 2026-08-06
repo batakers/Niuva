@@ -114,9 +114,90 @@ prove all of the following on the deployed commit:
    disabled by decision or ready according to the readiness response.
 
 The checked-in `scripts/staging_smoke.py` verifies the unauthenticated portion
-of this contract and also confirms that protected admin surfaces do not become
-public. It does not replace database, backup, restore, or human approval
-evidence.
+of this contract, validates the frozen error envelope and capability map, and
+confirms that protected admin surfaces do not become public. It does not replace
+database, backup, restore, or human approval evidence.
+
+## Frozen G0 lead integration contract
+
+This section is the integration handover for the bounded staging candidate. It
+freezes the public API/error/permission boundary without selecting a provider or
+activating a Wave 2 capability. Backend authorization remains authoritative;
+frontend route visibility and guards are not a security boundary.
+
+### Capability boundary
+
+`GET /api/capabilities` has the following exact response keys and values:
+
+| Capability | Contract state |
+| --- | --- |
+| `retail_discovery` | `active` |
+| `retail_create` | `inactive` |
+| `legacy_order_create` | `inactive` |
+| `checkout` | `inactive` |
+| `payment` | `inactive` |
+| `production_upload` | `inactive` |
+| `organization_portal` | `inactive` |
+
+Retail is limited to public catalog discovery and read-only presentation. Retail
+transaction, cart/checkout, payment, production upload/storage, and Organization
+Portal behavior remain inactive. A `503` transaction-capability response is a
+fail-closed state, not permission to add a non-atomic fallback.
+
+### Error and session contract
+
+- JSON API failures use `{detail, error, request_id}`. `error` contains the
+  stable `code` and user-safe `message`; `X-Request-ID` correlates the response.
+- `401` means an unauthenticated session, `403` means an authenticated caller
+  lacks permission, `404` means the requested resource is absent, `409` is a
+  named state/conflict response, `410` is an intentionally retired surface,
+  `422` is request validation, and `503` is an unavailable required capability.
+- The browser uses same-origin cookie sessions with credentials enabled. State
+  changing requests carry the CSRF token. Runtime bearer authentication is not
+  a product transport.
+- The shared client maps stable error codes to user-safe messages and does not
+  expose raw structured error objects as the UI message.
+
+### Route ownership and permission map
+
+| Surface | Owner and contract |
+| --- | --- |
+| `/retail`, `/retail/products/:slug` | Public Retail discovery; catalog reads only |
+| `/api/catalog/categories`, `/api/catalog/products`, `/api/catalog/products/:slug` | Public backend catalog authority; published data only |
+| `/dashboard` | Authenticated customer dashboard and legacy read history |
+| `/orders/:id` | Authenticated customer-owned legacy read detail; no mutation affordance |
+| `/api/orders`, `/api/orders/:id`, `/api/orders/:id/design-file` | Authenticated customer-owned legacy reads; no mutation affordance |
+| `/order` | Protected legacy compatibility destination; never create, checkout, or payment |
+| `/admin` | `dashboard.read` |
+| `/admin/orders`, `/admin/retail-orders` | `orders.read`; legacy archive is read-only and Retail mutations remain inactive |
+| `/admin/catalog`, `/admin/catalog/:productId` | `catalog.read` |
+| `/admin/materials` | `materials.read` |
+| `/admin/inventory`, `/admin/stock-movements` | `inventory.read` |
+| `/admin/restock-alerts` | `restock_alerts.read` |
+| `/admin/portfolio`, `/admin/content` | `content.read` |
+| `/admin/contacts`, `/admin/inquiries` | `inquiries.read` |
+| `/admin/b2b/quotes` | `quotes.read` |
+| `/admin/b2b/quotes/revision` | `quotes.write` |
+| `/admin/b2b/projects` | `projects.read` |
+| `/admin/b2b/work-orders` | `production.read` |
+| `/admin/users`, `/admin/customers` | `users.read`, `customers.read` respectively |
+| `/admin/notifications` | `admin.access` |
+| `/admin/communication` | `notifications.write` |
+| `/admin/settings` | `settings.write` |
+
+Every Admin route in the current App integration passes through the explicit
+`ADMIN_ROUTE_PERMISSIONS` map and the `adminRoute` guard. A missing map entry
+fails closed. The backend repeats the permission check on every protected API
+handler and customer projections exclude internal commercial and operational
+handler and customer projections exclude internal commercial and operational
+fields. Dynamic detail routes inherit their list-route permission; the quote
+revision route is the explicit `quotes.write` exception.
+
+The following names remain deferred or unavailable in this candidate:
+`/register`, `/dashboard/notifications`,
+`/retail/products/:slug/configure`, Retail request/offer/checkout routes, and
+Organization Portal routes. Their absence is intentional and does not authorize
+source, schema, provider, migration, deployment, or go-live work.
 
 ## External test prerequisites
 
@@ -212,6 +293,41 @@ Rollback is an artifact operation, not a rebuild:
 The repository's `MIGRATION_BACKUP_RESTORE_RUNBOOK.md` defines the capture,
 verify, compare, restore, and compare-again procedure. G4 does not execute a
 migration or restore against shared/staging/production data.
+
+## G0 lead integration handover — 2026-08-06
+
+| Item | Evidence or disposition |
+| --- | --- |
+| Baseline | `origin/main` at `fbaa7bb9188c380dcd18290e46d5da6b3a3cb5b0`; isolated worktree `codex/g0-lead-integration-20260806` |
+| Changed paths | `backend/server.py`, `frontend/src/lib/api.js`, `scripts/staging_smoke.py`, and this packet |
+| Intentionally unchanged | `frontend/src/App.js` already had the fail-closed `adminRoute` plus explicit permission map integration; Developer 2/3 domain files, provider configuration, storage, migrations, deployment files, and secrets were not edited |
+| Backend verification | 109 focused contract/readiness/permission/Retail/storage tests passed with `pytest -n 0`; Python compilation passed |
+| Frontend verification | 62 suites and 376 tests passed; `craco build` passed |
+| Repository verification | `git diff --check` passed; no commit, push, deployment, or migration was performed |
+| Smoke verification | Local credential-free harness passed 34/34 checks against the checked-in smoke contract |
+| External staging evidence | Not run: no approved provider, frontend origin, backend origin, environment approval, or release record exists |
+
+### Risks and rollback
+
+- External HTTPS, exact-origin CORS, cookie behavior, persistent MongoDB
+  replica-set readiness, backup/restore, worker health, and role-matrix evidence
+  remain unverified until the open staging decisions are completed.
+- The source baseline has no migration or data mutation from this handover, so
+  rollback is a source/artifact operation: restore the last known-good artifact
+  or source baseline recorded for the release, then rerun liveness, readiness,
+  CORS, smoke, and the smallest approved browser check.
+- If the frozen contract fails in review, revert only the four scoped source/doc
+  changes in this worktree or redeploy the prior approved artifact. Do not use a
+  data restore as a code rollback.
+
+### Open decisions and external actions
+
+Provider and exact staging origins, GitHub Environment approval, staging data
+policy, rollback artifact, restore drill, on-call/incident ownership, and
+independent verification remain open. Wave 2 source activation still requires a
+separate source gate. No item in this handover authorizes provider activation,
+production storage, payment, migration execution, deployment, production
+readiness, or go-live.
 
 ## Decision outcome
 
