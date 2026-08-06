@@ -7,6 +7,29 @@ const CSRF_COOKIE = "niuva_csrf";
 const CSRF_HEADER = "X-CSRF-Token";
 let adminCsrfToken = null;
 
+export const API_ERROR_MESSAGES = Object.freeze({
+  transaction_unavailable:
+    "Operasi ini belum tersedia karena kemampuan transaksi belum siap.",
+  retail_transaction_inactive: "Transaksi Retail belum aktif.",
+  legacy_order_creation_inactive:
+    "Pembuatan pesanan belum aktif. Gunakan katalog Retail untuk discovery.",
+  legacy_order_mutations_disabled: "Pesanan historis hanya dapat dibaca.",
+  legacy_manual_transfer_disabled: "Pembayaran transfer manual baru dinonaktifkan.",
+  organization_portal_inactive: "Organization Portal belum aktif.",
+  permission_denied: "Anda tidak memiliki izin untuk melakukan tindakan ini.",
+  http_401: "Sesi Anda berakhir. Silakan masuk kembali.",
+  http_403: "Anda tidak memiliki izin untuk melakukan tindakan ini.",
+  http_404: "Data yang diminta tidak ditemukan.",
+  http_409: "Data berubah oleh pengguna lain. Muat ulang lalu coba lagi.",
+  http_422: "Periksa kembali data yang dimasukkan.",
+  http_429: "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
+  http_500: "Terjadi kesalahan internal. Coba lagi.",
+  http_503: "Layanan belum tersedia. Coba lagi nanti.",
+  internal_server_error: "Terjadi kesalahan internal. Coba lagi.",
+});
+
+const DEFAULT_API_ERROR_MESSAGE = "Terjadi kesalahan. Coba lagi.";
+
 export const api = axios.create({
   baseURL: API,
   timeout: 15_000,
@@ -29,6 +52,35 @@ export function setAdminCsrfToken(token) {
 
 export function clearAdminCsrfToken() {
   adminCsrfToken = null;
+}
+
+function canonicalErrorValue(value) {
+  if (value?.response?.data) return canonicalErrorValue(value.response.data);
+  if (value?.error && typeof value.error === "object") return value.error;
+  if (value && Object.prototype.hasOwnProperty.call(value, "detail")) {
+    return value.detail;
+  }
+  return value;
+}
+
+function errorCode(value) {
+  const candidate = canonicalErrorValue(value);
+  return candidate && typeof candidate.code === "string" ? candidate.code : "";
+}
+
+export class ApiError extends Error {
+  constructor(status, body, fallbackMessage) {
+    const normalizedMessage = formatApiError(body);
+    super(
+      normalizedMessage !== DEFAULT_API_ERROR_MESSAGE && normalizedMessage
+        ? normalizedMessage
+        : fallbackMessage || normalizedMessage,
+    );
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+    this.code = errorCode(body) || null;
+  }
 }
 
 api.interceptors.request.use((config) => {
@@ -155,7 +207,13 @@ export async function fetchFile(path, options = {}) {
     credentials: "include",
     headers,
   });
-  if (!response.ok) throw new Error(`File request failed (${response.status})`);
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      await readResponseBody(response),
+      `File request failed (${response.status})`,
+    );
+  }
   return response.blob();
 }
 
@@ -180,7 +238,13 @@ export async function downloadApiFile(apiPath, filename = "download") {
   const response = await fetch(`${API}${apiPath}`, {
     credentials: "include",
   });
-  if (!response.ok) throw new Error(`File request failed (${response.status})`);
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      await readResponseBody(response),
+      `File request failed (${response.status})`,
+    );
+  }
   triggerBlobDownload(await response.blob(), filename);
 }
 
@@ -191,17 +255,34 @@ export async function downloadCsv(apiPath, filename = "export.csv") {
     credentials: "include",
     headers,
   });
-  if (!response.ok) throw new Error(`Export failed (${response.status})`);
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      await readResponseBody(response),
+      `Export failed (${response.status})`,
+    );
+  }
   triggerBlobDownload(await response.blob(), filename);
 }
 
+async function readResponseBody(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 export function formatApiError(detail) {
-  if (detail == null) return "Terjadi kesalahan. Coba lagi.";
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((error) => formatApiError(error)).join(" ");
-  if (typeof detail.message === "string") return detail.message;
-  if (typeof detail.msg === "string") return detail.msg;
-  if (typeof detail.code === "string") return detail.code;
-  try { return JSON.stringify(detail); }
-  catch { return "Terjadi kesalahan. Coba lagi."; }
+  const candidate = canonicalErrorValue(detail);
+  if (candidate == null) return DEFAULT_API_ERROR_MESSAGE;
+  if (typeof candidate === "string") return candidate;
+  if (Array.isArray(candidate)) {
+    return candidate.map((error) => formatApiError(error)).join(" ");
+  }
+  const code = errorCode(candidate);
+  if (code && API_ERROR_MESSAGES[code]) return API_ERROR_MESSAGES[code];
+  if (typeof candidate.message === "string") return candidate.message;
+  if (typeof candidate.msg === "string") return candidate.msg;
+  return DEFAULT_API_ERROR_MESSAGE;
 }

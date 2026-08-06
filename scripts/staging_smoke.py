@@ -33,6 +33,15 @@ PLACEHOLDER_SUFFIXES = (
     ".example.org",
     ".example.net",
 )
+EXPECTED_CAPABILITIES = {
+    "retail_discovery": "active",
+    "retail_create": "inactive",
+    "legacy_order_create": "inactive",
+    "checkout": "inactive",
+    "payment": "inactive",
+    "production_upload": "inactive",
+    "organization_portal": "inactive",
+}
 
 
 def validate_origin(value, *, allow_http_local=False):
@@ -105,11 +114,12 @@ class Result:
         return [item for item in self.checks if not item["passed"]]
 
 
-def fetch(base_url, path):
+def fetch(base_url, path, *, method="GET"):
     """Return (status, body). A transport failure is a status of 0."""
     request = urllib.request.Request(
         f"{base_url.rstrip('/')}{path}",
         headers={"Accept": "application/json"},
+        method=method,
     )
     try:
         with URL_OPENER.open(request, timeout=TIMEOUT) as response:
@@ -188,6 +198,33 @@ def check_admin_requires_auth(base_url, result):
         )
 
 
+def check_error_contract(base_url, result):
+    """A representative unauthenticated failure must use the stable envelope."""
+    status, body = fetch(base_url, "/api/orders", method="POST")
+    payload = parse(body)
+    error = payload.get("error") if isinstance(payload, dict) else None
+    request_id = payload.get("request_id") if isinstance(payload, dict) else None
+    result.record(
+        "unauthenticated customer route returns 401",
+        status == 401,
+        f"status={status}",
+    )
+    result.record(
+        "error response uses the frozen envelope",
+        isinstance(payload, dict)
+        and set(payload) == {"detail", "error", "request_id"}
+        and isinstance(error, dict)
+        and isinstance(request_id, str)
+        and bool(request_id),
+        "keys=detail,error,request_id" if isinstance(payload, dict) else "invalid JSON",
+    )
+    result.record(
+        "unauthenticated error code is stable",
+        isinstance(error, dict) and error.get("code") == "http_401",
+        f"code={error.get('code') if isinstance(error, dict) else None}",
+    )
+
+
 def check_public_boundaries(base_url, result):
     """What the public reads must carry nothing internal."""
     status, body = fetch(base_url, "/api/settings")
@@ -236,19 +273,26 @@ def check_public_boundaries(base_url, result):
     )
 
 
-def check_disabled_surfaces(base_url, result):
-    """Surfaces held closed on purpose must still be closed."""
-    status, body = fetch(base_url, "/api/orders/smoke-probe/payment-proof")
-    payload = parse(body) or {}
-    detail = payload.get("detail") if isinstance(payload, dict) else None
-    code = detail.get("code") if isinstance(detail, dict) else None
-    # 410 with its reason, not 404: a missing route would mean the lockdown
-    # was removed rather than enforced.
+def check_capability_boundary(base_url, result):
+    """The public capability map keeps Wave 2 surfaces inactive."""
+    status, body = fetch(base_url, "/api/capabilities")
+    payload = parse(body)
     result.record(
-        "legacy payment proof upload stays disabled",
-        status == 410 and code == "legacy_manual_transfer_disabled",
-        f"status={status} code={code}",
+        "capability contract responds with an object",
+        status == 200 and isinstance(payload, dict),
+        f"status={status}",
     )
+    result.record(
+        "capability contract has no unapproved keys",
+        isinstance(payload, dict) and set(payload) == set(EXPECTED_CAPABILITIES),
+        f"keys={sorted(payload) if isinstance(payload, dict) else None}",
+    )
+    for capability, expected in EXPECTED_CAPABILITIES.items():
+        result.record(
+            f"capability {capability} remains {expected}",
+            isinstance(payload, dict) and payload.get(capability) == expected,
+            f"value={payload.get(capability) if isinstance(payload, dict) else None}",
+        )
 
 
 def check_revenue_withheld(base_url, result):
@@ -283,8 +327,9 @@ def main():
     result = Result()
     check_readiness(base_url, result)
     check_admin_requires_auth(base_url, result)
+    check_error_contract(base_url, result)
     check_public_boundaries(base_url, result)
-    check_disabled_surfaces(base_url, result)
+    check_capability_boundary(base_url, result)
     check_revenue_withheld(base_url, result)
 
     if args.json:

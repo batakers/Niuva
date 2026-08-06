@@ -17,7 +17,7 @@ import tempfile
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List, Literal, Optional
 from urllib.parse import quote, urlsplit
 
 import bcrypt
@@ -202,6 +202,19 @@ FILE_SCOPE_PERMISSIONS = {
     "production_file": ("production.read",),
     "qc_evidence": ("qc.read",),
     "fulfilment_evidence": ("fulfilment.read",),
+}
+
+# This is the public capability contract for the bounded staging candidate.
+# Keep transaction, payment, production upload, and organization capabilities
+# explicitly inactive until a separately approved source gate changes them.
+PUBLIC_CAPABILITIES = {
+    "retail_discovery": "active",
+    "retail_create": "inactive",
+    "legacy_order_create": "inactive",
+    "checkout": "inactive",
+    "payment": "inactive",
+    "production_upload": "inactive",
+    "organization_portal": "inactive",
 }
 
 ORDER_STATUSES = [
@@ -817,6 +830,18 @@ class SafeUserResponse(BaseModel):
     permissions: list[str]
     version: int
     created_at: str | datetime | None = None
+
+
+class CapabilityResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    retail_discovery: Literal["active"]
+    retail_create: Literal["inactive"]
+    legacy_order_create: Literal["inactive"]
+    checkout: Literal["inactive"]
+    payment: Literal["inactive"]
+    production_upload: Literal["inactive"]
+    organization_portal: Literal["inactive"]
 
 
 class LoginResponse(BaseModel):
@@ -1641,7 +1666,7 @@ async def get_settings():
     return s
 
 
-@api.post("/orders")
+@api.post("/orders", responses=error_responses(401, 403, 500, 503))
 async def create_order(
     _user: dict = Depends(get_current_user),
 ):
@@ -1657,17 +1682,9 @@ async def create_order(
     )
 
 
-@api.get("/capabilities")
+@api.get("/capabilities", response_model=CapabilityResponse)
 async def public_capabilities():
-    return {
-        "retail_discovery": "active",
-        "retail_create": "inactive",
-        "legacy_order_create": "inactive",
-        "checkout": "inactive",
-        "payment": "inactive",
-        "production_upload": "inactive",
-        "organization_portal": "inactive",
-    }
+    return PUBLIC_CAPABILITIES
 
 
 @api.get(
@@ -1687,7 +1704,10 @@ async def my_orders(user: dict = Depends(get_current_user)):
     return [project_customer_legacy_order(document) for document in documents]
 
 
-@api.get("/orders/{oid}/design-file")
+@api.get(
+    "/orders/{oid}/design-file",
+    responses=error_responses(401, 403, 404, 500),
+)
 async def download_legacy_order_design_file(
     oid: str, user: dict = Depends(get_current_user)
 ):
@@ -1724,7 +1744,10 @@ async def get_order(oid: str, user: dict = Depends(get_current_user)):
     return project_customer_legacy_order(order)
 
 
-@api.post("/orders/{oid}/payment-proof")
+@api.post(
+    "/orders/{oid}/payment-proof",
+    responses=error_responses(401, 403, 410, 500),
+)
 async def upload_payment_proof(
     oid: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)
 ):
@@ -1737,7 +1760,10 @@ async def upload_payment_proof(
     )
 
 
-@api.get("/admin/payment-capabilities")
+@api.get(
+    "/admin/payment-capabilities",
+    responses=error_responses(401, 403, 500),
+)
 async def payment_capabilities(
     _user: dict = Depends(require_permission("payments.read")),
 ):
