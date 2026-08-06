@@ -1835,6 +1835,19 @@ class B2BService:
                     "operation_id_conflict",
                     "Operation ID sudah digunakan untuk aksi Inquiry berbeda.",
                 )
+            if inquiry["version"] != expected_version:
+                raise B2BDomainError(
+                    409,
+                    "version_conflict",
+                    "Inquiry telah berubah. Muat versi terbaru sebelum mencoba lagi.",
+                    details={
+                        "current_version": inquiry["version"],
+                        "current_status": inquiry["status"],
+                        "permitted_next_actions": project_inquiry(inquiry)[
+                            "permitted_next_actions"
+                        ],
+                    },
+                )
             raise B2BDomainError(
                 409,
                 "inquiry_already_converted",

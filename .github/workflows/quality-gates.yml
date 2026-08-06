@@ -1,12 +1,28 @@
 name: quality-gates
 
 on:
-  pull_request:
+  push:
+    branches: [main]
     paths:
       - "backend/**"
       - "frontend/**"
       - "docs/**"
+      - "doc/**"
+      - "scripts/**"
       - ".github/workflows/**"
+      - "docker-compose*.yml"
+      - "README.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docs/**"
+      - "doc/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+      - "docker-compose*.yml"
+      - "README.md"
   workflow_dispatch:
 
 permissions:
@@ -34,7 +50,10 @@ jobs:
       - name: Compile backend
         run: |
           python -m compileall -q backend
-          python -m py_compile scripts/load_readonly_api.py
+          python -m py_compile \
+            scripts/load_readonly_api.py \
+            scripts/seed_role_accounts.py \
+            scripts/staging_smoke.py
       - name: Critical Python lint
         run: >-
           python -m flake8 backend
