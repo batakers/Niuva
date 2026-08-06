@@ -115,6 +115,44 @@ function largestOf(assets, kind) {
   return largest;
 }
 
+function resolveReportPath(args, cwd = process.cwd()) {
+  const index = args.indexOf("--report-path");
+  if (index === -1) return null;
+  const value = args[index + 1];
+  if (!value || value.startsWith("--")) {
+    throw new Error("--report-path requires a file path.");
+  }
+  return path.resolve(cwd, value);
+}
+
+function createReport(assets, budgets = null) {
+  const total = assets.reduce((sum, asset) => sum + asset.gzip, 0);
+  const largestEntry = largestOf(assets, "entry");
+  const largestAsync = largestOf(assets, "async");
+  return {
+    schemaVersion: 1,
+    assets: assets.map(({ name, kind, gzip }) => ({ name, kind, gzip })),
+    totalGzip: total,
+    largestEntrypoint: largestEntry ? { name: largestEntry.name, gzip: largestEntry.gzip } : null,
+    largestAsync: largestAsync ? { name: largestAsync.name, gzip: largestAsync.gzip } : null,
+    budgets: budgets
+      ? { total: budgets.total, entry: budgets.entry, async: budgets.async }
+      : null,
+  };
+}
+
+function writeReport(reportPath, assets, budgets = null) {
+  if (!reportPath) return;
+
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  fs.writeFileSync(
+    reportPath,
+    JSON.stringify(createReport(assets, budgets), null, 2) + "\n",
+    "utf8",
+  );
+  console.log("[check-bundle-size] Report written: " + reportPath);
+}
+
 function evaluate(assets, budgets) {
   const total = assets.reduce((sum, asset) => sum + asset.gzip, 0);
   const largestEntry = largestOf(assets, "entry");
@@ -137,10 +175,17 @@ function evaluate(assets, budgets) {
   return failures;
 }
 
-function main() {
-  const reportOnly = process.argv.includes("--report-only");
+function main(args = process.argv.slice(2), env = process.env) {
+  let reportPath;
+  try {
+    reportPath = resolveReportPath(args);
+  } catch (error) {
+    console.error("[check-bundle-size] " + error.message);
+    return 2;
+  }
+  const reportOnly = args.includes("--report-only");
   const buildRoot = path.resolve(
-    process.env.BUNDLE_BUILD_DIR || path.resolve(__dirname, "..", "build")
+    env.BUNDLE_BUILD_DIR || path.resolve(__dirname, "..", "build")
   );
 
   let assets;
@@ -173,18 +218,30 @@ function main() {
   }
 
   if (reportOnly) {
+    try {
+      writeReport(reportPath, assets);
+    } catch (error) {
+      console.error("[check-bundle-size] " + error.message);
+      return 2;
+    }
     console.log("[check-bundle-size] Measurement complete; no budget decision was applied.");
     return 0;
   }
 
   let budgets;
   try {
-    budgets = readBudgets(process.env);
+    budgets = readBudgets(env);
   } catch (error) {
     console.error(`[check-bundle-size] Budget configuration required (${error.message}).`);
     console.error(
       "[check-bundle-size] Use --report-only for measurement or provide all approved budget variables."
     );
+    return 2;
+  }
+  try {
+    writeReport(reportPath, assets, budgets);
+  } catch (error) {
+    console.error("[check-bundle-size] " + error.message);
     return 2;
   }
 
@@ -207,4 +264,7 @@ module.exports = {
   evaluate,
   loadAssets,
   readBudgets,
+  createReport,
+  resolveReportPath,
+  writeReport,
 };

@@ -34,14 +34,6 @@ export function Navbar() {
     }
 
     setOpen(true);
-    window.clearTimeout(menuFocusTimerRef.current);
-    menuFocusTimerRef.current = window.setTimeout(
-      () =>
-        mobilePanelRef.current
-          ?.querySelector('a[href], button:not([disabled])')
-          ?.focus(),
-      50
-    );
   };
   const signOut = async () => {
     await logout();
@@ -50,6 +42,27 @@ export function Navbar() {
   useEffect(() => {
     setOpen(false);
   }, [loc.pathname]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    let attempts = 0;
+    const focusFirstMenuItem = () => {
+      const first = mobilePanelRef.current?.querySelector(
+        'a[href], button:not([disabled])'
+      );
+      if (first) {
+        first.focus();
+        if (document.activeElement === first) return;
+      }
+      if (attempts >= 30) return;
+      attempts += 1;
+      menuFocusTimerRef.current = window.setTimeout(focusFirstMenuItem, 16);
+    };
+
+    menuFocusTimerRef.current = window.setTimeout(focusFirstMenuItem, 0);
+    return () => window.clearTimeout(menuFocusTimerRef.current);
+  }, [open]);
   useEffect(() => {
     document.documentElement.lang = isOperationalRoute ? lang : "id";
   }, [isOperationalRoute, lang]);

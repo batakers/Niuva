@@ -58,6 +58,19 @@ test("report-only mode measures entry and async assets without inventing budgets
   assert.doesNotMatch(result.stdout, /All budgets respected/);
 });
 
+test("report-only mode writes a machine-readable report without budgets", () => {
+  const reportPath = path.join(fixtureRoot, "reports", "bundle-report.json");
+  const result = run(["--report-only", "--report-path", reportPath]);
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+  assert.equal(report.schemaVersion, 1);
+  assert.equal(report.budgets, null);
+  assert.equal(report.assets.length, 2);
+  assert.equal(typeof report.totalGzip, "number");
+  assert.equal(report.largestEntrypoint.name, "main.abc.js");
+});
+
 test("gate mode fails configuration when approved budgets are absent", () => {
   const result = run();
 

@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import ForbiddenPage from "@/pages/admin/ForbiddenPage";
 
-export function ProtectedRoute({ children, permission }) {
+export function ProtectedRoute({ children, permission, adminRoute = false }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) {
@@ -31,6 +31,9 @@ export function ProtectedRoute({ children, permission }) {
         state={{ from: `${location.pathname}${location.search}${location.hash}` }}
       />
     );
+  }
+  if (adminRoute && !permission) {
+    return <ForbiddenPage />;
   }
   if (!permission && hasPermission(user, "admin.access")) {
     return <Navigate to="/admin" replace />;
