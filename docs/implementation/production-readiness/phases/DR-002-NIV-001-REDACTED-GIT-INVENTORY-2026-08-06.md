@@ -127,6 +127,13 @@ credential revocation, controlled authentication with a newly provisioned
 account, remote history cleanup, GitHub Support action, clone disposition,
 backup retention, or independent verification.
 
+A presence-only check for `NIUVA_TEST_ADMIN_EMAIL`,
+`NIUVA_TEST_ADMIN_PASSWORD`, `E2E_SUPER_ADMIN_EMAIL`,
+`E2E_SUPER_ADMIN_PASSWORD`, and `REACT_APP_BACKEND_URL` returned `false` in
+the current process, machine, and user environment scopes. No values were
+read. This proves only that this host has no injected test configuration; it
+does not query or disprove an external secret manager reference.
+
 ## 6. Current gate outcome
 
 | Gate | Result |
@@ -134,7 +141,7 @@ backup retention, or independent verification.
 | Read-only Git/GitHub inventory | `PARTIAL_PASS` — current counts recorded; freeze/owner inventory not established |
 | Redacted secret scan | `BLOCKED_BY_UNRESOLVED_FINDINGS` — two credential-like Gitleaks findings require owner review; GitHub alert API inventory returned `404` |
 | Old credential revocation/rotation | `NOT RUN` — no credential value or secret manager accessed |
-| Controlled non-production authentication | `NOT RUN` — no approved account/config reference supplied |
+| Controlled non-production authentication | `NOT RUN` — required local config names were absent and no approved external account/config reference was supplied |
 | History rewrite/publication | `NOT RUN` — no isolated rewrite approval or exact-value evidence |
 | Independent verification | `NOT RUN` |
 | NIV-001 / DR-002 | `OPEN` / `HUMAN_DECISION_BLOCKED` |
