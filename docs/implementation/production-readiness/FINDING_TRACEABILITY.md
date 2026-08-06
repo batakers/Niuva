@@ -1,5 +1,7 @@
 # Niuva Production-Readiness Finding Traceability
 
+<!-- markdownlint-disable MD013 -->
+
 Status: Planning and Progress Context — Not Implementation Authority Unless Explicitly Approved
 
 Audit source baseline: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
@@ -99,9 +101,11 @@ matrix, commit history, or test presence alone.
 
 ## NIV-001 current evidence addendum — 2026-08-06
 
-Current baseline: `origin/main` at `cccc1e8c06abf1eba57854166c01598bd8db2246`.
-The merged PR #180 auth/security change is source evidence only and does not
-close `SEC-001`/`OPS-010`.
+Current baseline: `origin/main` at
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa` (`f43eea6`), observed at
+`2026-08-06T06:43:09Z`. PR #185 is included as an open replacement PR in the
+inventory timestamp below; its source and documentation changes are evidence
+only and do not close `SEC-001`/`OPS-010`.
 
 On 2026-08-06, Faiz recorded a sole-owner self-verification exception because
 no independent verifier is available. This resolves the owner-decision gap in
@@ -116,11 +120,11 @@ and the safe procedure is recorded in
 
 | Evidence group | Current result | Traceability interpretation |
 | --- | --- | --- |
-| Repository/GitHub inventory | 47 remote heads, 0 tags, 0 open PRs, 172 PR-head refs, 0 forks, 0 rulesets, 3 collaborator accounts by count | Current read-only snapshot only; freeze, old-clone, cache, backup, and Support evidence remain open. |
-| Local worktrees/object database | 99 registered worktrees, 23 dirty, 220 dangling objects, no missing/unreachable object lines | No worktree or object cleanup was performed; owner disposition is still required. |
-| Redacted history scan | Gitleaks `8.30.1`, exit `1`, report SHA-256 `e85e2d0d27cdde3c1d70f6f9020a9d559d5e12d0ead3e1a0dc7cac50344a91d0`, 2 unresolved `generic-api-key` findings in `PRODUCT.md` and `doc/PRODUCTION_DEPLOYMENT.md`; value-free review found no placeholder/env markers and GitHub alert API returned `404` | Findings require secret-safe owner review; they are not automatically false positives or closure evidence. |
-| Focused non-production verification | Auth/security/permission/projection test set: `180 passed`; required local test-config names were absent in process/machine/user scopes | Bounded local source evidence only; no controlled new-account authentication was run. |
-| Credential/history action | No credential inspected, revoked, rotated, rewritten, force-pushed, or deleted | `NIV-001` remains `accepted_risk_self_verification_exception_approved_until_2026-08-30`; the incident remains open and verified closure remains unavailable. |
+| Repository/GitHub inventory | Refreshed at `2026-08-06T06:43:09Z`; counts are recorded in the linked redacted inventory, including the open PR #185 snapshot. | Timestamped read-only snapshot only; freeze, old-clone, cache, backup, and Support evidence remain open. |
+| Local worktrees/object database | Refreshed at the same timestamp; counts and fsck result are recorded in the linked inventory. | No worktree or object cleanup was performed; owner disposition is still required. |
+| Redacted history scan | Fresh pinned Gitleaks scan result and report hash are recorded in the linked inventory; unresolved findings remain retained. | Findings require secret-safe owner review; they are not automatically false positives or closure evidence. |
+| Focused non-production verification | Fresh auth/security/permission/projection test result is recorded in the linked inventory; no controlled new-account authentication was run. | Bounded local source evidence only; it does not prove credential revocation or external cleanup. |
+| Credential/history action | No credential was inspected, revoked, or rotated; no Git history was rewritten or force-pushed; no ref was deleted. | `NIV-001` remains `accepted_risk_self_verification_exception_approved_until_2026-08-30`; the incident remains open and verified closure remains unavailable. |
 
 The current status therefore remains **P0 / release-blocking / go-live-blocking**.
 No commit, local test, missing introducing object, or zero-count fork snapshot
@@ -135,3 +139,5 @@ plus `FE-ENV-001`; `UX-001`-`UX-011`; `BE-001`-`BE-012`;
 `GOV-001`-`GOV-017`.
 
 No source finding has been deleted or marked resolved by this normalization.
+
+<!-- markdownlint-enable MD013 -->

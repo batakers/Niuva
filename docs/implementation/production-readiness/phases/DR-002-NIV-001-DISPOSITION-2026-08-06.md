@@ -4,7 +4,10 @@
 
 **Status:** `DECIDED` / `ACCEPTED_RISK_SELF_VERIFICATION_EXCEPTION`
 **Prepared:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Observed baseline:** `origin/main` at `cccc1e8c06abf1eba57854166c01598bd8db2246`
+**Observed baseline:** `origin/main` at
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa` (`f43eea6`)
+**Observed tree:** `6d2154bd52785bbc749345c0346651f9752d1646`
+**Observed at:** `2026-08-06T06:43:09Z` (Asia/Jakarta collection window)
 **Decision owner:** Faiz (sole incident owner, credential owner, repository
 administrator, rewrite operator, application owner, and Final Approver)
 **Independent verifier:** Unavailable; the owner-approved exception below is
@@ -82,16 +85,17 @@ status.
 | NIV-001 runbook state | The runbook states `Implemented, verification pending` and requires redacted evidence before `Verified`. | A runbook is procedural authority; its checklist is not evidence that a step occurred. |
 | Credential action | No credential value was inspected or used in this packet. No rotation or revocation was performed. | A redacted owner-controlled revocation/rotation record is still required before closure. |
 | History rewrite | No rewrite, force-push, ref deletion, or remote publication was performed. | The full-history rewrite and post-rewrite proof remain entirely unverified. |
-| Current repository checks | Focused auth/security/permission/projection tests and a fresh redacted full-history scan were rerun at the observed baseline; results are recorded in the linked inventory. | Local tests and a redacted scan do not prove revocation, remote-cache/fork/clone cleanup, history publication, or final incident closure. Any credential-like findings remain residual evidence unless explicitly dispositioned in the restricted incident record. |
-| Remote/PR state | Current read-only inventory: 47 remote heads, 0 remote tags, 0 open PRs, 184 total PRs, 172 PR head refs, 0 forks, 0 rulesets, and 3 collaborator accounts by count. | The inventory is not a write freeze or approval. PR refs, cached views, old clones, and backups remain separate closure gates. |
-| Worktrees/clones | Current local inventory records 99 worktrees: 76 clean, 23 dirty, 0 missing, and 6 detached. | The runbook requires owner acknowledgments, quarantine/recreation, and a fresh inventory; local worktree listing is not collaborator/old-clone closure evidence. |
+| Current repository checks | Fresh exact-`origin/main` source/test and redacted-scan results are recorded in the linked inventory at the observed baseline. | Source/test evidence and a redacted scan do not prove revocation, remote-cache/fork/clone cleanup, history publication, or final incident closure. Credential-like findings remain residual evidence unless explicitly dispositioned in the restricted incident record. |
+| Remote/PR state | Timestamped read-only inventory at `2026-08-06T06:43:09Z`, including the open PR #185 snapshot, is recorded in the linked inventory. | The inventory is not a write freeze or approval. PR refs, cached views, old clones, and backups remain separate closure gates and must be rechecked before execution. |
+| Worktrees/clones | Current local counts and fsck result are recorded in the linked inventory at the same timestamp. | The runbook requires owner acknowledgments, quarantine/recreation, and a fresh inventory; local worktree listing is not collaborator/old-clone closure evidence. |
 | GitHub surfaces | Read-only PR/fork/ruleset counts were collected; no GitHub Support, cache cleanup, collaborator-clone, or backup evidence was collected. | Those external records are required by the runbook and must remain redacted. |
 | Production boundary | No deployment, provider, migration, secret rotation, or go-live action was performed. | DR-002 remains a P0 release/go-live blocker until a final disposition is approved. |
 
 Historical counts and ref snapshots inside the NIV-001 runbook are planning
 snapshots, not current inventory. The current redacted inventory is linked
 above, but it must be rechecked at execution time and must not be copied into a
-closure claim.
+closure claim. The inventory timestamp includes the open PR #185 snapshot; any
+later repository movement requires another re-inventory before execution.
 
 The runbook's recorded introducing commit is absent from the current checkout's
 object database, so an exact-value scan could not be reconstructed without
@@ -100,8 +104,9 @@ views, forks, old clones, backups, or other repositories.
 
 ## 4. Owner decision paths
 
-The following are mutually exclusive disposition paths. The owner must record
-one in an approved decision record; this packet does not choose one.
+The following are mutually exclusive disposition paths. This packet records
+Option C as the selected disposition. Any later change requires a new approved
+decision record.
 
 ### Option A — Verified closure after independent evidence
 
@@ -214,21 +219,22 @@ No step above is authorized by this packet.
 
 ## 8. Handover and current verdict
 
-Changed for this revalidation: the disposition packet, the linked redacted
-inventory, the value-free revoke/rotate evidence template, and the
-`FINDING_TRACEABILITY.md` addendum.
+Changed for this post-merge revalidation: the task card, disposition packet,
+linked redacted inventory, value-free revoke/rotate evidence template,
+`FINDING_TRACEABILITY.md` addendum, and the current-main revalidation packet.
 
 Intentionally unchanged: credential values and secret stores, Git history and
 refs, branches/tags, `main`, worktrees/clones/backups, GitHub settings/support
 state, source/tests/dependencies/CI, migrations, providers, deployment state,
 and decision-register status.
 
-Local validation for this revalidation includes a redacted Gitleaks
-full-history scan and focused auth/security/permission/projection tests. The
-credential action, controlled authentication with a new account, exact-value
-scan, history rewrite, migration commands, staging, deployment, provider
-operations, GitHub Support, and production actions were not run and are not
-implied.
+Local validation for this revalidation includes the focused auth/security/
+permission/projection suite (`180 passed`), a current pinned Gitleaks scan
+(`2` unresolved redacted findings), conflict-marker and whitespace checks, and
+staged secret-pattern checks. Credential action, controlled authentication with
+a new account, exact-value scan, history rewrite, migration commands, staging,
+deployment, provider operations, GitHub Support, and production actions were
+not run and are not implied.
 
 Current verdict: **NOT READY for release, production deployment, or go-live**.
 The NIV-001 decision gate is resolved as a documented sole-owner exception, but

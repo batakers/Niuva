@@ -135,10 +135,11 @@ object in one clone, or self-review as incident closure evidence.
 
 ## 6. Current completion state
 
-The current inventory found no credential-action proof, no approved
-non-production account reference, unresolved redacted Gitleaks findings,
-registered dirty worktrees, and no independent verification. Faiz's
-self-verification exception is now recorded, but the procedure remains
-unexecuted and NIV-001 remains a P0 release/go-live blocker.
+The current `2026-08-06T06:43:09Z` inventory at `f43eea6` found no
+credential-action proof, no approved non-production account reference, and no
+independent verification. The current pinned redacted scan and focused test
+results are recorded in the linked inventory; any unresolved findings remain
+pending owner review. Faiz's self-verification exception is recorded, but the
+procedure remains unexecuted and NIV-001 remains a P0 release/go-live blocker.
 
 <!-- markdownlint-enable MD013 -->

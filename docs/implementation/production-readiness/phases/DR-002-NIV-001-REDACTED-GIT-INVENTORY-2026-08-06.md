@@ -2,16 +2,19 @@
 
 <!-- markdownlint-disable MD013 -->
 
-**Status:** `EVIDENCE_PLUS_OWNER_EXCEPTION` / `NOT INCIDENT CLOSURE`
-**Prepared:** 2026-08-06 13:00 WIB (Asia/Jakarta)
-**Observed baseline:** `origin/main` at `cccc1e8c06abf1eba57854166c01598bd8db2246`
+**Status:** `EVIDENCE_PLUS_OWNER_EXCEPTION` / `CURRENT SNAPSHOT` / `NOT INCIDENT CLOSURE`
+**Prepared:** 2026-08-06 13:43:09 WIB (Asia/Jakarta)
+**Observed baseline:** `origin/main` at
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa` (`f43eea6`)
+**Observed tree:** `6d2154bd52785bbc749345c0346651f9752d1646`
+**Collection timestamp:** `2026-08-06T06:43:09Z`
 **Repository:** `batakers/Niuva` (public)
 **Evidence rule:** No credential, token, cookie, authorization header, raw
 scanner match, secret-manager output, or secret-bearing line is retained.
 
 ## 1. Purpose and authority boundary
 
-This is a current, read-only inventory for DR-002/NIV-001. It records counts,
+This is a timestamped, read-only re-inventory for DR-002/NIV-001. It records counts,
 paths, commit prefixes, hashes, and result states only. It does not authorize
 credential access, revoke/rotate actions, history rewrite, force-push, ref or
 worktree deletion, GitHub Support requests, or a `Verified` status.
@@ -21,6 +24,10 @@ The applicable procedure remains
 The runbook requires revocation/rotation evidence before any rewrite and
 requires independent verification before incident closure.
 
+The earlier `12:02 WIB` snapshot from merged PR #182 is historical evidence
+from the `9f6fe38` baseline. Its counts and scan provenance are not silently
+carried forward; this re-inventory supersedes its current-state claims.
+
 ## 2. Remote repository and GitHub surface snapshot
 
 The following values were collected read-only from `origin` and GitHub CLI.
@@ -28,14 +35,15 @@ Identities and response bodies not needed for the counts were not retained.
 
 | Surface | Redacted result | Interpretation |
 | --- | --- | --- |
-| Default branch / head | `main` / `cccc1e8` | Current main includes the merged auth/security work and subsequent PR updates. |
-| Remote heads | `47` | Branch names and SHAs require a fresh freeze inventory before any operation. |
+| Default branch / head | `main` / `f43eea6` | Current main includes the merged post-G2 readiness revalidation. |
+| Git tree | `6d2154b` | Source-tree identity only; not an artifact digest. |
+| Remote heads | `50` | Branch names and SHAs require a fresh freeze inventory before any operation. |
 | Remote tags | `0` | No remote tags were advertised at collection time. |
-| Open pull requests | `0` | This satisfies the count observation only; it is not an approval to rewrite. |
-| All pull requests | `184` total; `180` merged | Historical PR refs remain a separate contamination surface. |
-| PR head refs | `172` | `refs/pull/*/head` was observed through the Git remote; cached views and server-side objects remain unverified. |
+| Open pull requests | `2` | Timestamped count only; it is not an approval to rewrite. PR #185 was open at collection time. |
+| All pull requests | `187` total; `181` merged | Historical PR refs remain a separate contamination surface. |
+| PR head refs | `175` | `refs/pull/*/head` was observed through the Git remote; cached views and server-side objects remain unverified. |
 | Forks | `0` metadata / `0` API results | A current zero count does not prove absence of old clones or backups. |
-| Rulesets | `0` | No ruleset was returned by the read-only API query. |
+| Rulesets | `0` API results | No ruleset was returned by the read-only API query. |
 | Main branch protection | `not returned (HTTP 404)` | No protection response was available in this query; do not infer a setting change. |
 | Collaborator accounts | `3` count only | Login identities were intentionally withheld; clone disposition is unknown. |
 
@@ -47,10 +55,10 @@ history surfaces.
 
 | Surface | Redacted result | Limit |
 | --- | --- | --- |
-| Local branches | `147` | Branch names/owners were not copied into this evidence artifact. |
+| Local branches | `156` | Branch names/owners were not copied into this evidence artifact. |
 | Local tags | `0` | This is the current checkout's local ref namespace only. |
-| Registered worktrees | `99` | Worktree paths are omitted from the retained artifact. |
-| Worktree state | `76` clean, `23` dirty, `0` missing, `6` detached | Dirty-work ownership and disposition are not known. No worktree was changed. |
+| Registered worktrees | `102` | Worktree paths are omitted from the retained artifact. |
+| Worktree state | `80` clean, `22` dirty, `0` missing, `7` detached | Dirty-work ownership and disposition are not known. No worktree was changed. |
 | `git fsck --full --no-reflogs` | exit `0` | No missing or unreachable object lines were reported. |
 | Dangling objects | `220` | Dangling objects are not proof of contamination or cleanup; do not delete them without a separate approved retention/cleanup decision. |
 
@@ -66,8 +74,9 @@ This is only local object evidence. It is not proof that the audited value is
 absent from GitHub PR refs, cached views, forks, old clones, backups, or other
 repositories.
 
-A pinned Gitleaks binary was run against the current Git history with
-`--redact=100`, `--log-opts=--all`, and a report outside the repository:
+A pinned Gitleaks binary was run against the current Git history for the
+`f43eea6` re-inventory with `--redact=100`, `--log-opts=--all`, and a report
+outside the repository:
 
 | Field | Result |
 | --- | --- |
@@ -77,7 +86,7 @@ A pinned Gitleaks binary was run against the current Git history with
 | Findings | `2` redacted `generic-api-key` findings |
 | Paths | `PRODUCT.md`; `doc/PRODUCTION_DEPLOYMENT.md` |
 | Commit prefix | `d595b7d9f251` |
-| Report SHA-256 | `e85e2d0d27cdde3c1d70f6f9020a9d559d5e12d0ead3e1a0dc7cac50344a91d0` |
+| Report SHA-256 | `322e4e3e004980e3a26e45e451dd448377a0093f09572b0a56e356c368fe824b` |
 | Retained report | Temporary path outside repository; retention/destruction remains an owner decision |
 
 The two findings are **unresolved potential findings**, not automatically
@@ -89,10 +98,11 @@ architecture decisions` and only the file/line hashes are retained here.
 An owner must review them through a secret-safe process and record a redacted
 disposition before any closure claim.
 
-The read-only GitHub secret-scanning alert endpoints returned HTTP `404` for
-both `open` and `resolved` queries in this session. No authoritative alert
-inventory was returned; this must not be interpreted as proof that no alerts
-exist.
+The read-only GitHub secret-scanning alert endpoints returned HTTP `404` with
+the explicit response `Secret scanning is disabled on this repository` for
+both `open` and `resolved` queries at the current collection window. No
+authoritative alert inventory was returned; this must not be interpreted as
+proof that no alerts exist.
 
 The runbook's exact-value history scan was not run because the recorded
 introducing object is absent from this checkout and no credential value was
@@ -100,7 +110,7 @@ inspected or reconstructed.
 
 ## 5. Non-production verification performed
 
-The following command ran against the current `origin/main` worktree with no
+The following command ran against the current `f43eea6` worktree with no
 credential or external service value supplied:
 
 ```text
@@ -120,9 +130,9 @@ python -B -m pytest `
   -n 0 -q
 ```
 
-Result: **`180 passed`** in `18.41s`.
+Result: **`180 passed`** in `39.45s`.
 
-This validates bounded local source behavior only. It does not prove
+This result validates bounded local source behavior only. It does not prove
 credential revocation, controlled authentication with a newly provisioned
 account, remote history cleanup, GitHub Support action, clone disposition,
 backup retention, or independent verification.
@@ -138,8 +148,8 @@ does not query or disprove an external secret manager reference.
 
 | Gate | Result |
 | --- | --- |
-| Read-only Git/GitHub inventory | `PARTIAL_PASS` — current counts recorded; freeze/owner inventory not established |
-| Redacted secret scan | `BLOCKED_BY_UNRESOLVED_FINDINGS` — two credential-like Gitleaks findings require owner review; GitHub alert API inventory returned `404` |
+| Read-only Git/GitHub inventory | `PARTIAL_PASS` — current counts recorded at `2026-08-06T06:43:09Z`; freeze/owner inventory not established |
+| Redacted secret scan | `BLOCKED_BY_UNRESOLVED_FINDINGS` — current Gitleaks scan returned two credential-like findings; GitHub secret-scanning is disabled and its alert inventory is unavailable |
 | Old credential revocation/rotation | `NOT RUN` — no credential value or secret manager accessed |
 | Controlled non-production authentication | `NOT RUN` — required local config names were absent and no approved external account/config reference was supplied |
 | History rewrite/publication | `NOT RUN` — no isolated rewrite approval or exact-value evidence |
@@ -150,5 +160,11 @@ Faiz's owner decision resolves the human-decision gap for this packet but does
 not change the accepted-risk expiry of **2026-08-30** or remove the P0
 release/go-live block. No evidence in this inventory establishes `Verified`
 incident closure.
+
+The current re-inventory found no credential-action proof, no approved
+non-production account reference, two unresolved current-history Gitleaks
+findings, 102 registered worktrees with 22 dirty, and no independent
+verification. This procedure remains preparation-only and NIV-001 remains a
+P0 release/go-live blocker.
 
 <!-- markdownlint-enable MD013 -->

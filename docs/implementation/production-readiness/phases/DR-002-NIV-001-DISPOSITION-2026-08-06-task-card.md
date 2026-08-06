@@ -4,9 +4,9 @@
 
 **Status:** Documentation-only decision packet; human decision blocked
 **Date:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Observed baseline:** `origin/main` at `c84743c8fcbc158721037b3c02dc0dff0c872242`
-**Active branch:** `codex/g13-niv001-decision-20260806`
-**Active worktree:** `C:\tmp\niuva-g13-niv001-decision-20260806`
+**Observed baseline:** `origin/main` at `cccc1e8c06abf1eba57854166c01598bd8db2246`
+**Active branch:** `codex/current-main-reconciliation-post-182-183-20260806`
+**Active worktree:** `C:\tmp\niuva-current-main-reconciliation-post-182-183-20260806`
 **Driver:** Faiz / delegated Codex implementation
 **Decision owner:** Incident owner, credential owner, repository administrator,
 independent verifier, and Final Approver as assigned by the Project Owner
@@ -43,10 +43,15 @@ rewrite.
 
 ## Scope
 
-Only these two documentation files may change:
+This post-merge revalidation updates the disposition packet and its linked
+current-main evidence. Only these six documentation files may change:
 
 1. `docs/implementation/production-readiness/phases/DR-002-NIV-001-DISPOSITION-2026-08-06-task-card.md`
 2. `docs/implementation/production-readiness/phases/DR-002-NIV-001-DISPOSITION-2026-08-06.md`
+3. `docs/implementation/production-readiness/phases/DR-002-NIV-001-REDACTED-GIT-INVENTORY-2026-08-06.md`
+4. `docs/implementation/production-readiness/phases/DR-002-NIV-001-REVOKE-ROTATE-EVIDENCE-TEMPLATE-2026-08-06.md`
+5. `docs/implementation/production-readiness/FINDING_TRACEABILITY.md`
+6. `docs/implementation/production-readiness/phases/CURRENT-MAIN-POST-G2-REVALIDATION-2026-08-06.md`
 
 ## Explicit exclusions
 
@@ -66,13 +71,16 @@ Only these two documentation files may change:
 
 - The packet records DR-002 as open and the accepted-risk expiry as
   `2026-08-30`, without silently extending it.
+- The packet identifies the exact fetched `origin/main` SHA and a timestamped
+  inventory snapshot; it does not present point-in-time counts as live
+  invariants.
 - It presents owner choices for verified closure versus a renewed/new accepted
   risk, without selecting either.
 - It maps the runbook's redacted evidence gates to V-00-02 and PHASE-00B.
 - It labels current repository/CI observations and their limits, including the
   difference between a Gitleaks result and incident closure.
 - It contains no credential, token, secret-manager output, or sensitive literal.
-- Only the two task/packet paths are staged.
+- Only the six listed documentation paths are staged.
 - `git diff --check`, markdownlint, exact-path verification, and staged secret
   scanning pass.
 
