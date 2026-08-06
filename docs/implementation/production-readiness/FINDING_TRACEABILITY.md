@@ -60,7 +60,7 @@ matrix, commit history, or test presence alone.
 | Canonical Finding | Source Finding IDs | Layer | Root Cause | Severity | Status | Confidence | Release Blocking | Go-Live Blocking | Decision Required | Dependencies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Freshness and release-candidate baseline | `SUM-FRESH-001` | 11 | Scored branch is behind newer local default-branch auth, migration, frontend, CI, and authority changes. | P2 | `requires_revalidation` | 100% | Yes for any current-default-branch claim | Yes | Select exact RC SHA and revalidation scope. | Release owner; changed-path matrix; no fetch implied. |
-| NIV-001 credential incident | `SEC-001`, `OPS-010` | 06, 08 | Operational credential-incident closure has not been independently evidenced. `OPS-010 duplicate_of SEC-001`. | **P0** | `accepted_risk_approved_until_2026-08-30`; verified closure remains open | 90-99% | **Yes** | **Yes** | Before expiry, obtain incident closure evidence, a renewed accepted risk, or an explicit new disposition. | Credential owner, repo host admin, incident owner, independent verifier, NIV-001 runbook. |
+| NIV-001 credential incident | `SEC-001`, `OPS-010` | 06, 08 | Operational credential-incident closure has not been independently evidenced. `OPS-010 duplicate_of SEC-001`. | **P0** | `accepted_risk_approved_until_2026-08-30`; verified closure remains open | 90-99% | **Yes** | **Yes** | Before expiry, obtain incident closure evidence, a renewed accepted risk, or an explicit new disposition. | Credential owner, repo host admin, incident owner, independent verifier, NIV-001 runbook; current redacted inventory and evidence template. |
 | Admin session, MFA, and access-review boundary | `FE-002`, `INT-004`, `SEC-002`, `SEC-003`, `SEC-007` | 01, 05, 06 | Legacy Admin bearer/session behavior and incomplete internal access controls conflict with approved auth direction. | P1 | Admin Session local revalidation merged in PR #80; `DEC-AUTH-012` and the Feature 1.2 completion packet close the cross-tab policy/browser gap and record disposable Migration 009 evidence; Feature 1.6 in PR #86 confirms MFA is absent and decision-blocked; access-review and production acceptance remain `requires_revalidation` / blocked | 94-100% | Yes | Yes | Complete DR-005 TOTP, encryption/key, enrollment, pre-auth/session, step-up, recovery, event, owner, and rollout contracts; retain exact-target HTTPS/proxy, production migration/cutover, restore, monitoring, deployment, and activation gates. | `DEC-AUTH-005/007/008/009/012`; [Feature 1.2 revalidation](phases/FEATURE-1.2-admin-session-revalidation.md); [Feature 1.2 completion](phases/FEATURE-1.2-admin-session-completion.md); [Feature 1.6 evidence](phases/FEATURE-1.6-internal-mfa-revalidation.md); identity and operations owners; production browser/proxy evidence. |
 | Recovery, password, bootstrap, and secret atomicity | `FE-003`, `BE-008`, `DB-002`, `SEC-004`, `SEC-005`, `SEC-013` | 01, 03, 04, 06 | Legacy recovery/password writes were not one approved, atomic, secret-safe contract. | P1 | Password Recovery evidence merged in PR #81; Feature 1.4 PP-001/PP-002 bounded remediation merged in PR #84; timing, provider delivery, PP-003–PP-006, canonical password-rule clarification, bootstrap, migration, and production gates remain open | 93-100% | Yes | Yes | Approve recovery timing/delivery ownership; clarify `ADR-005` versus `DEC-AUTH-004`; retain production blocklist operations, target-equivalent Argon2 benchmark, activation/migration, deployed rollback floor, bootstrap, and rollout gates. | `DEC-AUTH-003/004`; `ADR-005` needs clarification; ADR-001; [Feature 1.3 remediation](phases/FEATURE-1.3-password-recovery-remediation.md); [Feature 1.4 remediation](phases/FEATURE-1.4-password-policy-hash-migration-remediation.md); Migration 008; isolated replica set; recovery runbook. |
 | Distributed abuse protection | `SEC-006` | 06 | The bounded MongoDB limiter exists, but real distributed concurrency, production proxy/outage/TTL/retention behavior, monitoring, and ownership are unproven. | P1 | partial / `requires_revalidation` / `blocked_by_decision`; Feature 1.5 packet merged in PR #85 | 100% | Yes for internet-facing auth | Yes | Complete DR-004 for production topology, proxy trust, store-outage behavior, TTL application, retention, monitoring, and owners; preserve the bounded `ADR-005` 5/20/15-minute contract unless separately changed. | `ADR-005`; DEC-AUTH-002/006; [Feature 1.5 evidence](phases/FEATURE-1.5-auth-rate-limit-revalidation.md); real MongoDB concurrency; deployment topology; security/operations owners. |
@@ -96,6 +96,29 @@ matrix, commit history, or test presence alone.
 | Layer 04 earlier absence of real Mongo evidence versus Layer 07 later 45-pass replica-set suite | Later local evidence supersedes only the absence claim; it does not prove production topology, real-data migration, or operational restore. |
 | Historical tracker / new default-branch commits versus scored audit snapshot | Preserve as revalidation candidates. Do not change finding to resolved without current verification. |
 | Intentional deferral versus broken contract | A deferred Retail/provider surface is not a defect for provider-free development, but becomes release/go-live blocking if the selected production scope promises that journey/capability. |
+
+## NIV-001 current evidence addendum — 2026-08-06
+
+Current baseline: `origin/main` at `9f6fe38398836b44158783684d23e6455c3cc6c2`.
+The merged PR #180 auth/security change is source evidence only and does not
+close `SEC-001`/`OPS-010`.
+
+Evidence is recorded in
+[`DR-002-NIV-001-REDACTED-GIT-INVENTORY-2026-08-06.md`](phases/DR-002-NIV-001-REDACTED-GIT-INVENTORY-2026-08-06.md)
+and the safe procedure is recorded in
+[`DR-002-NIV-001-REVOKE-ROTATE-EVIDENCE-TEMPLATE-2026-08-06.md`](phases/DR-002-NIV-001-REVOKE-ROTATE-EVIDENCE-TEMPLATE-2026-08-06.md).
+
+| Evidence group | Current result | Traceability interpretation |
+| --- | --- | --- |
+| Repository/GitHub inventory | 43 remote heads, 0 tags, 0 open PRs, 168 PR-head refs, 0 forks, 0 rulesets, 3 collaborator accounts by count | Current read-only snapshot only; freeze, old-clone, cache, backup, and Support evidence remain open. |
+| Local worktrees/object database | 93 registered worktrees, 20 dirty, 219 dangling objects, no missing/unreachable object lines | No worktree or object cleanup was performed; owner disposition is still required. |
+| Redacted history scan | Gitleaks `8.30.1`, exit `1`, 2 unresolved `generic-api-key` findings in `PRODUCT.md` and `doc/PRODUCTION_DEPLOYMENT.md` | Findings require secret-safe owner review; they are not automatically false positives or closure evidence. |
+| Focused non-production verification | Auth/security/permission/projection test set: `175 passed` | Bounded local source evidence only; no controlled new-account authentication was run. |
+| Credential/history action | No credential inspected, revoked, rotated, rewritten, force-pushed, or deleted | `NIV-001` remains `accepted_risk_approved_until_2026-08-30`; verified closure remains open. |
+
+The current status therefore remains **P0 / release-blocking / go-live-blocking**.
+No commit, local test, missing introducing object, or zero-count fork snapshot
+may be used to promote the finding to `resolved` or `Verified`.
 
 ## Traceability completeness
 
