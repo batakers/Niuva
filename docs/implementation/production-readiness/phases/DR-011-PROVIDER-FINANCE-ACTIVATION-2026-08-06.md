@@ -4,7 +4,10 @@
 
 **Status:** `OPEN` / `HUMAN_DECISION_BLOCKED`
 **Prepared:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Observed baseline:** `origin/main` at `c84743c8fcbc158721037b3c02dc0dff0c872242`
+**Observed current main:** `origin/main` at
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, with Git tree
+`6d2154bd52785bbc749345c0346651f9752d1646`, revalidated in fresh worktree
+`C:\tmp\niuva-dr011-current-main-20260806`.
 **Decision owners:** Product, Finance, storage/payment, security, and
 operations owners as assigned by the Project Owner
 **Scope:** Decision preparation only; no activation
@@ -23,7 +26,13 @@ provider calls, Finance operations, migration, deployment, readiness, or
 go-live.
 
 The observed SHA is a point-in-time remote observation only and is not a DR-001
-release-candidate selection.
+release-candidate selection. The earlier packet baseline
+`c84743c8fcbc158721037b3c02dc0dff0c872242` is historical; its diff to current
+main spans 78 paths, including backend/frontend runtime, tests, workflows,
+documentation, and staging-smoke changes. Historical source/test observations
+must therefore not be promoted to exact-`f43eea6` proof. PR #187 provides
+path-preserving backend/frontend/secret-scan evidence at head `b690236`, whose
+only change beyond `f43eea6` is documentation.
 
 ## 2. Authority and evidence sources
 
@@ -53,6 +62,10 @@ this packet. ADR-002/003 are approved with open decisions and are technical
 boundaries, not procurement, Finance, deployment, or go-live authorization.
 
 ## 3. Current approved boundary and evidence
+
+The source/configuration observations below were re-read against the exact
+`f43eea6` current-main worktree. They remain evidence of inactive boundaries,
+not provider selection, activation, or production approval.
 
 | Area | Current authority/source observation | Limit |
 | --- | --- | --- |

@@ -4,9 +4,11 @@
 
 **Status:** Documentation-only decision packet; human decision blocked
 **Date:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Observed baseline:** `origin/main` at `c84743c8fcbc158721037b3c02dc0dff0c872242`
-**Active branch:** `codex/g14-dr011-provider-boundary-20260806`
-**Active worktree:** `C:\tmp\niuva-g14-dr011-provider-boundary-20260806`
+**Observed current main:** `origin/main` at
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, Git tree
+`6d2154bd52785bbc749345c0346651f9752d1646`.
+**Active branch:** `codex/dr011-current-main-20260806`
+**Active worktree:** `C:\tmp\niuva-dr011-current-main-20260806`
 **Driver:** Faiz / delegated Codex implementation
 **Decision owners:** Product, Finance, storage/payment, security, and
 operations owners as assigned by the Project Owner
