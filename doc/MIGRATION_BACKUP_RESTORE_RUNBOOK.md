@@ -34,13 +34,16 @@ $env:DB_NAME   = "niuva"
 cd backend
 
 python -m migration_backup capture  --snapshot .\snapshots\pre-006.json
-python -m migration_backup verify   --snapshot .\snapshots\pre-006.json
+
+# Copy the checksum from capture output into the approved external custody record.
+$expectedSha256 = "<trusted SHA-256 from the capture record>"
+python -m migration_backup verify   --snapshot .\snapshots\pre-006.json --expected-sha256 $expectedSha256
 
 # run the migration here, dry-run first
 
-python -m migration_backup compare  --snapshot .\snapshots\pre-006.json
-python -m migration_backup restore  --snapshot .\snapshots\pre-006.json --allow-non-empty
-python -m migration_backup compare  --snapshot .\snapshots\pre-006.json
+python -m migration_backup compare  --snapshot .\snapshots\pre-006.json --expected-sha256 $expectedSha256
+python -m migration_backup restore  --snapshot .\snapshots\pre-006.json --expected-sha256 $expectedSha256 --allow-non-empty
+python -m migration_backup compare  --snapshot .\snapshots\pre-006.json --expected-sha256 $expectedSha256
 ```
 
 `--url` and `--database` override the environment.
@@ -55,7 +58,9 @@ python -m migration_backup compare  --snapshot .\snapshots\pre-006.json
   catches a mutated document that a count would call intact.
 - **Snapshot writes report SHA-256.** The checksum binds custody evidence to
   the exact snapshot file bytes without putting raw snapshot contents in the
-  evidence record.
+  evidence record. Capture also writes a detached `.sha256` manifest; verify,
+  restore, and compare require the independently recorded expected value before
+  they parse or process the snapshot.
 - **Collections created after the snapshot are dropped on restore.** Leaving
   them would not return the database to the captured point.
 - **BSON types survive.** Snapshots use `bson.json_util`, so Decimal128 comes

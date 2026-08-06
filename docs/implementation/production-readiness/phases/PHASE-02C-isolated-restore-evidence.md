@@ -5,8 +5,9 @@ DR-012 gates remain open**
 
 Task card: [PHASE-02C-task-card.md](PHASE-02C-task-card.md)
 
-Baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91` (`origin/main`,
-verified 2 August 2026).
+Execution baseline: `a2b7be0d445cf3a338d91cf74841e3bf8be11a91`
+(`origin/main`, verified 2 August 2026; current-main execution scope only, not
+the historical DR-001 release-candidate selection).
 
 Branch: `ops/backend-isolated-restore-proof`.
 
@@ -27,6 +28,18 @@ application database was connected.
 
 Snapshot/restore evidence interval (UTC): `2026-08-02T11:19:07.423654+00:00`
 through `2026-08-02T11:19:07.713622+00:00`.
+
+Procedure: `python -m pytest -n 0 -q
+backend\tests\test_migration_backup_restore.py` with
+`NIUVA_RUN_REAL_TRANSACTION_TESTS=1` and the loopback
+`MONGO_TRANSACTION_TEST_URL` for `rs-test`.
+
+Environment: Docker Compose `mongodb-test`, MongoDB 7.0, loopback port 27018,
+single-node `rs-test` writable primary. Owner and evidence custodian: Faiz.
+Database identity hashes are SHA-256 of the exact canonical UTF-8 database-name
+strings, not connection URIs or database contents. Sanitized retained evidence
+location: this aggregate record; raw snapshots and database records were not
+retained. Limitations and independent-review requirements remain below.
 
 | Check | Result |
 | --- | --- |

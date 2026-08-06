@@ -41,9 +41,11 @@ if (
 from bson.decimal128 import Decimal128  # noqa: E402
 from migration_backup import (  # noqa: E402
     capture,
+    checksum_manifest_path,
     compare,
-    read_snapshot,
+    read_verified_snapshot,
     restore,
+    restore_from_path,
     snapshot_file_digest,
     verify_snapshot,
     write_snapshot,
@@ -140,9 +142,16 @@ async def run_exercise(source_database_name, restore_database_name, snapshot_pat
         assert written["checksum"]["algorithm"] == "sha256"
         assert len(written["checksum"]["value"]) == 64
         assert snapshot_file_digest(snapshot_path) == written["checksum"]["value"]
+        assert Path(written["checksum_manifest"]).exists()
 
-        reloaded = read_snapshot(snapshot_path)
+        reloaded = read_verified_snapshot(snapshot_path, written["checksum"]["value"])
         assert verify_snapshot(reloaded)["intact"] is True
+
+        original_snapshot_bytes = snapshot_path.read_bytes()
+        snapshot_path.write_bytes(original_snapshot_bytes + b"\n")
+        with pytest.raises(ValueError, match="checksum mismatch"):
+            read_verified_snapshot(snapshot_path, written["checksum"]["value"])
+        snapshot_path.write_bytes(original_snapshot_bytes)
 
         # A snapshot taken of an unchanged database compares identical.
         assert (await compare(source_database, reloaded))["identical"] is True
@@ -180,7 +189,20 @@ async def run_exercise(source_database_name, restore_database_name, snapshot_pat
         # proving that the comparison below is against a second target.
         assert await restore_database.list_collection_names() == []
         assert snapshot_file_digest(snapshot_path) == written["checksum"]["value"]
-        result = await restore(restore_database, reloaded)
+        snapshot_path.write_bytes(original_snapshot_bytes + b"\n")
+        with pytest.raises(ValueError, match="checksum mismatch"):
+            await restore_from_path(
+                restore_database,
+                snapshot_path,
+                expected_sha256=written["checksum"]["value"],
+            )
+        assert await restore_database.list_collection_names() == []
+        snapshot_path.write_bytes(original_snapshot_bytes)
+        result = await restore_from_path(
+            restore_database,
+            snapshot_path,
+            expected_sha256=written["checksum"]["value"],
+        )
         assert result["dropped"] == []
 
         assert (await compare(restore_database, reloaded))["identical"] is True
@@ -241,6 +263,7 @@ async def run_exercise(source_database_name, restore_database_name, snapshot_pat
             remaining = await client.list_database_names()
         finally:
             snapshot_path.unlink(missing_ok=True)
+            checksum_manifest_path(snapshot_path).unlink(missing_ok=True)
             cleanup = {
                 "source_database_absent": (
                     remaining is not None and source_database_name not in remaining
@@ -249,6 +272,9 @@ async def run_exercise(source_database_name, restore_database_name, snapshot_pat
                     remaining is not None and restore_database_name not in remaining
                 ),
                 "snapshot_deleted": not snapshot_path.exists(),
+                "checksum_manifest_deleted": not checksum_manifest_path(
+                    snapshot_path
+                ).exists(),
             }
             client.close()
     assert all(cleanup.values())
@@ -287,15 +313,18 @@ def test_a_restore_refuses_a_populated_target_unless_told(
     async def scenario():
         client = AsyncIOMotorClient(MONGO_TRANSACTION_TEST_URL)
         database = client[transaction_database_name]
+        snapshot_path = tmp_path / "snapshot.json"
         try:
             await seed(database)
             snapshot = await capture(database)
-            write_snapshot(snapshot, tmp_path / "snapshot.json")
+            write_snapshot(snapshot, snapshot_path)
 
             with pytest.raises(ValueError, match="not empty"):
                 await restore(database, snapshot)
         finally:
             await client.drop_database(transaction_database_name)
+            snapshot_path.unlink(missing_ok=True)
+            checksum_manifest_path(snapshot_path).unlink(missing_ok=True)
             client.close()
 
     asyncio.run(scenario())
@@ -330,10 +359,10 @@ def test_a_snapshot_refuses_to_overwrite_an_existing_file(
     async def scenario():
         client = AsyncIOMotorClient(MONGO_TRANSACTION_TEST_URL)
         database = client[transaction_database_name]
+        path = Path(tmp_path / "snapshot.json")
         try:
             await seed(database)
             snapshot = await capture(database)
-            path = Path(tmp_path / "snapshot.json")
             write_snapshot(snapshot, path)
 
             # Overwriting silently would destroy the only copy of the state
@@ -342,6 +371,8 @@ def test_a_snapshot_refuses_to_overwrite_an_existing_file(
                 write_snapshot(snapshot, path)
         finally:
             await client.drop_database(transaction_database_name)
+            path.unlink(missing_ok=True)
+            checksum_manifest_path(path).unlink(missing_ok=True)
             client.close()
 
     asyncio.run(scenario())

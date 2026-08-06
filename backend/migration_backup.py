@@ -22,6 +22,7 @@ from pathlib import Path
 from bson import json_util
 
 SNAPSHOT_FORMAT = 1
+CHECKSUM_MANIFEST_SUFFIX = ".sha256"
 
 # Never captured or restored: system collections belong to the server, not to
 # the application's data.
@@ -51,6 +52,20 @@ def snapshot_file_digest(path: Path) -> str:
     return digest.hexdigest()
 
 
+def checksum_manifest_path(path: Path) -> Path:
+    """Return the detached checksum-manifest path for a snapshot."""
+    return path.with_name(path.name + CHECKSUM_MANIFEST_SUFFIX)
+
+
+def _expected_sha256(value: str) -> str:
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError("expected snapshot checksum must be a 64-character SHA-256")
+    normalized = value.lower()
+    if any(character not in "0123456789abcdef" for character in normalized):
+        raise ValueError("expected snapshot checksum must be a 64-character SHA-256")
+    return normalized
+
+
 async def collection_names(database) -> list[str]:
     names = await database.list_collection_names()
     return sorted(name for name in names if not name.startswith(EXCLUDED_PREFIXES))
@@ -77,15 +92,25 @@ async def capture(database) -> dict:
 def write_snapshot(snapshot: dict, path: Path) -> dict:
     if path.exists():
         raise ValueError("snapshot path already exists; refusing to overwrite")
+    manifest_path = checksum_manifest_path(path)
+    if manifest_path.exists():
+        raise ValueError("checksum manifest path already exists; refusing to overwrite")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json_util.dumps(snapshot, indent=2), encoding="utf-8")
+    checksum = snapshot_file_digest(path)
+    try:
+        manifest_path.write_text(f"{checksum}  {path.name}\n", encoding="ascii")
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
     return {
         "path": str(path),
+        "checksum_manifest": str(manifest_path),
         "collections": len(snapshot["collections"]),
         "documents": sum(len(items) for items in snapshot["collections"].values()),
         "checksum": {
             "algorithm": "sha256",
-            "value": snapshot_file_digest(path),
+            "value": checksum,
         },
     }
 
@@ -97,6 +122,19 @@ def read_snapshot(path: Path) -> dict:
     if snapshot.get("format") != SNAPSHOT_FORMAT:
         raise ValueError("unsupported snapshot format")
     return snapshot
+
+
+def read_verified_snapshot(path: Path, expected_sha256: str) -> dict:
+    """Check custody bytes before parsing or processing a snapshot."""
+    if not path.exists():
+        raise ValueError("snapshot path does not exist")
+    expected = _expected_sha256(expected_sha256)
+    actual = snapshot_file_digest(path)
+    if actual != expected:
+        raise ValueError(
+            f"snapshot checksum mismatch: expected {expected}, got {actual}"
+        )
+    return read_snapshot(path)
 
 
 def verify_snapshot(snapshot: dict) -> dict:
@@ -154,6 +192,21 @@ async def restore(database, snapshot: dict, *, allow_non_empty: bool = False) ->
     }
 
 
+async def restore_from_path(
+    database,
+    path: Path,
+    *,
+    expected_sha256: str,
+    allow_non_empty: bool = False,
+) -> dict:
+    """Verify a snapshot file before any restore-side database write."""
+    snapshot = read_verified_snapshot(path, expected_sha256)
+    check = verify_snapshot(snapshot)
+    if not check["intact"]:
+        raise ValueError(f"snapshot failed verification: {check['mismatched']}")
+    return await restore(database, snapshot, allow_non_empty=allow_non_empty)
+
+
 async def compare(database, snapshot: dict) -> dict:
     """Compare a live database against a snapshot, per collection."""
     live = await capture(database)
@@ -188,23 +241,24 @@ async def run_cli(args) -> dict:
             written = write_snapshot(snapshot, Path(args.snapshot))
             return {"command": "capture", **written}
         if args.command == "verify":
+            snapshot = read_verified_snapshot(Path(args.snapshot), args.expected_sha256)
             return {
                 "command": "verify",
-                **verify_snapshot(read_snapshot(Path(args.snapshot))),
+                **verify_snapshot(snapshot),
             }
         if args.command == "restore":
-            snapshot = read_snapshot(Path(args.snapshot))
-            check = verify_snapshot(snapshot)
-            if not check["intact"]:
-                raise ValueError(f"snapshot failed verification: {check['mismatched']}")
-            result = await restore(
-                database, snapshot, allow_non_empty=args.allow_non_empty
+            result = await restore_from_path(
+                database,
+                Path(args.snapshot),
+                expected_sha256=args.expected_sha256,
+                allow_non_empty=args.allow_non_empty,
             )
             return {"command": "restore", **result}
         if args.command == "compare":
+            snapshot = read_verified_snapshot(Path(args.snapshot), args.expected_sha256)
             return {
                 "command": "compare",
-                **await compare(database, read_snapshot(Path(args.snapshot))),
+                **await compare(database, snapshot),
             }
         raise ValueError(f"unknown command: {args.command}")
     finally:
@@ -221,6 +275,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("command", choices=["capture", "verify", "restore", "compare"])
     parser.add_argument("--snapshot", required=True)
+    parser.add_argument(
+        "--expected-sha256",
+        help=(
+            "Trusted custody checksum for verify, restore, or compare; capture "
+            "prints this value and writes a detached manifest."
+        ),
+    )
     parser.add_argument("--url", default=os.environ.get("MONGO_URL"))
     parser.add_argument("--database", default=os.environ.get("DB_NAME"))
     parser.add_argument(
@@ -235,6 +296,10 @@ def main() -> None:
     args = build_parser().parse_args()
     if not args.url or not args.database:
         raise SystemExit("--url and --database are required (or MONGO_URL/DB_NAME)")
+    if args.command != "capture" and not args.expected_sha256:
+        raise SystemExit(
+            "--expected-sha256 is required for verify, restore, and compare"
+        )
     print(json.dumps(asyncio.run(run_cli(args)), indent=2, sort_keys=True))
 
 
