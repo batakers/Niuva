@@ -7,18 +7,23 @@ final gate acceptance
 **Date:** 2026-08-06 (Asia/Jakarta)
 **Requested baseline:** `origin/main` `c7452b889eec2c3597c622479d46da456f2bf656`
 **Observed current head:** `origin/main` at
-`4026bc25d2d3a0e39574f3030101d42044b6ceb5`, Git tree
-`61c95415ef164c70d2c5221fb71a679a976b2f7b`
+`9b3044170f24b857348af073387ab4401f8822d7`, Git tree
+`b0f22420856b4041dafabe78399215ab8f9529e1`
+**Merge parents:** `9472537405af3353a68e599a057263ca7aa079ee` and
+`ade7c07901898516eb30eee7a19691bd1d4d37ce`
 **Driver:** Faiz / delegated Codex implementation
-**Active branch:** `codex/postmerge-readiness-audit-20260806`
-**Active worktree:** `C:\tmp\niuva-postmerge-readiness-audit-20260806`
+**Active branch:** `codex/goal-continuation-fresh-20260806-v3`
+**Active worktree:** `C:\tmp\niuva-goal-continuation-fresh-20260806-v3`
 
 ## Objective
 
-Re-anchor the current decision queue and readiness evidence after the
-documentation-only merges of PRs #187, #188, #190, #191, #192, #193, and #194.
-The packet must distinguish the current repository observation from a selected
-release candidate, and must keep open PRs #185 and #189 outside `main`.
+Re-anchor the current decision queue and readiness evidence after PR #185
+entered `main` on top of PRs #189 and #195. The previous packet was authored
+against the intermediate `4026bc2`/`9472537` states and incorrectly described
+PR #185 as open. The packet must distinguish the current repository observation
+from a selected release candidate, preserve the documented DR-002
+sole-owner exception as non-independent and unverified, and identify PRs #196
+and #197 as open work based on the older `9472537` head.
 
 This task does not select DR-001, approve a release candidate, resolve DR-002,
 approve a bundle budget, activate a provider, run a migration, deploy, approve
@@ -46,8 +51,10 @@ override canonical decisions or authorize external operations.
 Only these paths may change:
 
 1. `docs/implementation/production-readiness/DECISIONS_REQUIRED.md` — update
-   the DR-001 freshness observation and link the packet; and
+   the DR-001 freshness observation, DR-013 source-state mismatch, and packet
+   link; and
 2. this task card and its paired revalidation packet.
+3. `docs/implementation/production-readiness/phases/G5-CURRENT-MAIN-INTEGRATION-BLOCKER-2026-08-06.md` — update the serial G5 current-main observation.
 
 ## Explicit exclusions
 
@@ -67,10 +74,13 @@ Only these paths may change:
 
 - Record the exact fetched `origin/main` SHA, Git tree, merge parents, clean
   worktree state, and requested-baseline staleness.
-- Record that the `f43eea6..4026bc2` post-merge delta is documentation-only,
-  with no source/test/workflow paths changed.
+- Record that `9472537..9b30441` is documentation-only: five paths, 194
+  additions, and 136 deletions. Also retain the earlier #189 source/config
+  delta and distinguish it from the #185 documentation delta.
 - Record merged lineage and current open PR state without treating either as
-  a release decision.
+  a release decision; #185 is merged and #196/#197 are not part of `main`.
+- Record that the #185 sole-owner exception is an accepted-risk disposition,
+  not independent verification or `Verified` incident closure.
 - Preserve DR-001, DR-002, DR-011–DR-015, provider, migration, deployment,
   independent-review, production-readiness, and go-live blockers.
 - Run `git diff --check`, documentation lint, exact staged-path assertion,
@@ -78,16 +88,20 @@ Only these paths may change:
 
 ## Unresolved risks and decisions
 
-- **DR-001 remains open:** the observed `4026bc2` head is not an owner-selected
+- **DR-001 remains open:** the observed `9b30441` head is not an owner-selected
   release candidate.
-- **DR-002 remains open for verified closure:** the accepted-risk expiry,
-  independent-verification gap, and credential/history evidence remain active.
+- **DR-002 remains open for verified closure:** #185 records a sole-owner
+  self-verification exception through 30 August 2026, but independent
+  verification, credential action, history/cache/fork/clone evidence, and
+  controlled new-account authentication remain absent.
 - **DR-011–DR-015 remain open or partial:** provider/Finance activation,
   operational ownership, release policy, observability evidence,
   production-readiness, and go-live decisions are not supplied by this task.
 - The requested `c7452b8` baseline and prior `f43eea6` observation can become
   stale as `main` advances; the paired packet must be refreshed before a new
   candidate claim.
+- PR #196 and PR #197 were authored against `9472537`; they require current-
+  head review before merge and are not evidence for `9b30441`.
 - External smoke, real-role/browser, staging, artifact publication,
   backup/restore, migration, deployment, monitoring, and go-live checks were
   unavailable because target, credentials, owners, or approvals are absent.

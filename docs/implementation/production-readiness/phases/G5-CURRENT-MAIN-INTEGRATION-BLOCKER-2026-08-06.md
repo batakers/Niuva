@@ -8,22 +8,24 @@ selection, production-readiness approval, deployment approval, or go-live
 approval.
 
 **Latest current-main observation:** `origin/main` at
-`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, with Git tree
-`6d2154bd52785bbc749345c0346651f9752d1646`, fetched on 6 August 2026 at
-`2026-08-06T06:29:20Z` (`13:29:20 WIB`). PR #186 is the latest merge and
-changes only six production-readiness documentation paths. PR #185 remains
-open and is not part of this `main` tree; its current GitHub status was
-rechecked as `CLEAN / MERGEABLE` at `2026-08-06T07:30:47Z`.
+`9b3044170f24b857348af073387ab4401f8822d7`, with Git tree
+`b0f22420856b4041dafabe78399215ab8f9529e1`, freshly fetched on 6 August 2026
+(Asia/Jakarta). The merge commit is PR #185 at `16:56:51 WIB`, with parents
+`9472537405af3353a68e599a057263ca7aa079ee` and
+`ade7c07901898516eb30eee7a19691bd1d4d37ce`. PR #185 is documentation-only
+and records a sole-owner accepted-risk exception; it does not establish
+independent verification or `Verified` closure. PRs #196 and #197 remain open
+on the older `9472537` base and are not part of this `main` tree.
 
 **Historical packet baseline:** `origin/main` at
 `6cd5a6417e1f4e72b1fbcce5d11801358b424d82`, with Git tree
 `77ce7bceb0eeb237ead9ad9591c7160c28d7e76`, after the earlier merge of PR #174
 and PRs #175–#178. Evidence tied only to unchanged source paths may be carried
 forward, but the historical identity and external observations do not become
-exact-`f43eea6` acceptance.
+exact-`9b30441` acceptance.
 
-**Update branch/worktree:** `codex/g5-current-main-revalidation-post-186-20260806` /
-`C:\tmp\niuva-g5-current-main-revalidation-post-186-20260806`.
+**Update branch/worktree:** `codex/goal-continuation-fresh-20260806-v3` /
+`C:\tmp\niuva-goal-continuation-fresh-20260806-v3`.
 
 This update is documentation-only. It does not create a runtime candidate or
 alter any external evidence, staging, deployment, migration, provider, secret,
@@ -63,13 +65,13 @@ observation:
 
 | Evidence | Result | Limit |
 | --- | --- | --- |
-| Latest `origin/main` | `f43eea6bd633b4250180e4373a62e5fb21fe14fa` | Point-in-time source identity; DR-001 does not select it |
-| Git tree | `6d2154bd52785bbc749345c0346651f9752d1646` | Source tree identity; not an artifact digest |
-| Current-main merge parents | `cccc1e8c06abf1eba57854166c01598bd8db2246`, `0b23419a5a0fe46b7dbc8459032213c741c60fbc` | Git ancestry only |
-| Delta from pre-#186 main | Six documentation-only paths changed by PR #186; no backend/frontend runtime, test, dependency, workflow, migration, or provider path changed | Source-path evidence from `cccc1e8` may carry by path preservation; exact documentation provenance is refreshed here |
-| Open PR state | PR #185 is `OPEN / CLEAN / MERGEABLE` as rechecked at `2026-08-06T07:30:47Z`; it is not included in `f43eea6` | Its evidence remains separate until owner reconciliation and review |
-| Verification worktree | `C:\tmp\niuva-g5-current-main-revalidation-post-186-20260806`, `HEAD = origin/main` | Does not prove any external environment state |
-| Update branch base | `codex/g5-current-main-revalidation-post-186-20260806` is based on `f43eea6` and changes only this packet | The packet is refreshed against the exact current main |
+| Latest `origin/main` | `9b3044170f24b857348af073387ab4401f8822d7` | Point-in-time source identity; DR-001 does not select it |
+| Git tree | `b0f22420856b4041dafabe78399215ab8f9529e1` | Source tree identity; not an artifact digest |
+| Current-main merge parents | `9472537405af3353a68e599a057263ca7aa079ee`, `ade7c07901898516eb30eee7a19691bd1d4d37ce` | Git ancestry only |
+| Delta from pre-#186 main | `f43eea6..9b30441`: 26 paths, 1359 additions, and 266 deletions; the #185 interval itself is five documentation paths | Scope indicator only; changed paths require proportional revalidation |
+| Open PR state | PR #196 is `OPEN / CONFLICTING` against the newer main; PR #197 is `OPEN / MERGEABLE` but based on the older `9472537` head; neither is current-main evidence | Open PR evidence remains separate from `main` until current-head review and merge |
+| Verification worktree | `C:\tmp\niuva-goal-continuation-fresh-20260806-v3`, `HEAD = origin/main`, clean and zero-divergent | Does not prove any external environment state |
+| Update branch base | `codex/goal-continuation-fresh-20260806-v3` is based on `9b30441` and changes only this packet | The packet is refreshed against the exact current main |
 
 PR #173 is now merged at `d4bf4ac`:
 [`#173`](https://github.com/batakers/Niuva/pull/173). Its G4 packet was
@@ -87,6 +89,16 @@ The child handovers were then merged in this order:
 | #178 | `9736d617ca4399e5533be60c919814341e0b1ea9` | Frontend release bundle gate wiring and contract test |
 | #174 | `6cd5a6417e1f4e72b1fbcce5d11801358b424d82` | Post-child G5 reconciliation and current-main freshness correction |
 | #186 | `f43eea6bd633b4250180e4373a62e5fb21fe14fa` | Post-merge readiness/NIV-001 documentation re-anchor; documentation-only |
+| #187 | `2dfb2d72ae444e06fc95121bbfe3d28deb0e53ef` | G5 current-main blocker reanchor, documentation-only |
+| #188 | `b27d71233117d6141bd5a4d097fbd977da927a7a` | DR-012 current-main revalidation, documentation-only |
+| #190 | `01baf05bb38a71d93797152621280b92e0ffceaf` | DR-013 current-main reanchor, documentation-only |
+| #191 | `b10a1cd750e295eb57fbdb92df714453cee15357` | DR-011 current-main reanchor, documentation-only |
+| #192 | `503f1b2a4c8e9db1758ad09c5d47e250ec0fe54c` | G1–G4 current-main evidence index, documentation-only |
+| #193 | `4842c697003de18db55936a9114ae79e8eb9c51f` | DR-001 current-main reanchor, documentation-only |
+| #194 | `4026bc25d2d3a0e39574f3030101d42044b6ceb5` | G4 artifact/rollback revalidation, documentation-only |
+| #189 | `9f116044ea5a8a3eab86beacbb24a6faa8464f47` | Frontend release-bundle budget/runner and related tests |
+| #195 | `9472537405af3353a68e599a057263ca7aa079ee` | Post-merge readiness packet; documentation-only but authored against `4026bc2` |
+| #185 | `9b3044170f24b857348af073387ab4401f8822d7` | NIV-001 sole-owner accepted-risk exception and redacted evidence refresh |
 
 These merge commits are repository integration evidence only. They do not
 select a release candidate or establish staging, production, or go-live proof.
@@ -103,7 +115,7 @@ current exact-SHA acceptance automatically.
 | G1 | G1 task card; PR #166 backend/transaction changes and CI evidence; current-main handover merged by [#176](https://github.com/batakers/Niuva/pull/176) | Packet entered `main` at `d812f95`; its evidence is tied to the earlier `d4bf4ac` runtime tree, whose relevant backend paths are unchanged in the later merges | Bounded repository/path evidence passes; staging, independent review, and operational reconciliation remain open |
 | G2 | G2 task card; DR-003, DR-004, and DR-005 decision packets; current-main handover merged by [#177](https://github.com/batakers/Niuva/pull/177) | Packet entered `main` at `90368e4`; auth/security, authorization/privacy, frontend-auth, and exact-main CI evidence are recorded, while DR-003/004/005 remain open | Bounded repository evidence passes with limits; human security decisions and production evidence remain blocking |
 | G3 | Historical packet at `5254641c`; current revalidation packet merged by [#175](https://github.com/batakers/Niuva/pull/175); PR #172 current-main-equivalent frontend CI | Current source revalidation passes `design-system-integration.spec.js` in 4/4 viewports and `npm run audit:production`; the packet is now in `main` at `4c105af` | Bounded hermetic gate passes; serial handover and external role/staging/manual accessibility evidence remain open |
-| G4 | Current-main G4 packet merged by PR #173; release-bundle gate merged by [#178](https://github.com/batakers/Niuva/pull/178) | Source/build evidence is present at `9736d61`; all three budget values remain unapproved and no immutable external artifact, staging, restore, or rollback evidence exists | G4 release gate is source-supported but not operationally accepted |
+| G4 | Current-main G4 packet merged by PR #173; release-bundle gate merged by [#178](https://github.com/batakers/Niuva/pull/178), with budget source/config later merged by [#189](https://github.com/batakers/Niuva/pull/189) | Current `main` contains numeric budget source state and the runner, but canonical DR-013 remains Open; no immutable external artifact, staging, restore, or rollback evidence exists | G4 release gate is source-supported but not operationally accepted |
 | G5 | This packet | Final acceptance intentionally not attempted | Blocked until the relevant child handovers, exact-SHA evidence, and owner/verifier decisions exist |
 
 G1, G2, and G3 handovers are now part of the `main` phase inventory. G2 also
@@ -113,14 +125,25 @@ that the underlying backend source is defective.
 
 ## 4. Verification evidence that can be carried
 
+### Exact current-main repository quality gate
+
+The post-merge `quality-gates` workflow at current `origin/main` `9b30441`
+passed in run
+[`31091224082`](https://github.com/batakers/Niuva/actions/runs/31091224082):
+backend, frontend, and secret-scan jobs completed successfully. This remains
+CI evidence only and does not prove staging, external origins, restore,
+rollback, monitoring, production readiness, or go-live.
+
 ### Current-main-equivalent PR quality evidence
 
 PR #172 workflow run
 [`31059540675`](https://github.com/batakers/Niuva/actions/runs/31059540675)
 ran at head `2b970300a856c5c8c5697c21d335cad78775b15b`. Its tree equals the
-first-parent runtime tree carried into `d4bf4ac`; the later child merges do not
-change that runtime source tree except for the release-script contract in
-PR #178:
+first-parent runtime tree carried into `d4bf4ac`; that is bounded historical
+evidence for the paths it exercised. Later PR #178 changed the release-script
+contract, PR #189 changed frontend release tooling/config/tests, and PR #185
+changed documentation, so this run is not a full exact-current-main release
+verification:
 
 - backend job `92484240967`: `961 passed, 15 skipped, 14 subtests passed` in
   `28.54s`, with the job's quality stages successful;
@@ -151,7 +174,7 @@ current runtime tree:
 - `backend/tests/test_transaction_observability.py`.
 
 This is carried path evidence, not a claim that the transaction workflow ran
-on `f43eea6`. The earlier PR #164 failure was followed by the retry-safe
+on `9b30441`. The earlier PR #164 failure was followed by the retry-safe
 correction and later passing transaction evidence.
 
 PR #164's retry-safe follow-up run
@@ -163,14 +186,14 @@ that run have no diff from its tested head `d4c144b7` to current `f43eea6`.
 The two transaction runs are reported separately because PR #164 and PR #166
 changed different portions of the G1 path set.
 
-The exact-current-main backend quality run
+The earlier exact-current-main backend quality run
 [`31061245165`](https://github.com/batakers/Niuva/actions/runs/31061245165),
 backend job
 [`92489477033`](https://github.com/batakers/Niuva/actions/runs/31061245165/job/92489477033),
 also passed with `961 passed, 15 skipped, 14 subtests passed in 20.56s` at
 `d4bf4ac`. PRs #175–#178 and #186 do not change the backend runtime paths, so this
-quality result carries to `f43eea6` by path preservation; it is not a new
-exact-`f43eea6` backend workflow run. The isolated transaction workflow
+quality result carried to `f43eea6` by path preservation; it is historical,
+not a new exact-`9b30441` transaction workflow run. The isolated transaction workflow
 remains path-preserving evidence rather than an exact-current-SHA transaction
 workflow run.
 
@@ -198,13 +221,12 @@ screen-reader review, and staging remain separate unrun gates.
 ### G4 evidence now on main
 
 PR #173's merged packet records a local build observation, a local artifact
-manifest, absent bundle-budget policy, no immutable registry/hosting digest,
-and no staging/restore/monitoring evidence. Its local source/build observation
-was made against the same runtime source tree as PR #172; PRs #175–#177 and
-PR #186 add documentation, while PR #178 adds only the release contract/test.
-This supports carrying the source-path evidence, but
-does not create an external artifact, staging target, previous-known-good
-release, or rollback exercise.
+manifest, no immutable registry/hosting digest, and no staging/restore/
+monitoring evidence. PR #189 subsequently added the release-budget config,
+runner, and contract tests to `main`; its `status: "approved"` value is source
+state, not closure of canonical DR-013. PR #185 changes documentation only.
+The current main quality run does not create an external artifact, staging
+target, previous-known-good release, or rollback exercise.
 
 ### Release bundle gate review in PR #178
 
@@ -228,13 +250,12 @@ largest async asset: 100.14 kB
 ```
 
 The changed `build:release` now invokes `check:bundle` after the build and
-persists `build/bundle-report.json`. With no approved budget environment, the
-gate intentionally fails closed with exit code `2` and names the missing
-`BUNDLE_TOTAL_GZIP_BUDGET`, `BUNDLE_ENTRY_GZIP_BUDGET`, and
-`BUNDLE_ASYNC_GZIP_BUDGET` values. This is evidence of a missing decision, not
-permission to invent thresholds. The gate does not
-create an artifact registry digest, attestation, hosting revision, staging
-target, or rollback identity.
+persists `build/bundle-report.json`. PR #189 merged a repository budget file
+with `655000`, `229000`, and `113000` byte limits against an `f43eea6`
+measurement, and the runner loads those values. This is reproducible source
+state, but canonical DR-013 remains Open; the merge does not authorize
+silently raising budgets or publish an artifact registry digest, attestation,
+hosting revision, staging target, or rollback identity.
 
 ## 5. Provenance hazards and stale context
 
@@ -246,6 +267,8 @@ not be used as unqualified current-candidate evidence:
 | `CURRENT-RELEASE-CANDIDATE-SELECTION-2026-08-06.md` | `c84743c8` | DR-001 packet is stale; owner selection remains blank |
 | `CURRENT-MAIN-DR001-FRESHNESS-2026-08-06.md` | `5d5abcf` | Freshness packet is superseded by later main lineage |
 | `CURRENT-MAIN-READINESS-PROVENANCE-RECONCILIATION-2026-08-06.md` | `9f4d3a4` | Carried evidence requires revalidation at `f43eea6` |
+| `CURRENT-MAIN-POST-MERGE-READINESS-REVALIDATION-2026-08-06.md` | `4026bc2` in merged PR #195 | Stale intermediate observation; PR #196 is an older-base correction and is now conflicting |
+| `DR-002-NIV-001-DISPOSITION-2026-08-06.md` | `9472537` | Point-in-time decision evidence; #185 merge does not turn its exception into Verified closure |
 | `G3-BROWSER-EVIDENCE-SOURCE-GATE-2026-08-06.md` | `5254641c` | Historical residual record; current findings are revalidated in merged PR #175 |
 | `G4-CURRENT-MAIN-ARTIFACT-ROLLBACK-EVIDENCE-2026-08-06.md` | `b1564b0` | Merged current-main packet; source-path evidence carries, external evidence remains absent |
 
@@ -257,12 +280,13 @@ reconcile all applicable evidence against that tree.
 
 | Required G5 item | Current result | Verdict |
 | --- | --- | --- |
-| Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `f43eea6` is only observed main | `BLOCKED_BY_DECISION` |
+| Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `9b30441` is only observed main | `BLOCKED_BY_DECISION` |
+| DR-002 verified incident closure and independent verification | #185 records a sole-owner accepted-risk exception through 30 August 2026; P0 remains open and independent verification/credential action are absent | `BLOCKED_BY_DECISION` |
 | G1 exact-SHA handover with changed/unchanged paths and verifier | PR #176 packet is merged at `d812f95` and tied to `d4bf4ac`; path-preserving transaction evidence and current-tree backend quality carry by unchanged paths; independent verifier and external role matrix absent | `PARTIAL_PASS` |
 | G2 exact-SHA auth/security matrix and human decision closure | PR #177 packet is merged at `90368e4` and tied to `d4bf4ac`; local auth/security `99` passed, authorization/privacy `197 passed, 2 skipped`, frontend auth `65 passed`, and exact-main CI passed; DR-003/004/005 and external role/staging evidence remain open | `BLOCKED_BY_DECISION` |
 | G3 browser, accessibility, role, and negative-path evidence | Hermetic design-system suite `4/4` and audit runner pass; real-role/external/manual evidence absent | `PARTIAL_PASS` |
-| G4 artifact, environment, rollback, and operations evidence | PR #178 release gate is merged at `9736d61` and PR #173 packet provides source/build evidence; no approved budget policy, external target, immutable published artifact, restore, or rollback exercise exists | `BLOCKED_BY_EXTERNAL_EVIDENCE` |
-| Backend/frontend/transaction quality gates | Current-main release contracts `6 passed`, bundle contracts `5 passed`, and build passed; PR #175–#178 and #186 required checks passed at their cited heads; relevant isolated transaction runs passed | `PARTIAL_PASS` |
+| G4 artifact, environment, rollback, and operations evidence | PR #178 release gate is merged at `9736d61`; #189 adds numeric budget source state, but canonical DR-013 remains Open; no external target, immutable published artifact, restore, or rollback exercise exists | `BLOCKED_BY_EXTERNAL_EVIDENCE` |
+| Backend/frontend/transaction quality gates | Current-main `quality-gates` run [`31091224082`](https://github.com/batakers/Niuva/actions/runs/31091224082) passed at `9b30441`; earlier release/transaction evidence also passed, with environment-dependent gaps remaining | `PARTIAL_PASS` |
 | Exact external origin/TLS/proxy/CORS/cookie verification | No approved target or credentials | `NOT_RUN` |
 | Migration dry run/apply/backup/restore/rollback | No approved target or mutation authorization | `NOT_RUN` |
 | Immutable artifact registry/attestation and previous-known-good identity | Not present | `MISSING` |
@@ -281,6 +305,9 @@ accepted by the named authority before the corresponding gate can pass:
 
 - DR-001: exact candidate SHA, scope, effective time, owners, verifier,
   exclusions, and accepted risks;
+- DR-002: #185's sole-owner exception is time-bound accepted risk only;
+  independent closure evidence, credential action, and external history/
+  cache/fork/clone evidence remain required;
 - DR-003, DR-004, and DR-005: authentication scope, abuse-control topology,
   MFA parameters, key custody, retention, alerting, and accountable owners;
 - DR-011: storage/payment/provider and Finance/reconciliation activation;
@@ -297,8 +324,9 @@ accepted by the named authority before the corresponding gate can pass:
 Until those inputs exist, the exact stop conditions are: do not enable Retail
 checkout, upload, payment, provider integrations, or production mutations; do
 not use real credentials or data; do not apply or restore migrations; do not
-publish an untracked artifact as a release; and do not declare `f43eea6` or any
-other SHA production-ready.
+publish an untracked artifact as a release; and do not declare `9b30441` or any
+other SHA production-ready. Do not treat the #185 self-verification exception
+as `Verified` closure.
 
 ## 8. Handover
 
@@ -318,22 +346,20 @@ other SHA production-ready.
 
 ### Verification and limits
 
-- fresh fetch, exact `origin/main` SHA/tree (`f43eea6` /
-  `6d2154bd52785bbc749345c0346651f9752d1646`), fresh worktree
-  `g5-current-main-revalidation-post-186-20260806`, and zero divergence before
-  this update: passed;
+- fresh fetch, exact `origin/main` SHA/tree (`9b30441` /
+  `b0f22420856b4041dafabe78399215ab8f9529e1`), fresh worktree
+  `goal-continuation-fresh-20260806-v3`, and zero divergence before this
+  update: passed;
 - current-main-equivalent PR #172 backend/frontend/browser/secret checks:
   passed at the cited PR head;
-- PR #186 backend/frontend/secret-scan checks: passed at head `0b23419`; the
-  merge to `f43eea6` changes only documentation, so no exact-`f43eea6`
-  workflow result is claimed;
+- PR #185 merge-triggered current-main quality run `31091224082`: backend,
+  frontend, and secret-scan passed at `9b30441`;
 - a fresh local full-backend attempt on `f43eea6` did not complete within the
   bounded run and ended during pytest stdout flush with `OSError: [Errno 22]
   Invalid argument`; no exact-current-main local backend result is claimed;
 - backend quality run `31061245165` at the prior runtime tree: passed with
-  `961 passed, 15 skipped, 14 subtests passed`; PRs #175–#178 and #186 do not
-  change backend runtime paths, so the result carries to `f43eea6` by path
-  preservation rather than a new exact-head backend run;
+  `961 passed, 15 skipped, 14 subtests passed`; this remains historical path
+  evidence, while the current-main run is recorded above;
 - PR #164 follow-up and PR #166 isolated transaction runs: passed with `76`
   each, with relevant paths unchanged through current `main`;
 - current G1 handover PR #176: backend, frontend, and secret-scan checks
@@ -347,8 +373,8 @@ other SHA production-ready.
 - G4 current-main packet: merged by PR #173, with external operational gaps
   still open;
 - PR #178 release bundle gate review: release-contract `6` passed, bundle
-  contract `5` passed, production build passed, and missing approved budgets
-  correctly fail closed; merged at `9736d61`;
+  contract `5` passed, and production build passed; #189 later persisted the
+  budget source/config and runner, while canonical DR-013 remains Open;
 - external smoke, real-role browser/accessibility review, staging health,
   artifact publication, backup/restore, migration, deployment, monitoring,
   and go-live: not run because the target, credentials, owner, or approval is

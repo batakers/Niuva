@@ -5,17 +5,18 @@
 **Status:** `CURRENT-MAIN EVIDENCE / NOT RELEASE-CANDIDATE SELECTION`
 
 **Observed current head:** `origin/main` at
-`4026bc25d2d3a0e39574f3030101d42044b6ceb5` (`4026bc2`), Git tree
-`61c95415ef164c70d2c5221fb71a679a976b2f7b`, fetched on 6 August 2026
+`9b3044170f24b857348af073387ab4401f8822d7` (`9b30441`), Git tree
+`b0f22420856b4041dafabe78399215ab8f9529e1`, fetched on 6 August 2026
 (Asia/Jakarta).
 
-**Worktree:** `C:\tmp\niuva-postmerge-readiness-audit-20260806`, clean at task
+**Worktree:** `C:\tmp\niuva-goal-continuation-fresh-20260806-v3`, clean at task
 start, with `HEAD = origin/main` and `origin/main...HEAD = 0/0`.
 
 The requested baseline `c7452b8` is stale. The immediately prior current-main
-observation was `f43eea6` after PR #186. This packet records the subsequent
-post-merge repository state only; it does not select `4026bc2` as a release
-candidate or lift any readiness gate.
+observation was `9472537` after PRs #189 and #195. PR #185 then entered
+`main` with a documentation-only sole-owner accepted-risk exception. This
+packet records the subsequent repository state only; it does not select
+`9b30441` as a release candidate or lift any readiness gate.
 
 ## 1. Authority and non-authority
 
@@ -35,10 +36,10 @@ provider activation, migration execution, deployment, or go-live.
 | --- | --- | --- |
 | Requested baseline | `c7452b889eec2c3597c622479d46da456f2bf656` | Ancestor of current main; stale and not selected |
 | Prior current-main observation | `f43eea6bd633b4250180e4373a62e5fb21fe14fa` (`f43eea6`) | Point-in-time observation after PR #186; historical after later merges |
-| Current `origin/main` | `4026bc25d2d3a0e39574f3030101d42044b6ceb5` (`4026bc2`) | Point-in-time observation only; DR-001 remains open |
-| Git tree | `61c95415ef164c70d2c5221fb71a679a976b2f7b` | Source-tree identity, not a published artifact identity |
-| Merge parents | `4842c697003de18db55936a9114ae79e8eb9c51f` and `45e8b5ad53e365a1f2ab75b954a1a748a5bc8538` | Git ancestry only; current merge is PR #194 |
-| Requested-baseline delta | `c7452b8..4026bc2`: 125 commits, 90 paths | Scope indicator, not readiness completion |
+| Current `origin/main` | `9b3044170f24b857348af073387ab4401f8822d7` (`9b30441`) | Point-in-time observation only; DR-001 remains open |
+| Git tree | `b0f22420856b4041dafabe78399215ab8f9529e1` | Source-tree identity, not a published artifact identity |
+| Merge parents | `9472537405af3353a68e599a057263ca7aa079ee` and `ade7c07901898516eb30eee7a19691bd1d4d37ce` | Git ancestry only; current merge is PR #185 |
+| Requested-baseline delta | `c7452b8..9b30441`: 134 commits, 95 paths, 9941 additions, 211 deletions | Scope indicator, not readiness completion |
 
 PRs merged after the prior `f43eea6` observation:
 
@@ -51,56 +52,69 @@ PRs merged after the prior `f43eea6` observation:
 | #192 | `503f1b2` | G1–G4 current-main evidence index, documentation-only |
 | #193 | `4842c69` | DR-001 current-main reanchor, documentation-only |
 | #194 | `4026bc2` | G4 artifact/rollback revalidation, documentation-only |
+| #189 | `9f11604` | Frontend release-bundle budget/runner and related tests; now part of `main` |
+| #195 | `9472537` | Post-merge readiness packet; documentation-only but authored against `4026bc2` |
+| #185 | `9b30441` | NIV-001 sole-owner accepted-risk exception and redacted evidence refresh; documentation-only |
 
-PR #185 remains open and conflicting against the newer `main`; its proposed
-NIV-001 self-verification exception is not part of this current tree. PR #189
-remains open; its proposed numeric G3 bundle budget is not an approved DR-013
-decision and is not part of this current tree.
+PR #185 is merged and its packet records a sole-owner self-verification
+exception through 30 August 2026. It explicitly does not claim independent
+verification, credential rotation/revocation, history rewrite, or `Verified`
+incident closure; the P0 release/go-live block remains. PRs #196 and #197 are
+open branches based on the older `9472537` head and are not part of this tree.
+PR #189's numeric bundle budget remains source/config state while canonical
+DR-013 remains Open.
 
-## 3. Changed-path boundary after PR #186
+## 3. Changed-path boundaries after PR #186
 
-The exact `f43eea6..4026bc2` delta is **15 documentation paths, 703 additions,
-and 128 deletions**. No `backend/`, `frontend/`, `scripts/`, `.github/`,
-dependency, migration, credential, or environment path changed in this
-post-merge interval.
+The exact `9472537..9b30441` delta from PR #185 is **five documentation paths,
+194 additions, and 136 deletions**. The preceding `4026bc2..9f11604` interval
+from PR #189 remains the five-path frontend source/config/test delta, and
+`9f11604..9472537` from PR #195 remains a three-path documentation delta.
+No application runtime, dependency, migration, provider, credential, or
+environment path changed in the #185 interval.
 
-This permits path-preserving interpretation of source evidence already tied to
-`f43eea6`, but it does not make that evidence external-environment proof. The
-current main quality gate still provides the stronger current-merge-tree check
-recorded below.
+These path boundaries permit only carefully scoped interpretation of evidence;
+they do not make repository state external-environment proof. The exact
+current-main quality gate provides the current-merge-tree check recorded below.
 
 ## 4. Verification and CI evidence
 
 | Check | Result | Limit |
 | --- | --- | --- |
-| Fresh fetch and exact worktree | Passed; `HEAD = origin/main = 4026bc2`, clean, `0/0` divergent | Does not prove external environment state |
-| Current main `quality-gates` | Passed at SHA `4026bc2`; run [`31088091563`](https://github.com/batakers/Niuva/actions/runs/31088091563) | CI evidence only; not staging or production evidence |
-| Post-merge changed-path audit | Passed; 15 docs-only paths from `f43eea6` | Does not re-run every historical packet's external gate |
-| `git diff --check` | Passed before commit `0d60b9e` | Checks whitespace/error markers in this documentation slice only |
-| Documentation lint | Passed; `markdownlint-cli2@0.23.2`, 0 issues across 3 changed files | Does not validate product or operational correctness |
-| Exact staged-path validation | Passed; exactly the 3 approved documentation paths were staged | Does not validate unstaged or external files |
-| Credential-shaped staged scan | Passed; 0 matches for private-key/token/bearer/JWT-shaped patterns | Does not prove absence from history, external stores, or old clones |
-| Application source/test edits | None in this slice | Historical source evidence remains bounded by its own exact/path-preserving scope |
+| Fresh fetch and exact worktree | Passed; `HEAD = origin/main = 9b30441`, clean, `0/0` divergent | Does not prove external environment state |
+| Current main `quality-gates` | Passed at SHA `9b30441`; run [`31091224082`](https://github.com/batakers/Niuva/actions/runs/31091224082) | CI evidence only; not staging or production evidence |
+| Post-merge changed-path audit | Passed; `9472537..9b30441` is five documentation paths; earlier #189/#195 intervals are separately classified | Does not re-run every historical packet's external gate |
+| `git diff --check` | To be run for this follow-up before commit | Checks whitespace/error markers in this documentation slice only |
+| Documentation lint | To be run for the four changed files before commit | Does not validate product or operational correctness |
+| Exact staged-path validation | To be run; exactly the four approved documentation paths must be staged | Does not validate unstaged or external files |
+| Credential-shaped staged scan | To be run; expected 0 matches | Does not prove absence from history, external stores, or old clones |
+| Application source/test edits | None in this follow-up | #185/#189 source-state observations are not changed here |
 | External smoke, real-role/browser, staging, artifact publication, restore, migration, deployment, monitoring, and go-live | Not run | Target, credentials, owners, or approvals are absent |
 
 ## 5. Current decision and readiness boundary
 
-- **DR-001:** Open. `4026bc2` is observed current `main`, not a selected
+- **DR-001:** Open. `9b30441` is observed current `main`, not a selected
   immutable release candidate. A candidate still requires owner-selected SHA,
   scope, exclusions, effective time, and independent verification.
-- **DR-002:** The time-bound accepted risk through 30 August 2026 remains in
-  the current canonical queue. Verified credential-incident closure,
-  independent verification, external history/cache/fork/clone evidence, and
-  any credential action remain absent.
+- **DR-002:** The time-bound accepted risk through 30 August 2026 now includes
+  the documented sole-owner self-verification exception from #185. Verified
+  credential-incident closure, independent verification, external
+  history/cache/fork/clone evidence, controlled new-account authentication,
+  and any credential action remain absent; the P0 release/go-live block stays.
 - **DR-003–DR-005:** Authentication scope, distributed abuse-control operations,
   and MFA decisions remain partially resolved or blocked as recorded by the
   canonical queue; no new policy is inferred here.
 - **DR-011–DR-014:** Provider/Finance activation, topology/recovery ownership,
   toolchain/bundle policy, and operational evidence remain open or partial.
+- **DR-013:** #189's `status: "approved"` budget is source-state evidence, not
+  closure of the canonical release-policy decision.
+- **PRs #196/#197:** Open and based on `9472537`; their passing checks do not
+  make their stale-head documentation current-main evidence.
 - **DR-015:** Production-readiness and go-live decisions remain ineligible.
 
-The current repository therefore has a coherent post-merge documentation
-baseline and successful repository CI, but it is not proven staging-ready,
+The current repository therefore has a current-main documentation observation
+with the #185 accepted-risk exception recorded and successful/pending
+repository CI evidence, but it is not proven staging-ready,
 production-ready, or go-live-ready. Source maturity, staging/deployment
 evidence, and go-live approval remain separate verdicts.
 
@@ -109,9 +123,10 @@ evidence, and go-live approval remain separate verdicts.
 ### Changed
 
 - `docs/implementation/production-readiness/DECISIONS_REQUIRED.md` — DR-001
-  freshness observation and packet link;
+  freshness observation, DR-013 source-state mismatch, and packet link;
 - this task card; and
 - this revalidation packet.
+- `docs/implementation/production-readiness/phases/G5-CURRENT-MAIN-INTEGRATION-BLOCKER-2026-08-06.md` — current G5 observation.
 
 ### Intentionally unchanged
 
@@ -120,12 +135,13 @@ evidence, and go-live approval remain separate verdicts.
   external environments;
 - historical G1–G5, DR-002–DR-013, and artifact packets; they remain
   point-in-time evidence and are not silently rewritten;
-- PRs #185 and #189; no merge, conflict resolution, or runtime change was
-  performed; and
+- the five #185 NIV-001 documentation paths; they are observed as merged
+  current-main evidence but not rewritten by this follow-up;
+- PRs #196 and #197; no stale-head merge or rebase was performed; and
 - the dirty primary worktree at `C:\Portfolio\Niuva\Niuva-main-latest`.
 
 This is documentation-only and reversible with a normal documentation revert.
-The main risks are evidence staleness, treating `4026bc2` as an unapproved
+The main risks are evidence staleness, treating `9b30441` as an unapproved
 candidate, and mistaking green CI or local/path-preserving evidence for
 external operational proof.
 
