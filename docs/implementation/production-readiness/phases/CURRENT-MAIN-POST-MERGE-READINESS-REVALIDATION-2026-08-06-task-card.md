@@ -7,18 +7,23 @@ final gate acceptance
 **Date:** 2026-08-06 (Asia/Jakarta)
 **Requested baseline:** `origin/main` `c7452b889eec2c3597c622479d46da456f2bf656`
 **Observed current head:** `origin/main` at
-`4026bc25d2d3a0e39574f3030101d42044b6ceb5`, Git tree
-`61c95415ef164c70d2c5221fb71a679a976b2f7b`
+`a54f82318a3b44f5849853cd895f1cb2bb38608b`, Git tree
+`2d4af9d5bda1b4d11775d230fffacd06d0bf2d7c`
+**Merge parents:** `2ccb340a4694c8fe466531a666514edd5bd9c1e2` and
+`1b725dd2b4d6225dfcb9173a4d68cad4f282b028`
 **Driver:** Faiz / delegated Codex implementation
-**Active branch:** `codex/postmerge-readiness-audit-20260806`
-**Active worktree:** `C:\tmp\niuva-postmerge-readiness-audit-20260806`
+**Active branch:** `codex/goal-audit-current-20260806`
+**Active worktree:** `C:\tmp\niuva-goal-audit-current-20260806`
 
 ## Objective
 
-Re-anchor the current decision queue and readiness evidence after the
-documentation-only merges of PRs #187, #188, #190, #191, #192, #193, and #194.
-The packet must distinguish the current repository observation from a selected
-release candidate, and must keep open PRs #185 and #189 outside `main`.
+Re-anchor the current decision queue and readiness evidence after PR #200
+entered `main` as the current-head documentation re-anchor. The previous
+packet was authored against the intermediate `2ccb340` state and now has a
+stale current SHA/tree. The packet must distinguish the current repository
+observation from a selected release candidate, preserve the documented DR-002
+sole-owner exception as non-independent and unverified, and identify PRs #196
+and #197 as stale/conflicting work based on the older `9472537` head.
 
 This task does not select DR-001, approve a release candidate, resolve DR-002,
 approve a bundle budget, activate a provider, run a migration, deploy, approve
@@ -46,8 +51,9 @@ override canonical decisions or authorize external operations.
 Only these paths may change:
 
 1. `docs/implementation/production-readiness/DECISIONS_REQUIRED.md` — update
-   the DR-001 freshness observation and link the packet; and
-2. this task card and its paired revalidation packet.
+   the DR-001 freshness observation and packet link; and
+2. this task card and its paired revalidation packet; and
+3. `docs/implementation/production-readiness/phases/G5-CURRENT-MAIN-INTEGRATION-BLOCKER-2026-08-06.md` — update the serial G5 current-main observation.
 
 ## Explicit exclusions
 
@@ -55,7 +61,9 @@ Only these paths may change:
   workflows.
 - Do not rewrite historical evidence packets merely to replace their
   point-in-time SHA; classify them as historical where appropriate.
-- Do not merge, rebase, force-push, or delete PRs/branches.
+- Do not merge, rebase, force-push, or delete the superseded PRs/branches #196
+  and #197. This goal authorizes a branch, commit, push, and replacement PR;
+  merge remains intentionally outside this execution scope.
 - Do not select or activate storage, payment, email, shipping, telemetry, or
   other providers.
 - Do not use credentials, external targets, staging/production data, or real
@@ -67,10 +75,13 @@ Only these paths may change:
 
 - Record the exact fetched `origin/main` SHA, Git tree, merge parents, clean
   worktree state, and requested-baseline staleness.
-- Record that the `f43eea6..4026bc2` post-merge delta is documentation-only,
-  with no source/test/workflow paths changed.
+- Record that `2ccb340..a54f823` is documentation-only: four paths, 83
+  additions, and 75 deletions from PR #200. Also retain the earlier #185,
+  #189, #195, #198, and #199 intervals as historical lineage.
 - Record merged lineage and current open PR state without treating either as
-  a release decision.
+  a release decision; #200 is merged and #196/#197 are not part of `main`.
+- Record that the #185 sole-owner exception is an accepted-risk disposition,
+  not independent verification or `Verified` incident closure.
 - Preserve DR-001, DR-002, DR-011–DR-015, provider, migration, deployment,
   independent-review, production-readiness, and go-live blockers.
 - Run `git diff --check`, documentation lint, exact staged-path assertion,
@@ -78,16 +89,21 @@ Only these paths may change:
 
 ## Unresolved risks and decisions
 
-- **DR-001 remains open:** the observed `4026bc2` head is not an owner-selected
+- **DR-001 remains open:** the observed `a54f823` head is not an owner-selected
   release candidate.
-- **DR-002 remains open for verified closure:** the accepted-risk expiry,
-  independent-verification gap, and credential/history evidence remain active.
+- **DR-002 remains open for verified closure:** #185 records a sole-owner
+  self-verification exception through 30 August 2026, but independent
+  verification, credential action, history/cache/fork/clone evidence, and
+  controlled new-account authentication remain absent.
 - **DR-011–DR-015 remain open or partial:** provider/Finance activation,
   operational ownership, release policy, observability evidence,
   production-readiness, and go-live decisions are not supplied by this task.
-- The requested `c7452b8` baseline and prior `f43eea6` observation can become
+- The requested `c7452b8` baseline and prior `2ccb340` observation can become
   stale as `main` advances; the paired packet must be refreshed before a new
   candidate claim.
+- PR #196 and PR #197 were authored against `9472537`; they are now
+  stale/conflicting after #198, #199, and #200 and are not evidence for
+  `a54f823`.
 - External smoke, real-role/browser, staging, artifact publication,
   backup/restore, migration, deployment, monitoring, and go-live checks were
   unavailable because target, credentials, owners, or approvals are absent.
@@ -97,9 +113,11 @@ stop-conditions.
 
 ## Delivery authorization and handover
 
-The user authorizes a branch, commit, push, and PR. Merge, deployment,
-provider activation, migration execution, secret use/rotation,
-production-readiness, and go-live remain outside this task authorization.
+The current goal authorizes a branch, commit, push, and replacement PR after
+review and required checks pass. Merge is intentionally not performed in this
+execution. Deployment, provider activation, migration execution, secret
+use/rotation, production-readiness, and go-live remain outside this task
+authorization.
 
 The PR must list changed and intentionally unchanged files, passed and unrun
 checks, risks and rollback, and external actions still requiring approval.

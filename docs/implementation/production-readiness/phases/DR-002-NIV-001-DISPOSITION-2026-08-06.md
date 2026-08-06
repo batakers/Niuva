@@ -2,12 +2,18 @@
 
 <!-- markdownlint-disable MD013 -->
 
-**Status:** `OPEN` / `HUMAN_DECISION_BLOCKED`
-**Prepared:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Observed baseline:** `origin/main` at `cccc1e8c06abf1eba57854166c01598bd8db2246`
-**Decision owner:** Incident owner, credential owner, repository administrator,
-independent verifier, and Final Approver as assigned by the Project Owner
-**Scope:** Redaction-safe decision preparation only
+**Status:** `DECIDED` / `ACCEPTED_RISK_SELF_VERIFICATION_EXCEPTION`
+**Prepared:** 2026-08-06 (Asia/Jakarta; original packet)
+**Revalidated:** 2026-08-06 16:44:01 WIB (Asia/Jakarta)
+**Observed baseline:** `origin/main` at
+`9472537405af3353a68e599a057263ca7aa079ee` (`9472537`)
+**Observed tree:** `3a4678333ede6122fdc8d3f87456b83e1567c9cd`
+**Observed at:** `2026-08-06T09:44:01Z` (Asia/Jakarta collection window)
+**Decision owner:** Faiz (sole incident owner, credential owner, repository
+administrator, rewrite operator, application owner, and Final Approver)
+**Independent verifier:** Unavailable; the owner-approved exception below is
+not independent verification.
+**Scope:** Redaction-safe decision and evidence update only
 
 ## 1. Purpose and non-authority
 
@@ -17,13 +23,28 @@ disposition. The current register records an accepted risk through
 **2026-08-30**, but explicitly says that incident closure is not verified and
 that release and go-live remain blocked.
 
-This packet makes the choice and evidence boundary explicit. It is not a
-credential-incident closure, a security approval, a history-rewrite plan
-execution, or a production-readiness decision. It does not select `Verified`
-or `Accepted risk`, and it contains no sensitive credential material.
+This packet makes the owner decision and evidence boundary explicit. It is not
+a credential-incident closure, a security approval, a history-rewrite plan
+execution, or a production-readiness decision. It does not select `Verified`,
+and it contains no sensitive credential material.
 
 The SHA above is a point-in-time repository observation. It is not a DR-001
 release-candidate selection and does not alter the DR-001 decision.
+
+## 1A. Owner decision — 2026-08-06
+
+Faiz confirmed that the project has no second person who can act as an
+independent verifier and approved a bounded **sole-owner self-verification
+exception** for this packet. The selected disposition is the existing
+time-bound accepted risk through **2026-08-30**, with Faiz as the sole
+accountable owner and Final Approver.
+
+This exception records a decision; it does not convert self-review into
+independent verification and does not authorize or attest to a credential
+revocation/rotation, exact-history rewrite, force-push, external cache/PR-ref/
+fork cleanup, old-clone disposition, backup retention, or production action.
+NIV-001 therefore remains an open P0 incident for release and go-live
+purposes. The exception closes the human-decision gap in this packet only.
 
 ## 2. Authority and evidence sources
 
@@ -50,30 +71,32 @@ Applicable authority:
 - [`DR-002-NIV-001-REVOKE-ROTATE-EVIDENCE-TEMPLATE-2026-08-06.md`](DR-002-NIV-001-REVOKE-ROTATE-EVIDENCE-TEMPLATE-2026-08-06.md)
   — value-free revoke/rotate sequence and evidence schema.
 
-No approved ADR resolves DR-002. The NIV-001 runbook remains procedural
-authority only: it requires explicit approvals and stop conditions and does not
-authorize autonomous rotation, history rewrite, force-push, ref deletion,
-remote changes, or status closure.
+No approved ADR resolves DR-002. This packet records the explicit owner
+exception above as a bounded disposition; it does not amend the runbook. The
+NIV-001 runbook remains procedural authority only: it requires explicit
+approvals and stop conditions and does not authorize autonomous rotation,
+history rewrite, force-push, ref deletion, remote changes, or a `Verified`
+status.
 
 ## 3. Current disposition and observed limits
 
 | Area | Current observation | Limit |
 | --- | --- | --- |
-| DR-002 state | The decision queue records a time-bound accepted risk approved through `2026-08-30`. | This is administrative risk containment, not verified incident closure and not release or go-live approval. |
+| DR-002 state | Faiz recorded a sole-owner self-verification exception against the existing accepted risk through `2026-08-30`. | This is administrative risk containment, not verified incident closure and not release or go-live approval. |
 | NIV-001 runbook state | The runbook states `Implemented, verification pending` and requires redacted evidence before `Verified`. | A runbook is procedural authority; its checklist is not evidence that a step occurred. |
 | Credential action | No credential value was inspected or used in this packet. No rotation or revocation was performed. | A redacted owner-controlled revocation/rotation record is still required before closure. |
 | History rewrite | No rewrite, force-push, ref deletion, or remote publication was performed. | The full-history rewrite and post-rewrite proof remain entirely unverified. |
-| Current repository checks | On exact `origin/main` `cccc1e8`, bounded G2 tests passed `163`; full backend passed `972`, with `15` skips and `14` subtests; relevant auth/event/migration files compiled. Local Gitleaks was unavailable, so no exact-current-main scan is claimed. | Source/test evidence and a redacted scan do not prove revocation, remote-cache/fork/clone cleanup, history publication, or final incident closure. Historical #182 findings remain owner-review items. |
-| Remote/PR state | Timestamped read-only inventory at `2026-08-06T05:41:38Z`: 47 remote heads, 0 remote tags, 0 open PRs, 184 total PRs, 172 PR-head refs, 0 forks, 0 rulesets, and 3 collaborator accounts by count. | The inventory is not a write freeze or approval. PR refs, cached views, old clones, and backups remain separate closure gates and must be rechecked before execution. |
-| Worktrees/clones | Current local inventory records 98 worktrees: 77 clean, 21 dirty, 0 missing, and 6 detached. | The runbook requires owner acknowledgments, quarantine/recreation, and a fresh inventory; local worktree listing is not collaborator/old-clone closure evidence. |
+| Current repository checks | Focused suite passed `180` tests on the synchronized `9472537` source/test paths; `backend`, `frontend`, and `secret-scan` CI also succeeded at the current main commit. The latest pinned redacted scan remains historical at `f43eea6`. | Source/test evidence and a redacted scan do not prove revocation, remote-cache/fork/clone cleanup, history publication, or final incident closure. Credential-like findings remain residual evidence unless explicitly dispositioned in the restricted incident record. |
+| Remote/PR state | Timestamped read-only inventory at `2026-08-06T09:44:01Z`, including the open PR #185 snapshot, is recorded in the linked inventory. | The inventory is not a write freeze or approval. PR refs, cached views, old clones, and backups remain separate closure gates and must be rechecked before execution. |
+| Worktrees/clones | Current local counts and fsck result are recorded in the linked inventory at the same timestamp. | The runbook requires owner acknowledgments, quarantine/recreation, and a fresh inventory; local worktree listing is not collaborator/old-clone closure evidence. |
 | GitHub surfaces | Read-only PR/fork/ruleset counts were collected; no GitHub Support, cache cleanup, collaborator-clone, or backup evidence was collected. | Those external records are required by the runbook and must remain redacted. |
 | Production boundary | No deployment, provider, migration, secret rotation, or go-live action was performed. | DR-002 remains a P0 release/go-live blocker until a final disposition is approved. |
 
 Historical counts and ref snapshots inside the NIV-001 runbook are planning
 snapshots, not current inventory. The current redacted inventory is linked
 above, but it must be rechecked at execution time and must not be copied into a
-closure claim. The inventory timestamp predates this replacement PR; its
-open-PR count intentionally excludes that later PR.
+closure claim. The inventory timestamp includes the open PR #185 snapshot; any
+later repository movement requires another re-inventory before execution.
 
 The runbook's recorded introducing commit is absent from the current checkout's
 object database, so an exact-value scan could not be reconstructed without
@@ -82,8 +105,9 @@ views, forks, old clones, backups, or other repositories.
 
 ## 4. Owner decision paths
 
-The following are mutually exclusive disposition paths. The owner must record
-one in an approved decision record; this packet does not choose one.
+The following are mutually exclusive disposition paths. This packet records
+Option C as the selected disposition. Any later change requires a new approved
+decision record.
 
 ### Option A — Verified closure after independent evidence
 
@@ -123,12 +147,22 @@ A renewal is not permission to defer indefinitely, use the old credential,
 rewrite history, force-push, or publish a contaminated ref. It must not be
 treated as a security closure.
 
-### Option C — New explicit disposition
+### Option C — Sole-owner self-verification exception (selected)
 
-If the evidence or risk posture no longer fits either path, the Final Approver
-may record a different bounded disposition with owner, rationale, expiry,
-controls, and required follow-up. The new record must preserve the P0 and
-release/go-live blocking boundary until the approved criteria say otherwise.
+This is the selected path because no independent verifier exists. It records
+Faiz's explicit acceptance of the residual risk and permits owner-reviewed,
+redaction-safe repository and local-test evidence to be attached to this
+decision packet. It does not waive credential-action evidence, external
+repository-surface evidence, backup/clone evidence, or the independent review
+criteria required for a `Verified` label. It does not lift the P0
+release/go-live block and expires with the existing accepted-risk record on
+**2026-08-30** unless a new decision is recorded.
+
+If the evidence or risk posture no longer fits this exception, the Final
+Approver may record a different bounded disposition with owner, rationale,
+expiry, controls, and required follow-up. The new record must preserve the P0
+and release/go-live blocking boundary until the approved criteria say
+otherwise.
 
 ## 5. Redacted decision form
 
@@ -138,31 +172,31 @@ out of the record.
 
 | Field | Owner entry |
 | --- | --- |
-| Selected path: `Verified` / renewed `Accepted risk` / other | `____________________________` |
-| Final Approver and approval reference | `____________________________` |
-| Incident owner and credential owner | `____________________________` |
-| Independent verifier | `____________________________` |
-| Current status and rationale | `____________________________` |
-| Redacted credential-action ticket/config reference | `____________________________` |
-| Credential action date/result (no value) | `____________________________` |
-| Non-production account/config reference (no value) | `____________________________` |
-| Remote/ref/PR/fork/cache inventory reference | `____________________________` |
-| Worktree/old-clone disposition reference | `____________________________` |
-| Backup/restore and retention reference | `____________________________` |
-| Pre/post scan and rewrite evidence references | `____________________________` |
-| GitHub Support/cache/PR-ref outcome | `____________________________` |
-| Residual risks and compensating controls | `____________________________` |
-| Expiry/review date (required for accepted risk) | `____________________________` |
-| Release/go-live blocking statement acknowledged | `____________________________` |
+| Selected path: `Verified` / renewed `Accepted risk` / other | `Option C — sole-owner self-verification exception; accepted risk through 2026-08-30` |
+| Final Approver and approval reference | `Faiz; owner instruction recorded 2026-08-06 in the task thread` |
+| Incident owner and credential owner | `Faiz (sole owner)` |
+| Independent verifier | `Unavailable; exception recorded; self-review is not independent verification` |
+| Current status and rationale | `DECIDED / ACCEPTED_RISK_SELF_VERIFICATION_EXCEPTION; incident closure remains unverified` |
+| Redacted credential-action ticket/config reference | `Not available; no credential action performed` |
+| Credential action date/result (no value) | `Not run` |
+| Non-production account/config reference (no value) | `Not available; controlled new-account authentication not run` |
+| Remote/ref/PR/fork/cache inventory reference | `Current redacted inventory; freeze and external cleanup evidence remain absent` |
+| Worktree/old-clone disposition reference | `Current local count only; owner quarantine/fresh-clone evidence absent` |
+| Backup/restore and retention reference | `Not available; no recovery bundle operation performed` |
+| Pre/post scan and rewrite evidence references | `Historical redacted scan at f43eea6 recorded; no current-main scan, rewrite, or exact-value scan run` |
+| GitHub Support/cache/PR-ref outcome | `Not available; no Support or cache cleanup action performed` |
+| Residual risks and compensating controls | `P0 release/go-live block, time-bound accepted risk, redacted evidence, no old-credential use` |
+| Expiry/review date (required for accepted risk) | `2026-08-30` |
+| Release/go-live blocking statement acknowledged | `Yes; self-verification exception does not lift the block` |
 
 ## 6. Traceability and gate mapping
 
 | Gate | Requirement | Current status |
 | --- | --- | --- |
-| DR-002 | Close NIV-001 or record a bounded accepted-risk disposition. | Open; current accepted risk expires 2026-08-30. |
-| PHASE-00B / TASK-00B-01/02 | Obtain secret-safe incident evidence or a new Final Approver disposition. | Administratively accepted risk only; verified closure remains open. |
-| V-00-02 | Produce redacted gate-by-gate evidence, host/clone/cache assessment, owner disposition, and verified runbook status. | Partial evidence now exists in the linked inventory; owner disposition, clone/cache assessment, and independent verification remain open. |
-| `FINDING_TRACEABILITY.md` SEC-001/OPS-010 | Preserve P0 severity and release/go-live block until independent closure. | Remains open/accepted-risk-limited. |
+| DR-002 | Close NIV-001 or record a bounded accepted-risk disposition. | Decision recorded as sole-owner exception; incident remains open and accepted risk expires 2026-08-30. |
+| PHASE-00B / TASK-00B-01/02 | Obtain secret-safe incident evidence or a new Final Approver disposition. | Owner disposition is recorded; credential/external evidence and verified closure remain open. |
+| V-00-02 | Produce redacted gate-by-gate evidence, host/clone/cache assessment, owner disposition, and verified runbook status. | Redacted evidence and owner disposition are recorded; clone/cache assessment and independent verification remain open under the exception. |
+| `FINDING_TRACEABILITY.md` SEC-001/OPS-010 | Preserve P0 severity and release/go-live block until independent closure. | Remains P0/open under `accepted_risk_self_verification_exception`; the exception is not independent closure. |
 | DR-015 / V-10-01 | Make production-readiness and go-live decisions only after all applicable P0/P1 and accepted risks have current evidence. | Not eligible. DR-002 cannot be silently waived by CI or documentation. |
 
 ## 7. Required sequence after an owner decision
@@ -186,25 +220,28 @@ No step above is authorized by this packet.
 
 ## 8. Handover and current verdict
 
-Changed for this post-merge revalidation: the task card, disposition packet,
-linked redacted inventory, value-free revoke/rotate evidence template,
-`FINDING_TRACEABILITY.md` addendum, and the current-main revalidation packet.
+Updated in this repair: the current-main baseline and conflict reconciliation in
+`DECISIONS_REQUIRED.md`, this disposition packet, the linked redacted inventory,
+the value-free revoke/rotate evidence template, and the
+`FINDING_TRACEABILITY.md` addendum.
 
 Intentionally unchanged: credential values and secret stores, Git history and
 refs, branches/tags, `main`, worktrees/clones/backups, GitHub settings/support
 state, source/tests/dependencies/CI, migrations, providers, deployment state,
 and decision-register status.
 
-Local validation for this revalidation includes bounded G2 (`163 passed`), full
-backend (`972 passed, 15 skipped, 14 subtests passed`), compileall, markdownlint,
-whitespace, exact-path, and staged secret-pattern checks. Local Gitleaks was
-unavailable. Credential action, controlled authentication with a new account,
-exact-value scan, history rewrite, migration commands, staging, deployment,
-provider operations, GitHub Support, and production actions were not run and
-are not implied.
+Local validation for this revalidation includes the focused auth/security/
+permission/projection suite (`180 passed`), the historical pinned Gitleaks
+result (`2` unresolved redacted findings from `f43eea6`; no current binary was
+available), conflict-marker and whitespace checks, and staged secret-pattern
+checks. Credential action, controlled authentication with
+a new account, exact-value scan, history rewrite, migration commands, staging,
+deployment, provider operations, GitHub Support, and production actions were
+not run and are not implied.
 
 Current verdict: **NOT READY for release, production deployment, or go-live**.
-NIV-001 remains a P0 incident disposition blocker; the existing accepted risk
-does not establish closure.
+The NIV-001 decision gate is resolved as a documented sole-owner exception, but
+the underlying incident remains a P0/open accepted risk; the exception does
+not establish `Verified` closure.
 
 <!-- markdownlint-enable MD013 -->
