@@ -4,7 +4,7 @@
 
 **Status:** `OPEN` / `HUMAN_DECISION_BLOCKED`
 **Prepared:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Observed baseline:** `origin/main` at `c84743c8fcbc158721037b3c02dc0dff0c872242`
+**Observed baseline:** `origin/main` at `9f6fe38398836b44158783684d23e6455c3cc6c2`
 **Decision owner:** Engineering/release/security owners, as assigned by the Project Owner
 **Scope:** Documentation and decision preparation only
 
@@ -24,6 +24,12 @@ dependency changes, deployment, provider activation, migration, or go-live.
 The baseline is the fetched `origin/main` observation only. It is not a DR-001
 release-candidate selection and does not supersede any pending release-baseline
 decision.
+
+This refresh reanchors the existing decision inputs to the current fetched
+head. PR #180 added bounded authentication-security source and test paths, but
+did not change the frontend release workflow, dependency manifests, or the
+toolchain policy fields below. The observations remain evidence, not a
+selection or implementation authorization.
 
 ## 2. Authority and evidence sources
 
@@ -59,7 +65,7 @@ is applicable.
 The following is an observation of the current repository. It is not a
 selection for DR-013.
 
-| Area | Observed at `c84743c` | Decision or evidence limit |
+| Area | Observed at `9f6fe38` | Decision or evidence limit |
 | --- | --- | --- |
 | Frontend install | The quality workflow uses Node `24`, `npm ci`, and `frontend/package-lock.json`. | The workflow behavior does not establish that Node 24 is the supported release runtime or that npm is the only supported local workflow. |
 | Backend install | The quality workflow uses Python `3.14.3` and installs `backend/requirements.txt` with pip. | `backend/requirements.txt` contains a mixture of exact and ranged constraints; no backend lockfile was found in the inspected repository inventory. Reproducible backend release installation is therefore still a decision field. |
