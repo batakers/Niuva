@@ -4,7 +4,10 @@
 
 **Status:** `OPEN` / `HUMAN_DECISION_BLOCKED`
 **Prepared:** 2026-08-06 (Asia/Jakarta; actual preparation date)
-**Observed baseline:** `origin/main` at `9f6fe38398836b44158783684d23e6455c3cc6c2`
+**Observed current main:** `origin/main` at
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, with Git tree
+`6d2154bd52785bbc749345c0346651f9752d1646`, revalidated in fresh worktree
+`C:\tmp\niuva-continuation-current-main-20260806`.
 **Decision owner:** Engineering/release/security owners, as assigned by the Project Owner
 **Scope:** Documentation and decision preparation only
 
@@ -26,10 +29,15 @@ release-candidate selection and does not supersede any pending release-baseline
 decision.
 
 This refresh reanchors the existing decision inputs to the current fetched
-head. PR #180 added bounded authentication-security source and test paths, but
-did not change the frontend release workflow, dependency manifests, or the
-toolchain policy fields below. The observations remain evidence, not a
-selection or implementation authorization.
+head. The earlier `9f6fe38` observation is historical: the delta to current
+`f43eea6` is 10 paths / 668 additions / 28 deletions and includes bounded
+authentication-alert source/tests plus readiness and NIV-001 documentation.
+The source/test delta means older authentication observations are not
+exact-`f43eea6` proof, while the frontend release workflow and dependency manifests
+remain the current fields inspected below. The observations remain evidence,
+not a selection or implementation authorization. PR #187 provides
+path-preserving backend/frontend/secret-scan evidence at head `b690236`; its
+only change beyond `f43eea6` is documentation.
 
 ## 2. Authority and evidence sources
 
@@ -65,7 +73,7 @@ is applicable.
 The following is an observation of the current repository. It is not a
 selection for DR-013.
 
-| Area | Observed at `9f6fe38` | Decision or evidence limit |
+| Area | Observed at `f43eea6` | Decision or evidence limit |
 | --- | --- | --- |
 | Frontend install | The quality workflow uses Node `24`, `npm ci`, and `frontend/package-lock.json`. | The workflow behavior does not establish that Node 24 is the supported release runtime or that npm is the only supported local workflow. |
 | Backend install | The quality workflow uses Python `3.14.3` and installs `backend/requirements.txt` with pip. | `backend/requirements.txt` contains a mixture of exact and ranged constraints; no backend lockfile was found in the inspected repository inventory. Reproducible backend release installation is therefore still a decision field. |
