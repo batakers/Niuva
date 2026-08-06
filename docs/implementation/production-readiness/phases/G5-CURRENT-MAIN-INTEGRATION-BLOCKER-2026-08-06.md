@@ -7,20 +7,27 @@ index and decision-routing packet, not final G5 acceptance, release-candidate
 selection, production-readiness approval, deployment approval, or go-live
 approval.
 
-**Observed pre-packet baseline:** `origin/main` at
+**Latest current-main observation:** `origin/main` at
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, with Git tree
+`6d2154bd52785bbc749345c0346651f9752d1646`, fetched on 6 August 2026 at
+`2026-08-06T06:29:20Z` (`13:29:20 WIB`). PR #186 is the latest merge and
+changes only six production-readiness documentation paths. PR #185 remains
+open and is not part of this `main` tree; its current GitHub status was
+rechecked as `CLEAN / MERGEABLE` at `2026-08-06T07:30:47Z`.
+
+**Historical packet baseline:** `origin/main` at
 `6cd5a6417e1f4e72b1fbcce5d11801358b424d82`, with Git tree
-`77ce7bceb0eeb237ead9ad9591c7160c28d7e76`, after a fresh fetch on 6 August
-2026 and the merge of PR #174 after PRs #175–#178.
+`77ce7bceb0eeb237ead9ad9591c7160c28d7e76`, after the earlier merge of PR #174
+and PRs #175–#178. Evidence tied only to unchanged source paths may be carried
+forward, but the historical identity and external observations do not become
+exact-`f43eea6` acceptance.
 
-This is the exact tree used for the post-merge evidence reconciliation. The
-merge of this documentation-only freshness correction will add only this
-packet to `main`; it does not create a new runtime candidate or alter the
-evidence above.
+**Update branch/worktree:** `codex/g5-current-main-revalidation-post-186-20260806` /
+`C:\tmp\niuva-g5-current-main-revalidation-post-186-20260806`.
 
-**Update branch/worktree:** `codex/g44-postmerge-g5-freshness-20260806` /
-`C:\tmp\niuva-g44-postmerge-g5-freshness-20260806`. Exact-current-main
-verification was performed separately in fresh worktree
-`C:\tmp\niuva-g43-postmerge-current-main-20260806`.
+This update is documentation-only. It does not create a runtime candidate or
+alter any external evidence, staging, deployment, migration, provider, secret,
+or go-live state.
 
 The G0 staging contract defines G5 as a serial integration gate after the
 relevant G1–G4 handovers. Current evidence does not satisfy that prerequisite,
@@ -51,17 +58,18 @@ provider, deployment, secret, or environment state.
 
 ## 2. Exact repository identity
 
-The fresh verification worktree matched the fetched remote before the
-post-merge revalidation:
+The fresh verification worktree matched the fetched remote at the latest
+observation:
 
 | Evidence | Result | Limit |
 | --- | --- | --- |
-| Pre-packet `origin/main` | `6cd5a6417e1f4e72b1fbcce5d11801358b424d82` | Point-in-time source identity; DR-001 does not select it |
-| Git tree | `77ce7bceb0eeb237ead9ad9591c7160c28d7e76` | Source tree identity; not an artifact digest |
-| Current-main merge parents | `9736d617ca4399e5533be60c919814341e0b1ea9`, `3cc821a8d0b5c9990c57c85f3879445c3ac9d8fe` | Git ancestry only |
-| Merge since the earlier G5 update | PR #174 merged the post-child G5 reconciliation packet | Documentation-only; no runtime change is inferred |
-| Verification worktree | `C:\tmp\niuva-g43-postmerge-current-main-20260806`, `HEAD = origin/main` | Does not prove any external environment state |
-| Update branch base | `codex/g44-postmerge-g5-freshness-20260806` is based on `6cd5a64` and changes only this packet | The packet is refreshed against the exact current main |
+| Latest `origin/main` | `f43eea6bd633b4250180e4373a62e5fb21fe14fa` | Point-in-time source identity; DR-001 does not select it |
+| Git tree | `6d2154bd52785bbc749345c0346651f9752d1646` | Source tree identity; not an artifact digest |
+| Current-main merge parents | `cccc1e8c06abf1eba57854166c01598bd8db2246`, `0b23419a5a0fe46b7dbc8459032213c741c60fbc` | Git ancestry only |
+| Delta from pre-#186 main | Six documentation-only paths changed by PR #186; no backend/frontend runtime, test, dependency, workflow, migration, or provider path changed | Source-path evidence from `cccc1e8` may carry by path preservation; exact documentation provenance is refreshed here |
+| Open PR state | PR #185 is `OPEN / CLEAN / MERGEABLE` as rechecked at `2026-08-06T07:30:47Z`; it is not included in `f43eea6` | Its evidence remains separate until owner reconciliation and review |
+| Verification worktree | `C:\tmp\niuva-g5-current-main-revalidation-post-186-20260806`, `HEAD = origin/main` | Does not prove any external environment state |
+| Update branch base | `codex/g5-current-main-revalidation-post-186-20260806` is based on `f43eea6` and changes only this packet | The packet is refreshed against the exact current main |
 
 PR #173 is now merged at `d4bf4ac`:
 [`#173`](https://github.com/batakers/Niuva/pull/173). Its G4 packet was
@@ -78,8 +86,9 @@ The child handovers were then merged in this order:
 | #177 | `90368e4cff96dac80b5ce6c91acbab0b5c02d340` | G2 current-main auth/security evidence, documentation-only |
 | #178 | `9736d617ca4399e5533be60c919814341e0b1ea9` | Frontend release bundle gate wiring and contract test |
 | #174 | `6cd5a6417e1f4e72b1fbcce5d11801358b424d82` | Post-child G5 reconciliation and current-main freshness correction |
+| #186 | `f43eea6bd633b4250180e4373a62e5fb21fe14fa` | Post-merge readiness/NIV-001 documentation re-anchor; documentation-only |
 
-The four merge commits are repository integration evidence only. They do not
+These merge commits are repository integration evidence only. They do not
 select a release candidate or establish staging, production, or go-live proof.
 
 ## 3. Child-goal handover reconciliation
@@ -142,7 +151,7 @@ current runtime tree:
 - `backend/tests/test_transaction_observability.py`.
 
 This is carried path evidence, not a claim that the transaction workflow ran
-on `9736d61`. The earlier PR #164 failure was followed by the retry-safe
+on `f43eea6`. The earlier PR #164 failure was followed by the retry-safe
 correction and later passing transaction evidence.
 
 PR #164's retry-safe follow-up run
@@ -150,7 +159,7 @@ PR #164's retry-safe follow-up run
 job
 [`92469314161`](https://github.com/batakers/Niuva/actions/runs/31054621081/job/92469314161),
 reported `76 passed in 6.02s`. The B2B/catalog conflict paths exercised by
-that run have no diff from its tested head `d4c144b7` to current `9736d61`.
+that run have no diff from its tested head `d4c144b7` to current `f43eea6`.
 The two transaction runs are reported separately because PR #164 and PR #166
 changed different portions of the G1 path set.
 
@@ -159,9 +168,9 @@ The exact-current-main backend quality run
 backend job
 [`92489477033`](https://github.com/batakers/Niuva/actions/runs/31061245165/job/92489477033),
 also passed with `961 passed, 15 skipped, 14 subtests passed in 20.56s` at
-`d4bf4ac`. PRs #175–#178 do not change the backend runtime paths, so this
-quality result carries to `6cd5a64` by path preservation; it is not a new
-exact-`6cd5a64` backend workflow run. The isolated transaction workflow
+`d4bf4ac`. PRs #175–#178 and #186 do not change the backend runtime paths, so this
+quality result carries to `f43eea6` by path preservation; it is not a new
+exact-`f43eea6` backend workflow run. The isolated transaction workflow
 remains path-preserving evidence rather than an exact-current-SHA transaction
 workflow run.
 
@@ -180,7 +189,8 @@ worktree produced:
 
 The evidence-only child handover is merged by PR
 [#175](https://github.com/batakers/Niuva/pull/175), based on `d4bf4ac`; its
-backend, frontend, and secret-scan checks passed. The current G3 source gate is
+backend, frontend, and secret-scan checks passed. PR #186 changes no G3 source
+path, so the current G3 source gate is
 therefore no longer a blocker for the bounded hermetic test scope. Real-role
 accounts, external origin/TLS/proxy/CORS/cookie verification, manual
 screen-reader review, and staging remain separate unrun gates.
@@ -190,9 +200,9 @@ screen-reader review, and staging remain separate unrun gates.
 PR #173's merged packet records a local build observation, a local artifact
 manifest, absent bundle-budget policy, no immutable registry/hosting digest,
 and no staging/restore/monitoring evidence. Its local source/build observation
-was made against the same runtime source tree as PR #172; PRs #175–#177 add
-documentation and PR #178 adds only the release contract/test. This supports
-carrying the source-path evidence, but
+was made against the same runtime source tree as PR #172; PRs #175–#177 and
+PR #186 add documentation, while PR #178 adds only the release contract/test.
+This supports carrying the source-path evidence, but
 does not create an external artifact, staging target, previous-known-good
 release, or rollback exercise.
 
@@ -235,7 +245,7 @@ not be used as unqualified current-candidate evidence:
 | --- | --- | --- |
 | `CURRENT-RELEASE-CANDIDATE-SELECTION-2026-08-06.md` | `c84743c8` | DR-001 packet is stale; owner selection remains blank |
 | `CURRENT-MAIN-DR001-FRESHNESS-2026-08-06.md` | `5d5abcf` | Freshness packet is superseded by later main lineage |
-| `CURRENT-MAIN-READINESS-PROVENANCE-RECONCILIATION-2026-08-06.md` | `9f4d3a4` | Carried evidence requires revalidation at `6cd5a64` |
+| `CURRENT-MAIN-READINESS-PROVENANCE-RECONCILIATION-2026-08-06.md` | `9f4d3a4` | Carried evidence requires revalidation at `f43eea6` |
 | `G3-BROWSER-EVIDENCE-SOURCE-GATE-2026-08-06.md` | `5254641c` | Historical residual record; current findings are revalidated in merged PR #175 |
 | `G4-CURRENT-MAIN-ARTIFACT-ROLLBACK-EVIDENCE-2026-08-06.md` | `b1564b0` | Merged current-main packet; source-path evidence carries, external evidence remains absent |
 
@@ -247,12 +257,12 @@ reconcile all applicable evidence against that tree.
 
 | Required G5 item | Current result | Verdict |
 | --- | --- | --- |
-| Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `6cd5a64` is only observed main | `BLOCKED_BY_DECISION` |
+| Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `f43eea6` is only observed main | `BLOCKED_BY_DECISION` |
 | G1 exact-SHA handover with changed/unchanged paths and verifier | PR #176 packet is merged at `d812f95` and tied to `d4bf4ac`; path-preserving transaction evidence and current-tree backend quality carry by unchanged paths; independent verifier and external role matrix absent | `PARTIAL_PASS` |
 | G2 exact-SHA auth/security matrix and human decision closure | PR #177 packet is merged at `90368e4` and tied to `d4bf4ac`; local auth/security `99` passed, authorization/privacy `197 passed, 2 skipped`, frontend auth `65 passed`, and exact-main CI passed; DR-003/004/005 and external role/staging evidence remain open | `BLOCKED_BY_DECISION` |
 | G3 browser, accessibility, role, and negative-path evidence | Hermetic design-system suite `4/4` and audit runner pass; real-role/external/manual evidence absent | `PARTIAL_PASS` |
 | G4 artifact, environment, rollback, and operations evidence | PR #178 release gate is merged at `9736d61` and PR #173 packet provides source/build evidence; no approved budget policy, external target, immutable published artifact, restore, or rollback exercise exists | `BLOCKED_BY_EXTERNAL_EVIDENCE` |
-| Backend/frontend/transaction quality gates | Current-main release contracts `6 passed`, bundle contracts `5 passed`, and build passed; PR #175–#178 required checks passed; relevant isolated transaction runs passed | `PARTIAL_PASS` |
+| Backend/frontend/transaction quality gates | Current-main release contracts `6 passed`, bundle contracts `5 passed`, and build passed; PR #175–#178 and #186 required checks passed at their cited heads; relevant isolated transaction runs passed | `PARTIAL_PASS` |
 | Exact external origin/TLS/proxy/CORS/cookie verification | No approved target or credentials | `NOT_RUN` |
 | Migration dry run/apply/backup/restore/rollback | No approved target or mutation authorization | `NOT_RUN` |
 | Immutable artifact registry/attestation and previous-known-good identity | Not present | `MISSING` |
@@ -287,7 +297,7 @@ accepted by the named authority before the corresponding gate can pass:
 Until those inputs exist, the exact stop conditions are: do not enable Retail
 checkout, upload, payment, provider integrations, or production mutations; do
 not use real credentials or data; do not apply or restore migrations; do not
-publish an untracked artifact as a release; and do not declare `6cd5a64` or any
+publish an untracked artifact as a release; and do not declare `f43eea6` or any
 other SHA production-ready.
 
 ## 8. Handover
@@ -308,13 +318,21 @@ other SHA production-ready.
 
 ### Verification and limits
 
-- fresh fetch, exact `origin/main` SHA/tree (`6cd5a64` / `77ce7b`), fresh
-  worktree `g43`, and zero divergence before this update: passed;
+- fresh fetch, exact `origin/main` SHA/tree (`f43eea6` /
+  `6d2154bd52785bbc749345c0346651f9752d1646`), fresh worktree
+  `g5-current-main-revalidation-post-186-20260806`, and zero divergence before
+  this update: passed;
 - current-main-equivalent PR #172 backend/frontend/browser/secret checks:
   passed at the cited PR head;
+- PR #186 backend/frontend/secret-scan checks: passed at head `0b23419`; the
+  merge to `f43eea6` changes only documentation, so no exact-`f43eea6`
+  workflow result is claimed;
+- a fresh local full-backend attempt on `f43eea6` did not complete within the
+  bounded run and ended during pytest stdout flush with `OSError: [Errno 22]
+  Invalid argument`; no exact-current-main local backend result is claimed;
 - backend quality run `31061245165` at the prior runtime tree: passed with
-  `961 passed, 15 skipped, 14 subtests passed`; PRs #175–#178 do not change
-  backend runtime paths, so the result carries to `6cd5a64` by path
+  `961 passed, 15 skipped, 14 subtests passed`; PRs #175–#178 and #186 do not
+  change backend runtime paths, so the result carries to `f43eea6` by path
   preservation rather than a new exact-head backend run;
 - PR #164 follow-up and PR #166 isolated transaction runs: passed with `76`
   each, with relevant paths unchanged through current `main`;
