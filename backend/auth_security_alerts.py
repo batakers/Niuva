@@ -85,7 +85,11 @@ class AuthenticationAlertPolicy:
         policy = self._POLICIES.get(family)
         if policy is None:
             raise ValueError("Unsupported authentication alert family")
-        if not isinstance(matching_count, int) or matching_count < 0:
+        if (
+            not isinstance(matching_count, int)
+            or isinstance(matching_count, bool)
+            or matching_count < 0
+        ):
             raise ValueError("Invalid alert matching count")
         return policy if matching_count >= policy.threshold else None
 

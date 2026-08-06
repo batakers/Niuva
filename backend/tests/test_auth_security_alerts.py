@@ -39,6 +39,14 @@ def test_alert_thresholds_are_deterministic(family, below, at_threshold, severit
     assert decision.severity == severity
 
 
+@pytest.mark.parametrize("matching_count", [True, False])
+def test_alert_policy_rejects_boolean_matching_count(matching_count):
+    with pytest.raises(ValueError, match="Invalid alert matching count"):
+        AuthenticationAlertPolicy().decision(
+            "admin_session_replay", matching_count=matching_count
+        )
+
+
 def test_alert_document_contains_references_not_event_payload():
     decision = AuthenticationAlertPolicy().decision(
         "admin_session_replay", matching_count=1
