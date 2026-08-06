@@ -76,6 +76,10 @@ recorded below.
 | Fresh fetch and exact worktree | Passed; `HEAD = origin/main = 4026bc2`, clean, `0/0` divergent | Does not prove external environment state |
 | Current main `quality-gates` | Passed at SHA `4026bc2`; run [`31088091563`](https://github.com/batakers/Niuva/actions/runs/31088091563) | CI evidence only; not staging or production evidence |
 | Post-merge changed-path audit | Passed; 15 docs-only paths from `f43eea6` | Does not re-run every historical packet's external gate |
+| `git diff --check` | Passed before commit `0d60b9e` | Checks whitespace/error markers in this documentation slice only |
+| Documentation lint | Passed; `markdownlint-cli2@0.23.2`, 0 issues across 3 changed files | Does not validate product or operational correctness |
+| Exact staged-path validation | Passed; exactly the 3 approved documentation paths were staged | Does not validate unstaged or external files |
+| Credential-shaped staged scan | Passed; 0 matches for private-key/token/bearer/JWT-shaped patterns | Does not prove absence from history, external stores, or old clones |
 | Application source/test edits | None in this slice | Historical source evidence remains bounded by its own exact/path-preserving scope |
 | External smoke, real-role/browser, staging, artifact publication, restore, migration, deployment, monitoring, and go-live | Not run | Target, credentials, owners, or approvals are absent |
 

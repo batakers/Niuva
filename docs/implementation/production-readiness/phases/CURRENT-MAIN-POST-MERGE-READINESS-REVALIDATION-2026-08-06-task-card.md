@@ -76,6 +76,25 @@ Only these paths may change:
 - Run `git diff --check`, documentation lint, exact staged-path assertion,
   and staged credential-shaped secret scanning before publication.
 
+## Unresolved risks and decisions
+
+- **DR-001 remains open:** the observed `4026bc2` head is not an owner-selected
+  release candidate.
+- **DR-002 remains open for verified closure:** the accepted-risk expiry,
+  independent-verification gap, and credential/history evidence remain active.
+- **DR-011–DR-015 remain open or partial:** provider/Finance activation,
+  operational ownership, release policy, observability evidence,
+  production-readiness, and go-live decisions are not supplied by this task.
+- The requested `c7452b8` baseline and prior `f43eea6` observation can become
+  stale as `main` advances; the paired packet must be refreshed before a new
+  candidate claim.
+- External smoke, real-role/browser, staging, artifact publication,
+  backup/restore, migration, deployment, monitoring, and go-live checks were
+  unavailable because target, credentials, owners, or approvals are absent.
+
+See the paired revalidation packet for the exact evidence and current
+stop-conditions.
+
 ## Delivery authorization and handover
 
 The user authorizes a branch, commit, push, and PR. Merge, deployment,
