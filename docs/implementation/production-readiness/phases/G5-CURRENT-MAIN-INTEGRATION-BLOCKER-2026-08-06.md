@@ -12,7 +12,8 @@ approval.
 `6d2154bd52785bbc749345c0346651f9752d1646`, fetched on 6 August 2026 at
 `2026-08-06T06:29:20Z` (`13:29:20 WIB`). PR #186 is the latest merge and
 changes only six production-readiness documentation paths. PR #185 remains
-open and conflicting; it is not part of this `main` tree.
+open and is not part of this `main` tree; its current GitHub status was
+rechecked as `CLEAN / MERGEABLE` at `2026-08-06T07:30:47Z`.
 
 **Historical packet baseline:** `origin/main` at
 `6cd5a6417e1f4e72b1fbcce5d11801358b424d82`, with Git tree
@@ -66,7 +67,7 @@ observation:
 | Git tree | `6d2154bd52785bbc749345c0346651f9752d1646` | Source tree identity; not an artifact digest |
 | Current-main merge parents | `cccc1e8c06abf1eba57854166c01598bd8db2246`, `0b23419a5a0fe46b7dbc8459032213c741c60fbc` | Git ancestry only |
 | Delta from pre-#186 main | Six documentation-only paths changed by PR #186; no backend/frontend runtime, test, dependency, workflow, migration, or provider path changed | Source-path evidence from `cccc1e8` may carry by path preservation; exact documentation provenance is refreshed here |
-| Open PR state | PR #185 is `OPEN / CONFLICTING` and is not included in `f43eea6` | Its evidence remains separate until owner reconciliation and review |
+| Open PR state | PR #185 is `OPEN / CLEAN / MERGEABLE` as rechecked at `2026-08-06T07:30:47Z`; it is not included in `f43eea6` | Its evidence remains separate until owner reconciliation and review |
 | Verification worktree | `C:\tmp\niuva-g5-current-main-revalidation-post-186-20260806`, `HEAD = origin/main` | Does not prove any external environment state |
 | Update branch base | `codex/g5-current-main-revalidation-post-186-20260806` is based on `f43eea6` and changes only this packet | The packet is refreshed against the exact current main |
 
