@@ -112,7 +112,7 @@ and the safe procedure is recorded in
 | --- | --- | --- |
 | Repository/GitHub inventory | 43 remote heads, 0 tags, 0 open PRs, 168 PR-head refs, 0 forks, 0 rulesets, 3 collaborator accounts by count | Current read-only snapshot only; freeze, old-clone, cache, backup, and Support evidence remain open. |
 | Local worktrees/object database | 93 registered worktrees, 20 dirty, 219 dangling objects, no missing/unreachable object lines | No worktree or object cleanup was performed; owner disposition is still required. |
-| Redacted history scan | Gitleaks `8.30.1`, exit `1`, 2 unresolved `generic-api-key` findings in `PRODUCT.md` and `doc/PRODUCTION_DEPLOYMENT.md` | Findings require secret-safe owner review; they are not automatically false positives or closure evidence. |
+| Redacted history scan | Gitleaks `8.30.1`, exit `1`, 2 unresolved `generic-api-key` findings in `PRODUCT.md` and `doc/PRODUCTION_DEPLOYMENT.md`; value-free review found no placeholder/env markers and GitHub alert API returned `404` | Findings require secret-safe owner review; they are not automatically false positives or closure evidence. |
 | Focused non-production verification | Auth/security/permission/projection test set: `175 passed` | Bounded local source evidence only; no controlled new-account authentication was run. |
 | Credential/history action | No credential inspected, revoked, rotated, rewritten, force-pushed, or deleted | `NIV-001` remains `accepted_risk_approved_until_2026-08-30`; verified closure remains open. |
 

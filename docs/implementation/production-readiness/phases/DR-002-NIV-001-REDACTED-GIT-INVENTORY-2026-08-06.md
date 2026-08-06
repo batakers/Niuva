@@ -81,8 +81,18 @@ A pinned Gitleaks binary was run against the current Git history with
 | Retained report | Temporary path outside repository; retention/destruction remains an owner decision |
 
 The two findings are **unresolved potential findings**, not automatically
-classified false positives. An owner must review them through a secret-safe
-process and record a redacted disposition before any closure claim.
+classified false positives. A value-free structural review recorded no
+placeholder marker, environment-variable reference, or URL on either finding
+line; both are therefore retained as `credential-like-documentation` pending
+owner review. The source commit subject was `docs: propagate approved
+architecture decisions` and only the file/line hashes are retained here.
+An owner must review them through a secret-safe process and record a redacted
+disposition before any closure claim.
+
+The read-only GitHub secret-scanning alert endpoints returned HTTP `404` for
+both `open` and `resolved` queries in this session. No authoritative alert
+inventory was returned; this must not be interpreted as proof that no alerts
+exist.
 
 The runbook's exact-value history scan was not run because the recorded
 introducing object is absent from this checkout and no credential value was
@@ -122,7 +132,7 @@ backup retention, or independent verification.
 | Gate | Result |
 | --- | --- |
 | Read-only Git/GitHub inventory | `PARTIAL_PASS` — current counts recorded; freeze/owner inventory not established |
-| Redacted secret scan | `BLOCKED_BY_UNRESOLVED_FINDINGS` — two Gitleaks findings require owner review |
+| Redacted secret scan | `BLOCKED_BY_UNRESOLVED_FINDINGS` — two credential-like Gitleaks findings require owner review; GitHub alert API inventory returned `404` |
 | Old credential revocation/rotation | `NOT RUN` — no credential value or secret manager accessed |
 | Controlled non-production authentication | `NOT RUN` — no approved account/config reference supplied |
 | History rewrite/publication | `NOT RUN` — no isolated rewrite approval or exact-value evidence |
