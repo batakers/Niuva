@@ -5,11 +5,12 @@ release candidate or authorize production, deployment, provider activation,
 migration, secret rotation, or go-live.
 
 **Observed current head:** `origin/main` at
-`c84743c8fcbc158721037b3c02dc0dff0c872242`.
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, with Git tree
+`6d2154bd52785bbc749345c0346651f9752d1646`.
 
-**Branch:** `codex/g9-readiness-next-20260806`
+**Branch:** `codex/dr001-current-main-reanchor-20260806`
 
-**Worktree:** `C:\tmp\niuva-g9-readiness-next-20260806`
+**Worktree:** `C:\tmp\niuva-dr001-current-main-reanchor-20260806`
 
 ## Objective
 
@@ -57,9 +58,10 @@ is inferred from a merged PR or passing test.
 
 - Record the fetched current SHA and exact clean worktree.
 - Prove the relationship between the historical `d04e3f0` selection, the
-  requested-but-stale `c7452b8`, and the observed `c84743c` head.
+  requested-but-stale `c7452b8`, and the observed `f43eea6` head.
 - Record exact ancestry/path-count evidence and recent merged lineage.
-- Record what PR #150 changed and which checks passed, with production limits.
+- Record the merged lineage through PR #186 and which checks passed, with
+  production limits.
 - Present explicit DR-001 disposition fields without preselecting an option.
 - Keep **NOT READY** for production, deployment, activation, and go-live.
 - State changed/unchanged paths, verification limits, rollback, and external
