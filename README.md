@@ -45,8 +45,7 @@ storage, Organization Portal, history rewrite, or go-live.
 
 Requirements:
 
-- Python 3.12 locally; CI additionally verifies the repository's pinned
-  Python 3.14.3 target
+- Python 3.14.3, declared by `.python-version`
 - Node.js 22 or newer
 - Docker with Compose
 - MongoDB replica-set capability for mutation work
@@ -55,8 +54,9 @@ Backend:
 
 ```bash
 cp backend/.env.example backend/.env
-python3.12 -m venv backend/.venv
-backend/.venv/bin/python -m pip install -r backend/requirements.txt
+python3.14 -m venv backend/.venv
+backend/.venv/bin/python -m pip install --require-hashes \
+  -r backend/requirements.lock
 docker compose -f docker-compose.transaction.yml up -d
 cd backend
 .venv/bin/python -m uvicorn server:app --reload --port 8000
