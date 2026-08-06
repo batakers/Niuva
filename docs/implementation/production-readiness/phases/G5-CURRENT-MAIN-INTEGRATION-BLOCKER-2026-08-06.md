@@ -71,15 +71,16 @@ current exact-SHA acceptance automatically.
 | Child | Evidence located | Exact-current-SHA status | G5 consequence |
 | --- | --- | --- | --- |
 | G0 | Bounded staging contract is present in `main` through the earlier G0 documentation lineage | Planning contract only; it does not select a candidate or grant operations authority | Scope is frozen, but G5 still needs child handovers and owner decisions |
-| G1 | G1 task card; PR #166 backend/transaction changes and CI evidence; backend residual decision packet | No final G1 handover packet tied to `d4bf4ac` was found in the current-main phase inventory | Backend evidence is partial; exact changed-path, negative-path, and independent-review reconciliation remains open |
+| G1 | G1 task card; PR #166 backend/transaction changes and CI evidence; current-main handover in open PR [#176](https://github.com/batakers/Niuva/pull/176) | Packet is tied to `d4bf4ac`; required PR #176 backend, frontend, and secret-scan checks passed, but the packet is not yet merged | Bounded repository/path evidence passes; staging, independent review, and operational reconciliation remain open |
 | G2 | G2 task card; DR-003, DR-004, and DR-005 decision packets; existing auth source/test history | No final G2 handover packet tied to `d4bf4ac` was found; the human decisions remain open | Auth/security acceptance cannot be declared |
 | G3 | Historical packet at `5254641c`; current revalidation packet in open PR #175; PR #172 current-main-equivalent frontend CI | Current source revalidation passes `design-system-integration.spec.js` in 4/4 viewports and `npm run audit:production`; PR #175 is not yet merged | Bounded hermetic gate passes; serial handover and external role/staging/manual accessibility evidence remain open |
 | G4 | Current-main G4 packet merged by PR #173; packet baseline is `b1564b0`, while the merge itself changed documentation only | Source-path evidence carries to `d4bf4ac`; external staging, artifact publication, restore, and rollback evidence remain absent | G4 is documented, but not operationally accepted |
 | G5 | This packet | Final acceptance intentionally not attempted | Blocked until the relevant child handovers, exact-SHA evidence, and owner/verifier decisions exist |
 
-The absence of a final G1 or G2 packet in the current-main phase inventory is
-not evidence that the underlying source is defective; it is evidence that the
-serial G5 handover record is incomplete.
+G1 now has a current-main handover in open PR #176, but it is not yet part of
+the `main` phase inventory. G2 still has no final current-main handover. This
+is evidence that the serial G5 handover record remains incomplete, not evidence
+that the underlying backend source is defective.
 
 ## 4. Verification evidence that can be carried
 
@@ -121,6 +122,24 @@ current runtime tree:
 This is carried path evidence, not a claim that the transaction workflow ran
 on `d4bf4ac`. The earlier PR #164 failure was followed by the retry-safe
 correction and later passing transaction evidence.
+
+PR #164's retry-safe follow-up run
+[`31054621081`](https://github.com/batakers/Niuva/actions/runs/31054621081),
+job
+[`92469314161`](https://github.com/batakers/Niuva/actions/runs/31054621081/job/92469314161),
+reported `76 passed in 6.02s`. The B2B/catalog conflict paths exercised by
+that run have no diff from its tested head `d4c144b7` to current `d4bf4ac`.
+The two transaction runs are reported separately because PR #164 and PR #166
+changed different portions of the G1 path set.
+
+The exact-current-main backend quality run
+[`31061245165`](https://github.com/batakers/Niuva/actions/runs/31061245165),
+backend job
+[`92489477033`](https://github.com/batakers/Niuva/actions/runs/31061245165/job/92489477033),
+also passed with `961 passed, 15 skipped, 14 subtests passed in 20.56s`.
+This supports current-tree backend quality, while the isolated transaction
+workflow remains path-preserving evidence rather than an exact-current-SHA
+transaction workflow run.
 
 ### G3 current-source revalidation
 
@@ -174,11 +193,11 @@ reconcile all applicable evidence against that tree.
 | Required G5 item | Current result | Verdict |
 | --- | --- | --- |
 | Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `d4bf4ac` is only observed main | `BLOCKED_BY_DECISION` |
-| G1 exact-SHA handover with changed/unchanged paths and verifier | No final current-SHA G1 handover located | `MISSING` |
+| G1 exact-SHA handover with changed/unchanged paths and verifier | PR #176 packet is tied to `d4bf4ac`; path-preserving transaction evidence and exact-current-main backend quality passed; independent verifier and external role matrix absent | `PARTIAL_PASS` |
 | G2 exact-SHA auth/security matrix and human decision closure | DR-003/004/005 remain open; no final current-SHA G2 handover | `BLOCKED_BY_DECISION` |
 | G3 browser, accessibility, role, and negative-path evidence | Hermetic design-system suite `4/4` and audit runner pass; real-role/external/manual evidence absent | `PARTIAL_PASS` |
 | G4 artifact, environment, rollback, and operations evidence | Packet is merged, but no external target or immutable published artifact exists | `BLOCKED_BY_EXTERNAL_EVIDENCE` |
-| Backend/frontend/transaction quality gates | Current-main-equivalent PR #172 and relevant transaction run passed | `PARTIAL_PASS` |
+| Backend/frontend/transaction quality gates | Exact-current-main backend quality run passed; PR #175 and PR #176 required checks passed; relevant isolated transaction runs passed | `PARTIAL_PASS` |
 | Exact external origin/TLS/proxy/CORS/cookie verification | No approved target or credentials | `NOT_RUN` |
 | Migration dry run/apply/backup/restore/rollback | No approved target or mutation authorization | `NOT_RUN` |
 | Immutable artifact registry/attestation and previous-known-good identity | Not present | `MISSING` |
@@ -238,8 +257,12 @@ other SHA production-ready.
   before this packet: passed;
 - current-main-equivalent PR #172 backend/frontend/browser/secret checks:
   passed at the cited PR head;
-- latest relevant transaction test run: passed, with relevant paths unchanged
-  through current `main`;
+- exact-current-main backend quality run `31061245165`: passed with `961
+  passed, 15 skipped, 14 subtests passed`;
+- PR #164 follow-up and PR #166 isolated transaction runs: passed with `76`
+  each, with relevant paths unchanged through current `main`;
+- current G1 handover PR #176: backend, frontend, and secret-scan checks
+  passed; the documentation packet is not yet merged;
 - G3 hermetic browser/audit findings: revalidated in open PR #175; external and
   manual accessibility evidence remains unrun;
 - G4 current-main packet: merged by PR #173, with external operational gaps
