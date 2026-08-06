@@ -7,19 +7,19 @@ final gate acceptance
 **Date:** 2026-08-06 (Asia/Jakarta)
 **Requested baseline:** `origin/main` `c7452b889eec2c3597c622479d46da456f2bf656`
 **Observed current head:** `origin/main` at
-`1a99bd7cd56500bb3ea08a892f01ffc0ed22ec79`, Git tree
-`8d190098fe819b4c284d65d9e4ca2fbcbb81ff9f`
-**Merge parents:** `9b3044170f24b857348af073387ab4401f8822d7` and
-`230ed2fcc7be630bc14ef1096d8f3df826ee15af`
+`2ccb340a4694c8fe466531a666514edd5bd9c1e2`, Git tree
+`e8893474a388727365a387ee7a11491dc55df842`
+**Merge parents:** `1a99bd7cd56500bb3ea08a892f01ffc0ed22ec79` and
+`cfed53be307d4a4f9cc2908eacc277a78a9010de`
 **Driver:** Faiz / delegated Codex implementation
-**Active branch:** `codex/post-198-main-revalidation-20260806`
-**Active worktree:** `C:\tmp\niuva-post-198-main-20260806`
+**Active branch:** `codex/pr-196-197-current-head-fix-20260806`
+**Active worktree:** `C:\tmp\niuva-pr-196-197-current-head-fix-20260806`
 
 ## Objective
 
-Re-anchor the current decision queue and readiness evidence after PR #198
+Re-anchor the current decision queue and readiness evidence after PR #199
 entered `main` as the current-head documentation re-anchor. The previous
-packet was authored against the intermediate `9b30441` state and now has a
+packet was authored against the intermediate `1a99bd7` state and now has a
 stale current SHA/tree. The packet must distinguish the current repository
 observation from a selected release candidate, preserve the documented DR-002
 sole-owner exception as non-independent and unverified, and identify PRs #196
@@ -61,7 +61,9 @@ Only these paths may change:
   workflows.
 - Do not rewrite historical evidence packets merely to replace their
   point-in-time SHA; classify them as historical where appropriate.
-- Do not merge, rebase, force-push, or delete PRs/branches.
+- Do not merge, rebase, force-push, or delete the superseded PRs/branches #196
+  and #197. This replacement may be merged only after its review and required
+  checks pass under the user's explicit authorization.
 - Do not select or activate storage, payment, email, shipping, telemetry, or
   other providers.
 - Do not use credentials, external targets, staging/production data, or real
@@ -73,11 +75,11 @@ Only these paths may change:
 
 - Record the exact fetched `origin/main` SHA, Git tree, merge parents, clean
   worktree state, and requested-baseline staleness.
-- Record that `9b30441..1a99bd7` is documentation-only: four paths, 174
-  additions, and 118 deletions from PR #198. Also retain the earlier #185,
-  #189, and #195 intervals as historical lineage.
+- Record that `1a99bd7..2ccb340` is documentation-only: four paths, 100
+  additions, and 88 deletions from PR #199. Also retain the earlier #185,
+  #189, #195, and #198 intervals as historical lineage.
 - Record merged lineage and current open PR state without treating either as
-  a release decision; #198 is merged and #196/#197 are not part of `main`.
+  a release decision; #199 is merged and #196/#197 are not part of `main`.
 - Record that the #185 sole-owner exception is an accepted-risk disposition,
   not independent verification or `Verified` incident closure.
 - Preserve DR-001, DR-002, DR-011–DR-015, provider, migration, deployment,
@@ -87,7 +89,7 @@ Only these paths may change:
 
 ## Unresolved risks and decisions
 
-- **DR-001 remains open:** the observed `1a99bd7` head is not an owner-selected
+- **DR-001 remains open:** the observed `2ccb340` head is not an owner-selected
   release candidate.
 - **DR-002 remains open for verified closure:** #185 records a sole-owner
   self-verification exception through 30 August 2026, but independent
@@ -100,7 +102,7 @@ Only these paths may change:
   stale as `main` advances; the paired packet must be refreshed before a new
   candidate claim.
 - PR #196 and PR #197 were authored against `9472537`; they are now
-  stale/conflicting after #198 and are not evidence for `1a99bd7`.
+  stale/conflicting after #198 and #199 and are not evidence for `2ccb340`.
 - External smoke, real-role/browser, staging, artifact publication,
   backup/restore, migration, deployment, monitoring, and go-live checks were
   unavailable because target, credentials, owners, or approvals are absent.
@@ -110,9 +112,10 @@ stop-conditions.
 
 ## Delivery authorization and handover
 
-The user authorizes a branch, commit, push, and PR. Merge, deployment,
-provider activation, migration execution, secret use/rotation,
-production-readiness, and go-live remain outside this task authorization.
+The user authorizes a branch, commit, push, PR, and merge of this replacement
+only after review and required checks pass. Deployment, provider activation,
+migration execution, secret use/rotation, production-readiness, and go-live
+remain outside this task authorization.
 
 The PR must list changed and intentionally unchanged files, passed and unrun
 checks, risks and rollback, and external actions still requiring approval.

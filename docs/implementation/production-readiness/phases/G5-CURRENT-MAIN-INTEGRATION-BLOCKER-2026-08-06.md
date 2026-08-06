@@ -8,25 +8,26 @@ selection, production-readiness approval, deployment approval, or go-live
 approval.
 
 **Latest current-main observation:** `origin/main` at
-`1a99bd7cd56500bb3ea08a892f01ffc0ed22ec79`, with Git tree
-`8d190098fe819b4c284d65d9e4ca2fbcbb81ff9f`, freshly fetched on 6 August 2026
-(Asia/Jakarta). The merge commit is PR #198 at `18:53:04 WIB`, with parents
-`9b3044170f24b857348af073387ab4401f8822d7` and
-`230ed2fcc7be630bc14ef1096d8f3df826ee15af`. PR #198 is documentation-only
+`2ccb340a4694c8fe466531a666514edd5bd9c1e2`, with Git tree
+`e8893474a388727365a387ee7a11491dc55df842`, freshly fetched on 6 August 2026
+(Asia/Jakarta). The merge commit is PR #199 at `19:18:02 WIB`, with parents
+`1a99bd7cd56500bb3ea08a892f01ffc0ed22ec79` and
+`cfed53be307d4a4f9cc2908eacc277a78a9010de`. PR #199 is documentation-only
 and reanchors the readiness evidence to the current head. It does not
 establish independent verification, `Verified` closure, or a release
 candidate. PRs #196 and #197 remain open, stale, and conflicting on the older
-`9472537` base and are not part of this `main` tree.
+`9472537` base; their historical checks do not make them part of this `main`
+tree.
 
 **Historical packet baseline:** `origin/main` at
 `6cd5a6417e1f4e72b1fbcce5d11801358b424d82`, with Git tree
 `77ce7bceb0eeb237ead9ad9591c7160c28d7e76`, after the earlier merge of PR #174
 and PRs #175–#178. Evidence tied only to unchanged source paths may be carried
 forward, but the historical identity and external observations do not become
-exact-`1a99bd7` acceptance.
+exact-`2ccb340` acceptance.
 
-**Update branch/worktree:** `codex/post-198-main-revalidation-20260806` /
-`C:\tmp\niuva-post-198-main-20260806`.
+**Update branch/worktree:** `codex/pr-196-197-current-head-fix-20260806` /
+`C:\tmp\niuva-pr-196-197-current-head-fix-20260806`.
 
 This update is documentation-only. It does not create a runtime candidate or
 alter any external evidence, staging, deployment, migration, provider, secret,
@@ -66,13 +67,13 @@ observation:
 
 | Evidence | Result | Limit |
 | --- | --- | --- |
-| Latest `origin/main` | `1a99bd7cd56500bb3ea08a892f01ffc0ed22ec79` | Point-in-time source identity; DR-001 does not select it |
-| Git tree | `8d190098fe819b4c284d65d9e4ca2fbcbb81ff9f` | Source tree identity; not an artifact digest |
-| Current-main merge parents | `9b3044170f24b857348af073387ab4401f8822d7`, `230ed2fcc7be630bc14ef1096d8f3df826ee15af` | Git ancestry only |
-| Delta from intermediate #185 main | `9b30441..1a99bd7`: four documentation paths, 174 additions, and 118 deletions | Scope indicator only; changed paths require proportional revalidation |
+| Latest `origin/main` | `2ccb340a4694c8fe466531a666514edd5bd9c1e2` | Point-in-time source identity; DR-001 does not select it |
+| Git tree | `e8893474a388727365a387ee7a11491dc55df842` | Source tree identity; not an artifact digest |
+| Current-main merge parents | `1a99bd7cd56500bb3ea08a892f01ffc0ed22ec79`, `cfed53be307d4a4f9cc2908eacc277a78a9010de` | Git ancestry only |
+| Delta from intermediate #198 main | `1a99bd7..2ccb340`: four documentation paths, 100 additions, and 88 deletions | Scope indicator only; changed paths require proportional revalidation |
 | Open PR state | PR #196 and PR #197 are both `OPEN / CONFLICTING` against current `main`, based on the older `9472537` head; neither is current-main evidence | Open PR evidence remains separate from `main` |
-| Verification worktree | `C:\tmp\niuva-post-198-main-20260806`, `HEAD = origin/main`, clean and zero-divergent | Does not prove any external environment state |
-| Update branch base | `codex/post-198-main-revalidation-20260806` is based on `1a99bd7` and changes the four-document current-main revalidation slice | The packet is refreshed against the exact current main |
+| Verification worktree | `C:\tmp\niuva-pr-196-197-current-head-fix-20260806`, `HEAD = origin/main`, clean and zero-divergent | Does not prove any external environment state |
+| Update branch base | `codex/pr-196-197-current-head-fix-20260806` is based on `2ccb340` and changes the four-document current-main revalidation slice | The packet is refreshed against the exact current main |
 
 PR #173 is now merged at `d4bf4ac`:
 [`#173`](https://github.com/batakers/Niuva/pull/173). Its G4 packet was
@@ -101,6 +102,7 @@ The child handovers were then merged in this order:
 | #195 | `9472537405af3353a68e599a057263ca7aa079ee` | Post-merge readiness packet; documentation-only but authored against `4026bc2` |
 | #185 | `9b3044170f24b857348af073387ab4401f8822d7` | NIV-001 sole-owner accepted-risk exception and redacted evidence refresh |
 | #198 | `1a99bd7cd56500bb3ea08a892f01ffc0ed22ec79` | Current-head readiness/G5 documentation re-anchor |
+| #199 | `2ccb340a4694c8fe466531a666514edd5bd9c1e2` | Current-head readiness/G5 documentation re-anchor after #198 |
 
 These merge commits are repository integration evidence only. They do not
 select a release candidate or establish staging, production, or go-live proof.
@@ -129,9 +131,9 @@ that the underlying backend source is defective.
 
 ### Exact current-main repository quality gate
 
-The post-merge `quality-gates` workflow at current `origin/main` `1a99bd7`
+The post-merge `quality-gates` workflow at current `origin/main` `2ccb340`
 passed in run
-[`31099077596`](https://github.com/batakers/Niuva/actions/runs/31099077596):
+[`31100812342`](https://github.com/batakers/Niuva/actions/runs/31100812342):
 backend, frontend, and secret-scan jobs completed successfully. This remains
 CI evidence only and does not prove staging, external origins, restore,
 rollback, monitoring, production readiness, or go-live.
@@ -176,7 +178,7 @@ current runtime tree:
 - `backend/tests/test_transaction_observability.py`.
 
 This is carried path evidence, not a claim that the transaction workflow ran
-on `9b30441`. The earlier PR #164 failure was followed by the retry-safe
+on `2ccb340`. The earlier PR #164 failure was followed by the retry-safe
 correction and later passing transaction evidence.
 
 PR #164's retry-safe follow-up run
@@ -195,7 +197,7 @@ backend job
 also passed with `961 passed, 15 skipped, 14 subtests passed in 20.56s` at
 `d4bf4ac`. PRs #175–#178 and #186 do not change the backend runtime paths, so this
 quality result carried to `f43eea6` by path preservation; it is historical,
-not a new exact-`9b30441` transaction workflow run. The isolated transaction workflow
+not a new exact-`2ccb340` transaction workflow run. The isolated transaction workflow
 remains path-preserving evidence rather than an exact-current-SHA transaction
 workflow run.
 
@@ -269,7 +271,7 @@ not be used as unqualified current-candidate evidence:
 | `CURRENT-RELEASE-CANDIDATE-SELECTION-2026-08-06.md` | `c84743c8` | DR-001 packet is stale; owner selection remains blank |
 | `CURRENT-MAIN-DR001-FRESHNESS-2026-08-06.md` | `5d5abcf` | Freshness packet is superseded by later main lineage |
 | `CURRENT-MAIN-READINESS-PROVENANCE-RECONCILIATION-2026-08-06.md` | `9f4d3a4` | Carried evidence requires revalidation at `f43eea6` |
-| `CURRENT-MAIN-POST-MERGE-READINESS-REVALIDATION-2026-08-06.md` | `4026bc2` in merged PR #195 | Stale intermediate observation; PR #196 is an older-base correction and is now conflicting |
+| `CURRENT-MAIN-POST-MERGE-READINESS-REVALIDATION-2026-08-06.md` | `1a99bd7` in merged PR #198 | Stale intermediate observation; PR #199 is the current-head correction recorded here, while PR #196 remains an older-base conflict |
 | `DR-002-NIV-001-DISPOSITION-2026-08-06.md` | `9472537` | Point-in-time decision evidence; #185 merge does not turn its exception into Verified closure |
 | `G3-BROWSER-EVIDENCE-SOURCE-GATE-2026-08-06.md` | `5254641c` | Historical residual record; current findings are revalidated in merged PR #175 |
 | `G4-CURRENT-MAIN-ARTIFACT-ROLLBACK-EVIDENCE-2026-08-06.md` | `b1564b0` | Merged current-main packet; source-path evidence carries, external evidence remains absent |
@@ -282,13 +284,13 @@ reconcile all applicable evidence against that tree.
 
 | Required G5 item | Current result | Verdict |
 | --- | --- | --- |
-| Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `1a99bd7` is only observed main | `BLOCKED_BY_DECISION` |
+| Project Owner selects one immutable candidate SHA and scope | DR-001 disposition is blank; `2ccb340` is only observed main | `BLOCKED_BY_DECISION` |
 | DR-002 verified incident closure and independent verification | #185 records a sole-owner accepted-risk exception through 30 August 2026; P0 remains open and independent verification/credential action are absent | `BLOCKED_BY_DECISION` |
 | G1 exact-SHA handover with changed/unchanged paths and verifier | PR #176 packet is merged at `d812f95` and tied to `d4bf4ac`; path-preserving transaction evidence and current-tree backend quality carry by unchanged paths; independent verifier and external role matrix absent | `PARTIAL_PASS` |
 | G2 exact-SHA auth/security matrix and human decision closure | PR #177 packet is merged at `90368e4` and tied to `d4bf4ac`; local auth/security `99` passed, authorization/privacy `197 passed, 2 skipped`, frontend auth `65 passed`, and exact-main CI passed; DR-003/004/005 and external role/staging evidence remain open | `BLOCKED_BY_DECISION` |
 | G3 browser, accessibility, role, and negative-path evidence | Hermetic design-system suite `4/4` and audit runner pass; real-role/external/manual evidence absent | `PARTIAL_PASS` |
 | G4 artifact, environment, rollback, and operations evidence | PR #178 release gate is merged at `9736d61`; #189 adds numeric budget source state, but canonical DR-013 remains Open; no external target, immutable published artifact, restore, or rollback exercise exists | `BLOCKED_BY_EXTERNAL_EVIDENCE` |
-| Backend/frontend/transaction quality gates | Current-main `quality-gates` run [`31099077596`](https://github.com/batakers/Niuva/actions/runs/31099077596) passed at `1a99bd7`; earlier release/transaction evidence also passed, with environment-dependent gaps remaining | `PARTIAL_PASS` |
+| Backend/frontend/transaction quality gates | Current-main `quality-gates` run [`31100812342`](https://github.com/batakers/Niuva/actions/runs/31100812342) passed at `2ccb340`; earlier release/transaction evidence also passed, with environment-dependent gaps remaining | `PARTIAL_PASS` |
 | Exact external origin/TLS/proxy/CORS/cookie verification | No approved target or credentials | `NOT_RUN` |
 | Migration dry run/apply/backup/restore/rollback | No approved target or mutation authorization | `NOT_RUN` |
 | Immutable artifact registry/attestation and previous-known-good identity | Not present | `MISSING` |
@@ -326,7 +328,7 @@ accepted by the named authority before the corresponding gate can pass:
 Until those inputs exist, the exact stop conditions are: do not enable Retail
 checkout, upload, payment, provider integrations, or production mutations; do
 not use real credentials or data; do not apply or restore migrations; do not
-publish an untracked artifact as a release; and do not declare `1a99bd7` or any
+publish an untracked artifact as a release; and do not declare `2ccb340` or any
 other SHA production-ready. Do not treat the #185 self-verification exception
 as `Verified` closure.
 
@@ -350,14 +352,15 @@ as `Verified` closure.
 
 ### Verification and limits
 
-- fresh fetch, exact `origin/main` SHA/tree (`1a99bd7` /
-  `8d190098fe819b4c284d65d9e4ca2fbcbb81ff9f`), fresh worktree
-  `niuva-post-198-main-20260806`, and zero divergence before this update:
+- fresh fetch, exact `origin/main` SHA/tree (`2ccb340` /
+  `e8893474a388727365a387ee7a11491dc55df842`), fresh worktree
+  `niuva-pr-196-197-current-head-fix-20260806`, and zero divergence before this
+  update:
   passed;
 - current-main-equivalent PR #172 backend/frontend/browser/secret checks:
   passed at the cited PR head;
-- PR #198 merge-triggered current-main quality run `31099077596`: backend,
-  frontend, and secret-scan passed at `1a99bd7`;
+- PR #199 merge-triggered current-main quality run `31100812342`: backend,
+  frontend, and secret-scan passed at `2ccb340`;
 - a fresh local full-backend attempt on `f43eea6` did not complete within the
   bounded run and ended during pytest stdout flush with `OSError: [Errno 22]
   Invalid argument`; no exact-current-main local backend result is claimed;
