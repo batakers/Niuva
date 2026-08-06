@@ -64,17 +64,30 @@ const PUBLIC_ROUTE_META = {
 
 const configuredPublicSiteUrl = (process.env.REACT_APP_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 
-function getCanonicalOrigin() {
+export function resolveCanonicalOrigin(configuredUrlValue, runtimeOrigin) {
+  const normalized = String(configuredUrlValue || "").replace(/\/$/, "");
   try {
-    const configuredUrl = new URL(configuredPublicSiteUrl);
-    if (/^https?:$/.test(configuredUrl.protocol) && !/^(localhost|127\.0\.0\.1)$/i.test(configuredUrl.hostname)) {
+    const configuredUrl = new URL(normalized);
+    if (
+      /^https?:$/.test(configuredUrl.protocol) &&
+      !/^(localhost|127\.0\.0\.1)$/i.test(configuredUrl.hostname) &&
+      !configuredUrl.username &&
+      !configuredUrl.password &&
+      configuredUrl.pathname === "/" &&
+      !configuredUrl.search &&
+      !configuredUrl.hash
+    ) {
       return configuredUrl.origin;
     }
   } catch {
     // Runtime origin is the safe fallback when no confirmed public origin is configured.
   }
 
-  return window.location.origin;
+  return runtimeOrigin;
+}
+
+function getCanonicalOrigin() {
+  return resolveCanonicalOrigin(configuredPublicSiteUrl, window.location.origin);
 }
 
 function ensureMetaDescription(content) {

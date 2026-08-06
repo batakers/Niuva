@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-import { MarketingLayout, OperationalLayout } from "./Layout";
+import { MarketingLayout, OperationalLayout, resolveCanonicalOrigin } from "./Layout";
 
 jest.mock("./Navbar", () => ({
   Navbar: () => <nav aria-label="Primary navigation" />,
@@ -49,6 +49,29 @@ describe("MarketingLayout public metadata", () => {
     expect(screen.getByRole("link", { name: "Lewati ke konten" })).toHaveAttribute(
       "href",
       "#main-content",
+    );
+  });
+});
+
+describe("canonical origin validation", () => {
+  test("uses the explicit public origin for release metadata", () => {
+    expect(
+      resolveCanonicalOrigin(
+        "https://staging.niuva.example/",
+        "http://localhost:3000",
+      ),
+    ).toBe("https://staging.niuva.example");
+  });
+
+  test("falls back to runtime origin for unsafe or incomplete configuration", () => {
+    expect(resolveCanonicalOrigin("https://staging.niuva.example/site", "https://runtime.example")).toBe(
+      "https://runtime.example",
+    );
+    expect(resolveCanonicalOrigin("https://user:secret@staging.niuva.example", "https://runtime.example")).toBe(
+      "https://runtime.example",
+    );
+    expect(resolveCanonicalOrigin("http://localhost:3000", "https://runtime.example")).toBe(
+      "https://runtime.example",
     );
   });
 });

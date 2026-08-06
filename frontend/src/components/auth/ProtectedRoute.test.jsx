@@ -20,7 +20,7 @@ function CustomerLoginProbe() {
   );
 }
 
-function renderProtected({ initialPath = "/admin", permission } = {}) {
+function renderProtected({ initialPath = "/admin", permission, adminRoute = false } = {}) {
   return render(
     <I18nProvider>
       <MemoryRouter initialEntries={[initialPath]}>
@@ -28,7 +28,7 @@ function renderProtected({ initialPath = "/admin", permission } = {}) {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute permission={permission}>
+              <ProtectedRoute adminRoute={adminRoute} permission={permission}>
                 <div>protected content</div>
               </ProtectedRoute>
             }
@@ -36,7 +36,7 @@ function renderProtected({ initialPath = "/admin", permission } = {}) {
           <Route
             path="/admin/notifications"
             element={
-              <ProtectedRoute permission={permission}>
+              <ProtectedRoute adminRoute={adminRoute} permission={permission}>
                 <div>protected content</div>
               </ProtectedRoute>
             }
@@ -44,7 +44,7 @@ function renderProtected({ initialPath = "/admin", permission } = {}) {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute permission={permission}>
+              <ProtectedRoute adminRoute={adminRoute} permission={permission}>
                 <div>protected content</div>
               </ProtectedRoute>
             }
@@ -128,6 +128,20 @@ test("denies a customer on the Admin notification feed", () => {
   renderProtected({
     initialPath: "/admin/notifications",
     permission: ADMIN_ROUTE_PERMISSIONS["/admin/notifications"],
+  });
+
+  expect(screen.getByText(/403/)).toBeInTheDocument();
+  expect(screen.queryByText("protected content")).not.toBeInTheDocument();
+});
+
+test("fails closed when an Admin route has no permission mapping", () => {
+  useAuth.mockReturnValue({
+    user: { id: "admin-1", permissions: ["*"] },
+    loading: false,
+  });
+  renderProtected({
+    initialPath: "/admin/notifications",
+    adminRoute: true,
   });
 
   expect(screen.getByText(/403/)).toBeInTheDocument();

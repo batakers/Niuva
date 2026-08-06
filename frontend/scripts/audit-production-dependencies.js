@@ -8,11 +8,19 @@ const acceptedAdvisory =
   "https://github.com/advisories/GHSA-qwww-vcr4-c8h2";
 const acceptedPackages = new Set(["react-router", "react-router-dom"]);
 
-const result = spawnSync(
-  process.platform === "win32" ? "npm.cmd" : "npm",
-  ["audit", "--omit=dev", "--json"],
-  { encoding: "utf8" },
-);
+const auditEnv = { ...process.env };
+delete auditEnv.npm_config_allow_scripts;
+
+const auditCommand =
+  process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm";
+const auditArgs =
+  process.platform === "win32"
+    ? ["/d", "/s", "/c", "npm.cmd audit --omit=dev --json"]
+    : ["audit", "--omit=dev", "--json"];
+const result = spawnSync(auditCommand, auditArgs, {
+  encoding: "utf8",
+  env: auditEnv,
+});
 
 let report;
 try {

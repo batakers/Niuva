@@ -124,7 +124,7 @@ class AppErrorBoundary extends Component {
 }
 
 const protectedPage = (path, element) => (
-  <ProtectedRoute permission={ADMIN_ROUTE_PERMISSIONS[path]}>{element}</ProtectedRoute>
+  <ProtectedRoute adminRoute permission={ADMIN_ROUTE_PERMISSIONS[path]}>{element}</ProtectedRoute>
 );
 
 function App() {
