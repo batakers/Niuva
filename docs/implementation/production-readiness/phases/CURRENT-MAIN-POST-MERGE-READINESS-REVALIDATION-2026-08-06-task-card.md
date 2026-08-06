@@ -7,23 +7,23 @@ final gate acceptance
 **Date:** 2026-08-06 (Asia/Jakarta)
 **Requested baseline:** `origin/main` `c7452b889eec2c3597c622479d46da456f2bf656`
 **Observed current head:** `origin/main` at
-`9b3044170f24b857348af073387ab4401f8822d7`, Git tree
-`b0f22420856b4041dafabe78399215ab8f9529e1`
-**Merge parents:** `9472537405af3353a68e599a057263ca7aa079ee` and
-`ade7c07901898516eb30eee7a19691bd1d4d37ce`
+`1a99bd7cd56500bb3ea08a892f01ffc0ed22ec79`, Git tree
+`8d190098fe819b4c284d65d9e4ca2fbcbb81ff9f`
+**Merge parents:** `9b3044170f24b857348af073387ab4401f8822d7` and
+`230ed2fcc7be630bc14ef1096d8f3df826ee15af`
 **Driver:** Faiz / delegated Codex implementation
-**Active branch:** `codex/goal-continuation-fresh-20260806-v3`
-**Active worktree:** `C:\tmp\niuva-goal-continuation-fresh-20260806-v3`
+**Active branch:** `codex/post-198-main-revalidation-20260806`
+**Active worktree:** `C:\tmp\niuva-post-198-main-20260806`
 
 ## Objective
 
-Re-anchor the current decision queue and readiness evidence after PR #185
-entered `main` on top of PRs #189 and #195. The previous packet was authored
-against the intermediate `4026bc2`/`9472537` states and incorrectly described
-PR #185 as open. The packet must distinguish the current repository observation
-from a selected release candidate, preserve the documented DR-002
+Re-anchor the current decision queue and readiness evidence after PR #198
+entered `main` as the current-head documentation re-anchor. The previous
+packet was authored against the intermediate `9b30441` state and now has a
+stale current SHA/tree. The packet must distinguish the current repository
+observation from a selected release candidate, preserve the documented DR-002
 sole-owner exception as non-independent and unverified, and identify PRs #196
-and #197 as open work based on the older `9472537` head.
+and #197 as stale/conflicting work based on the older `9472537` head.
 
 This task does not select DR-001, approve a release candidate, resolve DR-002,
 approve a bundle budget, activate a provider, run a migration, deploy, approve
@@ -51,9 +51,8 @@ override canonical decisions or authorize external operations.
 Only these paths may change:
 
 1. `docs/implementation/production-readiness/DECISIONS_REQUIRED.md` — update
-   the DR-001 freshness observation, DR-013 source-state mismatch, and packet
-   link; and
-2. this task card and its paired revalidation packet.
+   the DR-001 freshness observation and packet link; and
+2. this task card and its paired revalidation packet; and
 3. `docs/implementation/production-readiness/phases/G5-CURRENT-MAIN-INTEGRATION-BLOCKER-2026-08-06.md` — update the serial G5 current-main observation.
 
 ## Explicit exclusions
@@ -74,11 +73,11 @@ Only these paths may change:
 
 - Record the exact fetched `origin/main` SHA, Git tree, merge parents, clean
   worktree state, and requested-baseline staleness.
-- Record that `9472537..9b30441` is documentation-only: five paths, 194
-  additions, and 136 deletions. Also retain the earlier #189 source/config
-  delta and distinguish it from the #185 documentation delta.
+- Record that `9b30441..1a99bd7` is documentation-only: four paths, 174
+  additions, and 118 deletions from PR #198. Also retain the earlier #185,
+  #189, and #195 intervals as historical lineage.
 - Record merged lineage and current open PR state without treating either as
-  a release decision; #185 is merged and #196/#197 are not part of `main`.
+  a release decision; #198 is merged and #196/#197 are not part of `main`.
 - Record that the #185 sole-owner exception is an accepted-risk disposition,
   not independent verification or `Verified` incident closure.
 - Preserve DR-001, DR-002, DR-011–DR-015, provider, migration, deployment,
@@ -88,7 +87,7 @@ Only these paths may change:
 
 ## Unresolved risks and decisions
 
-- **DR-001 remains open:** the observed `9b30441` head is not an owner-selected
+- **DR-001 remains open:** the observed `1a99bd7` head is not an owner-selected
   release candidate.
 - **DR-002 remains open for verified closure:** #185 records a sole-owner
   self-verification exception through 30 August 2026, but independent
@@ -100,8 +99,8 @@ Only these paths may change:
 - The requested `c7452b8` baseline and prior `f43eea6` observation can become
   stale as `main` advances; the paired packet must be refreshed before a new
   candidate claim.
-- PR #196 and PR #197 were authored against `9472537`; they require current-
-  head review before merge and are not evidence for `9b30441`.
+- PR #196 and PR #197 were authored against `9472537`; they are now
+  stale/conflicting after #198 and are not evidence for `1a99bd7`.
 - External smoke, real-role/browser, staging, artifact publication,
   backup/restore, migration, deployment, monitoring, and go-live checks were
   unavailable because target, credentials, owners, or approvals are absent.
