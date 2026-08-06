@@ -1,6 +1,12 @@
 import "@/App.css";
 import { Component, lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 import { AuthProvider } from "@/context/AuthContext";
@@ -92,6 +98,21 @@ function RouteFallback() {
   );
 }
 
+export function PublicAliasRedirect({ to }) {
+  const location = useLocation();
+
+  return (
+    <Navigate
+      replace
+      to={{
+        pathname: to,
+        search: location.search,
+        hash: location.hash,
+      }}
+    />
+  );
+}
+
 class AppErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -139,9 +160,15 @@ function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/capabilities" element={<Capabilities />} />
-                  <Route path="/services" element={<Capabilities />} />
+                  <Route
+                    path="/services"
+                    element={<PublicAliasRedirect to="/capabilities" />}
+                  />
                   <Route path="/projects" element={<Projects />} />
-                  <Route path="/portfolio" element={<Projects />} />
+                  <Route
+                    path="/portfolio"
+                    element={<PublicAliasRedirect to="/projects" />}
+                  />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/faq" element={<Faq />} />
