@@ -1,5 +1,6 @@
 import {
   api,
+  ApiError,
   downloadFile,
   fileUrl,
   resolveMediaUrl,
@@ -45,6 +46,16 @@ afterEach(() => {
 
 test("configures JSON API requests with a 15-second timeout", () => {
   expect(api.defaults.timeout).toBe(15_000);
+});
+
+test("ApiError prefers the normalized server message over a fallback", () => {
+  const error = new ApiError(
+    503,
+    { detail: "Server supplied failure" },
+    "Generic fallback",
+  );
+
+  expect(error.message).toBe("Server supplied failure");
 });
 
 test.each(["get", "head"])(

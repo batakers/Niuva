@@ -114,11 +114,12 @@ class Result:
         return [item for item in self.checks if not item["passed"]]
 
 
-def fetch(base_url, path):
+def fetch(base_url, path, *, method="GET"):
     """Return (status, body). A transport failure is a status of 0."""
     request = urllib.request.Request(
         f"{base_url.rstrip('/')}{path}",
         headers={"Accept": "application/json"},
+        method=method,
     )
     try:
         with URL_OPENER.open(request, timeout=TIMEOUT) as response:
@@ -199,7 +200,7 @@ def check_admin_requires_auth(base_url, result):
 
 def check_error_contract(base_url, result):
     """A representative unauthenticated failure must use the stable envelope."""
-    status, body = fetch(base_url, "/api/orders")
+    status, body = fetch(base_url, "/api/orders", method="POST")
     payload = parse(body)
     error = payload.get("error") if isinstance(payload, dict) else None
     request_id = payload.get("request_id") if isinstance(payload, dict) else None

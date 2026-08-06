@@ -70,7 +70,12 @@ function errorCode(value) {
 
 export class ApiError extends Error {
   constructor(status, body, fallbackMessage) {
-    super(fallbackMessage || formatApiError(body));
+    const normalizedMessage = formatApiError(body);
+    super(
+      normalizedMessage !== DEFAULT_API_ERROR_MESSAGE && normalizedMessage
+        ? normalizedMessage
+        : fallbackMessage || normalizedMessage,
+    );
     this.name = "ApiError";
     this.status = status;
     this.body = body;

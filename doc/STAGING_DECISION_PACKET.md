@@ -189,7 +189,6 @@ Every Admin route in the current App integration passes through the explicit
 `ADMIN_ROUTE_PERMISSIONS` map and the `adminRoute` guard. A missing map entry
 fails closed. The backend repeats the permission check on every protected API
 handler and customer projections exclude internal commercial and operational
-handler and customer projections exclude internal commercial and operational
 fields. Dynamic detail routes inherit their list-route permission; the quote
 revision route is the explicit `quotes.write` exception.
 
