@@ -159,6 +159,40 @@ def test_missing_key_version_fails_closed():
         ).to_document()
 
 
+def test_unknown_subject_and_raw_peer_references_fail_closed():
+    with pytest.raises(SecurityEventValidationError):
+        AuthenticationSecurityEvent(
+            event_type="auth.login_failed",
+            outcome="denied",
+            reason_code="credentials_invalid",
+            subject_kind="unknown_identifier",
+            subject_ref="unknown@example.com",
+            surface="admin",
+            peer_ref="203.0.113.10",
+            key_version="v1",
+            occurred_at=NOW,
+        ).to_document()
+
+
+def test_mongo_store_rejects_unknown_event_fields_before_insert():
+    class Collection:
+        async def insert_one(self, *_args, **_kwargs):
+            raise AssertionError("invalid event reached storage")
+
+    event = AuthenticationSecurityEvent(
+        event_type="auth.login_succeeded",
+        outcome="success",
+        reason_code="credentials_verified",
+        subject_kind="system",
+        surface="system",
+        key_version="v1",
+        occurred_at=NOW,
+    ).to_document()
+    event["payload"] = "secret"
+    with pytest.raises(SecurityEventValidationError, match="allowlisted"):
+        asyncio.run(MongoSecurityEventStore(Collection()).append(event))
+
+
 def test_cleanup_uses_controlled_clock_and_bounded_limit():
     service, store = build_service()
     assert asyncio.run(service.cleanup(limit=1000)) == 3
@@ -212,11 +246,20 @@ class FailingCollection:
 
 def test_store_normalizes_raw_dependency_errors():
     store = MongoSecurityEventStore(FailingCollection())
+    event = AuthenticationSecurityEvent(
+        event_type="auth.login_succeeded",
+        outcome="success",
+        reason_code="credentials_verified",
+        subject_kind="system",
+        surface="system",
+        key_version="v1",
+        occurred_at=NOW,
+    ).to_document()
     with pytest.raises(
         SecurityEventDependencyError,
         match="Authentication security-event persistence failed",
     ) as captured:
-        asyncio.run(store.append({"id": "event-1"}))
+        asyncio.run(store.append(event))
     assert "raw provider failure" not in str(captured.value)
 
 
