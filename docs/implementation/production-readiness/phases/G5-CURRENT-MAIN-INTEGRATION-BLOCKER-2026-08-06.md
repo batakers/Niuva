@@ -72,7 +72,7 @@ observation:
 | Delta from intermediate #185 main | `9b30441..1a99bd7`: four documentation paths, 174 additions, and 118 deletions | Scope indicator only; changed paths require proportional revalidation |
 | Open PR state | PR #196 and PR #197 are both `OPEN / CONFLICTING` against current `main`, based on the older `9472537` head; neither is current-main evidence | Open PR evidence remains separate from `main` |
 | Verification worktree | `C:\tmp\niuva-post-198-main-20260806`, `HEAD = origin/main`, clean and zero-divergent | Does not prove any external environment state |
-| Update branch base | `codex/post-198-main-revalidation-20260806` is based on `1a99bd7` and changes only this packet | The packet is refreshed against the exact current main |
+| Update branch base | `codex/post-198-main-revalidation-20260806` is based on `1a99bd7` and changes the four-document current-main revalidation slice | The packet is refreshed against the exact current main |
 
 PR #173 is now merged at `d4bf4ac`:
 [`#173`](https://github.com/batakers/Niuva/pull/173). Its G4 packet was
@@ -334,6 +334,9 @@ as `Verified` closure.
 
 ### Changed
 
+- `docs/implementation/production-readiness/DECISIONS_REQUIRED.md`;
+- `docs/implementation/production-readiness/phases/CURRENT-MAIN-POST-MERGE-READINESS-REVALIDATION-2026-08-06-task-card.md`;
+- `docs/implementation/production-readiness/phases/CURRENT-MAIN-POST-MERGE-READINESS-REVALIDATION-2026-08-06.md`; and
 - `docs/implementation/production-readiness/phases/G5-CURRENT-MAIN-INTEGRATION-BLOCKER-2026-08-06.md`
 
 ### Intentionally unchanged
@@ -342,7 +345,6 @@ as `Verified` closure.
 - all workflows, deployment configuration, environment files, migrations,
   providers, credentials, secrets, and external environments;
 - canonical specifications, decision registers, ADRs, and runbooks;
-- `docs/implementation/production-readiness/DECISIONS_REQUIRED.md`;
 - existing G0–G4 task cards and historical packets;
 - PR #173 and all other branches/worktrees owned by parallel chats.
 
