@@ -38,15 +38,57 @@ jobs:
         with:
           python-version: "3.14.3"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/requirements.lock
       - name: Install backend dependencies
+        run: python -m pip install --require-hashes -r backend/requirements.lock
+      - name: Install pinned dependency-audit tools in isolation
         run: |
-          python -m pip install -r backend/requirements.txt
-          python -m pip install pip-audit
+          python -m venv /tmp/niuva-dependency-audit-tools
+          /tmp/niuva-dependency-audit-tools/bin/python -m pip install \
+            pip-audit==2.10.1 \
+            pip-licenses==5.5.5
       - name: Verify dependency health
         run: |
           python -m pip check
-          python -m pip_audit -r backend/requirements.txt
+          /tmp/niuva-dependency-audit-tools/bin/pip-audit \
+            -r backend/requirements.lock \
+            --no-deps \
+            --disable-pip \
+            --progress-spinner off \
+            --format json \
+            --output backend-pip-audit.json
+      - name: Record and validate backend licenses
+        run: |
+          /tmp/niuva-dependency-audit-tools/bin/pip-licenses \
+            --python "$(command -v python)" \
+            --format=json \
+            --with-urls \
+            --with-description \
+            --output-file=backend-licenses.json
+          python - <<'PY'
+          import json
+
+          records = json.load(open("backend-licenses.json", encoding="utf-8"))
+          invalid = [
+              record.get("Name", "<missing name>")
+              for record in records
+              if str(record.get("License", "")).strip().lower()
+              in {"", "none", "unknown"}
+          ]
+          if invalid:
+              raise SystemExit("Missing license metadata: " + ", ".join(invalid))
+          print(f"Recorded license metadata for {len(records)} distributions.")
+          PY
+      - name: Upload backend dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependencies-${{ github.run_id }}
+          path: |
+            backend-pip-audit.json
+            backend-licenses.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Compile backend
         run: |
           python -m compileall -q backend

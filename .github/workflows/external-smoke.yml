@@ -27,9 +27,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: "3.14.3"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/requirements.lock
       - name: Validate approved HTTPS origin
         env:
           TARGET_URL: ${{ inputs.target_url }}
@@ -42,7 +42,9 @@ jobs:
           print("Target accepted as a credential-free HTTPS origin.")
           PY
       - name: Install smoke dependencies
-        run: python -m pip install --disable-pip-version-check pytest requests
+        run: >-
+          python -m pip install --disable-pip-version-check
+          --require-hashes -r backend/requirements.lock
       - name: Run unauthenticated staging smoke
         run: |
           set -o pipefail
