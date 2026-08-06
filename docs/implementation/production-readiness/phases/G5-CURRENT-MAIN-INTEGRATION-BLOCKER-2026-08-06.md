@@ -7,10 +7,15 @@ index and decision-routing packet, not final G5 acceptance, release-candidate
 selection, production-readiness approval, deployment approval, or go-live
 approval.
 
-**Observed baseline:** `origin/main` at
+**Observed pre-packet baseline:** `origin/main` at
 `6cd5a6417e1f4e72b1fbcce5d11801358b424d82`, with Git tree
 `77ce7bceb0eeb237ead9ad9591c7160c28d7e76`, after a fresh fetch on 6 August
 2026 and the merge of PR #174 after PRs #175–#178.
+
+This is the exact tree used for the post-merge evidence reconciliation. The
+merge of this documentation-only freshness correction will add only this
+packet to `main`; it does not create a new runtime candidate or alter the
+evidence above.
 
 **Update branch/worktree:** `codex/g44-postmerge-g5-freshness-20260806` /
 `C:\tmp\niuva-g44-postmerge-g5-freshness-20260806`. Exact-current-main
@@ -51,7 +56,7 @@ post-merge revalidation:
 
 | Evidence | Result | Limit |
 | --- | --- | --- |
-| `origin/main` | `6cd5a6417e1f4e72b1fbcce5d11801358b424d82` | Point-in-time source identity; DR-001 does not select it |
+| Pre-packet `origin/main` | `6cd5a6417e1f4e72b1fbcce5d11801358b424d82` | Point-in-time source identity; DR-001 does not select it |
 | Git tree | `77ce7bceb0eeb237ead9ad9591c7160c28d7e76` | Source tree identity; not an artifact digest |
 | Current-main merge parents | `9736d617ca4399e5533be60c919814341e0b1ea9`, `3cc821a8d0b5c9990c57c85f3879445c3ac9d8fe` | Git ancestry only |
 | Merge since the earlier G5 update | PR #174 merged the post-child G5 reconciliation packet | Documentation-only; no runtime change is inferred |
