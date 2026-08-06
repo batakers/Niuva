@@ -1,4 +1,4 @@
-# Task Card — Current-main DR-001 Freshness Reconciliation after PR #169
+# Task Card — Current-main DR-001 Freshness Reconciliation after PR #186
 
 <!-- markdownlint-disable MD013 -->
 
@@ -6,15 +6,16 @@
 no release candidate is selected
 **Date:** 2026-08-06 (Asia/Jakarta)
 **Observed baseline:** `origin/main` at
-`5d5abcfaefdbe4c108c7985001a47e1cdd82479b`
-**Active branch:** `codex/g27-current-main-readiness-20260806`
-**Active worktree:** `C:\tmp\niuva-g27-current-main-readiness-20260806`
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, tree
+`6d2154bd52785bbc749345c0346651f9752d1646`
+**Active branch:** `codex/dr001-current-main-reanchor-20260806`
+**Active worktree:** `C:\tmp\niuva-dr001-current-main-reanchor-20260806`
 **Driver:** Faiz / delegated Codex implementation
 
 ## Objective
 
-Refresh the live DR-001 observation and add a current-main provenance packet
-after PRs #164–#169 entered `main`. The packet must distinguish repository
+Refresh the live DR-001 observation and add current-main provenance after PRs
+`#164–#186` entered `main`. The packet must distinguish repository
 freshness from release-candidate selection and must not inherit test or
 readiness claims from older SHAs across source, test, CI, or operational-path
 changes.
@@ -49,6 +50,10 @@ Only these paths may change:
 2. This task card.
 3. `CURRENT-MAIN-DR001-FRESHNESS-2026-08-06.md` — record exact current-head
    provenance, changed-path scope, available checks, and stop conditions.
+4. `CURRENT-RELEASE-CANDIDATE-SELECTION-2026-08-06-task-card.md` — re-anchor
+   its decision-input identity without selecting an option.
+5. `CURRENT-RELEASE-CANDIDATE-SELECTION-2026-08-06.md` — re-anchor the
+   candidate-selection provenance and keep the owner disposition blank.
 
 ## Explicit exclusions
 
@@ -64,15 +69,15 @@ Only these paths may change:
 ## Acceptance criteria
 
 - The fresh fetch and clean isolated worktree record exact SHA
-  `5d5abcfaefdbe4c108c7985001a47e1cdd82479b`.
-- The packet records the tree, parent, ancestry, changed-path scope, and
-  current-main lineage through PR #169.
+  `f43eea6bd633b4250180e4373a62e5fb21fe14fa`.
+- The packet records the tree, parents, ancestry, changed-path scope, and
+  current-main lineage through PR #186.
 - The packet distinguishes merged-PR checks from a standalone post-merge run;
   no unperformed current-SHA test is represented as passed.
 - DR-001 remains `Open` and no option is preselected.
 - Changed and intentionally unchanged paths, verification limits, risks,
   rollback, and external approvals are explicit.
-- Only the three approved paths are staged; `git diff --check`, markdownlint,
+- Only the five approved paths are staged; `git diff --check`, markdownlint,
   and staged secret scanning pass.
 
 ## Delivery authorization and handover

@@ -5,11 +5,12 @@ deployment, migration, provider activation, secret rotation, production
 credentials, or go-live.
 
 **Observed current head:** `origin/main` at
-`c84743c8fcbc158721037b3c02dc0dff0c872242`.
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, with Git tree
+`6d2154bd52785bbc749345c0346651f9752d1646`.
 
-**Branch:** `codex/g10-dr012-decision-20260806`
+**Branch:** `codex/continuation-current-main-20260806`
 
-**Worktree:** `C:\tmp\niuva-g10-dr012-decision-20260806`
+**Worktree:** `C:\tmp\niuva-continuation-current-main-20260806`
 
 ## Objective
 

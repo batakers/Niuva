@@ -3,11 +3,12 @@
 <!-- markdownlint-disable MD013 -->
 
 **Status:** `DECIDED` / `ACCEPTED_RISK_SELF_VERIFICATION_EXCEPTION`
-**Prepared:** 2026-08-06 (Asia/Jakarta; actual preparation date)
+**Prepared:** 2026-08-06 (Asia/Jakarta; original packet)
+**Revalidated:** 2026-08-06 16:44:01 WIB (Asia/Jakarta)
 **Observed baseline:** `origin/main` at
-`f43eea6bd633b4250180e4373a62e5fb21fe14fa` (`f43eea6`)
-**Observed tree:** `6d2154bd52785bbc749345c0346651f9752d1646`
-**Observed at:** `2026-08-06T06:43:09Z` (Asia/Jakarta collection window)
+`9472537405af3353a68e599a057263ca7aa079ee` (`9472537`)
+**Observed tree:** `3a4678333ede6122fdc8d3f87456b83e1567c9cd`
+**Observed at:** `2026-08-06T09:44:01Z` (Asia/Jakarta collection window)
 **Decision owner:** Faiz (sole incident owner, credential owner, repository
 administrator, rewrite operator, application owner, and Final Approver)
 **Independent verifier:** Unavailable; the owner-approved exception below is
@@ -85,8 +86,8 @@ status.
 | NIV-001 runbook state | The runbook states `Implemented, verification pending` and requires redacted evidence before `Verified`. | A runbook is procedural authority; its checklist is not evidence that a step occurred. |
 | Credential action | No credential value was inspected or used in this packet. No rotation or revocation was performed. | A redacted owner-controlled revocation/rotation record is still required before closure. |
 | History rewrite | No rewrite, force-push, ref deletion, or remote publication was performed. | The full-history rewrite and post-rewrite proof remain entirely unverified. |
-| Current repository checks | Fresh exact-`origin/main` source/test and redacted-scan results are recorded in the linked inventory at the observed baseline. | Source/test evidence and a redacted scan do not prove revocation, remote-cache/fork/clone cleanup, history publication, or final incident closure. Credential-like findings remain residual evidence unless explicitly dispositioned in the restricted incident record. |
-| Remote/PR state | Timestamped read-only inventory at `2026-08-06T06:43:09Z`, including the open PR #185 snapshot, is recorded in the linked inventory. | The inventory is not a write freeze or approval. PR refs, cached views, old clones, and backups remain separate closure gates and must be rechecked before execution. |
+| Current repository checks | Focused suite passed `180` tests on the synchronized `9472537` source/test paths; `backend`, `frontend`, and `secret-scan` CI also succeeded at the current main commit. The latest pinned redacted scan remains historical at `f43eea6`. | Source/test evidence and a redacted scan do not prove revocation, remote-cache/fork/clone cleanup, history publication, or final incident closure. Credential-like findings remain residual evidence unless explicitly dispositioned in the restricted incident record. |
+| Remote/PR state | Timestamped read-only inventory at `2026-08-06T09:44:01Z`, including the open PR #185 snapshot, is recorded in the linked inventory. | The inventory is not a write freeze or approval. PR refs, cached views, old clones, and backups remain separate closure gates and must be rechecked before execution. |
 | Worktrees/clones | Current local counts and fsck result are recorded in the linked inventory at the same timestamp. | The runbook requires owner acknowledgments, quarantine/recreation, and a fresh inventory; local worktree listing is not collaborator/old-clone closure evidence. |
 | GitHub surfaces | Read-only PR/fork/ruleset counts were collected; no GitHub Support, cache cleanup, collaborator-clone, or backup evidence was collected. | Those external records are required by the runbook and must remain redacted. |
 | Production boundary | No deployment, provider, migration, secret rotation, or go-live action was performed. | DR-002 remains a P0 release/go-live blocker until a final disposition is approved. |
@@ -182,7 +183,7 @@ out of the record.
 | Remote/ref/PR/fork/cache inventory reference | `Current redacted inventory; freeze and external cleanup evidence remain absent` |
 | Worktree/old-clone disposition reference | `Current local count only; owner quarantine/fresh-clone evidence absent` |
 | Backup/restore and retention reference | `Not available; no recovery bundle operation performed` |
-| Pre/post scan and rewrite evidence references | `Fresh redacted scan recorded; rewrite and exact-value scan not run` |
+| Pre/post scan and rewrite evidence references | `Historical redacted scan at f43eea6 recorded; no current-main scan, rewrite, or exact-value scan run` |
 | GitHub Support/cache/PR-ref outcome | `Not available; no Support or cache cleanup action performed` |
 | Residual risks and compensating controls | `P0 release/go-live block, time-bound accepted risk, redacted evidence, no old-credential use` |
 | Expiry/review date (required for accepted risk) | `2026-08-30` |
@@ -219,9 +220,10 @@ No step above is authorized by this packet.
 
 ## 8. Handover and current verdict
 
-Changed for this post-merge revalidation: the task card, disposition packet,
-linked redacted inventory, value-free revoke/rotate evidence template,
-`FINDING_TRACEABILITY.md` addendum, and the current-main revalidation packet.
+Updated in this repair: the current-main baseline and conflict reconciliation in
+`DECISIONS_REQUIRED.md`, this disposition packet, the linked redacted inventory,
+the value-free revoke/rotate evidence template, and the
+`FINDING_TRACEABILITY.md` addendum.
 
 Intentionally unchanged: credential values and secret stores, Git history and
 refs, branches/tags, `main`, worktrees/clones/backups, GitHub settings/support
@@ -229,9 +231,10 @@ state, source/tests/dependencies/CI, migrations, providers, deployment state,
 and decision-register status.
 
 Local validation for this revalidation includes the focused auth/security/
-permission/projection suite (`180 passed`), a current pinned Gitleaks scan
-(`2` unresolved redacted findings), conflict-marker and whitespace checks, and
-staged secret-pattern checks. Credential action, controlled authentication with
+permission/projection suite (`180 passed`), the historical pinned Gitleaks
+result (`2` unresolved redacted findings from `f43eea6`; no current binary was
+available), conflict-marker and whitespace checks, and staged secret-pattern
+checks. Credential action, controlled authentication with
 a new account, exact-value scan, history rewrite, migration commands, staging,
 deployment, provider operations, GitHub Support, and production actions were
 not run and are not implied.

@@ -135,11 +135,13 @@ object in one clone, or self-review as incident closure evidence.
 
 ## 6. Current completion state
 
-The current `2026-08-06T06:43:09Z` inventory at `f43eea6` found no
+The revalidated `2026-08-06T09:44:01Z` inventory at `9472537` found no
 credential-action proof, no approved non-production account reference, and no
-independent verification. The current pinned redacted scan and focused test
-results are recorded in the linked inventory; any unresolved findings remain
-pending owner review. Faiz's self-verification exception is recorded, but the
-procedure remains unexecuted and NIV-001 remains a P0 release/go-live blocker.
+independent verification. The latest available pinned redacted scan is
+historical at `f43eea6`; no current-main Gitleaks scan was available on the
+host. Focused test results are recorded in the linked inventory, and any
+unresolved findings remain pending owner review. Faiz's self-verification
+exception is recorded, but the procedure remains unexecuted and NIV-001
+remains a P0 release/go-live blocker.
 
 <!-- markdownlint-enable MD013 -->

@@ -36,13 +36,13 @@
     "start": "craco start",
     "build": "craco build",
     "postbuild": "node scripts/generate-release-files.js && node scripts/check-bundle-size.js --report-only --report-path build/bundle-report.json",
-    "build:release": "node scripts/validate-release-env.js && npm run build && npm run check:bundle",
+    "build:release": "node scripts/validate-release-env.js && node scripts/run-release-build.js",
     "test": "craco test",
     "audit:production": "node scripts/audit-production-dependencies.js",
     "measure:bundle": "node scripts/check-bundle-size.js --report-only --report-path build/bundle-report.json",
     "check:bundle": "node scripts/check-bundle-size.js --report-path build/bundle-report.json",
     "test:bundle": "node --test scripts/check-bundle-size.test.js",
-    "test:release-contracts": "node --test scripts/generate-release-files.test.js scripts/validate-release-env.test.js scripts/release-script-contract.test.js"
+    "test:release-contracts": "node --test scripts/generate-release-files.test.js scripts/validate-release-env.test.js scripts/release-script-contract.test.js scripts/release-bundle-budget.test.js"
   },
   "browserslist": {
     "production": [

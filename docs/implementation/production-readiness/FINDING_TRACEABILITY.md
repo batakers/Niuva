@@ -102,10 +102,13 @@ matrix, commit history, or test presence alone.
 ## NIV-001 current evidence addendum — 2026-08-06
 
 Current baseline: `origin/main` at
-`f43eea6bd633b4250180e4373a62e5fb21fe14fa` (`f43eea6`), observed at
-`2026-08-06T06:43:09Z`. PR #185 is included as an open replacement PR in the
-inventory timestamp below; its source and documentation changes are evidence
-only and do not close `SEC-001`/`OPS-010`.
+`9472537405af3353a68e599a057263ca7aa079ee` (`9472537`), Git tree
+`3a4678333ede6122fdc8d3f87456b83e1567c9cd`, observed at
+`2026-08-06T09:44:01Z`. PR #185 was open at the inventory timestamp below; its
+source and documentation changes are evidence only and do not close
+`SEC-001`/`OPS-010`. The earlier `f43eea6` inventory at
+`2026-08-06T06:43:09Z` is historical and is not silently treated as current
+9472537 evidence.
 
 On 2026-08-06, Faiz recorded a sole-owner self-verification exception because
 no independent verifier is available. This resolves the owner-decision gap in
@@ -120,10 +123,11 @@ and the safe procedure is recorded in
 
 | Evidence group | Current result | Traceability interpretation |
 | --- | --- | --- |
-| Repository/GitHub inventory | Refreshed at `2026-08-06T06:43:09Z`; counts are recorded in the linked redacted inventory, including the open PR #185 snapshot. | Timestamped read-only snapshot only; freeze, old-clone, cache, backup, and Support evidence remain open. |
-| Local worktrees/object database | Refreshed at the same timestamp; counts and fsck result are recorded in the linked inventory. | No worktree or object cleanup was performed; owner disposition is still required. |
-| Redacted history scan | Fresh pinned Gitleaks scan result and report hash are recorded in the linked inventory; unresolved findings remain retained. | Findings require secret-safe owner review; they are not automatically false positives or closure evidence. |
-| Focused non-production verification | Fresh auth/security/permission/projection test result is recorded in the linked inventory; no controlled new-account authentication was run. | Bounded local source evidence only; it does not prove credential revocation or external cleanup. |
+| Repository/GitHub inventory | Refreshed at `2026-08-06T09:44:01Z` against `9472537`; counts are recorded in the linked redacted inventory, including the open PR #185 snapshot. | Timestamped read-only snapshot only; freeze, old-clone, cache, backup, and Support evidence remain open. |
+| Local worktrees/object database | Refreshed at the same timestamp; `113` worktrees, state counts, and fsck result are recorded in the linked inventory. | No worktree or object cleanup was performed; owner disposition is still required. |
+| Redacted history scan | The latest pinned Gitleaks result is historical at `f43eea6` with two unresolved redacted findings; Gitleaks was unavailable for the `9472537` revalidation. | Findings require secret-safe owner review; they are not automatically false positives or closure evidence. |
+| Focused non-production verification | Focused auth/security/permission/projection suite passed `180` tests on the synchronized `9472537` source paths; no controlled new-account authentication was run. | Bounded local source evidence only; it does not prove credential revocation or external cleanup. |
+| Current-main CI | `backend`, `frontend`, and `secret-scan` checks succeeded at `9472537`. | CI evidence is repository-only and does not prove incident closure or production readiness. |
 | Credential/history action | No credential was inspected, revoked, or rotated; no Git history was rewritten or force-pushed; no ref was deleted. | `NIV-001` remains `accepted_risk_self_verification_exception_approved_until_2026-08-30`; the incident remains open and verified closure remains unavailable. |
 
 The current status therefore remains **P0 / release-blocking / go-live-blocking**.

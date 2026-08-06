@@ -1,10 +1,23 @@
 # DR-012 Staging, Continuity, and Release Ownership Packet — 6 August 2026
 
+<!-- markdownlint-disable MD013 -->
+
 **Status:** Decision input / context only. This packet is not a deployment,
 migration, restore, production-readiness, or go-live approval.
 
 **Observed current head:** `origin/main` at
-`c84743c8fcbc158721037b3c02dc0dff0c872242`.
+`f43eea6bd633b4250180e4373a62e5fb21fe14fa`, with Git tree
+`6d2154bd52785bbc749345c0346651f9752d1646`, revalidated on 6 August 2026 in
+fresh worktree `C:\tmp\niuva-continuation-current-main-20260806`.
+
+The earlier packet baseline `c84743c8fcbc158721037b3c02dc0dff0c872242` is
+historical. Its diff to the current head spans 78 paths and includes backend,
+frontend, workflow, test, documentation, and staging-smoke changes; therefore
+historical source/test observations must not be treated as exact-`f43eea6`
+proof. The current-main quality path has nevertheless been exercised by PR
+[#187](https://github.com/batakers/Niuva/pull/187) at head `b690236`, whose only
+change beyond `f43eea6` is documentation; backend, frontend, and secret-scan
+checks passed. This packet still records no external-environment evidence.
 
 ## 1. Decision boundary
 
@@ -37,7 +50,8 @@ The production-readiness roadmap and verification matrix remain context only.
 
 ### 3.1 Deployment and artifact inventory
 
-The fresh current-head worktree contains local/test and CI material, but no
+The fresh exact-`f43eea6` current-main worktree contains local/test and CI
+material, but no
 provider-specific deployment source of truth:
 
 | Observed item | Evidence | Disposition |
@@ -133,7 +147,8 @@ outside scope.
 - **Intentionally unchanged:** source/tests, dependencies, CI, manifests,
   configuration values, credentials, providers, databases, migrations, shared
   data, deployment state, canonical decisions, ADRs, and runbooks.
-- **Verification performed:** fresh worktree/current SHA check and read-only
+- **Verification performed:** fresh exact-`f43eea6`/tree
+  `6d2154bd52785bbc749345c0346651f9752d1646` worktree check and read-only
   inventory of workflow, dependency, environment-template, artifact, and
   deployment files. No environment command or data-bearing operation ran.
 - **Rollback:** revert the documentation commit; no runtime/data rollback is
@@ -144,3 +159,5 @@ outside scope.
   independent verifier. Until then, the correct status is
   `blocked_by_decision`/`blocked_by_environment`, not an invented topology or
   successful deployment claim.
+
+<!-- markdownlint-enable MD013 -->
