@@ -53,7 +53,7 @@ branches or worktrees has been created.
 | Assignment set | Current coordination status | Exact next stopping point |
 | --- | --- | --- |
 | `PHASE-00A`–`PHASE-00D` | `PHASE-00A` review passed; Final Approver closed `PHASE-00B` administratively as a time-bound accepted risk through 30 August 2026; `PHASE-00C` static preflight revalidation passed without starting a service or touching data, but remains `pending_decision`; `PHASE-00D` passed an independent AI evidence review on the selected SHA, without human-review substitution or finding closure. PHASE-00B remains unverified for incident, release, and go-live purposes. | Before the accepted-risk expiry, obtain NIV-001 verification, renewal, or new disposition; complete DR-012 target/topology/RPO-RTO/evidence fields. Any later named human verifier records a separate incident-closure disposition; it is not implied by the AI review or accepted-risk decision. |
-| `PHASE-01A`–`PHASE-05D` | Earlier feature evidence retains its recorded state. PHASE-01C PRs #95 and #96 and file-security PR #93 are merged into current `main`. Current-main backend and focused revalidation passed; this does not close broader decision, environment, migration, or production gates. | Preserve all password, MFA, payment, migration, historical-data, portal, deployment, and production gates; reconcile the remaining current-SHA findings before selecting another implementation task. |
+| `PHASE-01A`–`PHASE-05D` | Earlier feature evidence retains its recorded state. PHASE-01C PRs #95 and #96 and file-security PR #93 are merged into current `main`. PHASE-02B is merged through PR #112. PHASE-02C now has a bounded disposable-local source-to-second-database backup/restore proof with checksum, historical-reference validation, and cleanup; no migration ran. Current-main backend and focused revalidation passed; this does not close broader decision, environment, migration, or production gates. | Independently review the PHASE-02C restore evidence. Preserve all password, MFA, payment, migration, shared-target, RPO/RTO, historical-data, portal, deployment, and production gates. |
 | `PHASE-06A`–`PHASE-08D` | `blocked_by_decision` and/or `blocked_by_environment`; no CI, topology, provider, migration, or telemetry work is implied. | Assign the policy/environment/operations owners in DR-011 through DR-014. |
 | `PHASE-09A`–`PHASE-10E` | `planning` only for reference reconciliation; final verification remains blocked by all preceding exits. | Reconcile only current evidence on the selected SHA; do not claim a candidate or go-live pass. |
 
@@ -357,19 +357,27 @@ require a transaction-capable guard plus their explicit backup/encryption
 confirmations for mutation paths. This static result verifies stop conditions,
 not an executable migration or recovery environment.
 
+**Subsequent bounded PHASE-02C decision (2026-08-02):** the Project Owner
+authorized `rs-test` for one synthetic disposable-local source-to-second-
+database backup/restore proof, with Faiz as executor/evidence custodian and a
+window ending at verified database/snapshot/volume cleanup. The proof passed
+and is recorded in `phases/PHASE-02C-isolated-restore-evidence.md`. This did not
+authorize any migration, shared/staging/production target, or operational
+recovery claim.
+
 | DR-012 stop condition | Current state | Rule for PHASE-00C |
 | --- | --- | --- |
-| Isolated target and approved topology | `rs-test` is a disposable local preflight topology only; no shared, staging, or production target is named. | Do not connect any migration command to a target until its identifier, replica-set/capability boundary, and custody are approved. |
-| RPO/RTO and backup/restore custody | Faiz is recorded for migration, backup/restore, rollback, maintenance-window authority, and evidence custody; RPO/RTO remain open. | Do not capture, restore, or set a rollback point until the owner-approved recovery objectives and safe storage/custody procedure are recorded. |
-| Secret-safe evidence format and review | Backup-evidence fields exist for Migration 007, but an approved shared evidence format and independent reviewer are not assigned. | Do not create or attach a real backup manifest; record only approved, credential-free aggregate evidence after review assignment. |
+| Isolated target and approved topology | `rs-test` was authorized and used only for the 2 Aug synthetic PHASE-02C proof; no shared, staging, production, or per-migration target is named. | Do not connect any migration command to a target until its identifier, replica-set/capability boundary, and custody are separately approved. |
+| RPO/RTO and backup/restore custody | Faiz owns the bounded local evidence; synthetic snapshot/database cleanup passed. Operational RPO/RTO remain open. | The local proof does not establish a real rollback point or operational recovery objective. |
+| Secret-safe evidence format and review | Aggregate checksum/database-hash evidence was approved for the bounded local proof; an approved shared evidence format and independent reviewer are not assigned. | Do not create or attach a real backup manifest; retain independent review and credential-free evidence for any later target. |
 | Incident, release, and on-call ownership | Not assigned in DR-012. | No execution window, production-like rehearsal, or release claim may be opened by this phase. |
-| Explicit authorization | No target/window/rehearsal approval exists. | The global stop rule remains in force for dry-run, apply, rollback, restore, and all shared/staging/production mutation. |
+| Explicit authorization | One synthetic local backup/restore window was authorized and completed; no migration or operational target/window is approved. | The global stop rule remains in force for every migration and all shared/staging/production capture, apply, rollback, restore, or mutation. |
 
 | Migration candidates at selected SHA | Required preconditions before any execution | Status |
 | --- | --- | --- |
-| `001_identity_rbac_audit.py`, `003_identity_access_policy.py`, `006_granular_role_policy.py` | Named isolated target; approved window; backup and restore custody; transaction-ready replica set; reviewed opaque-ID procedure where applicable; dry-run, validation, rollback, and restore evidence. | Blocked by DR-012 and target/owner absence. |
-| `002_catalog_material_inventory.py`, `004_content_blocks_seed.py`, `005_archive_orphan_collections.py` | Named isolated target; data-retention/owner approval; non-destructive dry-run; backup, validation, rollback, and restore plan; historical-record preservation check. | Blocked by DR-012 and data/retention decisions. |
-| `007_security_publication_schema.py`, `008_auth_recovery_safety.py`, `009_admin_session_safety.py` | Named isolated target; encrypted backup custody; approved recovery/session runbook gates; transaction readiness; dry-run, failure/second-run validation, rollback, and restore evidence. | Blocked by DR-012, selected-scope revalidation, and absent target/window. |
+| `001_identity_rbac_audit.py`, `003_identity_access_policy.py`, `006_granular_role_policy.py` | Named isolated target; approved window; backup and restore custody; transaction-ready replica set; reviewed opaque-ID procedure where applicable; dry-run, validation, rollback, and restore evidence. | Blocked; the generic PHASE-02C proof grants no role mapping or per-migration authority. |
+| `002_catalog_material_inventory.py`, `004_content_blocks_seed.py`, `005_archive_orphan_collections.py` | Named isolated target; data-retention/owner approval; non-destructive dry-run; backup, validation, rollback, and restore plan; historical-record preservation check. | Blocked by data/retention decisions and absent per-migration target/window authority. |
+| `007_security_publication_schema.py`, `008_auth_recovery_safety.py`, `009_admin_session_safety.py` | Named isolated target; encrypted backup custody; approved recovery/session runbook gates; transaction readiness; dry-run, failure/second-run validation, rollback, and restore evidence. | Blocked by selected-scope revalidation and absent per-migration target/window authority; the PHASE-02C proof is not a migration rehearsal. |
 
 **Required evidence record before removing a stop rule:** exact selected SHA,
 environment and database identifier, timezone-aware window, owner and reviewer,
