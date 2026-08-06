@@ -31,9 +31,7 @@ NOW = datetime(2026, 7, 29, 12, 0, tzinfo=timezone.utc)
         ("alert_dead_letter", 0, 1, "high"),
     ],
 )
-def test_alert_thresholds_are_deterministic(
-    family, below, at_threshold, severity
-):
+def test_alert_thresholds_are_deterministic(family, below, at_threshold, severity):
     policy = AuthenticationAlertPolicy()
     assert policy.decision(family, matching_count=below) is None
     decision = policy.decision(family, matching_count=at_threshold)
@@ -57,6 +55,40 @@ def test_alert_document_contains_references_not_event_payload():
     assert "subject_ref" not in alert
     assert "reason_code" not in alert
     assert alert["response_due_at"] > NOW
+
+
+def test_alert_references_reject_raw_identifier_material():
+    decision = AuthenticationAlertPolicy().decision(
+        "admin_session_replay", matching_count=1
+    )
+    with pytest.raises(ValueError, match="fingerprint source"):
+        build_alert_document(
+            decision=decision,
+            event_reference="event-1",
+            fingerprint_source="user@example.com",
+            matching_count=1,
+            now=NOW,
+        )
+
+
+def test_alert_store_rejects_unknown_fields_before_persistence():
+    class Collection:
+        async def update_one(self, *_args, **_kwargs):
+            raise AssertionError("invalid alert reached storage")
+
+    decision = AuthenticationAlertPolicy().decision(
+        "admin_session_replay", matching_count=1
+    )
+    alert = build_alert_document(
+        decision=decision,
+        event_reference="event-1",
+        fingerprint_source="session-pseudonym",
+        matching_count=1,
+        now=NOW,
+    )
+    alert["payload"] = "secret"
+    with pytest.raises(ValueError, match="allowlisted"):
+        asyncio.run(MongoAlertOutboxStore(Collection()).enqueue(alert))
 
 
 def test_alert_fingerprint_deduplicates_within_the_same_window():
@@ -88,11 +120,21 @@ class FailingCollection:
 
 def test_outbox_normalizes_provider_failure():
     store = MongoAlertOutboxStore(FailingCollection())
+    decision = AuthenticationAlertPolicy().decision(
+        "admin_session_replay", matching_count=1
+    )
+    alert = build_alert_document(
+        decision=decision,
+        event_reference="event-1",
+        fingerprint_source="session-pseudonym",
+        matching_count=1,
+        now=NOW,
+    )
     with pytest.raises(
         AuthSecurityOperationError,
         match="Authentication alert outbox enqueue failed",
     ) as captured:
-        asyncio.run(store.enqueue({"fingerprint": "safe"}))
+        asyncio.run(store.enqueue(alert))
     assert "provider body" not in str(captured.value)
 
 

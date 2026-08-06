@@ -14,6 +14,26 @@ SCHEMA_VERSION = "1"
 RETENTION = timedelta(days=90)
 RETENTION_CLASS = "direct_90d"
 MAX_CLEANUP_BATCH = 1_000
+EVENT_DOCUMENT_FIELDS = frozenset(
+    {
+        "id",
+        "schema_version",
+        "event_type",
+        "occurred_at",
+        "outcome",
+        "reason_code",
+        "subject_kind",
+        "subject_ref",
+        "actor_ref",
+        "session_ref",
+        "surface",
+        "peer_ref",
+        "correlation_id",
+        "key_version",
+        "retention_class",
+        "expires_at",
+    }
+)
 
 EVENT_TYPES = frozenset(
     {
@@ -58,6 +78,7 @@ _OPAQUE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _CORRELATION_ID = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
+_PSEUDONYM = re.compile(r"^hmac-sha256:[A-Za-z0-9._:-]{1,128}:[0-9a-f]{64}$")
 
 
 class SecurityEventValidationError(ValueError):
@@ -94,6 +115,76 @@ def _opaque(value: str | None, label: str, *, required: bool = False) -> str | N
     if not isinstance(value, str) or not _OPAQUE_ID.fullmatch(value):
         raise SecurityEventValidationError(f"Invalid {label}")
     return value
+
+
+def _pseudonym(value: str | None, label: str, *, required: bool = False) -> str | None:
+    if value is None and not required:
+        return None
+    if not isinstance(value, str) or not _PSEUDONYM.fullmatch(value):
+        raise SecurityEventValidationError(f"Invalid {label}")
+    return value
+
+
+def _validate_event_document(event: Mapping[str, object]) -> dict[str, object]:
+    if not isinstance(event, Mapping):
+        raise SecurityEventValidationError("Event document must be a mapping")
+    if set(event) != EVENT_DOCUMENT_FIELDS:
+        raise SecurityEventValidationError("Event document fields are not allowlisted")
+
+    event_id = _opaque(event.get("id"), "event ID", required=True)
+    if event.get("schema_version") != SCHEMA_VERSION:
+        raise SecurityEventValidationError("Unsupported event schema version")
+    event_type = _enum(event.get("event_type"), EVENT_TYPES, "event type")
+    outcome = _enum(event.get("outcome"), OUTCOMES, "outcome")
+    reason_code = _enum(event.get("reason_code"), REASON_CODES, "reason code")
+    subject_kind = _enum(event.get("subject_kind"), SUBJECT_KINDS, "subject kind")
+    surface = _enum(event.get("surface"), SURFACES, "surface")
+    subject_ref = _opaque(
+        event.get("subject_ref"),
+        "subject reference",
+        required=subject_kind != "system",
+    )
+    if subject_kind == "system" and subject_ref is not None:
+        raise SecurityEventValidationError(
+            "System events cannot contain a subject reference"
+        )
+    if subject_kind == "unknown_identifier":
+        _pseudonym(subject_ref, "unknown subject reference", required=True)
+    actor_ref = _opaque(event.get("actor_ref"), "actor reference")
+    session_ref = _opaque(event.get("session_ref"), "session reference")
+    peer_ref = _pseudonym(event.get("peer_ref"), "peer reference")
+    correlation_id = event.get("correlation_id")
+    if correlation_id is not None and (
+        not isinstance(correlation_id, str)
+        or not _CORRELATION_ID.fullmatch(correlation_id)
+    ):
+        raise SecurityEventValidationError("Invalid correlation ID")
+    key_version = _opaque(event.get("key_version"), "key version", required=True)
+    occurred_at = _utc(event.get("occurred_at"))
+    expires_at = _utc(event.get("expires_at"))
+    if event.get("retention_class") != RETENTION_CLASS:
+        raise SecurityEventValidationError("Unsupported retention class")
+    if expires_at != occurred_at + RETENTION:
+        raise SecurityEventValidationError("Invalid event expiry")
+
+    return {
+        "id": event_id,
+        "schema_version": SCHEMA_VERSION,
+        "event_type": event_type,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "reason_code": reason_code,
+        "subject_kind": subject_kind,
+        "subject_ref": subject_ref,
+        "actor_ref": actor_ref,
+        "session_ref": session_ref,
+        "surface": surface,
+        "peer_ref": peer_ref,
+        "correlation_id": correlation_id,
+        "key_version": key_version,
+        "retention_class": RETENTION_CLASS,
+        "expires_at": expires_at,
+    }
 
 
 @dataclass(frozen=True)
@@ -163,24 +254,26 @@ class AuthenticationSecurityEvent:
             raise SecurityEventValidationError("Invalid correlation ID")
         key_version = _opaque(self.key_version, "key version", required=True)
         occurred_at = _utc(self.occurred_at or datetime.now(timezone.utc))
-        return {
-            "id": str(uuid.uuid4()),
-            "schema_version": SCHEMA_VERSION,
-            "event_type": event_type,
-            "occurred_at": occurred_at,
-            "outcome": outcome,
-            "reason_code": reason_code,
-            "subject_kind": subject_kind,
-            "subject_ref": subject_ref,
-            "actor_ref": actor_ref,
-            "session_ref": session_ref,
-            "surface": surface,
-            "peer_ref": peer_ref,
-            "correlation_id": correlation_id,
-            "key_version": key_version,
-            "retention_class": RETENTION_CLASS,
-            "expires_at": occurred_at + RETENTION,
-        }
+        return _validate_event_document(
+            {
+                "id": str(uuid.uuid4()),
+                "schema_version": SCHEMA_VERSION,
+                "event_type": event_type,
+                "occurred_at": occurred_at,
+                "outcome": outcome,
+                "reason_code": reason_code,
+                "subject_kind": subject_kind,
+                "subject_ref": subject_ref,
+                "actor_ref": actor_ref,
+                "session_ref": session_ref,
+                "surface": surface,
+                "peer_ref": peer_ref,
+                "correlation_id": correlation_id,
+                "key_version": key_version,
+                "retention_class": RETENTION_CLASS,
+                "expires_at": occurred_at + RETENTION,
+            }
+        )
 
 
 class MongoSecurityEventStore:
@@ -189,8 +282,9 @@ class MongoSecurityEventStore:
 
     async def append(self, event: Mapping[str, object], *, session=None) -> None:
         options = {"session": session} if session is not None else {}
+        validated = _validate_event_document(event)
         try:
-            await self.collection.insert_one(dict(event), **options)
+            await self.collection.insert_one(validated, **options)
         except Exception as exc:  # normalized dependency boundary
             raise SecurityEventDependencyError(
                 "Authentication security-event persistence failed"

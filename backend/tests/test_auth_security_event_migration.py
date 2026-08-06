@@ -164,6 +164,34 @@ def test_cli_dry_run_probes_by_database_name_and_closes_client(
     }
 
 
+@pytest.mark.parametrize("mutation_flag", ["--apply", "--rollback"])
+def test_cli_mutations_fail_closed_before_connecting_to_any_target(
+    monkeypatch, mutation_flag
+):
+    migration = load_migration()
+
+    import motor.motor_asyncio
+
+    def forbidden_client(_url):
+        raise AssertionError("mutation CLI must not connect to a database")
+
+    monkeypatch.setattr(motor.motor_asyncio, "AsyncIOMotorClient", forbidden_client)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(MIGRATION_PATH),
+            mutation_flag,
+            "--backup-path",
+            "C:/tmp/migration-010-backup.json",
+            "--encrypted-backup-confirmed",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="explicitly approved isolated runner"):
+        asyncio.run(migration.main())
+
+
 def test_apply_requires_guard_backup_and_encrypted_confirmation(tmp_path):
     migration = load_migration()
     database = Database()
