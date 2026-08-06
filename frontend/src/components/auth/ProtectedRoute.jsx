@@ -4,13 +4,21 @@ import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import ForbiddenPage from "@/pages/admin/ForbiddenPage";
 
-export function ProtectedRoute({ children, permission }) {
+export function ProtectedRoute({ children, permission, adminRoute = false }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-surface-page">
-        <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <div
+        className="min-h-screen grid place-items-center bg-surface-page"
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          aria-hidden="true"
+          className="h-10 w-10 rounded-full border-2 border-action-primary border-t-transparent motion-safe:animate-spin"
+        />
+        <span className="sr-only">Memuat halaman</span>
       </div>
     );
   }
@@ -23,6 +31,9 @@ export function ProtectedRoute({ children, permission }) {
         state={{ from: `${location.pathname}${location.search}${location.hash}` }}
       />
     );
+  }
+  if (adminRoute && !permission) {
+    return <ForbiddenPage />;
   }
   if (!permission && hasPermission(user, "admin.access")) {
     return <Navigate to="/admin" replace />;

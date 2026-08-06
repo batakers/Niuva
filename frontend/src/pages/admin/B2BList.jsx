@@ -9,16 +9,21 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { B2BStatusBadge } from "@/components/admin/B2BStatusBadge";
+import { RetailOrderStatusBadge } from "@/components/admin/RetailOrderStatusBadge";
+import { WorkOrderStatusBadge } from "@/components/admin/WorkOrderStatusBadge";
 import { OperationalState } from "@/components/ui/operational-state";
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { Button } from "@/components/ui/button";
 import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
+import { readB2BPage } from "@/lib/b2bPagination";
 import { fmtDate } from "@/lib/format";
 import { AdminLayout } from "./AdminLayout";
 
 const CONFIG = {
   inquiry: {
+    paginated: true,
     endpoint: "/admin/inquiries",
     basePath: "/admin/inquiries",
     titleKey: "admin.inquiries",
@@ -29,6 +34,7 @@ const CONFIG = {
     secondary: (record) => `${record.pic_name} · ${record.need}`,
   },
   quote: {
+    paginated: true,
     endpoint: "/admin/b2b/quotes",
     basePath: "/admin/b2b/quotes",
     titleKey: "admin.quotes",
@@ -39,6 +45,7 @@ const CONFIG = {
     secondary: (record) => `Inquiry ${record.inquiry_id.slice(0, 8)} · Rev ${record.current_revision}`,
   },
   project: {
+    paginated: true,
     endpoint: "/admin/b2b/projects",
     basePath: "/admin/b2b/projects",
     titleKey: "admin.projects",
@@ -49,6 +56,7 @@ const CONFIG = {
     secondary: (record) => `Quote ${record.quote_id.slice(0, 8)}`,
   },
   retail_order: {
+    paginated: false,
     endpoint: "/admin/retail-orders",
     basePath: "/admin/retail-orders",
     titleKey: "admin.retailOrders",
@@ -60,6 +68,7 @@ const CONFIG = {
       `${record.customer?.name || "—"} · ${record.items?.length || 0} item`,
   },
   work_order: {
+    paginated: true,
     endpoint: "/admin/b2b/work-orders",
     basePath: "/admin/b2b/work-orders",
     titleKey: "admin.workOrders",
@@ -72,25 +81,56 @@ const CONFIG = {
   },
 };
 
+function LifecycleStatusBadge({ kind, status }) {
+  if (kind === "retail_order") {
+    return <RetailOrderStatusBadge status={status} />;
+  }
+  if (kind === "work_order") {
+    return <WorkOrderStatusBadge status={status} />;
+  }
+  return <B2BStatusBadge kind={kind} status={status} />;
+}
+
 function B2BList({ kind }) {
   const { t } = useI18n();
   const config = CONFIG[kind];
   const Icon = config.icon;
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
   const [error, setError] = useState("");
 
-  const load = useCallback(() => {
-    setLoading(true);
+  const load = useCallback((cursor = null) => {
+    if (cursor) setLoadingMore(true);
+    else setLoading(true);
     setError("");
     api
-      .get(config.endpoint)
-      .then((response) => setRecords(response.data))
+      .get(config.endpoint, {
+        params: config.paginated
+          ? { limit: 50, ...(cursor ? { cursor } : {}) }
+          : undefined,
+      })
+      .then((response) => {
+        if (!config.paginated) {
+          setRecords(response.data);
+          setNextCursor(null);
+          return;
+        }
+        const page = readB2BPage(response.data);
+        setRecords((current) =>
+          cursor ? [...current, ...page.items] : page.items
+        );
+        setNextCursor(page.nextCursor);
+      })
       .catch((requestError) =>
         setError(formatApiError(requestError.response?.data?.detail))
       )
-      .finally(() => setLoading(false));
-  }, [config.endpoint]);
+      .finally(() => {
+        setLoading(false);
+        setLoadingMore(false);
+      });
+  }, [config.endpoint, config.paginated]);
 
   useEffect(() => {
     load();
@@ -113,7 +153,7 @@ function B2BList({ kind }) {
             title={t("b2b.loadFailed")}
             description={error}
             retryLabel={t("common.retry")}
-            onRetry={load}
+            onRetry={() => load()}
           />
         ) : records.length === 0 ? (
           <OperationalState state="empty" title={t(config.emptyKey)} />
@@ -130,7 +170,7 @@ function B2BList({ kind }) {
                     <h2 className="font-heading text-base font-semibold text-text-primary">
                       {config.primary(record)}
                     </h2>
-                    <StatusBadge status={record.status} />
+                    <LifecycleStatusBadge kind={kind} status={record.status} />
                   </div>
                   <p className="mt-1 truncate text-sm text-text-secondary">
                     {config.secondary(record)}
@@ -147,6 +187,18 @@ function B2BList({ kind }) {
                 <ArrowRight className="h-4 w-4 shrink-0 text-text-secondary transition-transform duration-fast group-hover:translate-x-1 motion-reduce:transition-none" />
               </Link>
             ))}
+            {nextCursor && (
+              <div className="flex justify-center p-4 sm:p-5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loadingMore}
+                  onClick={() => load(nextCursor)}
+                >
+                  {loadingMore ? t("b2b.loadingMore") : t("b2b.loadMore")}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </SurfacePanel>

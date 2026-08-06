@@ -36,7 +36,8 @@ const ErrorState = React.forwardRef(
               variant="ghost"
               size="sm"
               onClick={onRetry}
-              className="h-7 px-2 text-status-error hover:text-status-error"
+              aria-label="Coba lagi"
+              className="min-h-11 min-w-11 px-2 text-status-error hover:text-status-error"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
@@ -65,7 +66,7 @@ const ErrorState = React.forwardRef(
           )}
         </div>
         {onRetry && (
-          <Button variant="outline" size="sm" onClick={onRetry} className="mt-2">
+          <Button variant="outline" size="sm" onClick={onRetry} className="mt-2 min-h-11">
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
             Retry
           </Button>

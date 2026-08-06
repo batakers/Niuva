@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { AuthShell } from "@/components/auth/AuthShell";
-import { api, formatApiError } from "@/lib/api";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+
+import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { api, formatApiError } from "@/lib/api";
 
 const RESEND_SECONDS = 60;
 
@@ -14,9 +16,52 @@ function maskEmail(email) {
   return `${local.slice(0, 2)}${"*".repeat(Math.max(2, local.length - 2))}@${domain}`;
 }
 
+function recoveryAudience(searchParams) {
+  const audience = searchParams.get("audience");
+  return audience === "customer" || audience === "staff"
+    ? audience
+    : "recovery";
+}
+
+function audienceSearch(audience) {
+  return audience === "recovery" ? "" : `?audience=${audience}`;
+}
+
+function LoginDestinations({ audience }) {
+  if (audience === "customer") {
+    return (
+      <Button asChild variant="link" className="w-full">
+        <Link to="/login">Kembali ke login pelanggan</Link>
+      </Button>
+    );
+  }
+
+  if (audience === "staff") {
+    return (
+      <Button asChild variant="link" className="w-full">
+        <Link to="/admin/login">Kembali ke login admin</Link>
+      </Button>
+    );
+  }
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <Button asChild variant="outline">
+        <Link to="/login">Login pelanggan</Link>
+      </Button>
+      <Button asChild variant="outline">
+        <Link to="/admin/login">Login admin</Link>
+      </Button>
+    </div>
+  );
+}
+
 export default function ForgotPassword() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const audience = recoveryAudience(searchParams);
+  const preservedSearch = audienceSearch(audience);
   const [email, setEmail] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -38,7 +83,9 @@ export default function ForgotPassword() {
       setMaskedEmail(maskEmail(email));
       setSent(true);
       setCooldown(RESEND_SECONDS);
-      navigate("/forgot-password/check-email", { replace: true });
+      navigate(`/forgot-password/check-email${preservedSearch}`, {
+        replace: true,
+      });
     } catch (requestError) {
       setError(formatApiError(requestError.response?.data?.detail));
     } finally {
@@ -51,59 +98,83 @@ export default function ForgotPassword() {
     await requestReset();
   };
 
+  const useAnotherEmail = () => {
+    setEmail("");
+    setMaskedEmail("");
+    setSent(false);
+    setCooldown(0);
+    navigate(`/forgot-password${preservedSearch}`, { replace: true });
+  };
+
   return (
-    <AuthShell heading={"Account\nRecovery"} tagline="Minta link untuk mereset password akun Anda.">
-      <div className="relative overflow-hidden border border-border-default bg-surface-default p-8">
+    <AuthShell audience={audience}>
+      <AuthCard
+        eyebrow="Pemulihan akun"
+        title={sent ? "Periksa email Anda" : "Lupa password?"}
+        description={
+          sent
+            ? "Instruksi reset dikirim dengan respons yang sama untuk setiap permintaan."
+            : "Masukkan email akun. Jika terdaftar dan memenuhi syarat, kami akan mengirimkan link reset."
+        }
+      >
         {sent ? (
-          <div className="space-y-6" data-testid="forgot-password-sent" role="status">
-            <h1 className="font-heading text-2xl font-bold uppercase tracking-tight text-text-primary">Periksa Email</h1>
-            <div className="border border-border-default bg-surface-muted p-4 text-sm text-text-primary">
-              Jika email {maskedEmail || "yang Anda masukkan"} terdaftar, instruksi reset password telah dikirim.
-            </div>
+          <div className="space-y-5" data-testid="forgot-password-sent">
+            <Alert tone="default" role="status">
+              Jika email {maskedEmail || "yang Anda masukkan"} terdaftar,
+              instruksi reset password telah dikirim.
+            </Alert>
+            {error && <Alert id="forgot-password-error">{error}</Alert>}
             {email && (
               <Button
                 type="button"
                 onClick={requestReset}
                 disabled={submitting || cooldown > 0}
-                className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90"
+                className="w-full"
+                size="lg"
               >
-                {submitting ? "MENGIRIM..." : cooldown > 0 ? `Kirim ulang (${cooldown})` : "Kirim Ulang"}
+                {submitting
+                  ? "Mengirim…"
+                  : cooldown > 0
+                    ? `Kirim ulang (${cooldown})`
+                    : "Kirim ulang"}
               </Button>
             )}
-            <Link to="/forgot-password" className="block text-center font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary">
-              Gunakan Email Lain
-            </Link>
+            <Button
+              type="button"
+              variant="link"
+              className="w-full"
+              onClick={useAnotherEmail}
+            >
+              Gunakan email lain
+            </Button>
+            <LoginDestinations audience={audience} />
           </div>
         ) : (
-          <>
-            <h1 className="mb-2 font-heading text-2xl font-bold uppercase tracking-tight text-text-primary">Lupa Password</h1>
-            <p className="mb-8 text-sm leading-relaxed text-text-secondary">
-              Masukkan email akun Anda. Jika terdaftar, kami akan mengirimkan link untuk mereset password.
-            </p>
-            <form onSubmit={submit} className="space-y-6" data-testid="forgot-password-form">
-              <div className="space-y-2">
-                <Label htmlFor="forgot-password-email" className="block font-mono text-[10px] uppercase tracking-widest text-text-secondary">Email</Label>
-                <Input
-                  id="forgot-password-email"
-                  data-testid="forgot-password-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  autoComplete="username"
-                  aria-describedby={error ? "forgot-password-error" : undefined}
-                  className="h-12 rounded-none border-border-default bg-surface-page font-mono text-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
-                />
-              </div>
-              {error && <p id="forgot-password-error" className="border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{error}</p>}
-              <Button type="submit" disabled={submitting} data-testid="forgot-password-submit" className="h-12 w-full rounded-none bg-primary font-mono text-xs uppercase tracking-widest text-text-on-primary hover:bg-primary/90">
-                {submitting ? "MENGIRIM..." : "Kirim Link Reset"}
-              </Button>
-              <Link to="/admin/login" className="block text-center font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary">Kembali ke Login</Link>
-            </form>
-          </>
+          <form onSubmit={submit} className="space-y-5" data-testid="forgot-password-form">
+            <FormField label="Email" required>
+              <Input
+                data-testid="forgot-password-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                autoComplete="username"
+              />
+            </FormField>
+            {error && <Alert id="forgot-password-error">{error}</Alert>}
+            <Button
+              type="submit"
+              disabled={submitting}
+              data-testid="forgot-password-submit"
+              className="w-full"
+              size="lg"
+            >
+              {submitting ? "Mengirim…" : "Kirim link reset"}
+            </Button>
+            <LoginDestinations audience={audience} />
+          </form>
         )}
-      </div>
+      </AuthCard>
     </AuthShell>
   );
 }

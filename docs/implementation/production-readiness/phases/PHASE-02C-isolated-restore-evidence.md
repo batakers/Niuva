@@ -68,13 +68,13 @@ suite passed. This failure is retained as negative stop-condition evidence.
   data, shared backup, deployment, or production operation ran.
 - This is synthetic disposable-local evidence, not staging or production
   recovery proof and not an RPO/RTO measurement.
-- PR #112 is the earlier PHASE-02B merge-order dependency; this evidence does
-  not bypass its review or merge.
+- PHASE-02B is merged through PR #112; its planning result does not authorize
+  a migration or broaden this proof.
 - Independent Lead/human review is still required. The Driver does not verify
   its own evidence for final acceptance.
 - DR-012 remains open for operational target/topology, RPO/RTO, approved shared
   evidence format, secret evidence, and incident/release/on-call ownership.
 
-The next authorized action is independent review and merge-order handling. Any
+The next authorized action is independent review. Any
 shared/staging/production rehearsal needs a new task card, exact target/window,
 separate owner approval, and its own rollback/cleanup authority.

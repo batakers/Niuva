@@ -8,10 +8,14 @@ import asyncio
 import types
 from datetime import datetime, timedelta, timezone
 
+import emailer
 import pytest
-
 from notification_domain import (
+    CANONICAL_NOTIFICATION_FIELDS,
+    NOTIFICATION_OUTBOX_SCHEMA_VERSION,
     NOTIFICATION_REFERENCE_ROUTES,
+    NOTIFICATION_RETENTION,
+    NOTIFICATION_SCHEMA_VERSION,
     deduplication_key,
     deep_link_for,
     is_allowlisted_reference,
@@ -23,6 +27,8 @@ from notification_service import (
     NotificationService,
 )
 from notification_worker import NotificationDeliveryWorker
+from pymongo.errors import DuplicateKeyError
+from worker_runtime import WorkerRuntimeConfig
 
 
 class FakeCollection:
@@ -37,14 +43,28 @@ class FakeCollection:
                     return False
                 continue
             actual = item.get(key)
-            if isinstance(value, dict) and "$lte" in value:
-                if actual is None or actual > value["$lte"]:
+            if isinstance(value, dict):
+                if "$lte" in value and (actual is None or actual > value["$lte"]):
+                    return False
+                if "$lt" in value and (actual is None or actual >= value["$lt"]):
+                    return False
+                if "$gt" in value and (actual is None or actual <= value["$gt"]):
+                    return False
+                if "$exists" in value and (key in item) is not value["$exists"]:
+                    return False
+                if "$in" in value and actual not in value["$in"]:
                     return False
             elif actual != value:
                 return False
         return True
 
     async def insert_one(self, document, **_options):
+        await asyncio.sleep(0)
+        key = document.get("deduplication_key")
+        if key is not None and any(
+            item.get("deduplication_key") == key for item in self.items
+        ):
+            raise DuplicateKeyError("duplicate deduplication_key")
         self.items.append(dict(document))
         return types.SimpleNamespace(inserted_id=document.get("id"))
 
@@ -66,6 +86,8 @@ class FakeCollection:
                 item.update(update.get("$set", {}))
                 for key, amount in (update.get("$inc") or {}).items():
                     item[key] = item.get(key, 0) + amount
+                for key, value in (update.get("$max") or {}).items():
+                    item[key] = max(item.get(key, value), value)
                 return types.SimpleNamespace(matched_count=1, modified_count=1)
         return types.SimpleNamespace(matched_count=0, modified_count=0)
 
@@ -77,17 +99,40 @@ class FakeCollection:
         sort=None,
         projection=None,
         return_document=None,
+        upsert=False,
+        **_options,
     ):
+        if upsert:
+            await asyncio.sleep(0)
         candidates = [item for item in self.items if self._matches(item, query)]
         for key, direction in reversed(sort or []):
             candidates.sort(
-                key=lambda item: item.get(key) or datetime.min.replace(tzinfo=timezone.utc),
+                key=lambda item: item.get(key)
+                or datetime.min.replace(tzinfo=timezone.utc),
                 reverse=direction < 0,
             )
-        if not candidates:
+        if candidates:
+            target = candidates[0]
+        elif upsert:
+            key = query.get("deduplication_key")
+            if key is not None and any(
+                item.get("deduplication_key") == key for item in self.items
+            ):
+                raise DuplicateKeyError("duplicate deduplication_key")
+            target = {
+                key: value
+                for key, value in query.items()
+                if not isinstance(value, dict)
+            }
+            target.update(update.get("$setOnInsert", {}))
+            self.items.append(target)
+        else:
             return None
-        target = candidates[0]
         target.update(update.get("$set", {}))
+        for key, amount in (update.get("$inc") or {}).items():
+            target[key] = target.get(key, 0) + amount
+        for key, value in (update.get("$max") or {}).items():
+            target[key] = max(target.get(key, value), value)
         return {
             key: value
             for key, value in target.items()
@@ -99,6 +144,8 @@ class FakeCollection:
         for item in self.items:
             if self._matches(item, query):
                 item.update(update.get("$set", {}))
+                for key, value in (update.get("$max") or {}).items():
+                    item[key] = max(item.get(key, value), value)
                 modified += 1
         return types.SimpleNamespace(modified_count=modified)
 
@@ -117,6 +164,13 @@ class FakeCursor:
 
     async def to_list(self, length):
         return [dict(item) for item in self.items[:length]]
+
+    def __aiter__(self):
+        async def iterate():
+            for item in self.items:
+                yield dict(item)
+
+        return iterate()
 
 
 class FakeDatabase:
@@ -141,6 +195,34 @@ async def publish(service, **overrides):
     }
     payload.update(overrides)
     return await service.publish(**payload)
+
+
+def canonical_document(**overrides):
+    timestamp = datetime.now(timezone.utc)
+    document = {
+        "schema_version": NOTIFICATION_SCHEMA_VERSION,
+        "id": "n-1",
+        "user_id": "user-1",
+        "event": "work_order.material_shortage",
+        "title": "Material kurang",
+        "body": "Work Order tertahan menunggu material.",
+        "reference_type": "work_order",
+        "reference_id": "wo-1",
+        "deduplication_key": deduplication_key(
+            user_id="user-1",
+            event="work_order.material_shortage",
+            reference_type="work_order",
+            reference_id="wo-1",
+        ),
+        "read_at": None,
+        "occurrence_count": 1,
+        "created_at": timestamp,
+        "last_seen_at": timestamp,
+        "updated_at": timestamp,
+        "expires_at": timestamp + NOTIFICATION_RETENTION,
+    }
+    document.update(overrides)
+    return document
 
 
 # --------------------------- Deep links ---------------------------
@@ -171,6 +253,9 @@ def test_a_reference_outside_the_allowlist_yields_no_link():
         "wo-1#fragment",
         "https://evil.test",
         "wo-1&extra=1",
+        "wo-1%2Fadmin",
+        "wo-1\\admin",
+        "wo 1",
         "",
         "   ",
     ],
@@ -182,14 +267,11 @@ def test_a_reference_id_cannot_escape_its_template(hostile_id):
 def test_a_stored_link_is_never_trusted():
     """Whoever writes a notification must not choose where a reader lands."""
     projected = project_notification(
-        {
-            "id": "n-1",
-            "reference_type": "work_order",
-            "reference_id": "wo-1",
-            "deep_link": "https://evil.test/steal",
-            "link": "https://evil.test/steal",
-            "url": "https://evil.test/steal",
-        }
+        canonical_document(
+            deep_link="https://evil.test/steal",
+            link="https://evil.test/steal",
+            url="https://evil.test/steal",
+        )
     )
 
     assert projected["deep_link"] == "/admin/b2b/work-orders/wo-1"
@@ -215,6 +297,53 @@ def test_publishing_an_unallowlisted_reference_is_refused():
     asyncio.run(scenario())
 
 
+def test_new_notification_uses_the_exact_canonical_v1_shape():
+    async def scenario():
+        service, db = build_service()
+
+        projected = await publish(service)
+        stored = db.notifications.items[0]
+
+        assert set(stored) - {"_id"} == CANONICAL_NOTIFICATION_FIELDS
+        assert type(stored["schema_version"]) is int
+        assert stored["schema_version"] == 1
+        assert stored["id"] == projected["id"]
+        assert stored["expires_at"] == stored["created_at"] + NOTIFICATION_RETENTION
+        assert stored["read_at"] is None
+        assert "user_id" not in projected
+        assert "deduplication_key" not in projected
+        assert "read_at" not in projected
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("override", "expected_code"),
+    [
+        ({"user_id": ""}, "invalid_notification_field"),
+        ({"event": []}, "invalid_notification_field"),
+        ({"event": "work|order"}, "invalid_notification_field"),
+        ({"reference_type": ["work_order"]}, "invalid_notification_field"),
+        (
+            {"reference_type": None, "reference_id": "wo-1"},
+            "notification_reference_not_allowed",
+        ),
+        ({"reference_id": "../wo-1"}, "notification_reference_not_allowed"),
+    ],
+)
+def test_invalid_canonical_identity_or_reference_is_refused(override, expected_code):
+    async def scenario():
+        service, db = build_service()
+
+        with pytest.raises(NotificationError) as refused:
+            await publish(service, **override)
+
+        assert refused.value.code == expected_code
+        assert db.notifications.items == []
+
+    asyncio.run(scenario())
+
+
 # --------------------------- Deduplication ---------------------------
 
 
@@ -229,6 +358,108 @@ def test_the_same_condition_for_one_reader_is_one_notification():
         # The recurrence is recorded rather than duplicated.
         assert second["occurrence_count"] == 2
         assert second["last_seen_at"] >= first["last_seen_at"]
+
+    asyncio.run(scenario())
+
+
+def test_concurrent_publication_uses_one_immutable_identity():
+    async def scenario():
+        service, db = build_service()
+
+        published = await asyncio.gather(*(publish(service) for _index in range(10)))
+
+        assert len(db.notifications.items) == 1
+        assert {item["id"] for item in published} == {db.notifications.items[0]["id"]}
+        assert db.notifications.items[0]["occurrence_count"] == 10
+        assert {item["expires_at"] for item in published} == {
+            db.notifications.items[0]["expires_at"]
+        }
+        key = deduplication_key(
+            user_id="user-1",
+            event="work_order.material_shortage",
+            reference_type="work_order",
+            reference_id="wo-1",
+        )
+        assert db.notifications.items[0]["_id"] == f"notification:{key}"
+
+    asyncio.run(scenario())
+
+
+def test_an_incompatible_existing_dedup_identity_fails_closed():
+    async def scenario():
+        service, db = build_service()
+        key = deduplication_key(
+            user_id="user-1",
+            event="work_order.material_shortage",
+            reference_type="work_order",
+            reference_id="wo-1",
+        )
+        db.notifications.items.append(
+            {"id": "unknown", "deduplication_key": key, "provider_payload": {}}
+        )
+
+        with pytest.raises(NotificationError) as conflict:
+            await publish(service)
+
+        assert conflict.value.code == "notification_schema_conflict"
+        assert db.notifications.items == [
+            {"id": "unknown", "deduplication_key": key, "provider_payload": {}}
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_expired_dedup_identity_is_not_resurrected_or_replaced():
+    async def scenario():
+        service, db = build_service()
+        created_at = datetime.now(timezone.utc) - NOTIFICATION_RETENTION
+        existing = canonical_document(
+            id="expired",
+            deduplication_key=deduplication_key(
+                user_id="user-1",
+                event="work_order.material_shortage",
+                reference_type="work_order",
+                reference_id="wo-1",
+            ),
+            created_at=created_at,
+            last_seen_at=created_at,
+            updated_at=created_at,
+            expires_at=created_at + NOTIFICATION_RETENTION,
+        )
+        db.notifications.items.append(existing)
+
+        with pytest.raises(NotificationError) as conflict:
+            await publish(service)
+
+        assert conflict.value.code == "notification_schema_conflict"
+        assert len(db.notifications.items) == 1
+        assert db.notifications.items[0]["id"] == "expired"
+        assert db.notifications.items[0]["occurrence_count"] == 1
+
+    asyncio.run(scenario())
+
+
+def test_recurrence_updates_compatible_versionless_history_without_rewriting_it():
+    async def scenario():
+        service, db = build_service()
+        existing = canonical_document(
+            deduplication_key=deduplication_key(
+                user_id="user-1",
+                event="work_order.material_shortage",
+                reference_type="work_order",
+                reference_id="wo-1",
+            )
+        )
+        existing.pop("schema_version")
+        existing.pop("expires_at")
+        db.notifications.items.append(existing)
+
+        recurring = await publish(service)
+
+        assert recurring["id"] == existing["id"]
+        assert recurring["occurrence_count"] == 2
+        assert "schema_version" not in db.notifications.items[0]
+        assert "expires_at" not in db.notifications.items[0]
 
     asyncio.run(scenario())
 
@@ -282,6 +513,66 @@ def test_a_recurrence_does_not_resurface_a_notification_already_read():
 
 
 # --------------------------- Read state ---------------------------
+
+
+def test_versionless_modern_history_is_projected_without_becoming_canonical():
+    document = canonical_document()
+    document.pop("schema_version")
+    document.pop("expires_at")
+
+    projected = project_notification(document)
+
+    assert "schema_version" not in projected
+    assert projected["compatibility_status"] == "versionless_modern"
+    assert projected["expires_at"] == document["created_at"] + NOTIFICATION_RETENTION
+    assert "schema_version" not in document
+    assert "expires_at" not in document
+
+
+def test_legacy_email_and_mixed_or_unknown_history_fail_closed():
+    legacy = {
+        "id": "legacy-1",
+        "user_id": "user-1",
+        "to_email": "customer@example.test",
+        "subject": "Legacy",
+        "title": "Legacy",
+        "body_html": "<p>Legacy</p>",
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    mixed = {**canonical_document(), "to_email": "customer@example.test"}
+    unknown = {**canonical_document(), "provider_payload": {"token": "secret"}}
+
+    assert project_notification(legacy) is None
+    assert project_notification(mixed) is None
+    assert project_notification(unknown) is None
+
+
+def test_expired_and_unknown_records_are_absent_from_reader_operations():
+    async def scenario():
+        service, db = build_service()
+        expired = canonical_document(
+            id="expired",
+            expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
+        )
+        unknown = {
+            "id": "unknown",
+            "user_id": "user-1",
+            "read_at": None,
+            "created_at": datetime.now(timezone.utc),
+            "provider_payload": {},
+        }
+        db.notifications.items.extend([expired, unknown])
+
+        assert await service.list_for_user("user-1") == []
+        assert await service.unread_count("user-1") == 0
+        assert (await service.mark_all_read("user-1"))["marked"] == 0
+        with pytest.raises(NotificationError) as absent:
+            await service.mark_read("expired", user_id="user-1")
+        assert absent.value.status_code == 404
+        assert expired["read_at"] is None
+
+    asyncio.run(scenario())
 
 
 def test_unread_count_and_mark_one():
@@ -347,10 +638,41 @@ def test_delivery_is_queued_separately_from_recording():
 
         pending = await service.claim_pending(worker_id="worker-a")
         assert len(pending) == 1
+        assert pending[0]["schema_version"] == NOTIFICATION_OUTBOX_SCHEMA_VERSION
         assert pending[0]["status"] == "processing"
         assert await service.claim_pending(worker_id="worker-b") == []
         # The notification exists whether or not the email ever goes out.
         assert len(db.notifications.items) == 1
+
+    asyncio.run(scenario())
+
+
+def test_enqueue_delivery_rejects_noncanonical_schema_v1_content():
+    async def scenario():
+        invalid_values = (
+            {"channel": "sms"},
+            {"recipient": "ops@niuva.test\nBcc:unsafe@niuva.test"},
+            {"notification_id": "notification\nunsafe"},
+            {"payload": "not-a-dict"},
+            {"payload": {"provider_payload": "unsafe"}},
+            {"payload": {"subject": 123}},
+        )
+
+        for overrides in invalid_values:
+            service, db = build_service()
+            values = {
+                "notification_id": "notification-1",
+                "channel": "email",
+                "recipient": "ops@niuva.test",
+                "payload": {"subject": "Material kurang"},
+                **overrides,
+            }
+
+            with pytest.raises(NotificationError) as refused:
+                await service.enqueue_delivery(**values)
+
+            assert refused.value.code == "invalid_delivery_entry"
+            assert db.notification_outbox.items == []
 
     asyncio.run(scenario())
 
@@ -393,7 +715,7 @@ def test_a_failed_delivery_is_retried_then_marked_exhausted():
         )
         # Exhausted, not deleted: what never went out stays visible.
         assert final["status"] == "exhausted"
-        assert final["last_error"] == "smtp unavailable"
+        assert final["last_error"] == "delivery_error"
         assert await service.claim_pending(worker_id="worker-a", at=moment) == []
 
     asyncio.run(scenario())
@@ -464,5 +786,654 @@ def test_worker_claim_and_delivery_are_not_duplicated():
         assert (await first.run_once())["delivered"] == 1
         assert (await second.run_once())["claimed"] == 0
         assert len(calls) == 1
+
+    asyncio.run(scenario())
+
+
+def test_worker_snapshot_exposes_only_aggregate_backlog_state():
+    async def scenario():
+        service, db = build_service()
+        moment = datetime(2026, 8, 5, 10, 0, tzinfo=timezone.utc)
+        db.notification_outbox.items.extend(
+            [
+                {
+                    "id": "pending-due",
+                    "status": "pending",
+                    "attempts": 0,
+                    "next_attempt_at": moment - timedelta(seconds=10),
+                },
+                {
+                    "id": "pending-future",
+                    "status": "pending",
+                    "attempts": 0,
+                    "next_attempt_at": moment + timedelta(seconds=10),
+                },
+                {
+                    "id": "processing-live",
+                    "status": "processing",
+                    "attempts": 1,
+                    "lease_until": moment + timedelta(seconds=30),
+                },
+                {
+                    "id": "processing-stale",
+                    "status": "processing",
+                    "attempts": 1,
+                    "lease_until": moment - timedelta(seconds=1),
+                },
+                {
+                    "id": "exhausted",
+                    "status": "exhausted",
+                    "attempts": MAX_DELIVERY_ATTEMPTS,
+                    "next_attempt_at": None,
+                },
+            ]
+        )
+
+        snapshot = await service.worker_snapshot(at=moment)
+
+        assert snapshot == {
+            "pending_due": 1,
+            "processing": 2,
+            "oldest_due_age_seconds": 10,
+            "stale_leases": 1,
+            "exhausted": 1,
+        }
+
+    asyncio.run(scenario())
+
+
+def test_worker_claims_only_one_item_per_execution_slot():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        for index in range(2):
+            await service.enqueue_delivery(
+                notification_id=notification["id"],
+                channel="email",
+                recipient=f"ops-{index}@niuva.test",
+                payload={},
+            )
+
+        async def deliver(_entry, *, idempotency_key):
+            assert idempotency_key
+            return True
+
+        worker = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        )
+        result = await worker.run_once(limit=50)
+
+        assert result == {"claimed": 1, "delivered": 1, "failed": 0}
+        assert sum(
+            item["status"] == "pending" for item in db.notification_outbox.items
+        ) == 1
+
+    asyncio.run(scenario())
+
+
+def test_worker_stop_claiming_prevents_new_claims():
+    async def scenario():
+        service, _db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+
+        async def deliver(_entry, *, idempotency_key):
+            assert idempotency_key
+            return True
+
+        worker = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        )
+        worker.stop_claiming()
+
+        assert await worker.run_once() == {
+            "claimed": 0,
+            "delivered": 0,
+            "failed": 0,
+        }
+
+    asyncio.run(scenario())
+
+
+def test_worker_bounds_delivery_operation_and_records_safe_timeout():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        config = WorkerRuntimeConfig.for_testing(
+            max_delivery_operation_seconds=0.01,
+            ack_budget_seconds=0.1,
+            clock_margin_seconds=0.01,
+            lease_seconds=0.2,
+            renewal_threshold_seconds=0.1,
+        )
+
+        async def deliver(_entry, *, idempotency_key):
+            assert idempotency_key
+            await asyncio.Event().wait()
+
+        result = await NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+            runtime_config=config,
+        ).run_once()
+
+        assert result == {"claimed": 1, "delivered": 0, "failed": 1}
+        assert db.notification_outbox.items[0]["last_error"] == "delivery_timeout"
+
+    asyncio.run(scenario())
+
+
+def test_concurrent_workers_have_one_claim_winner():
+    async def scenario():
+        service, _db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        calls = []
+
+        async def deliver(entry, *, idempotency_key):
+            calls.append((entry["id"], idempotency_key))
+            await asyncio.sleep(0)
+            return True
+
+        workers = [
+            NotificationDeliveryWorker(
+                service=service,
+                worker_id=f"worker-{index}",
+                deliverers={"email": deliver},
+            )
+            for index in range(2)
+        ]
+        results = await asyncio.gather(*(worker.run_once() for worker in workers))
+
+        assert sum(result["claimed"] for result in results) == 1
+        assert sum(result["delivered"] for result in results) == 1
+        assert len(calls) == 1
+
+    asyncio.run(scenario())
+
+
+def test_expired_lease_reclaims_same_delivery_key_and_rejects_stale_token():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        moment = datetime.now(timezone.utc)
+        first = (await service.claim_pending(worker_id="worker-a", at=moment))[0]
+        assert await service.claim_pending(worker_id="worker-b", at=moment) == []
+
+        reclaimed = (
+            await service.claim_pending(
+                worker_id="worker-b", at=moment + timedelta(seconds=61)
+            )
+        )[0]
+        assert reclaimed["delivery_key"] == entry["delivery_key"]
+        assert reclaimed["lease_token"] != first["lease_token"]
+
+        with pytest.raises(NotificationError) as refused:
+            await service.record_delivery_result(
+                entry["id"],
+                lease_token=first["lease_token"],
+                delivered=True,
+            )
+        assert refused.value.code == "outbox_lease_lost"
+        assert (
+            db.notification_outbox.items[0]["lease_token"] == reclaimed["lease_token"]
+        )
+
+    asyncio.run(scenario())
+
+
+def test_lease_renewal_and_release_are_fenced_by_the_current_token():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        moment = datetime.now(timezone.utc)
+        claimed = (await service.claim_pending(worker_id="worker-a", at=moment))[0]
+
+        renewed = await service.renew_lease(
+            entry["id"],
+            lease_token=claimed["lease_token"],
+            lease_seconds=60,
+            at=moment + timedelta(seconds=20),
+        )
+        assert renewed["lease_until"] == moment + timedelta(seconds=80)
+
+        with pytest.raises(NotificationError) as stale:
+            await service.renew_lease(
+                entry["id"],
+                lease_token="stale-token",
+                lease_seconds=60,
+                at=moment + timedelta(seconds=21),
+            )
+        assert stale.value.code == "outbox_lease_lost"
+
+        released = await service.release_lease(
+            entry["id"],
+            lease_token=claimed["lease_token"],
+            at=moment + timedelta(seconds=21),
+        )
+        assert released["status"] == "pending"
+        assert released["lease_token"] is None
+        assert db.notification_outbox.items[0]["lease_owner"] is None
+
+    asyncio.run(scenario())
+
+
+def test_expired_lease_cannot_record_before_reclaim():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        moment = datetime.now(timezone.utc)
+        claimed = (
+            await service.claim_pending(
+                worker_id="worker-a", lease_seconds=1, at=moment
+            )
+        )[0]
+
+        with pytest.raises(NotificationError) as refused:
+            await service.record_delivery_result(
+                entry["id"],
+                lease_token=claimed["lease_token"],
+                delivered=True,
+                at=moment + timedelta(seconds=2),
+            )
+
+        assert refused.value.code == "outbox_lease_lost"
+        assert db.notification_outbox.items[0]["status"] == "processing"
+        reclaimed = (
+            await service.claim_pending(
+                worker_id="worker-b", at=moment + timedelta(seconds=2)
+            )
+        )[0]
+        assert reclaimed["delivery_key"] == entry["delivery_key"]
+
+    asyncio.run(scenario())
+
+
+def test_retry_backoff_is_bounded_and_exhausted_is_terminal():
+    async def scenario():
+        service, _db = build_service()
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        moment = datetime.now(timezone.utc)
+
+        for attempt, delay in enumerate((2, 4, 8, 16), start=1):
+            claimed = (await service.claim_pending(worker_id="worker-a", at=moment))[0]
+            result = await service.record_delivery_result(
+                entry["id"],
+                lease_token=claimed["lease_token"],
+                delivered=False,
+                error="temporary_failure",
+                at=moment,
+            )
+            assert result["attempts"] == attempt
+            assert result["next_attempt_at"] == moment + timedelta(seconds=delay)
+            moment = result["next_attempt_at"]
+
+        claimed = (await service.claim_pending(worker_id="worker-a", at=moment))[0]
+        exhausted = await service.record_delivery_result(
+            entry["id"],
+            lease_token=claimed["lease_token"],
+            delivered=False,
+            error="temporary_failure",
+            at=moment,
+        )
+        assert exhausted["attempts"] == MAX_DELIVERY_ATTEMPTS
+        assert exhausted["status"] == "exhausted"
+        assert exhausted["next_attempt_at"] is None
+        assert (
+            await service.claim_pending(
+                worker_id="worker-b", at=moment + timedelta(days=1)
+            )
+            == []
+        )
+
+    asyncio.run(scenario())
+
+
+def test_worker_requires_explicit_true_delivery_result():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+
+        async def deliver(_entry, *, idempotency_key):
+            assert idempotency_key
+            return None
+
+        result = await NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        ).run_once()
+
+        assert result == {"claimed": 1, "delivered": 0, "failed": 1}
+        assert db.notification_outbox.items[0]["status"] == "pending"
+        assert db.notification_outbox.items[0]["last_error"] == "delivery_rejected"
+
+    asyncio.run(scenario())
+
+
+def test_provider_exception_message_is_not_logged_or_persisted(caplog):
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={"body_html": "payload-secret"},
+        )
+
+        async def deliver(_entry, *, idempotency_key):
+            raise RuntimeError(f"provider-secret:{idempotency_key}")
+
+        await NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        ).run_once()
+
+        log_text = caplog.text
+        assert "provider-secret" not in log_text
+        assert "payload-secret" not in log_text
+        assert db.notification_outbox.items[0]["last_error"] == "delivery_error"
+
+    asyncio.run(scenario())
+
+
+def test_direct_delivery_error_is_reduced_to_safe_code():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        claimed = (await service.claim_pending(worker_id="worker-a"))[0]
+
+        result = await service.record_delivery_result(
+            entry["id"],
+            lease_token=claimed["lease_token"],
+            delivered=False,
+            error="provider said recipient=private@niuva.test",
+        )
+
+        assert result["last_error"] == "delivery_error"
+        assert db.notification_outbox.items[0]["last_error"] == "delivery_error"
+
+    asyncio.run(scenario())
+
+
+def test_malformed_delivery_key_never_reaches_provider():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        db.notification_outbox.items[0]["delivery_key"] = "unsafe\r\nheader:value"
+        calls = []
+
+        async def deliver(_entry, *, idempotency_key):
+            calls.append(idempotency_key)
+            return True
+
+        result = await NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        ).run_once()
+
+        assert result == {"claimed": 1, "delivered": 0, "failed": 1}
+        assert calls == []
+        assert db.notification_outbox.items[0]["last_error"] == "invalid_delivery_entry"
+
+    asyncio.run(scenario())
+
+
+def test_cancellation_leaves_entry_reclaimable_with_same_delivery_key():
+    async def scenario():
+        service, _db = build_service()
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        started = asyncio.Event()
+
+        async def deliver(_entry, *, idempotency_key):
+            assert idempotency_key == entry["delivery_key"]
+            started.set()
+            await asyncio.Event().wait()
+
+        worker = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        )
+        task = asyncio.create_task(worker.run_once())
+        await started.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        leased = service.db.notification_outbox.items[0]
+        assert leased["status"] == "processing"
+        assert (
+            await service.claim_pending(
+                worker_id="worker-b", at=leased["lease_until"] - timedelta(seconds=1)
+            )
+            == []
+        )
+        reclaimed = (
+            await service.claim_pending(
+                worker_id="worker-b", at=leased["lease_until"] + timedelta(seconds=1)
+            )
+        )[0]
+        assert reclaimed["delivery_key"] == entry["delivery_key"]
+
+    asyncio.run(scenario())
+
+
+def test_post_provider_state_write_failure_replays_same_idempotency_key():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        keys = []
+
+        async def deliver(_entry, *, idempotency_key):
+            keys.append(idempotency_key)
+            return True
+
+        record_result = service.record_delivery_result
+
+        async def fail_to_record(*_args, **_kwargs):
+            raise RuntimeError("state_write_failed")
+
+        service.record_delivery_result = fail_to_record
+        first = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-a",
+            deliverers={"email": deliver},
+        )
+        with pytest.raises(RuntimeError, match="state_write_failed"):
+            await first.run_once()
+
+        leased = db.notification_outbox.items[0]
+        assert leased["status"] == "processing"
+        service.record_delivery_result = record_result
+        leased["lease_until"] = datetime.now(timezone.utc) - timedelta(seconds=1)
+        second = NotificationDeliveryWorker(
+            service=service,
+            worker_id="worker-b",
+            deliverers={"email": deliver},
+        )
+        result = await second.run_once(limit=1)
+        assert result == {"claimed": 1, "delivered": 1, "failed": 0}
+        assert keys == [keys[0], keys[0]]
+
+    asyncio.run(scenario())
+
+
+def test_email_provider_receives_delivery_idempotency_key(monkeypatch):
+    captured = []
+
+    def send(params):
+        captured.append(params)
+        return {"id": "email-1"}
+
+    monkeypatch.setattr(emailer, "RESEND_API_KEY", "configured-for-test")
+    monkeypatch.setattr(emailer.resend.Emails, "send", send)
+
+    result = asyncio.run(
+        emailer._send_provider_email(
+            to_email="ops@niuva.test",
+            subject="Subject",
+            title="Title",
+            body_html="<p>Body</p>",
+            idempotency_key="notification-delivery:stable-key",
+        )
+    )
+
+    assert result == {"status": "sent", "id": "email-1"}
+    assert captured[0]["headers"] == {
+        "Idempotency-Key": "notification-delivery:stable-key"
+    }
+
+
+def test_invalid_claim_and_result_inputs_fail_closed():
+    async def scenario():
+        service, db = build_service()
+        for kwargs, code in (
+            ({"worker_id": ""}, "invalid_worker_id"),
+            ({"worker_id": "worker\nunsafe"}, "invalid_worker_id"),
+            ({"worker_id": "worker-a", "limit": True}, "invalid_claim_limit"),
+            (
+                {"worker_id": "worker-a", "lease_seconds": 0},
+                "invalid_lease_duration",
+            ),
+        ):
+            with pytest.raises(NotificationError) as refused:
+                await service.claim_pending(**kwargs)
+            assert refused.value.code == code
+
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        claimed = (await service.claim_pending(worker_id="worker-a"))[0]
+        with pytest.raises(NotificationError) as refused:
+            await service.record_delivery_result(
+                {"$ne": "missing"},
+                lease_token=claimed["lease_token"],
+                delivered=False,
+            )
+        assert refused.value.code == "invalid_outbox_identity"
+
+        with pytest.raises(NotificationError) as refused:
+            await service.record_delivery_result(
+                entry["id"],
+                lease_token=claimed["lease_token"],
+                delivered=1,
+            )
+        assert refused.value.code == "invalid_delivery_result"
+
+        db.notification_outbox.items[0]["attempts"] = "broken"
+        with pytest.raises(NotificationError) as refused:
+            await service.record_delivery_result(
+                entry["id"],
+                lease_token=claimed["lease_token"],
+                delivered=False,
+            )
+        assert refused.value.code == "invalid_outbox_state"
+
+    asyncio.run(scenario())
+
+
+def test_terminal_attempt_count_is_not_reclaimed():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        entry = db.notification_outbox.items[0]
+        entry.update(
+            {
+                "status": "processing",
+                "attempts": MAX_DELIVERY_ATTEMPTS,
+                "lease_until": datetime.now(timezone.utc) - timedelta(seconds=1),
+            }
+        )
+
+        assert await service.claim_pending(worker_id="worker-a") == []
 
     asyncio.run(scenario())

@@ -1,7 +1,9 @@
 import uuid
-from datetime import datetime, timezone
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import Any
+
+from permissions import ROLE_POLICY_VERSION
 
 SENSITIVE_KEYS = frozenset(
     {
@@ -103,21 +105,21 @@ _IDENTITY_GOVERNANCE_ACTIONS = frozenset(
         "identity.granular_role_migration_rolled_back",
     }
 )
-_IDENTITY_GOVERNANCE_FIELDS = frozenset(
-    {"id", "email", "name", "roles", "status", "access_state", "version", "expires_at"}
-)
 
-
-def _identity_governance_projection(snapshot: Mapping[str, Any] | None):
-    if snapshot is None:
-        return None
-    if not isinstance(snapshot, Mapping):
-        raise AuditValidationError("Identity governance projection must be a mapping")
-    return {
-        key: _redact(value)
-        for key, value in snapshot.items()
-        if key in _IDENTITY_GOVERNANCE_FIELDS
-    }
+_IDENTITY_GOVERNANCE_REASON_CODES = {
+    ("identity.staff_invited", "staff_invitation"): "staff_invitation_created",
+    ("identity.staff_invitation_accepted", "user"): "staff_invitation_accepted",
+    ("identity.staff_roles_updated", "user"): "staff_roles_updated",
+    ("identity.staff_deactivated", "user"): "staff_access_deactivated",
+    ("identity.staff_reactivated", "user"): "staff_access_reactivated",
+    ("identity.customer_disabled", "user"): "customer_access_disabled",
+    ("identity.customer_active", "user"): "customer_access_reactivated",
+    ("identity.granular_role_migrated", "user"): "policy_migration_v1",
+    (
+        "identity.granular_role_migration_rolled_back",
+        "user",
+    ): "policy_migration_v1",
+}
 
 
 async def append_identity_governance_event(
@@ -132,32 +134,38 @@ async def append_identity_governance_event(
     reason: str,
     session=None,
 ) -> dict:
-    """Append a reason-bearing, allowlisted identity-governance event."""
+    """Adapt legacy identity-governance producers to the strict audit contract.
+
+    ``reason`` remains a validated request input for existing API and migration
+    callers, but it is deliberately not persisted. The resulting event is
+    written through ``append_identity_audit_event`` so all identity-governance
+    paths share the same envelope and projection validation.
+    """
     if action not in _IDENTITY_GOVERNANCE_ACTIONS:
         raise AuditValidationError("Unsupported identity governance action")
-    if target_type not in {"user", "staff_invitation"}:
+    if (action, target_type) not in _IDENTITY_GOVERNANCE_REASON_CODES:
         raise AuditValidationError("Unsupported identity governance target")
     reason = reason.strip() if isinstance(reason, str) else ""
     if len(reason) < 3 or len(reason) > 500:
-        raise AuditValidationError("Identity governance reason must be 3-500 characters")
-    actor_id = _validate_audit_identifier(actor.get("id"), "actor user ID")
-    target_id = _validate_audit_identifier(target_id, "target ID")
-    event = {
-        "id": str(uuid.uuid4()),
-        "actor_user_id": actor_id,
-        "actor_email": actor.get("email"),
-        "action": action,
-        "target_type": target_type,
-        "target_id": target_id,
-        "before": _identity_governance_projection(before),
-        "after": _identity_governance_projection(after),
-        "reason": reason,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    options = {"session": session} if session is not None else {}
-    await db.audit_events.insert_one(event, **options)
-    event.pop("_id", None)
-    return event
+        raise AuditValidationError(
+            "Identity governance reason must be 3-500 characters"
+        )
+    return await append_identity_audit_event(
+        db,
+        actor_user_id=actor.get("id"),
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        previous=_identity_governance_projection(
+            before, target_type=target_type, action=action
+        ),
+        result=_identity_governance_projection(
+            after, target_type=target_type, action=action
+        ),
+        reason_code=_IDENTITY_GOVERNANCE_REASON_CODES[(action, target_type)],
+        policy_version=ROLE_POLICY_VERSION,
+        session=session,
+    )
 
 
 class AuditValidationError(ValueError):
@@ -195,10 +203,12 @@ _EVENT_REASON_CODES = {
         "organization.member_archived",
         "organization_membership",
     ): "organization_member_archived",
+    **_IDENTITY_GOVERNANCE_REASON_CODES,
 }
 
 _PROJECTION_FIELDS = {
     "user": ("roles", "access_state", "status"),
+    "staff_invitation": ("roles", "status"),
     "organization": ("organization_id", "status"),
     "organization_membership": (
         "organization_id",
@@ -228,7 +238,45 @@ _CANONICAL_ROLES = frozenset(
 _ACCESS_STATES = frozenset({"approved", "access_review_required"})
 _USER_STATUSES = frozenset({"active", "disabled"})
 _ORGANIZATION_STATUSES = frozenset({"active", "inactive"})
+_STAFF_INVITATION_STATUSES = frozenset({"pending", "accepted"})
 _MEMBERSHIP_ROLES = frozenset({"owner", "project_pic", "approver", "finance", "viewer"})
+
+
+def _identity_governance_projection(
+    snapshot: Mapping[str, Any] | None,
+    *,
+    target_type: str,
+    action: str,
+) -> dict[str, Any] | None:
+    """Project legacy identity records into the strict event shape."""
+    if snapshot is None:
+        return None
+    if not isinstance(snapshot, Mapping):
+        raise AuditValidationError("Identity governance projection must be a mapping")
+    try:
+        fields = _PROJECTION_FIELDS[target_type]
+    except KeyError as exc:
+        raise AuditValidationError("Unsupported identity governance target") from exc
+    projection = {field: snapshot[field] for field in fields if field in snapshot}
+    if "roles" in projection:
+        roles = projection["roles"]
+        if not isinstance(roles, (list, tuple)) or any(
+            role not in _CANONICAL_ROLES for role in roles
+        ):
+            if action in {
+                "identity.granular_role_migrated",
+                "identity.granular_role_migration_rolled_back",
+            }:
+                # Migration 006 can encounter legacy aggregate markers.
+                # Preserve only the safe fact that no canonical role
+                # projection is present; never copy a legacy role label into
+                # the strict event.
+                projection["roles"] = []
+            else:
+                raise AuditValidationError("Audit roles must be canonical")
+        else:
+            projection["roles"] = list(roles)
+    return projection
 
 
 def _validate_audit_identifier(value: Any, label: str) -> str:
@@ -248,7 +296,10 @@ def _validate_identity_projection(
     if not isinstance(snapshot, Mapping):
         raise AuditValidationError("Audit projection must be a mapping")
 
-    fields = _PROJECTION_FIELDS[target_type]
+    try:
+        fields = _PROJECTION_FIELDS[target_type]
+    except KeyError as exc:
+        raise AuditValidationError("Unsupported audit target type") from exc
     unknown = set(snapshot) - set(fields)
     if unknown:
         raise AuditValidationError(
@@ -277,9 +328,12 @@ def _validate_identity_projection(
     ):
         raise AuditValidationError("Unsupported access state")
     if "status" in projection:
-        allowed_statuses = (
-            _USER_STATUSES if target_type == "user" else _ORGANIZATION_STATUSES
-        )
+        if target_type == "user":
+            allowed_statuses = _USER_STATUSES
+        elif target_type == "staff_invitation":
+            allowed_statuses = _STAFF_INVITATION_STATUSES
+        else:
+            allowed_statuses = _ORGANIZATION_STATUSES
         if projection["status"] not in allowed_statuses:
             raise AuditValidationError("Unsupported audit lifecycle state")
     if (

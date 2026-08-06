@@ -23,6 +23,11 @@ from urllib.parse import quote, urlsplit
 import bcrypt
 import emailer
 import storage
+from api_contract import (
+    error_response,
+    error_responses,
+    normalize_request_id,
+)
 from audit import append_audit_event, append_identity_governance_event
 from auth_password import (
     PasswordPolicyError,
@@ -76,7 +81,7 @@ from dashboard_domain import (
     summarize_movements,
     withheld_revenue,
 )
-from database_capabilities import DatabaseCapabilities, probe_database_capabilities
+from database_capabilities import DatabaseCapabilities
 from fastapi import (
     APIRouter,
     Depends,
@@ -98,6 +103,7 @@ from material_routes import build_material_router
 from motor.motor_asyncio import AsyncIOMotorClient
 from notification_service import NotificationError, NotificationService
 from notification_worker import NotificationDeliveryWorker
+from observability import Observability, route_template_for_request
 from permissions import (
     CUSTOMER_ROLES,
     ROLE_LABELS,
@@ -117,12 +123,17 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
+from readiness_health import (
+    TOTAL_TIMEOUT_SECONDS,
+    ReadinessProbeCoordinator,
+    public_schema_status,
+    public_transaction_status,
+)
 from retail_domain import (
     project_customer_legacy_order,
     project_internal_legacy_order,
 )
 from retail_routes import build_retail_router
-from schema_readiness import inspect_schema
 from settings_domain import (
     PUBLIC_PROFILE_FIELDS,
     default_settings,
@@ -136,11 +147,26 @@ from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
 from transaction_observability import TransactionLogSink
+from worker_runtime import (
+    APPROVED_DRAIN_SECONDS,
+    NamedJobLease,
+    WorkerRuntime,
+    WorkerRuntimeConfig,
+    cancel_task_with_deadline,
+    is_co_located_mode,
+    is_worker_mode,
+    renew_lease_until_stopped,
+    resolve_runtime_mode,
+    wait_for_stop,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("niuva")
+observability = Observability(
+    environment=os.environ.get("APP_ENV", "sandbox").strip().lower()
+)
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
@@ -186,6 +212,10 @@ ORDER_STATUSES = [
     "cancelled",
 ]
 
+READINESS_PROBE_INTERVAL_SECONDS = 5
+NOTIFICATION_WORKER_HEARTBEAT_INTERVAL_SECONDS = 5
+NOTIFICATION_WORKER_STALE_SECONDS = 30
+
 CUSTOMER_QUERY = {
     "$or": [
         {"roles": {"$in": ["retail_customer", "organization_customer"]}},
@@ -204,14 +234,28 @@ async def lifespan(_application: FastAPI):
 
 
 app = FastAPI(title="NIUVA API", lifespan=lifespan)
+app.state.observability = observability
 app.state.database_capabilities = DatabaseCapabilities(transactions=False)
+app.state.readiness_probe_coordinator = ReadinessProbeCoordinator(
+    client,
+    db,
+    database_name,
+)
+app.state.readiness_probe_task = None
 app.state.reservation_expiry_task = None
 app.state.notification_worker_task = None
+app.state.runtime_mode = "api"
+app.state.worker_runtime_config = WorkerRuntimeConfig()
+app.state.scheduler_stop_event = None
+app.state.observability_metrics_task = None
+app.state.worker_runtime = None
 app.state.notification_worker_status = {
     "enabled": False,
     "running": False,
+    "draining": False,
     "last_heartbeat_at": None,
     "last_result": None,
+    "last_error_type": None,
 }
 app.state.schema_status = {
     "required_version": "unknown",
@@ -219,23 +263,26 @@ app.state.schema_status = {
     "migrations": {},
     "applied": False,
     "indexes_ready": False,
-    "missing_index_count": 0,
-    "retired_index_count": 0,
+    "missing_index_count": None,
+    "retired_index_count": None,
+    "inspection_complete": False,
     "ready": False,
 }
 app.state.transaction_executor = TransactionExecutor(
     client,
-    lambda: app.state.database_capabilities,
-    event_sink=TransactionLogSink(logging.getLogger("niuva.transaction")),
+    lambda: current_database_capabilities(),
+    event_sink=TransactionLogSink(
+        logging.getLogger("niuva.transaction"),
+        telemetry=observability,
+    ),
+    include_duration=True,
 )
 app.state.transaction_guard = TransactionMutationGuard(
     app.state.transaction_executor,
     lambda: os.environ.get("TRANSACTION_MUTATIONS_ENABLED", "false").strip().lower()
     == "true",
 )
-app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
-    get_database=lambda: db,
-)
+app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery()
 app.state.admin_session_module = None
 app.state.auth_security_event_service = None
 app.state.auth_security_event_status = {
@@ -249,17 +296,28 @@ app.add_exception_handler(
 )
 
 
-async def password_policy_error_handler(_request, exc):
-    return JSONResponse(
+def current_database_capabilities() -> DatabaseCapabilities:
+    coordinator = app.state.readiness_probe_coordinator
+    if isinstance(coordinator, ReadinessProbeCoordinator):
+        return coordinator.current_transaction_capabilities()
+    return app.state.database_capabilities
+
+
+async def password_policy_error_handler(request: Request, exc):
+    return error_response(
+        request,
         status_code=400,
-        content={"detail": {"code": exc.code}},
+        detail={"code": exc.code},
+        default_code=exc.code,
     )
 
 
-async def password_policy_unavailable_handler(_request, exc):
-    return JSONResponse(
+async def password_policy_unavailable_handler(request: Request, exc):
+    return error_response(
+        request,
         status_code=503,
-        content={"detail": {"code": exc.code}},
+        detail={"code": exc.code},
+        default_code=exc.code,
     )
 
 
@@ -274,11 +332,13 @@ app.add_exception_handler(
 )
 
 
-async def admin_session_error_handler(_request, exc):
+async def admin_session_error_handler(request: Request, exc):
     status_code = 403 if isinstance(exc, RequestVerificationError) else 401
-    return JSONResponse(
+    return error_response(
+        request,
         status_code=status_code,
-        content={"detail": {"code": exc.code}},
+        detail={"code": exc.code},
+        default_code=exc.code,
         headers={"Cache-Control": "no-store"},
     )
 
@@ -287,40 +347,13 @@ app.add_exception_handler(AdminSessionError, admin_session_error_handler)
 api = APIRouter(prefix="/api")
 
 
-def request_id_for(request: Request) -> str:
-    return getattr(request.state, "request_id", str(uuid.uuid4()))
-
-
-def error_payload(request: Request, detail, *, default_code: str) -> dict:
-    if isinstance(detail, dict):
-        code = str(detail.get("code") or default_code)
-        message = str(detail.get("message") or code)
-        details = detail.get("details")
-    else:
-        code = default_code
-        message = str(detail)
-        details = None
-    return {
-        # Kept during the contract cutover for existing clients.
-        "detail": detail,
-        "error": {
-            "code": code,
-            "message": message,
-            **({"details": details} if details is not None else {}),
-        },
-        "request_id": request_id_for(request),
-    }
-
-
 @app.exception_handler(HTTPException)
 async def http_error_envelope(request: Request, exc: HTTPException):
-    return JSONResponse(
-        error_payload(
-            request,
-            exc.detail,
-            default_code=f"http_{exc.status_code}",
-        ),
+    return error_response(
+        request,
         status_code=exc.status_code,
+        detail=exc.detail,
+        default_code=f"http_{exc.status_code}",
         headers=exc.headers,
     )
 
@@ -340,64 +373,59 @@ async def validation_error_envelope(request: Request, exc: RequestValidationErro
         "message": "Request tidak memenuhi schema.",
         "details": {"issues": issues},
     }
-    return JSONResponse(
-        error_payload(
-            request,
-            detail,
-            default_code="request_validation_failed",
-        ),
+    return error_response(
+        request,
         status_code=422,
+        detail=detail,
+        default_code="request_validation_failed",
     )
 
 
 @app.exception_handler(Exception)
 async def unhandled_error_envelope(request: Request, exc: Exception):
-    logger.exception(
-        "unhandled_request_error request_id=%s method=%s path=%s",
-        request_id_for(request),
-        request.method,
-        request.url.path,
-        exc_info=exc,
-    )
+    del exc
+    logger.error("unhandled_request_error")
     detail = {
         "code": "internal_server_error",
         "message": "Terjadi kesalahan internal.",
     }
-    return JSONResponse(
-        error_payload(request, detail, default_code="internal_server_error"),
+    return error_response(
+        request,
         status_code=500,
+        detail=detail,
+        default_code="internal_server_error",
     )
 
 
 @app.middleware("http")
 async def request_context(request: Request, call_next):
-    supplied = request.headers.get("X-Request-ID", "").strip()
-    request.state.request_id = (
-        supplied[:128]
-        if supplied and re.fullmatch(r"[A-Za-z0-9._:-]+", supplied)
-        else str(uuid.uuid4())
+    request.state.request_id = normalize_request_id(
+        request.headers.get("X-Request-ID", "")
     )
     started = datetime.now(timezone.utc)
     try:
         response = await call_next(request)
     except Exception:
-        logger.exception(
-            "request_failed request_id=%s method=%s path=%s",
-            request.state.request_id,
-            request.method,
-            request.url.path,
+        elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+        observability.record_http(
+            request_id=request.state.request_id,
+            route_template=route_template_for_request(request),
+            method=request.method.upper(),
+            status_code=500,
+            duration_ms=elapsed_ms,
         )
+        logger.error("request_failed")
         raise
     elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
     response.headers["X-Request-ID"] = request.state.request_id
-    logger.info(
-        "request_complete request_id=%s method=%s path=%s status=%s elapsed_ms=%s",
-        request.state.request_id,
-        request.method,
-        request.url.path,
-        response.status_code,
-        elapsed_ms,
+    observability.record_http(
+        request_id=request.state.request_id,
+        route_template=route_template_for_request(request),
+        method=request.method.upper(),
+        status_code=response.status_code,
+        duration_ms=elapsed_ms,
     )
+    logger.info("request_complete")
     return response
 
 
@@ -417,7 +445,9 @@ CSRF_EXEMPT_PATHS = frozenset(
 @app.middleware("http")
 async def csrf_cookie_guard(request: Request, call_next):
     if not hasattr(request.state, "request_id"):
-        request.state.request_id = str(uuid.uuid4())
+        request.state.request_id = normalize_request_id(
+            request.headers.get("X-Request-ID", "")
+        )
     if (
         request.url.path.startswith("/api/")
         and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}
@@ -431,15 +461,12 @@ async def csrf_cookie_guard(request: Request, call_next):
         cookie = request.cookies.get(CSRF_COOKIE, "")
         header = request.headers.get(CSRF_HEADER, "")
         if not cookie or not header or not secrets.compare_digest(cookie, header):
-            response = JSONResponse(
-                error_payload(
-                    request,
-                    "CSRF validation failed",
-                    default_code="csrf_validation_failed",
-                ),
+            response = error_response(
+                request,
                 status_code=403,
+                detail="CSRF validation failed",
+                default_code="csrf_validation_failed",
             )
-            response.headers["X-Request-ID"] = request.state.request_id
             return response
     return await call_next(request)
 
@@ -758,7 +785,7 @@ def require_permission(permission: str):
         if not has_permission(user, permission):
             raise HTTPException(
                 status_code=403,
-                detail=f"Permission required: {permission}",
+                detail="Forbidden",
             )
         return user
 
@@ -771,6 +798,88 @@ require_admin = require_permission("admin.access")
 # ----------------------------- Models -----------------------------
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+class SafeUserResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    email: str
+    phone: str
+    company: str
+    status: str
+    access_state: str
+    role_policy_version: str | None = None
+    role: str
+    roles: list[str]
+    role_labels: list[str]
+    permissions: list[str]
+    version: int
+    created_at: str | datetime | None = None
+
+
+class LoginResponse(BaseModel):
+    user: SafeUserResponse
+
+
+class AdminSessionResponse(LoginResponse):
+    csrf_token: str
+    access_expires_at: str
+    idle_expires_at: str
+    absolute_expires_at: str
+
+
+class CustomerOrderFileResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    original_filename: str | None = None
+    content_type: str | None = None
+    size: int | None = None
+
+
+class CustomerOrderEstimateResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: int | float | None = None
+    currency: str | None = None
+    estimated_at: str | datetime | None = None
+
+
+class CustomerOrderPaymentResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verified: bool | None = None
+    uploaded_at: str | datetime | None = None
+    verified_at: str | datetime | None = None
+    proof_recorded: bool | None = None
+    proof: CustomerOrderFileResponse | None = None
+
+
+class CustomerOrderStatusEventResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: str
+    at: str | datetime | None = None
+
+
+class CustomerLegacyOrderResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str | None = None
+    order_number: str | None = None
+    material_name: str | None = None
+    status: str | None = None
+    created_at: str | datetime | None = None
+    updated_at: str | datetime | None = None
+    record_class: str
+    canonical_status_equivalent: str | None = None
+    creation_enabled: bool
+    mutations_enabled: bool
+    file: CustomerOrderFileResponse | None = None
+    estimate: CustomerOrderEstimateResponse | None = None
+    payment: CustomerOrderPaymentResponse | None = None
+    status_history: list[CustomerOrderStatusEventResponse]
 
 
 class ClientProvisionReq(StrictModel):
@@ -1032,6 +1141,23 @@ async def rate_limit(
     )
 
 
+async def rate_limit_cooldown(
+    scope: str,
+    identifier: str,
+    cooldown_seconds: int,
+    detail: str = "Terlalu banyak permintaan. Coba lagi sesaat.",
+):
+    await PublicRateLimiter(
+        collection=db.public_rate_limits,
+        secret=JWT_SECRET,
+    ).consume_cooldown(
+        scope=scope,
+        identifier=identifier,
+        cooldown_seconds=cooldown_seconds,
+        detail=detail,
+    )
+
+
 def client_ip(request: Request) -> str:
     """Resolve the caller address used to key public rate limits."""
     return request.client.host if request.client else "unknown"
@@ -1153,7 +1279,7 @@ async def store_upload(
     except storage.StorageUnavailableError as exc:
         raise HTTPException(status_code=503, detail="File storage unavailable") from exc
     except storage.StorageError as exc:
-        logger.exception("Unable to store uploaded file")
+        logger.error("storage_upload_failed")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     finally:
         spool.close()
@@ -1273,7 +1399,11 @@ async def _perform_login(
     return {"user": safe_user(user)}
 
 
-@api.post("/auth/login")
+@api.post(
+    "/auth/login",
+    response_model=LoginResponse,
+    responses=error_responses(401, 403, 422, 429, 500),
+)
 async def login(req: LoginReq, request: Request, response: Response):
     verify_auth_origin(request)
     return await _perform_login(
@@ -1284,7 +1414,11 @@ async def login(req: LoginReq, request: Request, response: Response):
     )
 
 
-@api.post("/auth/admin/login")
+@api.post(
+    "/auth/admin/login",
+    response_model=AdminSessionResponse,
+    responses=error_responses(401, 403, 422, 429, 500, 503),
+)
 async def admin_login(req: AdminLoginReq, request: Request):
     verify_admin_origin(request)
     account = req.email.lower()
@@ -1386,7 +1520,11 @@ async def refresh_admin_session(request: Request):
     return _admin_session_response(user, grant)
 
 
-@api.get("/auth/admin/session")
+@api.get(
+    "/auth/admin/session",
+    response_model=LoginResponse,
+    responses=error_responses(401, 403, 500, 503),
+)
 async def current_admin_session(request: Request):
     user = await get_admin_user(request, verify_csrf=False)
     return JSONResponse(
@@ -1420,7 +1558,11 @@ async def admin_logout(request: Request):
     return response
 
 
-@api.get("/auth/me")
+@api.get(
+    "/auth/me",
+    response_model=SafeUserResponse,
+    responses=error_responses(401, 403, 500),
+)
 async def me(user: dict = Depends(get_current_user)):
     return safe_user(user)
 
@@ -1428,11 +1570,18 @@ async def me(user: dict = Depends(get_current_user)):
 @api.post("/auth/forgot-password")
 async def forgot_password(req: ForgotPasswordReq, request: Request):
     client_host = client_ip(request)
-    await rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
-    await rate_limit(f"forgot_password_email:{req.email.lower()}", limit=3, window=900)
+    email = req.email.lower()
+    if _public_site_origin() is not None:
+        await rate_limit(f"forgot_password_ip:{client_host}", limit=3, window=900)
+        await rate_limit_cooldown(
+            "forgot_password_resend",
+            email,
+            cooldown_seconds=60,
+        )
+        await rate_limit(f"forgot_password_email:{email}", limit=3, window=900)
 
     result = await get_recovery_module().request_password_reset(
-        req.email.lower(),
+        email,
         {"client_ip": client_host},
     )
     await _emit_auth_security_event(
@@ -1521,7 +1670,12 @@ async def public_capabilities():
     }
 
 
-@api.get("/orders")
+@api.get(
+    "/orders",
+    response_model=list[CustomerLegacyOrderResponse],
+    response_model_exclude_none=True,
+    responses=error_responses(401, 403, 500),
+)
 async def my_orders(user: dict = Depends(get_current_user)):
     if has_permission(user, "orders.read"):
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -1552,7 +1706,12 @@ async def download_legacy_order_design_file(
     return await download_file(storage_path, user)
 
 
-@api.get("/orders/{oid}")
+@api.get(
+    "/orders/{oid}",
+    response_model=CustomerLegacyOrderResponse,
+    response_model_exclude_none=True,
+    responses=error_responses(401, 403, 404, 500),
+)
 async def get_order(oid: str, user: dict = Depends(get_current_user)):
     if has_permission(user, "orders.read"):
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -1833,7 +1992,7 @@ async def upload_admin_media(
                 },
             )
         except Exception as resolution_exc:
-            logger.exception("Unable to resolve file metadata write outcome")
+            logger.error("file_metadata_outcome_resolution_failed")
             raise HTTPException(
                 status_code=503,
                 detail={
@@ -1857,8 +2016,7 @@ async def upload_admin_media(
             ):
                 return document
             logger.error(
-                "File metadata write resolved to a conflicting record",
-                extra={"file_id": document["id"]},
+                "file_metadata_outcome_conflict",
             )
             raise HTTPException(
                 status_code=503,
@@ -1873,7 +2031,7 @@ async def upload_admin_media(
         try:
             storage.delete_object(metadata["storage_path"])
         except storage.StorageError as compensation_exc:
-            logger.exception("Unable to compensate failed file metadata write")
+            logger.error("file_metadata_compensation_failed")
             raise HTTPException(
                 status_code=503,
                 detail={
@@ -1963,7 +2121,7 @@ async def download_public_media(file_id: str):
             status_code=503, detail="Media storage unavailable"
         ) from exc
     except storage.StorageError as exc:
-        logger.exception("Unable to read public media object")
+        logger.error("public_media_read_failed")
         raise HTTPException(
             status_code=500, detail="Media storage unavailable"
         ) from exc
@@ -2023,7 +2181,7 @@ async def _stream_authorized_file(metadata: dict) -> StreamingResponse:
     except storage.StorageNotFoundError as exc:
         raise HTTPException(status_code=404, detail="File not found") from exc
     except storage.StorageError as exc:
-        logger.exception("Unable to read stored file")
+        logger.error("stored_file_read_failed")
         raise HTTPException(status_code=500, detail="File storage unavailable") from exc
     filename = safe_original_filename(metadata.get("original_filename"))
     return StreamingResponse(
@@ -2086,10 +2244,7 @@ async def contact(req: ContactReq, request: Request):
             ),
         )
     except Exception:
-        logger.exception(
-            "Contact inquiry stored, but notification enqueue failed (contact_id=%s)",
-            doc["id"],
-        )
+        logger.error("contact_notification_enqueue_failed")
     return {"ok": True, "message": "Pesan berhasil dikirim"}
 
 
@@ -2624,7 +2779,7 @@ async def list_sent_notifications(
 async def health():
     return {
         "status": "ok",
-        "transactions": app.state.database_capabilities.transactions,
+        "transactions": current_database_capabilities().transactions,
     }
 
 
@@ -2635,47 +2790,89 @@ async def health_live():
 
 @api.get("/health/ready")
 async def health_ready():
-    capabilities = app.state.database_capabilities
-    database_available = False
-    try:
-        await db.command("ping")
-        database_available = True
-    except Exception:
-        logger.warning("Readiness database ping failed")
-    schema_status = app.state.schema_status
-    worker_required = (
-        os.environ.get("NOTIFICATION_WORKER_REQUIRED", "false").lower() == "true"
+    loop = asyncio.get_running_loop()
+    started_at = loop.time()
+    dependencies = await app.state.readiness_probe_coordinator.probe()
+    capabilities = dependencies.capabilities
+    database_available = dependencies.database_available
+    probe_duration_ms = int((loop.time() - started_at) * 1000)
+    observability.record_dependency(
+        dependency="mongodb",
+        operation="unknown",
+        outcome="success" if database_available else "unavailable",
+        duration_ms=probe_duration_ms,
     )
-    worker_status = app.state.notification_worker_status
+    observability.record_readiness(
+        dependency="mongodb",
+        ready=database_available,
+        duration_ms=probe_duration_ms,
+    )
+    observability.metrics.set_gauge(
+        "transaction_capability",
+        {
+            "safe_capability_reason": getattr(
+                capabilities.transaction_reason, "value", "unknown"
+            )
+        },
+        1 if capabilities.transactions else 0,
+    )
+    schema_status = public_schema_status(dependencies.schema_status)
+    transaction_status = public_transaction_status(capabilities)
+    transaction_required = _environment_flag("TRANSACTION_MUTATIONS_ENABLED")
+    transaction_ready = bool(
+        not transaction_required or transaction_status["available"]
+    )
+    runtime_mode = getattr(app.state, "runtime_mode", "api")
+    worker_status_value = app.state.notification_worker_status
+    worker_status = worker_status_value if isinstance(worker_status_value, dict) else {}
     worker_task = app.state.notification_worker_task
-    heartbeat = worker_status.get("last_heartbeat_at")
-    heartbeat_fresh = bool(
-        isinstance(heartbeat, datetime)
-        and datetime.now(timezone.utc) - heartbeat <= timedelta(seconds=30)
+    # API mode is intentionally independent from an optional, separately
+    # managed delivery worker. A task present in a test/co-located runtime is
+    # still evaluated so the local readiness contract remains truthful.
+    worker_is_co_located = is_co_located_mode(runtime_mode) or worker_task is not None
+    worker_required = bool(
+        _environment_flag("NOTIFICATION_WORKER_REQUIRED") and worker_is_co_located
     )
-    worker_ready = bool(
-        not worker_required
+    heartbeat = worker_status.get("last_heartbeat_at")
+    heartbeat_fresh = False
+    if isinstance(heartbeat, datetime) and heartbeat.tzinfo is not None:
+        heartbeat_age = datetime.now(timezone.utc) - heartbeat
+        heartbeat_fresh = bool(
+            timedelta(0)
+            <= heartbeat_age
+            <= timedelta(seconds=NOTIFICATION_WORKER_STALE_SECONDS)
+        )
+    worker_task_active = bool(worker_task is not None and not worker_task.done())
+    worker_available = bool(
+        not worker_is_co_located
         or (
             worker_status.get("enabled")
             and worker_status.get("running")
             and heartbeat_fresh
-            and worker_task is not None
-            and not worker_task.done()
+            and worker_task_active
         )
     )
-    email_required = (
-        os.environ.get("EMAIL_DELIVERY_REQUIRED", "false").lower() == "true"
+    worker_ready = bool(not worker_required or worker_available)
+    email_required = _environment_flag("EMAIL_DELIVERY_REQUIRED")
+    email_configured = bool(
+        isinstance(emailer.RESEND_API_KEY, str) and emailer.RESEND_API_KEY.strip()
     )
-    email_ready = bool(not email_required or emailer.RESEND_API_KEY)
+    email_ready = bool(not email_required or email_configured)
     auth_events_required = _environment_flag("AUTH_SECURITY_EVENTS_ENABLED")
     auth_events_ready = not auth_events_required
     auth_event_marker = False
     if auth_events_required and database_available:
         try:
             get_auth_security_event_service()
-            marker = await db.migration_state.find_one(
-                {"_id": "010_auth_security_events"},
-                {"_id": 1},
+            remaining = TOTAL_TIMEOUT_SECONDS - (loop.time() - started_at)
+            if remaining <= 0:
+                raise TimeoutError("readiness deadline elapsed")
+            marker = await asyncio.wait_for(
+                db.migration_state.find_one(
+                    {"_id": "010_auth_security_events"},
+                    {"_id": 1},
+                ),
+                timeout=remaining,
             )
             auth_event_marker = marker is not None
             auth_events_ready = bool(
@@ -2685,7 +2882,7 @@ async def health_ready():
             auth_events_ready = False
     ready = bool(
         database_available
-        and capabilities.transactions
+        and transaction_ready
         and schema_status.get("ready")
         and worker_ready
         and email_ready
@@ -2695,11 +2892,14 @@ async def health_ready():
         "status": "ready" if ready else "not_ready",
         "database": "ready" if database_available else "unavailable",
         "transaction_mutations": (
-            "ready" if capabilities.transactions else "unavailable"
+            "ready" if transaction_status["available"] else "unavailable"
         ),
         "schema": schema_status,
         "capabilities": {
-            "transactions": capabilities.transaction_diagnostic(),
+            "transactions": {
+                **transaction_status,
+                "required": transaction_required,
+            },
             "production_upload": {"status": "inactive", "required": False},
             "payment": {"status": "inactive", "required": False},
             "organization_portal": {"status": "inactive", "required": False},
@@ -2710,7 +2910,11 @@ async def health_ready():
                 "heartbeat_fresh": heartbeat_fresh,
             },
             "email_delivery": {
-                "status": ("ready" if emailer.RESEND_API_KEY else "inactive"),
+                "status": (
+                    "ready"
+                    if email_configured
+                    else ("unavailable" if email_required else "inactive")
+                ),
                 "required": email_required,
             },
             "authentication_security_events": {
@@ -2772,7 +2976,7 @@ api.include_router(
         get_inventory_service=lambda: InventoryService(
             db=db,
             client=client,
-            capabilities=app.state.database_capabilities,
+            capabilities=current_database_capabilities(),
             guard=app.state.transaction_guard,
         ),
     )
@@ -2799,7 +3003,7 @@ api.include_router(
     build_catalog_router(
         get_db=lambda: db,
         get_client=lambda: client,
-        get_capabilities=lambda: app.state.database_capabilities,
+        get_capabilities=current_database_capabilities,
         get_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
     )
@@ -2817,7 +3021,7 @@ api.include_router(
         get_service=lambda: InventoryService(
             db=db,
             client=client,
-            capabilities=app.state.database_capabilities,
+            capabilities=current_database_capabilities(),
             guard=app.state.transaction_guard,
         ),
         require_permission=require_permission,
@@ -2828,7 +3032,7 @@ api.include_router(
     build_content_router(
         get_db=lambda: db,
         get_client=lambda: client,
-        get_capabilities=lambda: app.state.database_capabilities,
+        get_capabilities=current_database_capabilities,
         get_guard=lambda: app.state.transaction_guard,
         require_permission=require_permission,
         has_permission=has_permission,
@@ -2907,29 +3111,130 @@ async def seed():
     logger.info("Seed complete")
 
 
-async def reservation_expiry_loop():
+async def reservation_expiry_loop(stop_event: asyncio.Event | None = None):
     system_actor = {
         "id": "system:reservation-expiry",
         "email": "system@niuva.local",
         "roles": ["system"],
     }
-    while True:
+    owner_id = f"scheduler:reservation-expiry:{uuid.uuid4()}"
+    runtime_config = getattr(app.state, "worker_runtime_config", None)
+    if not isinstance(runtime_config, WorkerRuntimeConfig):
+        runtime_config = WorkerRuntimeConfig()
+    lease = NamedJobLease(
+        collection=db.runtime_job_leases,
+        job_name="reservation_expiry",
+        owner_id=owner_id,
+        lease_seconds=runtime_config.lease_seconds,
+    )
+    while stop_event is None or not stop_event.is_set():
+        acquired = False
+        renewal_stop = None
+        renewal_task = None
+        job_started_at = datetime.now(timezone.utc)
         try:
-            service = InventoryService(
-                db=db,
-                client=client,
-                capabilities=app.state.database_capabilities,
-                guard=app.state.transaction_guard,
-            )
-            result = await service.expire_due_reservations(actor=system_actor)
-            if result.get("expired"):
-                logger.info(
-                    "reservation_expiry_batch",
-                    extra={"reservation_expiry": result},
+            acquired = await lease.acquire() is not None
+            if acquired:
+                renewal_stop = asyncio.Event()
+                renewal_task = asyncio.create_task(
+                    renew_lease_until_stopped(
+                        lease=lease,
+                        stop_event=renewal_stop,
+                        interval_seconds=max(
+                            0.001,
+                            runtime_config.lease_seconds
+                            - runtime_config.renewal_threshold_seconds,
+                        ),
+                    )
                 )
-        except Exception as exc:
-            logger.error("reservation_expiry_loop error: %s", exc)
-        await asyncio.sleep(60)
+                try:
+                    service = InventoryService(
+                        db=db,
+                        client=client,
+                        capabilities=current_database_capabilities(),
+                        guard=app.state.transaction_guard,
+                    )
+                    result = await service.expire_due_reservations(actor=system_actor)
+                    if result.get("expired"):
+                        logger.info("reservation_expiry_batch")
+                    observability.record_scheduler(
+                        job_name="reservation_expiry",
+                        outcome="success",
+                        duration_ms=int(
+                            (
+                                datetime.now(timezone.utc) - job_started_at
+                            ).total_seconds()
+                            * 1000
+                        ),
+                    )
+                    await lease.release(status="completed", result=result)
+                finally:
+                    renewal_stop.set()
+                    renewal_task.cancel()
+                    await asyncio.gather(renewal_task, return_exceptions=True)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.error("reservation_expiry_loop_failed")
+            if acquired:
+                observability.record_scheduler(
+                    job_name="reservation_expiry",
+                    outcome="failed_safe",
+                    duration_ms=int(
+                        (datetime.now(timezone.utc) - job_started_at).total_seconds()
+                        * 1000
+                    ),
+                )
+                await lease.release(status="failed")
+        if stop_event is None:
+            await asyncio.sleep(60)
+        elif await wait_for_stop(stop_event, 60):
+            break
+
+
+async def readiness_probe_loop():
+    while True:
+        started_at = asyncio.get_running_loop().time()
+        try:
+            dependencies = await app.state.readiness_probe_coordinator.probe(
+                refresh_transaction=True
+            )
+            database_available = bool(
+                getattr(dependencies, "database_available", False)
+            )
+            duration_ms = int((asyncio.get_running_loop().time() - started_at) * 1000)
+            observability.record_dependency(
+                dependency="mongodb",
+                operation="unknown",
+                outcome="success" if database_available else "unavailable",
+                duration_ms=duration_ms,
+            )
+            observability.record_readiness(
+                dependency="mongodb",
+                ready=database_available,
+                duration_ms=duration_ms,
+            )
+        except Exception:
+            observability.record_dependency(
+                dependency="mongodb",
+                operation="unknown",
+                outcome="failed_safe",
+                duration_ms=int(
+                    (asyncio.get_running_loop().time() - started_at) * 1000
+                ),
+            )
+            logger.error("readiness_probe_loop_failed")
+        await asyncio.sleep(READINESS_PROBE_INTERVAL_SECONDS)
+
+
+async def observability_metrics_loop(stop_event: asyncio.Event):
+    while not stop_event.is_set():
+        if await wait_for_stop(stop_event, 60):
+            break
+        try:
+            observability.flush_metrics()
+        except Exception:
+            logger.error("observability_metrics_flush_failed")
 
 
 async def notification_outbox_loop():
@@ -2948,86 +3253,127 @@ async def notification_outbox_loop():
             raise RuntimeError("email_delivery_failed")
         return True
 
+    runtime_config = getattr(app.state, "worker_runtime_config", None)
+    if not isinstance(runtime_config, WorkerRuntimeConfig):
+        runtime_config = WorkerRuntimeConfig.from_environment()
+
+    def publish_worker_status(status: dict) -> None:
+        app.state.notification_worker_status = status
+        result = status.get("last_result")
+        if isinstance(result, dict) and result.get("claimed"):
+            logger.info("notification_outbox_batch")
+        error_type = status.get("last_error_type")
+        if isinstance(error_type, str):
+            logger.error("notification_outbox_loop_failed")
+
+    async def publish_worker_result(result: dict) -> None:
+        snapshot = {}
+        try:
+            snapshot = await asyncio.wait_for(
+                NotificationService(db=db).worker_snapshot(),
+                timeout=1,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.error("notification_worker_snapshot_failed")
+        observability.record_worker(result=result, snapshot=snapshot)
+
     worker = NotificationDeliveryWorker(
         service=NotificationService(db=db),
         worker_id=worker_id,
         deliverers={"email": deliver_email},
+        runtime_config=runtime_config,
     )
-    while True:
-        try:
-            result = await worker.run_once(limit=50)
-            app.state.notification_worker_status = {
-                "enabled": True,
-                "running": True,
-                "last_heartbeat_at": datetime.now(timezone.utc),
-                "last_result": result,
-            }
-            if result.get("claimed"):
-                logger.info(
-                    "notification_outbox_batch",
-                    extra={"notification_outbox": result},
-                )
-        except Exception:
-            logger.exception("notification_outbox_loop failed")
-            app.state.notification_worker_status = {
-                **app.state.notification_worker_status,
-                "enabled": True,
-                "running": False,
-                "last_heartbeat_at": datetime.now(timezone.utc),
-            }
-        await asyncio.sleep(5)
+    runtime = WorkerRuntime(
+        worker=worker,
+        config=runtime_config,
+        status_sink=publish_worker_status,
+        result_sink=publish_worker_result,
+        heartbeat_interval_seconds=NOTIFICATION_WORKER_HEARTBEAT_INTERVAL_SECONDS,
+    )
+    app.state.worker_runtime = runtime
+    try:
+        await runtime.run()
+    finally:
+        app.state.worker_runtime = None
 
 
 async def _startup_runtime():
     validate_cookie_configuration()
+    runtime_mode = resolve_runtime_mode()
+    runtime_config = WorkerRuntimeConfig.from_environment()
+    app.state.runtime_mode = runtime_mode
+    app.state.worker_runtime_config = runtime_config
+    app.state.scheduler_stop_event = asyncio.Event()
+    app.state.observability_metrics_task = asyncio.create_task(
+        observability_metrics_loop(app.state.scheduler_stop_event)
+    )
     storage.init_storage()
     await seed()
-    app.state.database_capabilities = await probe_database_capabilities(
-        client,
-        database_name,
-    )
-    logger.info(
-        "database capability checked transactions=%s reason=%s",
-        app.state.database_capabilities.transactions,
-        app.state.database_capabilities.transaction_reason.value,
-    )
-    try:
-        app.state.schema_status = await inspect_schema(db)
-    except Exception:
-        logger.exception("Unable to inspect required database schema")
-        app.state.schema_status = {
-            **app.state.schema_status,
-            "ready": False,
-        }
-    app.state.reservation_expiry_task = asyncio.create_task(reservation_expiry_loop())
+    dependencies = await app.state.readiness_probe_coordinator.probe()
+    app.state.database_capabilities = dependencies.capabilities
+    app.state.schema_status = dependencies.schema_status
+    logger.info("database_capability_checked")
+    app.state.readiness_probe_task = asyncio.create_task(readiness_probe_loop())
+    app.state.reservation_expiry_task = None
+    if is_worker_mode(runtime_mode):
+        app.state.reservation_expiry_task = asyncio.create_task(
+            reservation_expiry_loop(app.state.scheduler_stop_event)
+        )
     worker_enabled = (
         os.environ.get("NOTIFICATION_WORKER_ENABLED", "false").lower() == "true"
     )
     app.state.notification_worker_status = {
-        "enabled": worker_enabled,
+        "enabled": bool(worker_enabled and is_worker_mode(runtime_mode)),
         "running": False,
+        "draining": False,
         "last_heartbeat_at": None,
         "last_result": None,
+        "last_error_type": None,
     }
-    if worker_enabled:
+    app.state.notification_worker_task = None
+    app.state.worker_runtime = None
+    if worker_enabled and is_worker_mode(runtime_mode):
         app.state.notification_worker_task = asyncio.create_task(
             notification_outbox_loop(),
         )
 
 
 async def _shutdown_runtime():
-    tasks = [
+    scheduler_stop_event = getattr(app.state, "scheduler_stop_event", None)
+    if scheduler_stop_event is not None:
+        scheduler_stop_event.set()
+    runtime = getattr(app.state, "worker_runtime", None)
+    if isinstance(runtime, WorkerRuntime):
+        runtime.request_shutdown()
+
+    immediate_tasks = [
+        app.state.readiness_probe_task,
         app.state.reservation_expiry_task,
-        app.state.notification_worker_task,
+        app.state.observability_metrics_task,
     ]
-    for task in tasks:
+    for task in immediate_tasks:
         if task is not None:
             task.cancel()
-    for task in tasks:
+    for task in immediate_tasks:
         if task is None:
             continue
         try:
             await task
         except asyncio.CancelledError:
             pass
+
+    worker_task = app.state.notification_worker_task
+    if worker_task is not None:
+        runtime_config = getattr(app.state, "worker_runtime_config", None)
+        drain_seconds = (
+            runtime_config.drain_seconds
+            if isinstance(runtime_config, WorkerRuntimeConfig)
+            else APPROVED_DRAIN_SECONDS
+        )
+        completed = await cancel_task_with_deadline(worker_task, drain_seconds)
+        if not completed:
+            logger.error("notification_worker_drain_timeout")
+    await app.state.readiness_probe_coordinator.close()
     client.close()

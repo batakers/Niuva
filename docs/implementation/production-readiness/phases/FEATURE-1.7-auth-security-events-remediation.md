@@ -7,6 +7,10 @@ Initial revalidation baseline:
 `a2747aab58ae25536cab28f55415c5628559c27e`
 Authority: `DEC-AUTH-009` and `DEC-AUTH-011`
 
+Current-main integration: PR #90 merged as `1ada96a`. The feature remains
+disabled by default; Migration 010, key custody, cleanup operations, alerting,
+and production activation remain separately gated.
+
 ## Bounded outcome
 
 The local candidate now has a dedicated strict authentication-event domain,

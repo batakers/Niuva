@@ -25,10 +25,23 @@ describe("The bell is a system feed, the composer is not", () => {
   test("the reader's own feed needs authentication, not send authority", () => {
     // Requiring notifications.write to read your own feed would gate it on the
     // authority to broadcast to others.
-    expect(ADMIN_ROUTE_PERMISSIONS["/admin/notifications"]).toBeUndefined();
+    expect(ADMIN_ROUTE_PERMISSIONS["/admin/notifications"]).toBe("admin.access");
     expect(ADMIN_ROUTE_PERMISSIONS["/admin/communication"]).toBe(
       "notifications.write"
     );
+  });
+
+  test("every protected Admin route has an explicit permission mapping", () => {
+    const protectedPaths = [
+      ...appSource.matchAll(/protectedPage\("([^"]+)"/g),
+    ].map(([, routePath]) => routePath);
+
+    for (const routePath of new Set(protectedPaths)) {
+      expect(
+        Object.prototype.hasOwnProperty.call(ADMIN_ROUTE_PERMISSIONS, routePath),
+      ).toBe(true);
+      expect(ADMIN_ROUTE_PERMISSIONS[routePath]).toEqual(expect.any(String));
+    }
   });
 
   test("the feed never composes and the composer never reads the feed", () => {

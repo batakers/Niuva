@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { WorkOrderStatusBadge } from "@/components/admin/WorkOrderStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { SurfacePanel, SurfacePanelHeader } from "@/components/ui/surface-panel"
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
+import { fetchB2BPages } from "@/lib/b2bPagination";
 import { B2B_ACTION_PERMISSIONS, hasPermission } from "@/lib/permissions";
 
 function operationId() {
@@ -41,9 +42,10 @@ export default function ProjectWorkOrders({ project, onChanged }) {
   const closed = !["planned", "active"].includes(project.status);
 
   const load = useCallback(() => {
-    api
-      .get("/admin/b2b/work-orders", { params: { project_id: project.id } })
-      .then((response) => setWorkOrders(response.data))
+    fetchB2BPages(api, "/admin/b2b/work-orders", {
+      params: { project_id: project.id },
+    })
+      .then(setWorkOrders)
       .catch((requestError) =>
         setError(formatApiError(requestError.response?.data?.detail))
       );
@@ -119,7 +121,7 @@ export default function ProjectWorkOrders({ project, onChanged }) {
                     <span className="font-mono text-sm font-semibold text-text-primary">
                       {workOrder.id.slice(0, 8)}
                     </span>
-                    <StatusBadge status={workOrder.status} />
+                    <WorkOrderStatusBadge status={workOrder.status} />
                   </div>
                   <p className="mt-1 text-sm text-text-secondary">
                     {workOrder.quantity} unit ·{" "}

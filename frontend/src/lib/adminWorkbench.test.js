@@ -47,4 +47,34 @@ describe("Admin workbench information architecture", () => {
       })
     );
   });
+
+  test("never treats the legacy order archive as an active role-home queue", () => {
+    for (const role of [
+      "super_admin",
+      "manager_approver",
+      "warehouse",
+      "quality_control",
+      "sales_estimator",
+      "order_admin",
+      "catalog_manager",
+      "content_editor",
+      "production",
+      "designer_engineer",
+      "finance",
+    ]) {
+      expect(
+        getRoleHome({ roles: [role], permissions: ["*"] }).queuePaths,
+      ).not.toContain("/admin/orders");
+    }
+  });
+
+  test("uses the canonical Retail queue for order work", () => {
+    const home = getRoleHome({
+      roles: ["order_admin"],
+      permissions: ["orders.read", "customers.read"],
+    });
+
+    expect(home.queuePaths).toContain("/admin/retail-orders");
+    expect(home.queuePaths).not.toContain("/admin/orders");
+  });
 });

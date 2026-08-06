@@ -9,7 +9,7 @@ Status: **authorized disposable-local rehearsal; shared execution prohibited**
 | Out of scope | Migrations `001`–`010`; shared/staging/production data; application data; real credentials; provider/config changes; deployment; production readiness; go-live; merge. |
 | Authority | `AGENTS.md`; Master Spec sections 11–13 and 17–18; `ADR-001`; `doc/MIGRATION_BACKUP_RESTORE_RUNBOOK.md`; `DR-012`; explicit Project Owner authorization on 2 August 2026 for this bounded Feature 9.2 completion. |
 | Affected areas | Whole-database snapshot checksum, second-database restore proof, historical-record/BSON validation, evidence custody, `PHASE-02C`, `V-02-02`, and `OPS-006`. |
-| Contract or dependency | Source branch starts from current `origin/main`; PR #112 is the required earlier merge in the readiness sequence. The proof does not authorize any migration from that PR. |
+| Contract or dependency | PHASE-02B is merged through PR #112. Its planning result does not authorize any migration, and this proof does not broaden that authority. |
 | Done when | A unique source database and distinct restore database run on local disposable `rs-test`; snapshot SHA-256 is recorded aggregate-only; restore comparison is identical; historical versions/references and Decimal128 survive; both databases and the raw snapshot are removed. |
 | Verification | Focused unit tests; real disposable MongoDB replica-set test; post-run database/temporary-file cleanup check; compile; `git diff --check`; changed-path review. |
 | Owner and verifier | Executor and evidence custodian: Faiz/Codex for the bounded local window. Required PR rule reviewer and verifier: Lead/human reviewer; Driver evidence does not substitute for independent acceptance. |

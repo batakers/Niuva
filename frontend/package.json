@@ -35,9 +35,14 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "postbuild": "node scripts/generate-release-files.js",
+    "postbuild": "node scripts/generate-release-files.js && node scripts/check-bundle-size.js --report-only --report-path build/bundle-report.json",
+    "build:release": "node scripts/validate-release-env.js && npm run build",
     "test": "craco test",
-    "audit:production": "node scripts/audit-production-dependencies.js"
+    "audit:production": "node scripts/audit-production-dependencies.js",
+    "measure:bundle": "node scripts/check-bundle-size.js --report-only --report-path build/bundle-report.json",
+    "check:bundle": "node scripts/check-bundle-size.js",
+    "test:bundle": "node --test scripts/check-bundle-size.test.js",
+    "test:release-contracts": "node --test scripts/generate-release-files.test.js scripts/validate-release-env.test.js"
   },
   "browserslist": {
     "production": [
@@ -115,5 +120,5 @@
     "**/jest-util/picomatch": "2.3.2",
     "**/tinyglobby/picomatch": "4.0.4"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "npm@11.18.0"
 }

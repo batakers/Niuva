@@ -776,7 +776,14 @@ class CatalogService:
                 "Produk belum memenuhi syarat publikasi.",
                 errors=errors,
             )
-        if aggregate["product"].get("workflow_status") != "validated":
+        workflow_status = aggregate["product"].get("workflow_status")
+        if workflow_status == "published":
+            raise CatalogError(
+                409,
+                "catalog_publication_conflict",
+                "Publikasi katalog berubah bersamaan; muat ulang sebelum mencoba lagi.",
+            )
+        if workflow_status != "validated":
             raise CatalogError(
                 409,
                 "catalog_candidate_required",

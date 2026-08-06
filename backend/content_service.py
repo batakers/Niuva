@@ -108,7 +108,11 @@ class ContentService:
         operation_name: str,
     ) -> None:
         try:
-            await self.guard.run(mutation, operation_name=operation_name)
+            await self.guard.run(
+                mutation,
+                operation_name=operation_name,
+                retry_safe=True,
+            )
         except PyMongoError as exc:
             if not self._is_concurrency_conflict(exc):
                 raise

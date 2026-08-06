@@ -467,7 +467,7 @@ body {
   .fade-up { animation: reveal var(--motion-reveal) var(--ease-reveal) both; }
   .niuva-marquee { animation: niuva-marquee 26s linear infinite; }
 
-  .brand-motion-ready .brand-reveal {
+  .brand-motion-ready:not(.brand-static-reveal) .brand-reveal {
     opacity: 0;
     transform: translateY(28px);
   }

@@ -10,16 +10,12 @@ import {
 } from "../../components/brand/BrandSystem";
 import { usePublicSettings } from "../../lib/publicSettings";
 
-const LAST_UPDATED = "28 Juli 2026";
+const LAST_UPDATED = "30 Juli 2026";
 
 const dataCollected = [
   {
     title: "Formulir Kontak",
     body: "Nama, alamat email, subjek, dan isi pesan yang Anda kirimkan melalui halaman Contact.",
-  },
-  {
-    title: "Formulir Pendaftaran Magang",
-    body: "Nama lengkap, email, nomor telepon, universitas, jurusan, semester, motivasi, dan tautan portofolio (opsional).",
   },
   {
     title: "Data Pemesanan (Order)",
@@ -37,15 +33,14 @@ const dataCollected = [
 
 const usagePurposes = [
   "Merespons pertanyaan, permintaan kolaborasi, dan brief proyek yang Anda kirimkan.",
-  "Memproses pendaftaran magang dan menghubungi pelamar terkait status aplikasi.",
   "Mengelola pesanan, estimasi, status produksi, dan komunikasi terkait pesanan Anda.",
-  "Mengirim notifikasi email terkait aktivitas akun atau pesanan melalui penyedia layanan email pihak ketiga.",
+  "Jika layanan email dikonfigurasi secara eksternal, mengirim notifikasi terkait aktivitas akun atau pesanan secara best-effort.",
 ];
 
 const thirdParties = [
   {
-    title: "Penyedia Layanan Email (Resend)",
-    body: "Digunakan untuk mengirim notifikasi email transaksional (konfirmasi pesan, status pesanan, hasil pendaftaran magang). Data yang diteruskan terbatas pada nama, email, dan isi notifikasi terkait.",
+    title: "Penyedia Layanan Email (jika dikonfigurasi)",
+    body: "Jika layanan email dikonfigurasi secara eksternal, data yang diteruskan dibatasi pada nama, alamat email, dan isi notifikasi yang relevan. Email bersifat opsional dan best-effort; tidak ada penyedia tertentu yang dinyatakan aktif oleh kebijakan ini.",
   },
 ];
 
@@ -72,7 +67,7 @@ export default function PrivacyPolicyPage() {
         <MarketingSection tone="muted" spacing="compact">
           <PageContainer>
             <div className="brand-reveal rounded-card border border-border-strong bg-surface-default p-5 sm:p-6">
-              <p className="text-sm font-semibold text-action-primary">Status: Draft</p>
+              <p className="text-sm font-semibold text-action-primary-hover">Status: Draft</p>
               <p className="mt-2 max-w-[70ch] text-sm leading-7 text-text-secondary">
                 Dokumen ini disusun berdasarkan data yang benar-benar diproses oleh sistem Niuva saat ini.
                 Isi kebijakan belum ditinjau oleh tim legal dan belum menjadi pernyataan hukum resmi.
@@ -92,7 +87,7 @@ export default function PrivacyPolicyPage() {
             <dl className="grid gap-6 md:grid-cols-2">
               {dataCollected.map((item) => (
                 <div key={item.title} className="brand-reveal rounded-card border border-border-default bg-surface-page p-6">
-                  <dt className="text-sm font-semibold text-action-primary">{item.title}</dt>
+                  <dt className="text-sm font-semibold text-action-primary-hover">{item.title}</dt>
                   <dd className="mt-3 text-sm leading-7 text-text-secondary">{item.body}</dd>
                 </div>
               ))}
@@ -123,7 +118,7 @@ export default function PrivacyPolicyPage() {
             <SectionHeader
               eyebrow="Penyimpanan & Keamanan"
               title="Data tersimpan di sistem operasional Niuva dengan akses terbatas."
-              body="Data pesan, pendaftaran, dan pesanan disimpan di basis data internal Niuva dan hanya dapat diakses oleh tim internal dengan izin yang sesuai (mis. tim yang menangani inquiries, internship, atau order). Niuva tidak menjual data pribadi kepada pihak ketiga."
+              body="Data pesan, akun, dan pesanan disimpan di sistem operasional Niuva. Akses internal dibatasi berdasarkan izin yang sesuai. Jika notifikasi email dikonfigurasi secara eksternal, data yang relevan dapat diteruskan secara terbatas sebagaimana dijelaskan pada bagian Berbagi dengan Pihak Ketiga. Niuva tidak menjual data pribadi kepada pihak ketiga."
               align="split"
             />
           </PageContainer>
@@ -139,7 +134,7 @@ export default function PrivacyPolicyPage() {
             <div className="grid gap-6">
               {thirdParties.map((item) => (
                 <div key={item.title} className="brand-reveal rounded-card border border-border-default bg-surface-default p-6">
-                  <p className="text-sm font-semibold text-action-primary">{item.title}</p>
+                  <p className="text-sm font-semibold text-action-primary-hover">{item.title}</p>
                   <p className="mt-3 text-sm leading-7 text-text-secondary">{item.body}</p>
                 </div>
               ))}
@@ -152,7 +147,7 @@ export default function PrivacyPolicyPage() {
             <SectionHeader
               eyebrow="Cookie & Penyimpanan Lokal"
               title="Niuva tidak menggunakan cookie pelacakan atau analitik pihak ketiga."
-              body="Website ini menyimpan preferensi bahasa dan, untuk akun pelanggan yang didukung, token login di penyimpanan lokal browser (localStorage). Sesi Admin menggunakan cookie fungsional yang aman dan tidak dapat dibaca JavaScript (HttpOnly); pilihan 'Ingat saya' menentukan apakah sesi tersebut tetap tersimpan setelah browser ditutup. Tidak ada cookie pelacakan iklan atau analitik pihak ketiga yang dipasang."
+              body="Website ini hanya menyimpan preferensi bahasa di penyimpanan lokal browser (localStorage). Untuk akun pelanggan dan Admin yang didukung, kredensial akses dan refresh sesi dikirim melalui cookie fungsional HttpOnly dan tidak disimpan di localStorage; cookie CSRF yang diperlukan untuk perlindungan permintaan dapat dibaca JavaScript. Pilihan 'Ingat saya' hanya menentukan masa berlaku sesi Admin. Tidak ada cookie pelacakan iklan atau analitik pihak ketiga yang dipasang."
               align="split"
             />
           </PageContainer>
@@ -185,14 +180,20 @@ export default function PrivacyPolicyPage() {
               align="split"
             />
             <div className="brand-reveal rounded-card border border-border-default bg-surface-muted p-6">
-              <p className="text-sm font-semibold text-action-primary">Kontak Privasi</p>
+              <p className="text-sm font-semibold text-action-primary-hover">Kontak Privasi</p>
               <p className="mt-3 text-sm leading-7 text-text-secondary">
                 Pertanyaan mengenai kebijakan ini dapat disampaikan melalui email{" "}
-                <a href={contact.email ? `mailto:${contact.email}` : "/contact"} className="font-semibold text-action-primary underline-offset-4 hover:underline">
+                <a
+                  href={contact.email ? `mailto:${contact.email}` : "/contact"}
+                  className="inline-flex min-h-11 items-center rounded-control px-1 font-semibold text-action-primary-hover underline underline-offset-4 hover:text-action-primary"
+                >
                   {contact.email || "halaman Contact"}
                 </a>{" "}
                 atau WhatsApp{" "}
-                <a href={contact.whatsappHref || "/contact"} className="font-semibold text-action-primary underline-offset-4 hover:underline">
+                <a
+                  href={contact.whatsappHref || "/contact"}
+                  className="inline-flex min-h-11 items-center rounded-control px-1 font-semibold text-action-primary-hover underline underline-offset-4 hover:text-action-primary"
+                >
                   {contact.whatsapp || "melalui halaman Contact"}
                 </a>.
               </p>

@@ -16,6 +16,7 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { ErrorState } from "@/components/ui/error-state";
 import { findBySlug, usePublicContent } from "../../lib/content";
 import {
   sanitizePublicContact,
@@ -109,11 +110,11 @@ export default function ContactPage() {
     setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
   };
   const { contact: settingsContact, status: settingsStatus } = usePublicSettings();
-  const { blocks: cmsBlocks } = usePublicContent("contact");
+  const { blocks: cmsBlocks, status: contentStatus } = usePublicContent("contact");
   const cmsFields = useMemo(() => findBySlug(cmsBlocks, "primary"), [cmsBlocks]);
   const contact = sanitizePublicContact({
-    ...profileContent.contact,
-    ...cmsFields,
+    ...(contentStatus === "invalid" ? {} : profileContent.contact),
+    ...(contentStatus === "ready" ? cmsFields : {}),
     ...(settingsStatus === "ready" ? settingsContact : {}),
   });
 
@@ -180,6 +181,17 @@ export default function ContactPage() {
             </RoundedVisualFrame>
           }
         />
+
+        {contentStatus === "invalid" && (
+          <MarketingSection tone="muted" spacing="compact">
+            <PageContainer>
+              <ErrorState
+                compact
+                error="Konten Contact terbaru tidak dapat diverifikasi. Muat ulang halaman atau hubungi tim Niuva."
+              />
+            </PageContainer>
+          </MarketingSection>
+        )}
 
         <MarketingSection tone="muted">
           <PageContainer className="relative z-10">

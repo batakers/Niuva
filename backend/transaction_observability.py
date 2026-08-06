@@ -1,10 +1,11 @@
 import logging
-import re
+import math
 from collections.abc import Set
 from typing import Any, TypeVar, cast
 from uuid import UUID
 
-SAFE_OPERATION_NAME = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
+from observability import ALLOWED_OPERATION_CLASSES
+
 ALLOWED_EVENTS = {
     "transaction_rejected",
     "transaction_start",
@@ -33,8 +34,11 @@ EnumValue = TypeVar("EnumValue")
 
 
 def safe_operation_name(value: object, *, fallback: str = "redacted") -> str:
-    text = str(value)
-    return text if SAFE_OPERATION_NAME.fullmatch(text) else fallback
+    return (
+        value
+        if isinstance(value, str) and value in ALLOWED_OPERATION_CLASSES
+        else fallback
+    )
 
 
 def safe_enum(
@@ -43,7 +47,10 @@ def safe_enum(
     *,
     fallback: EnumValue,
 ) -> EnumValue:
-    return cast(EnumValue, value) if value in allowed else fallback
+    try:
+        return cast(EnumValue, value) if value in allowed else fallback
+    except TypeError:
+        return fallback
 
 
 def safe_correlation_id(value: object) -> str | None:
@@ -56,9 +63,18 @@ def safe_correlation_id(value: object) -> str | None:
         return None
 
 
+def safe_duration_ms(value: object) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return min(value, 60000)
+    if isinstance(value, float) and math.isfinite(value) and value >= 0:
+        return min(int(value), 60000)
+    return None
+
+
 class TransactionLogSink:
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: logging.Logger, telemetry=None):
         self.logger = logger
+        self.telemetry = telemetry
 
     def __call__(self, event: str, fields: dict[str, object]) -> None:
         safe_event = safe_enum(
@@ -75,7 +91,16 @@ class TransactionLogSink:
             "outcome": safe_enum(
                 fields.get("outcome"), ALLOWED_OUTCOMES, fallback="aborted"
             ),
-            "attempt": int(cast(Any, fields.get("attempt", 0))),
+            "attempt": (
+                min(
+                    int(cast(Any, fields.get("attempt", 0))),
+                    1_000_000,
+                )
+                if isinstance(fields.get("attempt", 0), int)
+                and not isinstance(fields.get("attempt", 0), bool)
+                and fields.get("attempt", 0) >= 0
+                else 0
+            ),
             "retry_mode": safe_enum(
                 fields.get("retry_mode"), ALLOWED_RETRY_MODES, fallback="never"
             ),
@@ -86,7 +111,17 @@ class TransactionLogSink:
                 fallback="database_error",
             ),
         }
+        duration_ms = safe_duration_ms(fields.get("duration_ms"))
+        if duration_ms is not None:
+            transaction["duration_ms"] = duration_ms
         self.logger.info(
             "mongodb_transaction",
             extra={"transaction": transaction},
         )
+        if self.telemetry is not None:
+            try:
+                self.telemetry.record_transaction(safe_event, transaction)
+            except Exception:
+                # Telemetry is optional and must never alter transaction
+                # success or failure semantics.
+                self.logger.warning("transaction_telemetry_degraded")

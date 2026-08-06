@@ -12,13 +12,14 @@ const read = (...segments) =>
 
 const appSource = read("..", "..", "App.js");
 const detailSource = read("RetailOrderDetail.jsx");
+const legacySource = read("Orders.jsx");
 const i18nSource = read("..", "..", "i18n.js");
 const badgeSource = read(
   "..",
   "..",
   "components",
-  "operational",
-  "StatusStepper.jsx"
+  "admin",
+  "RetailOrderStatusBadge.jsx"
 );
 
 // The canonical lifecycle, in order.
@@ -83,6 +84,15 @@ describe("Retail order routes and navigation", () => {
     expect(paths).toEqual(
       expect.arrayContaining(["/admin/retail-orders", "/admin/orders"])
     );
+  });
+
+  test("keeps the legacy archive free of frontend commands", () => {
+    expect(legacySource).toMatch(/api\s*\.get\("\/admin\/orders"\)/);
+    expect(legacySource).not.toMatch(/api\.(post|put|patch|delete)\s*\(/);
+    expect(legacySource).not.toContain("mutations_enabled");
+    expect(legacySource).not.toContain("bulkUpdateStatus");
+    expect(legacySource).not.toContain("selectedIds");
+    expect(legacySource).toContain('t("orders.legacyArchiveTitle")');
   });
 });
 

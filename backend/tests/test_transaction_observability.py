@@ -2,9 +2,8 @@ import asyncio
 import logging
 
 import pytest
-from pymongo.errors import OperationFailure
-
 from database_capabilities import DatabaseCapabilities
+from pymongo.errors import OperationFailure
 from transaction_execution import (
     TransactionCommitOutcomeUnknownError,
     TransactionExecutor,
@@ -103,6 +102,89 @@ def test_log_sink_keeps_only_allowlisted_safe_fields(caplog):
     assert "private@example.com" not in str(record.transaction)
 
 
+def test_log_sink_maps_unregistered_operation_names_to_redacted(caplog):
+    logger = logging.getLogger("niuva.transaction.unregistered")
+    sink = TransactionLogSink(logger)
+
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        sink(
+            "transaction_commit",
+            {
+                "operation_name": "internal.user_supplied_operation",
+                "outcome": "committed",
+                "attempt": 1,
+                "retry_mode": "never",
+            },
+        )
+
+    assert caplog.records[-1].transaction["operation_name"] == "redacted"
+
+
+def test_log_sink_maps_unhashable_enum_values_to_safe_fallbacks(caplog):
+    logger = logging.getLogger("niuva.transaction.unhashable")
+    sink = TransactionLogSink(logger)
+
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        sink(
+            {"unexpected": "event"},
+            {
+                "outcome": {"unexpected": "outcome"},
+                "retry_mode": ["unexpected"],
+                "error_class": {"unexpected": "error"},
+            },
+        )
+
+    assert caplog.records[-1].transaction == {
+        "event": "transaction_abort",
+        "operation_name": "redacted",
+        "outcome": "aborted",
+        "attempt": 0,
+        "retry_mode": "never",
+        "correlation_id": None,
+        "error_class": "database_error",
+    }
+
+
+def test_log_sink_rejects_nonfinite_duration_without_raising(caplog):
+    logger = logging.getLogger("niuva.transaction.nonfinite")
+    sink = TransactionLogSink(logger)
+
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        sink(
+            "transaction_commit",
+            {
+                "operation_name": "inventory.reserve",
+                "outcome": "committed",
+                "attempt": 1,
+                "retry_mode": "never",
+                "duration_ms": float("nan"),
+            },
+        )
+
+    assert "duration_ms" not in caplog.records[-1].transaction
+
+
+def test_log_sink_caps_arbitrarily_large_integer_duration_without_raising(
+    caplog,
+):
+    logger = logging.getLogger("niuva.transaction.large-duration")
+    sink = TransactionLogSink(logger)
+
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        sink(
+            "transaction_commit",
+            {
+                "operation_name": "inventory.reserve",
+                "outcome": "committed",
+                "attempt": 1,
+                "retry_mode": "never",
+                "duration_ms": 10**1000,
+            },
+        )
+
+    assert caplog.records[-1].transaction["duration_ms"] == 60000
+
+
 def test_safe_correlation_id_retains_canonical_uuid():
     assert safe_correlation_id(VALID_CORRELATION_ID) == VALID_CORRELATION_ID
 
@@ -178,6 +260,27 @@ def test_executor_emits_start_and_commit_without_payload():
     assert all("customer_payload" not in fields for _event, fields in events)
     correlation_ids = [fields["correlation_id"] for _event, fields in events]
     assert all(value == VALID_CORRELATION_ID for value in correlation_ids)
+
+
+def test_executor_can_expose_bounded_duration_without_replaying_callback():
+    events = []
+    executor = TransactionExecutor(
+        FakeClient(),
+        lambda: DatabaseCapabilities(transactions=True),
+        event_sink=lambda event, fields: events.append((event, fields)),
+        include_duration=True,
+    )
+
+    async def run():
+        return await executor.execute(
+            lambda _session: asyncio.sleep(0, result="ok"),
+            operation_name="inventory.reserve",
+        )
+
+    assert asyncio.run(run()) == "ok"
+    duration_values = [fields.get("duration_ms") for _, fields in events]
+    assert all(isinstance(value, int) for value in duration_values)
+    assert all(value >= 0 for value in duration_values)
 
 
 def test_executor_emits_abort_with_safe_error_class():

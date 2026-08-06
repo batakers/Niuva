@@ -7,7 +7,8 @@ It runs unauthenticated on purpose. Every check here is about a boundary that
 holds for a stranger, which is the reader most likely to find it broken.
 
 Usage:
-    python scripts/staging_smoke.py --base-url https://staging.example
+    python scripts/staging_smoke.py --base-url "$NIUVA_STAGING_API_ORIGIN"
+    # PowerShell: python scripts/staging_smoke.py --base-url $env:NIUVA_STAGING_API_ORIGIN
 
 Exit code 0 means every check passed. Non-zero means stop the rollout.
 """
@@ -17,8 +18,78 @@ import json
 import sys
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 
 TIMEOUT = 15
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+PLACEHOLDER_HOSTS = frozenset(
+    {"example", "invalid", "test", "example.com", "example.org", "example.net"}
+)
+PLACEHOLDER_SUFFIXES = (
+    ".example",
+    ".invalid",
+    ".test",
+    ".example.com",
+    ".example.org",
+    ".example.net",
+)
+
+
+def validate_origin(value, *, allow_http_local=False):
+    """Validate and normalize a credential-free deployment origin."""
+    if not isinstance(value, str) or not value or value.strip() != value:
+        raise ValueError(
+            "base URL must be a non-empty origin without surrounding whitespace"
+        )
+
+    try:
+        parsed = urlsplit(value)
+        hostname = parsed.hostname
+        parsed.port  # Force malformed-port validation before the request.
+    except ValueError as exc:
+        raise ValueError("base URL is not a valid origin") from exc
+
+    if not hostname or parsed.username or parsed.password:
+        raise ValueError(
+            "base URL must not contain credentials and must include a host"
+        )
+    if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+        raise ValueError(
+            "base URL must be an origin without a path, query, or fragment"
+        )
+
+    hostname = hostname.lower()
+    is_local_http = (
+        allow_http_local and parsed.scheme == "http" and hostname in LOCAL_HOSTS
+    )
+    if parsed.scheme != "https" and not is_local_http:
+        raise ValueError(
+            "base URL must use HTTPS; HTTP is allowed only for explicit local checks"
+        )
+    if hostname in LOCAL_HOSTS and not is_local_http:
+        raise ValueError("local hosts are not valid external staging targets")
+    if hostname in PLACEHOLDER_HOSTS or hostname.endswith(PLACEHOLDER_SUFFIXES):
+        raise ValueError(
+            "placeholder/test hosts are not valid external staging targets"
+        )
+
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Treat an origin redirect as a failed deployment contract."""
+
+    def redirect_request(self, request, file, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            code,
+            "redirects are not accepted by the staging smoke check",
+            headers,
+            file,
+        )
+
+
+URL_OPENER = urllib.request.build_opener(NoRedirectHandler())
 
 
 class Result:
@@ -41,7 +112,7 @@ def fetch(base_url, path):
         headers={"Accept": "application/json"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with URL_OPENER.open(request, timeout=TIMEOUT) as response:
             return response.status, response.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read().decode("utf-8", "replace")
@@ -64,12 +135,33 @@ def check_readiness(base_url, result):
         status == 200,
         f"status={status}",
     )
+    result.record(
+        "readiness payload is a JSON object",
+        isinstance(payload, dict),
+        "object" if isinstance(payload, dict) else "missing or invalid JSON",
+    )
+    result.record(
+        "readiness reports ready",
+        isinstance(payload, dict) and payload.get("status") == "ready",
+        f"status={payload.get('status') if isinstance(payload, dict) else None}",
+    )
+    result.record(
+        "database readiness is ready",
+        isinstance(payload, dict) and payload.get("database") == "ready",
+        f"database={payload.get('database') if isinstance(payload, dict) else None}",
+    )
+    schema = payload.get("schema") if isinstance(payload, dict) else None
+    result.record(
+        "schema readiness is ready",
+        isinstance(schema, dict) and schema.get("ready") is True,
+        f"schema_ready={schema.get('ready') if isinstance(schema, dict) else None}",
+    )
     # Transactions carry every cross-collection guarantee in the system. A
     # deployment without them is one that fails closed on most writes.
     result.record(
         "transaction capability is ready",
-        payload.get("transaction_mutations") == "ready",
-        f"transaction_mutations={payload.get('transaction_mutations')}",
+        isinstance(payload, dict) and payload.get("transaction_mutations") == "ready",
+        f"transaction_mutations={payload.get('transaction_mutations') if isinstance(payload, dict) else None}",
     )
 
 
@@ -100,7 +192,11 @@ def check_public_boundaries(base_url, result):
     """What the public reads must carry nothing internal."""
     status, body = fetch(base_url, "/api/settings")
     payload = parse(body) or {}
-    result.record("public settings responds", status == 200, f"status={status}")
+    result.record(
+        "public settings responds with an object",
+        status == 200 and isinstance(payload, dict),
+        f"status={status}",
+    )
     for forbidden in ("bank_name", "account_number", "account_holder"):
         result.record(
             f"public settings withholds {forbidden}",
@@ -110,22 +206,34 @@ def check_public_boundaries(base_url, result):
 
     status, body = fetch(base_url, "/api/portfolio")
     entries = parse(body) or []
-    result.record("public portfolio responds", status == 200, f"status={status}")
-    if isinstance(entries, list):
-        leaked = sorted(
-            {
-                key
-                for entry in entries
-                for key in entry
-                if key in {"status", "version", "history", "versions", "client",
-                           "source_project_id", "internal_notes"}
+    result.record(
+        "public portfolio responds with a list",
+        status == 200 and isinstance(entries, list),
+        f"status={status}",
+    )
+    leaked = sorted(
+        {
+            key
+            for entry in entries
+            if isinstance(entry, dict)
+            for key in entry
+            if key
+            in {
+                "status",
+                "version",
+                "history",
+                "versions",
+                "client",
+                "source_project_id",
+                "internal_notes",
             }
-        )
-        result.record(
-            "public portfolio withholds internal fields",
-            not leaked,
-            f"leaked={leaked}" if leaked else "",
-        )
+        }
+    )
+    result.record(
+        "public portfolio withholds internal fields",
+        status == 200 and isinstance(entries, list) and not leaked,
+        f"leaked={leaked}" if leaked else "",
+    )
 
 
 def check_disabled_surfaces(base_url, result):
@@ -157,26 +265,39 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--json", action="store_true", help="machine-readable output")
+    parser.add_argument(
+        "--allow-http-local",
+        action="store_true",
+        help="allow HTTP only for localhost/loopback development checks",
+    )
     args = parser.parse_args()
 
+    try:
+        base_url = validate_origin(
+            args.base_url,
+            allow_http_local=args.allow_http_local,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+
     result = Result()
-    check_readiness(args.base_url, result)
-    check_admin_requires_auth(args.base_url, result)
-    check_public_boundaries(args.base_url, result)
-    check_disabled_surfaces(args.base_url, result)
-    check_revenue_withheld(args.base_url, result)
+    check_readiness(base_url, result)
+    check_admin_requires_auth(base_url, result)
+    check_public_boundaries(base_url, result)
+    check_disabled_surfaces(base_url, result)
+    check_revenue_withheld(base_url, result)
 
     if args.json:
-        print(json.dumps({"checks": result.checks, "passed": not result.failed}, indent=2))
+        print(
+            json.dumps({"checks": result.checks, "passed": not result.failed}, indent=2)
+        )
     else:
         for item in result.checks:
             mark = "PASS" if item["passed"] else "FAIL"
             suffix = f"  ({item['detail']})" if item["detail"] else ""
             print(f"[{mark}] {item['check']}{suffix}")
         print()
-        print(
-            f"{len(result.checks) - len(result.failed)}/{len(result.checks)} passed"
-        )
+        print(f"{len(result.checks) - len(result.failed)}/{len(result.checks)} passed")
 
     return 1 if result.failed else 0
 

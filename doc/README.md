@@ -40,6 +40,7 @@ The following files retain legacy paths only. Follow their destination into
 | `BROWSER_VERIFICATION_RUNBOOK.md` | Manual Admin Studio browser-verification procedure. A completed checklist requires current environment and account evidence. |
 | `MIGRATION_BACKUP_RESTORE_RUNBOOK.md` | Backup, verify, restore, and comparison procedure. A backup is not accepted until the restore exercise is evidenced. |
 | `ROLLOUT_AND_HANDOVER_RUNBOOK.md` | Staging smoke, canary, post-deploy, and handover procedure. Execution requires explicit approval and environment evidence. |
+| `STAGING_DECISION_PACKET.md` | Provider-neutral staging target, secret, owner, SLO, alert, rollback, and restore decision packet. It does not select a provider or authorize go-live. |
 | `TRANSACTION_CAPABILITY_RUNBOOK.md` | Local and CI transaction-topology procedure only. It does not authorize production topology or mutation enablement. |
 
 ## Historical records

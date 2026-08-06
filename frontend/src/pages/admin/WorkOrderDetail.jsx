@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { WorkOrderStatusBadge } from "@/components/admin/WorkOrderStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OperationalState } from "@/components/ui/operational-state";
@@ -19,6 +19,7 @@ import { TechnicalLabel } from "@/components/ui/technical-label";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
+import { fetchB2BPages } from "@/lib/b2bPagination";
 import { fmtDate } from "@/lib/format";
 import { B2B_ACTION_PERMISSIONS, hasPermission } from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
@@ -77,14 +78,14 @@ export default function WorkOrderDetail() {
     Promise.all([
       api.get(`/admin/b2b/work-orders/${id}`),
       // A stalled run is only meaningful next to the run itself.
-      api
-        .get("/admin/b2b/material-shortages", { params: { status_filter: "open" } })
-        .catch(() => ({ data: [] })),
+      fetchB2BPages(api, "/admin/b2b/material-shortages", {
+        params: { status_filter: "open" },
+      }).catch(() => []),
     ])
       .then(([detail, shortages]) => {
         setRecord(detail.data);
         setShortage(
-          (shortages.data || []).find((item) => item.work_order_id === id) || null
+          shortages.find((item) => item.work_order_id === id) || null
         );
       })
       .catch((requestError) =>
@@ -189,7 +190,9 @@ export default function WorkOrderDetail() {
             <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="type-label text-text-secondary">{t("b2b.currentStatus")}</p>
-                <div className="mt-2"><StatusBadge status={record.status} /></div>
+                <div className="mt-2">
+                  <WorkOrderStatusBadge status={record.status} />
+                </div>
               </div>
               <p className="font-mono text-xs text-text-secondary">{record.id}</p>
             </SurfacePanelHeader>
@@ -291,9 +294,11 @@ export default function WorkOrderDetail() {
                       )}
                       {event.from_status !== event.to_status && (
                         <>
-                          {event.from_status && <StatusBadge status={event.from_status} />}
+                          {event.from_status && (
+                            <WorkOrderStatusBadge status={event.from_status} />
+                          )}
                           <ArrowRight className="h-3.5 w-3.5 text-text-disabled" aria-hidden="true" />
-                          <StatusBadge status={event.to_status} />
+                          <WorkOrderStatusBadge status={event.to_status} />
                         </>
                       )}
                     </div>

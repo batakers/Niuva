@@ -15,7 +15,7 @@ import {
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
-export function BrandPage({ children, className }) {
+export function BrandPage({ children, className, revealSections = true }) {
   const pageRef = useRef(null);
 
   useGSAP(
@@ -36,26 +36,28 @@ export function BrandPage({ children, className }) {
         );
       }
 
-      // batch() groups everything crossing the trigger line in the same frame,
-      // so a row of siblings cascades instead of each element firing its own
-      // identical tween. That grouping is the choreography.
-      ScrollTrigger.batch(".brand-reveal", {
-        start: "top 88%",
-        once: true,
-        onEnter: (batch) =>
-          gsap.fromTo(
-            batch,
-            { opacity: 0, y: 28 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 0.75,
-              ease: "power3.out",
-              stagger: 0.08,
-              overwrite: true,
-            }
-          ),
-      });
+      if (revealSections) {
+        // Legacy public routes retain their current reveal contract. Home opts
+        // out because the approved composition permits a concise hero entrance,
+        // not an animation repeated on every section.
+        ScrollTrigger.batch(".brand-reveal", {
+          start: "top 88%",
+          once: true,
+          onEnter: (batch) =>
+            gsap.fromTo(
+              batch,
+              { opacity: 0, y: 28 },
+              {
+                opacity: 1,
+                y: 0,
+                duration: 0.75,
+                ease: "power3.out",
+                stagger: 0.08,
+                overwrite: true,
+              }
+            ),
+        });
+      }
 
       gsap.utils.toArray("[data-brand-visual]").forEach((visual) => {
         gsap.fromTo(
@@ -80,7 +82,14 @@ export function BrandPage({ children, className }) {
   );
 
   return (
-    <div ref={pageRef} className={cn("brand-page w-full overflow-x-hidden", className)}>
+    <div
+      ref={pageRef}
+      className={cn(
+        "brand-page w-full overflow-x-hidden",
+        !revealSections && "brand-static-reveal",
+        className
+      )}
+    >
       {children}
     </div>
   );
@@ -253,7 +262,7 @@ export function PageHero({
           <div
             aria-hidden="true"
             className={cn(
-              "pointer-events-none absolute -right-20 top-12 hidden h-40 w-40 rounded-full bg-[var(--color-decoration-brand-soft)] sm:block sm:h-56 sm:w-56",
+              "pointer-events-none absolute -right-20 top-12 hidden h-40 w-40 rounded-full bg-decoration-brand-soft sm:block sm:h-56 sm:w-56",
               variant === "home"
                 ? "lg:-right-16 lg:top-24 lg:h-56 lg:w-56 lg:opacity-60"
                 : "lg:-right-24 lg:top-20 lg:h-72 lg:w-72"
@@ -376,9 +385,69 @@ export function CTASection({
   contactEmphasis,
   whatsappHref,
   email,
+  variant = "contained",
   className,
 }) {
   const labelText = label ?? eyebrow;
+  if (variant === "open") {
+    return (
+      <section
+        className={cn(
+          "marketing-section-standard border-t border-border-default bg-surface-default",
+          className
+        )}
+        data-marketing-section="cta"
+        data-spacing="standard"
+        data-cta-variant="open"
+      >
+        <PageContainer>
+          <div className="grid gap-10 xl:grid-cols-[minmax(0,1.08fr)_minmax(280px,0.52fr)] xl:items-end xl:gap-14">
+            <div className="max-w-4xl">
+              {labelText && <p className="brand-eyebrow mb-6">{labelText}</p>}
+              <h2 className="type-heading-section text-text-primary">{title}</h2>
+              {body && (
+                <p className="mt-5 max-w-[68ch] text-base leading-8 text-text-secondary md:text-lg">
+                  {body}
+                </p>
+              )}
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:gap-4">
+                {primaryAction}
+                {secondaryAction}
+              </div>
+            </div>
+            {(contactEmphasis || whatsappHref || email) && (
+              <div className="border-t border-border-default pt-6 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">
+                {contactEmphasis && (
+                  <p className="text-sm font-semibold leading-6 text-text-primary">
+                    {contactEmphasis}
+                  </p>
+                )}
+                <div className="mt-4 grid gap-2 text-sm font-semibold text-text-secondary">
+                  {whatsappHref && (
+                    <a
+                      href={whatsappHref}
+                      className="inline-flex min-h-11 items-center transition-colors hover:text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    >
+                      WhatsApp Niuva
+                    </a>
+                  )}
+                  {email && (
+                    <a
+                      href={`mailto:${email}`}
+                      className="inline-flex min-h-11 items-center break-words transition-colors hover:text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    >
+                      {email}
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </PageContainer>
+      </section>
+    );
+  }
+
   return (
     <section className={cn("marketing-section-standard bg-action-primary text-text-inverse", className)} data-marketing-section="cta" data-spacing="standard">
       <PageContainer>
@@ -397,7 +466,7 @@ export function CTASection({
                 </div>
               </div>
               {(contactEmphasis || whatsappHref || email) && (
-                <div className="border-t border-white/20 pt-6 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">
+                <div className="border-t border-decoration-inverse-line pt-6 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">
                   {contactEmphasis && <p className="text-sm font-semibold leading-6 text-text-inverse">{contactEmphasis}</p>}
                   <div className="mt-4 grid gap-3 text-sm font-semibold text-text-inverse">
                     {whatsappHref && <a href={whatsappHref} className="inline-flex min-h-11 items-center transition-colors hover:text-text-inverse">WhatsApp Niuva</a>}
@@ -423,7 +492,7 @@ export function ContactSummary({ className, contact, showMapLink = false }) {
   return (
     <div className={cn("grid gap-4 md:grid-cols-3", className)}>
       {items.map((item) => (
-        <div key={item.label} className="brand-reveal border-t-2 border-[var(--color-brand-secondary)] pt-5">
+        <div key={item.label} className="brand-reveal border-t-2 border-brand-secondary pt-5">
           <p className="type-label text-text-secondary">{item.label}</p>
           {item.href ? (
             <a
@@ -455,7 +524,7 @@ function RequiredLabel({ children }) {
 function FieldError({ id, message }) {
   if (!message) return null;
   return (
-    <p id={id} className="type-body-small font-semibold text-[var(--color-status-error)]">
+    <p id={id} className="type-body-small font-semibold text-status-error">
       {message}
     </p>
   );

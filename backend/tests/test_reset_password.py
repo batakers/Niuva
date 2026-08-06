@@ -27,12 +27,24 @@ resend_module.api_key = ""
 resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"})
 sys.modules.setdefault("resend", resend_module)
 
+import auth_rate_limit  # noqa: E402
 import emailer  # noqa: E402
 import server  # noqa: E402
 
 from tests.auth_support import AuthCollection  # noqa: E402
 
 ORIGIN = {"Origin": "https://testserver"}
+
+
+class MutableLimiterDatetime(datetime):
+    current = None
+
+    @classmethod
+    def now(cls, tz=None):
+        current = cls.current
+        if tz is None:
+            return current.replace(tzinfo=None)
+        return current.astimezone(tz)
 
 
 class FakeCollection:
@@ -219,7 +231,6 @@ def configured_runtime(monkeypatch, tmp_path, users, *, writes_enabled=True):
     server.db = database
     server.app.state.transaction_guard = AtomicGuard(database)
     server.app.state.password_recovery_delivery = emailer.PasswordRecoveryDelivery(
-        get_database=lambda: server.db,
         provider_sender=provider,
     )
     try:
@@ -305,7 +316,80 @@ def test_recovery_request_contract_origin_and_policy_routes(monkeypatch, tmp_pat
     asyncio.run(scenario())
 
 
-def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_token(
+def test_recovery_resend_enforces_the_approved_60_second_cooldown(
+    monkeypatch, tmp_path
+):
+    async def scenario():
+        customer = build_customer()
+        with configured_runtime(monkeypatch, tmp_path, [customer]) as (
+            database,
+            provider,
+        ):
+            transport = httpx.ASGITransport(app=server.app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="https://testserver"
+            ) as api:
+                first = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+                second = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+
+                assert first.status_code == 200
+                assert second.status_code == 429
+                assert int(second.headers["Retry-After"]) >= 1
+                assert len(database.password_reset_tokens.items) == 1
+                assert len(provider.messages) == 1
+
+    asyncio.run(scenario())
+
+
+def test_recovery_resend_cooldown_survives_fixed_window_rollover(monkeypatch, tmp_path):
+    start = datetime(2026, 8, 4, 12, 0, 59, 500000, tzinfo=timezone.utc)
+    monkeypatch.setattr(auth_rate_limit, "datetime", MutableLimiterDatetime)
+    MutableLimiterDatetime.current = start
+
+    async def scenario():
+        customer = build_customer()
+        with configured_runtime(monkeypatch, tmp_path, [customer]) as (
+            database,
+            provider,
+        ):
+            transport = httpx.ASGITransport(app=server.app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="https://testserver"
+            ) as api:
+                first = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+
+                MutableLimiterDatetime.current = start + timedelta(seconds=1)
+                across_bucket = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+
+                MutableLimiterDatetime.current = start + timedelta(seconds=60)
+                after_cooldown = await api.post(
+                    "/api/auth/forgot-password",
+                    json={"email": customer["email"]},
+                )
+
+                assert first.status_code == 200
+                assert across_bucket.status_code == 429
+                assert int(across_bucket.headers["Retry-After"]) >= 59
+                assert after_cooldown.status_code == 200
+                assert len(database.password_reset_tokens.items) == 2
+                assert len(provider.messages) == 2
+
+    asyncio.run(scenario())
+
+
+def test_reset_route_revokes_old_session_and_keeps_auth_email_out_of_general_feed(
     monkeypatch, tmp_path
 ):
     async def scenario():
@@ -379,11 +463,12 @@ def test_reset_route_revokes_old_session_preserves_compatibility_and_contains_to
                     "code": "password_reset_invalid",
                 }
 
-                assert len(database.notifications.items) == 1
-                notification = database.notifications.items[0]
-                assert raw_token not in repr(notification)
-                assert new_password not in repr(notification)
-                assert "berhasil diubah" in notification["body_html"].lower()
+                # Password-change delivery is authentication communication,
+                # not a general in-app notification or security-event store.
+                assert database.notifications.items == []
+                assert raw_token not in repr(provider.messages[-1])
+                assert new_password not in repr(provider.messages[-1])
+                assert "berhasil diubah" in provider.messages[-1]["body_html"].lower()
 
     asyncio.run(scenario())
 
@@ -465,7 +550,6 @@ def test_dedicated_delivery_invalidates_failed_token_without_general_notificatio
             failing_provider = CapturingProvider(fail=True)
             server.app.state.password_recovery_delivery = (
                 emailer.PasswordRecoveryDelivery(
-                    get_database=lambda: server.db,
                     provider_sender=failing_provider,
                 )
             )
@@ -504,7 +588,7 @@ def test_missing_provider_configuration_invalidates_token_outside_local_mode(
             monkeypatch.setenv("APP_ENV", "production")
             monkeypatch.setattr(emailer, "RESEND_API_KEY", "")
             server.app.state.password_recovery_delivery = (
-                emailer.PasswordRecoveryDelivery(get_database=lambda: server.db)
+                emailer.PasswordRecoveryDelivery()
             )
             transport = httpx.ASGITransport(app=server.app)
             async with httpx.AsyncClient(

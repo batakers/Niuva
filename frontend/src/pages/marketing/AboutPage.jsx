@@ -13,6 +13,7 @@ import {
   PageHero,
   SectionHeader,
 } from "../../components/brand/BrandSystem";
+import { ErrorState } from "@/components/ui/error-state";
 import { findBySlug, usePublicContent } from "../../lib/content";
 import { usePublicSettings } from "../../lib/publicSettings";
 
@@ -80,12 +81,17 @@ const backgroundPoints = [
 
 export default function AboutPage() {
   const { contact } = usePublicSettings();
-  const { blocks: cmsBlocks } = usePublicContent("about");
+  const { blocks: cmsBlocks, status: contentStatus } = usePublicContent("about");
   const cmsFields = useMemo(() => findBySlug(cmsBlocks, "company-profile"), [cmsBlocks]);
-  const dossierItems = cmsFields?.dossierItems || fallbackDossierItems;
-  const approachSteps = cmsFields?.approachSteps || fallbackApproachSteps;
-  const values = cmsFields?.values || fallbackValues;
-  const intro = cmsFields?.intro || profileContent.intro;
+  const contentInvalid = contentStatus === "invalid";
+  const dossierItems = contentInvalid
+    ? []
+    : cmsFields?.dossierItems || fallbackDossierItems;
+  const approachSteps = contentInvalid
+    ? []
+    : cmsFields?.approachSteps || fallbackApproachSteps;
+  const values = contentInvalid ? [] : cmsFields?.values || fallbackValues;
+  const intro = contentInvalid ? "" : cmsFields?.intro || profileContent.intro;
 
   return (
     <MarketingLayout>
@@ -100,6 +106,17 @@ export default function AboutPage() {
           primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
           secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
         />
+
+        {contentStatus === "invalid" && (
+          <MarketingSection tone="muted" spacing="compact">
+            <PageContainer>
+              <ErrorState
+                compact
+                error="Konten About terbaru tidak dapat diverifikasi. Muat ulang halaman atau hubungi tim Niuva."
+              />
+            </PageContainer>
+          </MarketingSection>
+        )}
 
         <MarketingSection tone="default">
           <PageContainer>
@@ -144,7 +161,11 @@ export default function AboutPage() {
             <div className="grid gap-10 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:items-start lg:gap-16">
               <div className="brand-reveal">
                 <h2 className="type-heading-section text-text-primary">Menghubungkan kebutuhan organisasi dengan eksperimen yang dapat diuji.</h2>
-                <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary md:text-lg">{intro}</p>
+                {intro && (
+                  <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary md:text-lg">
+                    {intro}
+                  </p>
+                )}
               </div>
               <ol className="border-y border-border-default">
                 {backgroundPoints.map((point, index) => (

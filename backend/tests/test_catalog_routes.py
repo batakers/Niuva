@@ -613,6 +613,13 @@ async def run_draft_isolation_and_rollback():
             headers=headers(),
         )
         assert first.status_code == 200
+        duplicate = await api.post(
+            f"/api/admin/products/{product['id']}/publish",
+            json={"reason": "Concurrent duplicate publication"},
+            headers=headers(),
+        )
+        assert duplicate.status_code == 409
+        assert duplicate.json()["detail"]["code"] == "catalog_publication_conflict"
 
         changed = await api.put(
             f"/api/admin/products/{product['id']}",

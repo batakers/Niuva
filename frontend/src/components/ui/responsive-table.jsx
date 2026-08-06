@@ -61,7 +61,7 @@ function ResponsiveTable({
                   <TableRow key={i}>
                     {columns.map((col) => (
                       <TableCell key={col.key} className={col.className}>
-                        <div className="h-4 w-3/4 animate-pulse rounded bg-surface-muted" />
+                        <div className="h-4 w-3/4 motion-safe:animate-pulse rounded bg-surface-muted" />
                       </TableCell>
                     ))}
                   </TableRow>
@@ -75,9 +75,9 @@ function ResponsiveTable({
           {Array.from({ length: 3 }, (_, i) => (
             <SurfacePanel key={i} padding="sm">
               <div className="space-y-2">
-                <div className="h-4 w-2/3 animate-pulse rounded bg-surface-muted" />
-                <div className="h-3 w-1/2 animate-pulse rounded bg-surface-muted" />
-                <div className="h-3 w-1/3 animate-pulse rounded bg-surface-muted" />
+                <div className="h-4 w-2/3 motion-safe:animate-pulse rounded bg-surface-muted" />
+                <div className="h-3 w-1/2 motion-safe:animate-pulse rounded bg-surface-muted" />
+                <div className="h-3 w-1/3 motion-safe:animate-pulse rounded bg-surface-muted" />
               </div>
             </SurfacePanel>
           ))}

@@ -59,6 +59,19 @@ production-readiness, or go-live.
   does not by itself resolve an audit finding or grant production-ready or
   go-live status.
 
+## Supporting Analysis Tools
+
+- Graphify and Ponytail are supporting workflow tools, not product,
+  architecture, readiness, or implementation authority.
+- Graphify output must match the selected SHA and be verified against current
+  source and tests. Inferred edges remain hypotheses.
+- Ponytail may reduce incidental complexity but must not weaken Retail/B2B
+  lifecycle separation, authorization, customer-data projection, transaction
+  atomicity, immutable commercial history, migration safety, accessibility,
+  proportional tests, or operational handover.
+- Generated graph artifacts and tool-specific reports remain untracked unless
+  separately approved.
+
 ## Verification and Handover
 
 - Run proportional checks for the changed scope and report what was verified or could not run.

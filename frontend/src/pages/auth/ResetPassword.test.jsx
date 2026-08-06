@@ -62,6 +62,30 @@ test("uses backend policy and submits the in-memory token", async () => {
   expect(await screen.findByText("reset complete")).toBeInTheDocument();
 });
 
+test("associates password validation messages with their inputs", async () => {
+  renderPage();
+  await screen.findByTestId("reset-password-form");
+
+  const newPassword = screen.getByTestId("reset-password-new");
+  const confirmPassword = screen.getByTestId("reset-password-confirm");
+  fireEvent.change(newPassword, { target: { value: "short" } });
+  fireEvent.change(confirmPassword, { target: { value: "different" } });
+
+  const lengthError = await screen.findByText(
+    "Password belum memenuhi panjang yang diperlukan."
+  );
+  const mismatchError = await screen.findByText("Password tidak cocok.");
+
+  expect(newPassword).toHaveAttribute("aria-invalid", "true");
+  expect(newPassword.getAttribute("aria-describedby")).toContain(
+    lengthError.id
+  );
+  expect(confirmPassword).toHaveAttribute("aria-invalid", "true");
+  expect(confirmPassword.getAttribute("aria-describedby")).toContain(
+    mismatchError.id
+  );
+});
+
 test("routes invalid tokens to the generic error state", async () => {
   api.post.mockResolvedValue({ data: { valid: false, code: "invalid_reset_token" } });
   renderPage();

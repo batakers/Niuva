@@ -93,9 +93,7 @@ test("published Retail discovery is usable and never presents checkout", async (
   await expect(page.getByText(/checkout, pembayaran/i)).toBeVisible();
   await page.getByRole("link", { name: /lihat detail/i }).click();
   await expect(page).toHaveURL(/\/retail\/products\/desk-sign$/);
-  await expect(
-    page.getByRole("button", { name: /transaksi retail belum aktif/i }),
-  ).toBeDisabled();
+  await expect(page.getByText(/transaksi retail belum aktif/i)).toBeVisible();
   await expect(page.getByText(/upload, reservasi/i)).toBeVisible();
 
   const overflow = await page.evaluate(

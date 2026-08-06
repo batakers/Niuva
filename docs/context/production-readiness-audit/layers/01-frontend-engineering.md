@@ -6,13 +6,13 @@ Status: Context Only — Audit Evidence and Progress Tracker — Not Implementat
 
 | Field | Value |
 | --- | --- |
-| Audit status | `complete` for the defined repository/static frontend scope |
-| Audit completion | 100% |
-| Readiness score | 55 / 100 |
-| Confidence | 85 / 100 |
-| Findings | 0 P0, 4 P1, 4 P2, 2 P3 |
-| Environment state | `FE-ENV-001` remains `environment_blocked`; dynamic release/browser evidence is not a pass |
-| Last updated | 2026-07-28 03:38:19 WIB (UTC+07:00) |
+| Audit status | `requires_revalidation` for current source; historical repository/static audit remains complete |
+| Audit completion | 100% for the 2026-07-28 scored snapshot; current design-system overlay is bounded |
+| Readiness score | 55 / 100 (historical snapshot; not recomputed) |
+| Confidence | 85 / 100 (historical snapshot; not recomputed) |
+| Findings | 0 P0, 4 P1, 4 P2, 2 P3 (historical snapshot; current overlay below) |
+| Environment state | `FE-ENV-001` remains `environment_blocked` for release and real-role evidence; synthetic browser evidence is recorded below |
+| Last updated | 2026-08-05 (UTC+07:00) |
 
 “Complete” means that every checklist item was examined with current evidence.
 It does not mean production-ready, and it does not authorize remediation or
@@ -33,6 +33,10 @@ production operations remain owned by their layers.
 
 ## 3. Baseline and HEAD delta
 
+The following branch, HEAD, and environment bullets describe the historical
+2026-07-28 scored snapshot. The current bounded post-merge state is recorded in
+the overlay immediately below and does not replace the historical evidence.
+
 - Branch: `feat/marketing-redesign-dec-ux-002`
 - HEAD: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
 - Baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
@@ -44,6 +48,20 @@ production operations remain owned by their layers.
   change, `.coverage`, and existing `docs/context/production-readiness-audit/`
   and `frontend/output/` artifacts. No source, dependency, or lockfile was
   changed by this audit.
+
+### Current bounded post-merge overlay
+
+- Current selected source: `origin/main` at
+  `18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1`, the merge commit for PR #137.
+- PR #137's corrective head is
+  `c1571ba2a9137fa15b8c82db6658c23d8c2950fa`; the corrective commit is an
+  ancestor of the current `origin/main` merge.
+- The merged PR scope is 86 files from the pre-merge integration baseline:
+  0 backend files, 0 package manifest/lockfile files, and 0
+  `frontend/output` files.
+- This overlay revalidates the merged Frontend Design-System Integration and
+  Audit Correction scope only. It does not recompute the full Layer 01 score
+  or inherit the old score/finding status as current.
 
 ## 4. Frontend inventory
 
@@ -124,6 +142,20 @@ monoliths and direct API calls appear in 20 page/component files.
 | Playwright journey execution | `environment_blocked` | No server/base URL/API or role credentials were configured; Firefox/WebKit are not installed. |
 | Frontend lint | Not available | No frontend lint script or ESLint configuration was found. |
 | Static route/API/dependency scans | Complete | Current source at baseline SHA; commands and paths are recorded in the findings below. |
+
+### 5.1 Current bounded post-merge design-system verification
+
+| Check | Result | Evidence and limitation |
+| --- | --- | --- |
+| Full frontend Jest | Pass | 62 suites and 368 tests passed with `--watchAll=false --runInBand`. |
+| Production build | Pass with environment note | `npm.cmd run build` compiled successfully; `REACT_APP_PUBLIC_SITE_URL` was not configured, so sitemap generation was skipped. |
+| Bundle checks | Pass/report-only | `test:bundle` passed 4/4. Measurement reported 581.26 kB total gzip, 203.10 kB largest entrypoint, and 100.14 kB largest async asset; no budget decision was applied. |
+| Browser design-system integration | Pass | Home suite passed 4/4 viewports. Retail discovery passed 8/8 viewport/scenario checks when the synthetic `REACT_APP_BACKEND_URL` was set and API routes were mocked. |
+| Browser environment boundary | Not a production pass | No real credentials, live API, provider, deployment, role-matrix journey, human screen-reader session, or production origin was used. The initial Retail run without the synthetic backend variable only exercised the intentional disconnected-catalog state. |
+| Dependency install audit | Baseline risk recorded | `npm ci --ignore-scripts` resolved the existing graph and reported 36 advisories: 12 low, 6 moderate, and 18 high. PR #137 changed no manifest or lockfile. |
+
+These checks are current bounded evidence for the merged design-system scope,
+not a production-readiness or go-live verdict.
 
 ## 6. Coverage checklist
 
@@ -365,6 +397,42 @@ monoliths and direct API calls appear in 20 page/component files.
 | Last verified SHA | `c28684d34c03505ea2f862f32c6edc24b1d7bfba` |
 | Resolution evidence | N/A — blocked |
 
+### PR #137 CodeRabbit reconciliation overlay
+
+The following local labels are bounded review-evidence labels, not new
+canonical production-readiness finding IDs. Each item was reconciled against
+the merged source, tests, or task-card evidence at `origin/main` `18f51de`.
+
+- **PR137-CR-01 — Navbar backdrop:** the mobile-navigation backdrop and close
+  behavior are present in `Navbar.jsx`, `Navbar.test.jsx`, and its contract
+  test. Status: `resolved_in_merged_scope`.
+- **PR137-CR-02 — Partial Admin queue coverage:** incomplete queue metrics are
+  represented as unknown rather than fabricated zeroes, with focused tests.
+  Status: `resolved_in_merged_scope`.
+- **PR137-CR-03 — Forgot-password resend error:** the sent state retains a
+  visible, recoverable resend error with focused coverage. Status:
+  `resolved_in_merged_scope`.
+- **PR137-CR-04 — OrderDetail stale route ID:** success, error, and cleanup
+  paths ignore responses for an older order ID, with a regression test. Status:
+  `resolved_in_merged_scope`.
+- **PR137-CR-05 — RetailProductPage stale slug:** success, error, and cleanup
+  paths ignore responses for an older product slug, with a regression test.
+  Status: `resolved_in_merged_scope`.
+- **PR137-CR-06 — Integration task-card acceptance criteria:** the merged
+  integration task card contains an explicit acceptance-criteria section.
+  Status: `resolved_in_merged_scope`.
+- **PR137-CR-07 — Retail E2E affected-file scope:**
+  `frontend/e2e/retail-discovery.spec.js` is recorded in the integration task
+  card's affected files. Status: `resolved_in_merged_scope`.
+- **PR137-CR-08 — Admin absent-stat handling:** absent required Admin metrics
+  remain unknown while explicit zero values are preserved, with focused
+  regression coverage. Status: `resolved_in_merged_scope`.
+
+This overlay does not close `FE-001` through `FE-009` or `FE-ENV-001`. Those
+findings cover broader transport, authentication, validation, maintainability,
+release, and production-environment questions and require their own current
+evidence and gates.
+
 ## 8. Positive controls
 
 - Route-level lazy loading, `Suspense`, a wildcard not-found route, and
@@ -376,6 +444,9 @@ monoliths and direct API calls appear in 20 page/component files.
 - Production compilation emitted hashed assets and route chunks; source maps
   were absent when explicitly disabled.
 - No runtime mock-data import was found in the scanned frontend source.
+- The PR #137 merged scope adds current design-system contracts, stale-response
+  guards, failure-state coverage, and bounded Home/Retail browser evidence;
+  these controls remain limited to the stated synthetic scope.
 
 These controls reduce risk but do not close the findings above.
 
@@ -394,16 +465,34 @@ operation was performed.
 
 ## 10. Resume handoff
 
-- Audit state: `complete` for repository/static scope; `FE-ENV-001` is
-  `environment_blocked`.
-- Exact next step: provide a controlled frontend/API/browser environment and
-  rerun the production postbuild and Playwright journeys.
+- Historical audit state: `complete` for the 2026-07-28 repository/static
+  snapshot; current Layer 01 status is `requires_revalidation` after PR #137.
+- Current overlay: bounded design-system integration and audit-correction
+  checks passed at `origin/main` `18f51de`; `FE-ENV-001` remains
+  `environment_blocked` for release and real-role evidence.
+- Exact next step: re-run the full Layer 01 checklist against a selected
+  current release candidate, including the broader FE findings and a
+  controlled frontend/API/browser environment.
 - Revalidation trigger: any change to HEAD, relevant decisions, frontend
   source, lockfiles, build tooling, or test environment.
 - Downstream handoff: Layers 02, 03, 05, 06, 07, 08, and 10 should consume
   the evidence without inheriting this score or finding status automatically.
 
 ## 11. Changelog
+
+### 2026-08-05 — PR #137 post-merge design-system reconciliation
+
+- Reconciled the merged PR #137 source, task-card evidence, and eight bounded
+  CodeRabbit review items at `origin/main` `18f51de`.
+- Recorded 62 Jest suites / 368 tests, successful production compilation,
+  report-only bundle measurements, and 12/12 synthetic browser checks across
+  Home and Retail discovery surfaces.
+- Kept the historical 55/100 score and `FE-001`–`FE-ENV-001` finding status
+  unchanged; the current Layer 01 row is `requires_revalidation` rather than
+  treating bounded design-system evidence as a full-layer closure.
+- Recorded the missing public-origin sitemap configuration and the baseline
+  dependency advisories as residual risk. No backend, provider, migration,
+  deployment, or go-live action was performed.
 
 ### 2026-07-28 — Frontend engineering audit completed
 

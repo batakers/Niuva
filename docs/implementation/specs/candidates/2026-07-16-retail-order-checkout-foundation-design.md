@@ -2,19 +2,24 @@
 
 Tanggal: 16 Juli 2026
 Status: Technical Design Candidate — not approved for implementation
-Scope kandidat: Retail ready-stock, fixed-price, guest-first checkout, authoritative server preview, atomic reservation, provider-neutral payment orchestration, dan customer-safe tracking; bukan implementation approval
+Scope kandidat: Retail ready-stock, fixed-price, account-required checkout, authoritative server preview, atomic reservation, provider-neutral payment orchestration, dan customer-safe tracking; bukan implementation approval
 Approved architecture pointers:
+
 - `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md`
 - `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md`
 - `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
 - `docs/decisions/product/DEC-PAY-02-legacy-manual-transfer-read-only.md`
+- `docs/decisions/product/DEC-RT-02-retail-account-required-checkout.md`
+- `docs/decisions/product/DEC-OFFER-01-retail-offer-file-and-quote-routing.md`
+- `docs/decisions/product/DEC-FUL-01-shipping-and-pickup-policy.md`
+- `docs/decisions/product/DEC-ETA-01-retail-eta-and-customer-milestone-policy.md`
 - `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
 Dokumen ini merevisi candidate spec pada commit `a433141` berdasarkan review stakeholder. BRD/PRS v2.1, PRD v2.1, `PRODUCT.md`, `AGENTS.md`, dan keputusan stakeholder terbaru menjadi sumber kebenaran. Revision pass ini hanya mengubah dokumen desain; tidak ada production code yang diubah.
 
 ## 1. Tujuan dan Posisi Produk
 
-Candidate ini mendefinisikan vertical slice commerce Retail yang menghubungkan active catalog publication, fixed-price authoritative snapshots, atomic inventory reservation, guest-first checkout, provider-neutral online-payment orchestration, dan customer-safe order tracking.
+Candidate ini mendefinisikan vertical slice commerce Retail yang menghubungkan active catalog publication, fixed-price authoritative snapshots, atomic inventory reservation, account-required checkout, provider-neutral online-payment orchestration, dan customer-safe order tracking.
 
 Online payment adalah Retail production target. Gateway provider tetap deferred, dan candidate ini tidak memilih provider, SDK, schema, webhook signature, atau provider-specific API. Existing legacy manual-transfer records tetap readable, tetapi manual transfer bukan production baseline dan tidak ada transitional adapter baru yang diaktifkan.
 
@@ -37,15 +42,18 @@ Status document ini tetap candidate dan tidak memberi implementation approval.
 | Keputusan | Candidate / approved direction | Status |
 |---|---|---|
 | Produk dan pricing mode | `ready_stock` + `pricing_mode=fixed` | Candidate initial slice; protected-scope permission tetap diperlukan |
+| Offer/file/quote routing | Safe automatic pricing, context-preserving quote handoff, dan Option B Assisted Retail Offer | Product contract resolved by `DEC-OFFER-01`; outside this fixed ready-stock slice and activation remains gated |
 | Keranjang | Multi-item; browser hanya menyimpan variant ID dan quantity | Candidate; atomic multi-line reservation contract adalah foundation prerequisite |
-| Checkout identity | Guest-first; tidak membangun customer auth baru | Candidate; reuse account yang sudah ada bila contract-nya approved |
+| Checkout identity | Authenticated Retail account required by `DEC-RT-02` | Approved product/access decision; implementation remains gated |
 | Checkout preview | Server authoritative untuk publication, price, stock, fulfillment input, dan total | Candidate invariant |
-| Fulfillment | Shipping dan pickup | Policy tetap open |
-| Pajak | Treatment dan display | Tetap open; memerlukan Finance decision |
-| Reservation duration | Tidak ditetapkan oleh candidate ini | Tetap open |
+| Fulfillment | Rp0 pickup + automatic-rate domestic Indonesia delivery | Resolved by `DEC-FUL-01`; provider/configuration/implementation remain gated |
+| ETA dan milestone | Pre-payment date/time range + factual post-payment milestones | Resolved by `DEC-ETA-01`; Operations configuration and technical contract remain gated |
+| Pajak | Tax-inclusive customer display if applicable; no invented PPN rate or amount while PKP status is unknown | Approved direction by `DEC-TAX-01`; versioned Finance profile, implementation, and activation remain gated |
+| Reservation duration | Fixed 30 minutes from successful order/payment-attempt creation | Resolved by `DEC-INV-01`; implementation remains gated |
 | Payment architecture | Provider-neutral online-payment orchestration | Approved architecture direction melalui ADR-003; provider tetap deferred |
 | Manual transfer | Legacy records read-only; no new instruction, attempt, proof upload, or proof-driven transition | Resolved by `DEC-PAY-02`; not an open application fallback |
-| Cancellation/refund/return | Boundary wajib ada; policy detail belum dipilih | Tetap open |
+| Cancellation/refund/return | Lifecycle-specific policy resolved by `DEC-AFTER-01` | Approved After-Sales Policy — Activation Gated; provider execution, Finance treatment, legal wording, and exact technical contract remain open |
+| Retail notifications | Authenticated-owner and role-scoped dashboard plus allowlisted transactional email; no WhatsApp | Resolved by amended `DEC-DATA-003`; provider/worker/exact mapping/implementation remain gated |
 | Protected scope | Implementation permission | Tetap open |
 
 ### 2.2 Baseline teknis yang tetap berlaku
@@ -65,20 +73,22 @@ Status document ini tetap candidate dan tidak memberi implementation approval.
 
 - Public Retail catalog dan product detail untuk variant pada active publication yang memenuhi fixed-price ready-stock policy.
 - Cart lokal multi-item.
-- Guest-first checkout dan authoritative server checkout preview.
+- Account-required checkout dan authoritative server checkout preview.
 - Immutable product, variant, publication, dan pricing snapshots pada order.
 - Atomic reservation untuk seluruh line item melalui inventory reservation service.
 - Provider-neutral payment orchestration boundary, idempotent provider-event handling contract, refund/reconciliation boundary, dan customer-safe payment projection.
-- Guest/customer-safe tracking serta permitted fulfillment transition.
+- Authenticated customer-safe tracking serta permitted fulfillment transition.
 - Audit, idempotency, expiry, conflict, retry, dan legacy compatibility.
 
 ### Tidak termasuk atau belum enabled
 
-- Produk `calculated` atau `quote_required` dalam direct checkout.
+- Produk `calculated`, quote handoff, atau Assisted Retail Offer. Product
+  contract-nya governed by `DEC-OFFER-01`, tetapi tidak diimplementasikan oleh
+  candidate fixed ready-stock slice ini.
 - Custom configuration atau design-file upload pada ready-stock checkout.
 - Provider selection atau provider-specific SDK, schema, webhook signature, dan API.
 - New manual-transfer adapter, payment-proof upload pada primary production path, atau manual-payment review flow.
-- Live shipping rate, courier integration, shipping-zone policy, tax policy, reservation duration, cancellation/refund/return policy, atau production go-live.
+- Live logistics-provider integration, tax-profile implementation/activation, after-sales policy implementation/activation, atau production go-live.
 - Supplier purchase automation.
 - B2B quotation, organization approval, atau project workflow.
 - Pembuatan customer authentication baru.
@@ -91,7 +101,7 @@ Implementasi Retail memerlukan izin eksplisit sebelum menyentuh:
 - collection dan projection `orders`;
 - inventory reservation serta release/consume operation;
 - backend route/service/repository dan API lama;
-- authentication, customer access, dan guest session;
+- authentication, customer access, customer session, dan historical guest compatibility;
 - admin order view, payment, reconciliation, dan refund operation;
 - dashboard, fulfillment, production, notification, atau operational flow terkait.
 
@@ -103,11 +113,11 @@ Fitur menggunakan modular monolith. Route hanya memvalidasi request dan mengemba
 
 ### Backend modules
 
-- `backend/retail_checkout_routes.py`: endpoint public/customer/guest/admin dan Pydantic payload.
+- `backend/retail_checkout_routes.py`: endpoint public/customer/admin dan Pydantic payload.
 - `backend/retail_checkout_service.py`: preview, checkout orchestration, order/payment state transition, expiry, reconciliation, dan idempotency.
-- `backend/retail_checkout_repository.py`: query order, active catalog publication, authoritative pricing snapshot, payment attempt, fulfillment config, dan guest session. Inventory mutation tetap melalui foundation reservation service.
+- `backend/retail_checkout_repository.py`: query ownership-scoped order, active catalog publication, authoritative pricing snapshot, payment attempt, fulfillment config, dan customer session boundary. Inventory mutation tetap melalui foundation reservation service.
 - `backend/retail_checkout_domain.py`: fungsi murni untuk validasi cart, snapshot, subtotal, ongkir, total, expiry, exception projection, dan status transition.
-- `backend/retail_checkout_indexes.py`: index order, idempotency, payment, reconciliation, dan guest-session.
+- `backend/retail_checkout_indexes.py`: index order, authenticated customer ownership, idempotency, payment, dan reconciliation.
 - `backend/server.py`: hanya memasang router dan dependency yang sudah ada.
 
 Perubahan tidak merombak foundation catalog, material, atau inventory. Checkout membaca active catalog publication, memakai authoritative product/variant pricing snapshots, dan memanggil inventory reservation service. Checkout tidak langsung memutasi inventory balance, stock movement, atau reservation collections. Jika atomic multi-line reservation contract belum tersedia, contract tersebut dicatat sebagai foundation prerequisite dan tidak didefinisikan ulang di candidate ini. Missing transaction capability mengembalikan `503 transaction_unavailable` tanpa silent fallback.
@@ -146,7 +156,7 @@ Browser tidak pernah menjadi sumber kebenaran untuk harga, stok, publication rev
 ### 6.1 `orders`
 
 Collection lama tetap dipakai. Contoh struktur berikut hanya normatif untuk field dan authoritative snapshots yang sudah disetujui.
-Nilai dalam angle brackets adalah illustrative placeholders, bukan approved defaults; unresolved fulfillment, tax, dan policy-dependent fields sengaja dihilangkan.
+Nilai dalam angle brackets adalah illustrative placeholders, bukan approved defaults; fulfillment, ETA/milestone, tax, dan policy-dependent fields yang exact technical contract-nya belum disetujui sengaja dihilangkan.
 
 ```json
 {
@@ -157,8 +167,7 @@ Nilai dalam angle brackets adalah illustrative placeholders, bukan approved defa
   "order_number": "NIV-2607-0001",
   "checkout_idempotency_key": "opaque-key",
   "checkout_request_fingerprint": "canonical-request-fingerprint",
-  "customer_id": null,
-  "guest_email": "buyer@example.com",
+  "customer_id": "authenticated-customer-id",
   "contact_snapshot": {
     "name": "Buyer",
     "email": "buyer@example.com",
@@ -201,9 +210,17 @@ Nilai dalam angle brackets adalah illustrative placeholders, bukan approved defa
 
 Line items, publication revision, dan setiap later-approved authoritative commercial atau fulfillment snapshot yang dicatat pada order bersifat immutable. Perubahan katalog, tarif, pajak, atau material tidak mengubah order yang sudah dibuat.
 
-Fulfillment method, address/config revision, shipping fee, tax treatment, dan fulfillment-dependent grand total sengaja tidak muncul pada contoh. Field tersebut hanya boleh dicatat dari authoritative preview setelah policy terkait disetujui. Contoh ini tidak memilih pickup, shipping, zero fee, tax inclusion, currency, atau reservation duration.
+Fulfillment, ETA/milestone, dan tax fields sengaja tidak muncul pada contoh
+ringkas karena exact API/schema contract tetap gated. `DEC-FUL-01` governs
+pickup/delivery policy, `DEC-ETA-01` governs ETA/milestone policy, dan
+`DEC-INV-01` governs versioned 30-minute reservation. Contoh tidak menginvent
+actual provider, location, package, duration/calendar/buffer, tax, atau
+notification values.
 
-`customer_id` hanya diisi bila customer account contract yang sudah ada digunakan. Guest tetap `null`. Existing legacy orders keep their current shape and are read through a compatibility projection.
+`customer_id` wajib diisi dari authenticated customer identity untuk setiap
+Retail Order baru sesuai `DEC-RT-02`. Existing guest-shaped historical orders
+keep their stored shape and are read only through an ownership-scoped
+compatibility projection; contact equality does not prove ownership.
 
 Checkout idempotency mengikuti contract berikut:
 
@@ -212,7 +229,6 @@ Checkout idempotency mengikuti contract berikut:
 - Key yang sama dengan fingerprint yang sama mengembalikan original customer-safe checkout result. Key yang sama dengan fingerprint berbeda mengembalikan `409 idempotency_conflict` dan tidak menjalankan mutation.
 - Persisted key, fingerprint, dan stable original order/result reference di-commit secara atomic bersama order dan seluruh applicable reservation references dalam ADR-001 transaction boundary. Retry tidak boleh membuat order atau reservation tambahan.
 - Exact fingerprint encoding, hash algorithm, dan implementation library tetap implementation detail dan tidak dipilih oleh candidate ini.
-
 
 ### 6.2 Foundation reservation contract
 
@@ -268,28 +284,42 @@ Minimum operational record untuk refund, tanpa menjadikan customer-facing refund
 - `requested_by`, `approved_by`, `processed_at`, `failure_reason`, dan audit reference.
 - Refund, large price override, dan stock adjustment mengikuti permission/manager approval yang berlaku.
 
-### 6.6 `guest_order_access`
+### 6.6 Historical guest compatibility
 
-Hanya token hash yang disimpan:
-
-- `token_hash` unique.
-- `order_id`.
-- `purpose=order_tracking`.
-- `expires_at`, `used_at`, `revoked_at`, `created_at`.
-
-Raw token hanya dikirim melalui email dan ditukar sekali menjadi short-lived order-scoped HttpOnly session. Browser kemudian diarahkan ke clean tracking URL.
+Candidate ini tidak membuat guest Order, guest magic link, guest-order session,
+atau verified-contact tracking credential baru. Existing guest-shaped records,
+bila ada, mempertahankan stored shape dan approved ownership-scoped read path.
+Automatic account linkage berdasarkan email, phone, atau contact match dilarang.
+Claim flow memerlukan decision, verification, audit, dan conflict policy
+terpisah.
 
 ### 6.7 Shipping configuration
 
-Konfigurasi dikelola melalui Admin Studio dan memiliki versioned record:
+`DEC-FUL-01` governs the fulfillment policy. Configuration is versioned and
+must reference approved origin, domestic address schema, pickup locations,
+package profiles, service allowlist, policy revision, effective time, actor,
+and audit reference.
 
-- `enabled`, `supported_regions`, `required_address_fields`, `flat_fee`, `currency`, `revision`, `effective_at`, `updated_by`, dan `audit_reference`.
-- Pickup tetap tidak memerlukan address dan memiliki fee `0` hanya setelah kebijakan disetujui.
-- Alamat di luar wilayah atau field wajib yang kurang mengembalikan `shipping_unavailable`; sistem tidak diam-diam mengganti ke pickup.
-- Jika shipping dinonaktifkan, method shipping tidak dapat dipilih dan preview mengembalikan `shipping_unavailable`; pickup tetap mengikuti availability/policy terpisah.
-- Perubahan fee/region setelah preview mengembalikan `409 shipping_quote_stale` dan meminta preview ulang.
+- Pickup needs no delivery address and has shipping fee Rp0. The customer
+  selects a location during checkout and an available collection window only
+  after `ready_for_pickup`.
+- Delivery is limited to supported domestic Indonesia addresses. International,
+  special-packaging, unsupported, oversize, unsafe, invalid, or
+  missing-package-profile cases become `quote_required`.
+- The server obtains an authoritative automatic rate from normalized
+  address/package inputs. It never guesses a fee.
+- `rate_expires_at` is provider expiry capped at `quoted_at + 30 minutes`, or
+  that 30-minute application expiry when the provider supplies none.
+- Expired or changed rate/service/ETA produces `409 shipping_quote_stale`,
+  refreshes preview, and requires explicit customer reconfirmation.
+- Immediately before order/payment-attempt creation, the server revalidates
+  fulfillment inputs. The committed amount is immutable for that active
+  payment attempt.
+- If delivery is unavailable, the UI may offer pickup but never silently
+  changes the customer's method.
 
-Wilayah, alamat minimum, pemilik konfigurasi, dan kemampuan menonaktifkan shipping masih memerlukan konfirmasi stakeholder.
+Provider, actual origin/location/hours/windows, package profiles, service
+allowlist, Finance treatment, operations owner, and activation remain gated.
 
 ### 6.8 Indexes
 
@@ -297,8 +327,6 @@ Wilayah, alamat minimum, pemilik konfigurasi, dan kemampuan menonaktifkan shippi
 - Unique partial `orders.checkout_idempotency_key`; persisted idempotency boundary juga menyimpan canonical request fingerprint dan stable original order/result reference.
 - `orders.customer_id + created_at`.
 - `orders.status + updated_at`.
-- `orders.guest_email + created_at` untuk internal lookup only; tidak menjadi authorization.
-- Unique `guest_order_access.token_hash` dan TTL pada `expires_at`.
 - `payment_attempts.order_id + created_at`.
 - Unique provider-event claim `(adapter_key, provider_event_id)`.
 - `payment_reconciliation_cases.status + updated_at`.
@@ -306,7 +334,6 @@ Wilayah, alamat minimum, pemilik konfigurasi, dan kemampuan menonaktifkan shippi
 - Existing reservation operation dan reference indexes.
 
 Indexes ditambahkan melalui existing startup/migration mechanism dan diverifikasi sebelum mutation rollout.
-
 
 ## 7. Order, Payment, dan Reservation Lifecycle
 
@@ -325,11 +352,15 @@ Failure, expiry, cancellation, reconciliation, refund, hold, and fulfillment exc
 
 ### 7.2 Reservation lifecycle and transaction gate
 
-- Reservation duration remains an open decision and is not fixed by this candidate.
+- Reservation duration is fixed at 30 minutes by `DEC-INV-01`, beginning only
+  after successful order and payment-attempt creation. The checkout must expose
+  a countdown and five-minute warning, with no automatic extension.
 - Checkout creates the order and all line-item reservations through the foundation multi-line reservation service within the ADR-001 transaction boundary.
 - Missing transaction capability returns `503 transaction_unavailable`; no order or partial reservation is treated as successful.
 - Silent fallback to non-atomic writes is prohibited.
-- Payment success may consume or retain eligible active reservations only according to a later-approved fulfillment contract; this candidate does not choose that policy.
+- Payment success consumes the active reservation through an atomic competing
+  transition. The exact downstream inventory and fulfillment transition
+  remains governed by the later-approved fulfillment contract.
 - Payment review, reconciliation, refund, and cancellation do not create additional inventory reservation states.
 
 The following provider-neutral race matrix is normative. Every winner is selected by conditional state checks inside the same ADR-001 transaction; an application-level ordering assumption is insufficient.
@@ -351,7 +382,8 @@ Normative invariants:
 - Release occurs at most once through the foundation reservation service.
 - Late or conflicting payment never recreates reservation and enters provider-neutral reconciliation.
 - The system must never produce a paid order backed only by released or expired reservations.
-- Exact reservation duration and post-payment fulfillment policy remain open.
+- Reservation duration is resolved by `DEC-INV-01`; post-payment fulfillment
+  policy and implementation authorization remain open.
 
 ### 7.3 Provider events, refund, and reconciliation
 
@@ -362,9 +394,13 @@ Normative invariants:
 - Event claim dan resulting core transition memakai approved transaction/idempotency boundary.
 - Raw provider payloads, credentials, dan signatures tetap berada di adapter boundary dan tidak masuk core domain.
 - Refund is a separate idempotent boundary with permission, actor, time, reason, amount, and result.
+- Refund eligibility, amount, fee allocation, customer remedy, and approval
+  follow `DEC-AFTER-01`.
 - Conflicting or uncertain payment outcomes enter reconciliation without silently changing inventory or customer-visible paid state.
 - Notification failure does not roll back an otherwise successful core payment transition.
-- Exact payment state machine, event retention, webhook authentication, Finance operations, reconciliation SLA, and refund policy remain open.
+- Exact payment state machine, event retention, webhook authentication, Finance
+  operations, reconciliation SLA, provider refund execution/timing, and
+  accounting/tax correction remain open.
 
 ### 7.4 Manual-transfer policy
 
@@ -376,26 +412,48 @@ Normative invariants:
 
 ### 7.5 Fulfillment and after-sales boundary
 
-Shipping/pickup, cancellation, refund, return, pickup grace, and fulfillment-exception policies remain open. The candidate requires explicit order/payment boundaries and auditable customer-safe projections without selecting the final policy.
+`DEC-FUL-01` resolves direct-checkout pickup/delivery direction, rate validity,
+and seven-day `pickup_overdue` follow-up. Automatic overdue cancellation,
+disposal, storage fee, refund, ownership transfer, or completion is prohibited.
+`DEC-AFTER-01` resolves the Retail revision, lifecycle-specific cancellation,
+complaint, reprint/replacement, refund, return-shipping allocation, SLA, and
+approval-policy direction. Address change after payment, legal/customer terms,
+working-day configuration, provider execution/timing, Finance accounting/tax
+correction, evidence privacy/retention, abuse/fraud, long-term uncollected
+pickup, exact technical contract, implementation, and activation remain gated.
+Retail notification recipients/channels follow amended `DEC-DATA-003`;
+provider, worker, exact event/source mapping, preference UI, implementation,
+and activation remain gated. The candidate retains explicit order/payment
+boundaries and auditable customer-safe projections.
 
 ## 8. Candidate Core API Boundary
 
-### Customer/public
+### Public
 
 ```text
 GET  /api/catalog/products
 GET  /api/catalog/products/{slug}
+```
+
+### Authenticated Retail customer
+
+```text
 POST /api/retail/checkout/preview
 POST /api/retail/orders
 GET  /api/retail/orders/{order_id}
-POST /api/retail/guest-sessions/exchange
 ```
 
-`checkout/preview` accepts variant IDs, quantities, and only the fulfillment inputs permitted by the later-approved policy. The response is authoritative for active publication, product/variant eligibility, price snapshot, availability, total, conflicts, and preview time. Preview does not reserve stock.
+`checkout/preview` requires authenticated customer ownership. It accepts variant
+IDs, quantities, and only the fulfillment inputs permitted by the
+later-approved policy. The response is authoritative for active publication,
+product/variant eligibility, price snapshot, availability, total, conflicts,
+and preview time. Preview does not reserve stock.
 
 `POST /api/retail/orders` revalidates every authoritative value and invokes the atomic multi-line reservation service inside the ADR-001 transaction boundary. Setiap request membawa checkout idempotency key. Identical key/fingerprint retries replay the original customer-safe result; reuse dengan fingerprint berbeda mengembalikan `409 idempotency_conflict`; dan retry tidak membuat order atau reservation tambahan. Response mengembalikan customer-safe order dan server-produced provider-neutral payment action/state data.
 
-Guest order lookup never uses email alone. A guest exchanges a short-lived magic token for an order-scoped session.
+Order creation and lookup require authenticated `customer_id` ownership.
+Historical guest-shaped records remain outside the new-transaction API
+contract and use only their separately approved compatibility read path.
 
 ### Payment adapter boundary
 
@@ -412,17 +470,30 @@ POST /api/admin/retail/orders/{id}/refund
 POST /api/admin/retail/orders/{id}/status
 ```
 
-Admin transitions require least privilege, allowed-state validation, audit, and immutable commercial snapshots. Exact Finance operations, reconciliation SLA, refund policy, and provider operations remain open and are not approved by these candidate routes.
+Admin transitions require least privilege, allowed-state validation, audit, and
+immutable commercial snapshots. Refund policy follows `DEC-AFTER-01`; exact
+Finance operations, reconciliation SLA, provider execution/timing, and
+accounting/tax correction remain open and are not approved by these candidate
+routes.
 
 ## 9. Customer Authentication dan Security
 
 ### Customer authentication scope
 
-- Repository saat ini memiliki auth/admin flow; slice ini tidak boleh mengasumsikan customer account system baru tanpa audit dan approval.
-- MVP memakai guest-first checkout. Register saat checkout tidak termasuk.
-- Bila Retail account contract sudah tersedia, gunakan identity system yang sama; jangan membuat silo auth baru.
-- Guest order dapat diklaim setelah login hanya jika claim flow dan ownership policy disetujui; bukan acceptance requirement slice ini.
-- User tidak boleh melihat order lain hanya karena email yang sama. Ownership berasal dari authenticated `customer_id` atau order-scoped guest session.
+- `DEC-RT-02` requires an authenticated Retail account before private upload,
+  authoritative checkout, order/payment creation, payment, history, and
+  tracking.
+- Anonymous visitors may browse, configure non-sensitive options, and retain a
+  non-authoritative cart. Login/register handoff carries no price promise,
+  reservation, payment state, or private file reference.
+- Reuse the approved customer identity, recovery, and session system; do not
+  create a Retail-only auth silo.
+- Failed registration/login/recovery creates no order, reservation, or payment
+  attempt. After authentication, every authoritative value is revalidated.
+- Historical guest order claim is excluded until a verification, ownership,
+  audit, and conflict policy is approved.
+- User tidak boleh melihat order lain hanya karena email yang sama. New-order
+  ownership berasal hanya dari authenticated `customer_id`.
 
 ### Security/privacy
 
@@ -431,13 +502,17 @@ Admin transitions require least privilege, allowed-state validation, audit, and 
 - Payment state hanya diproduksi oleh trusted server logic atau provider adapter. Backend tetap authoritative untuk payment lifecycle dan customer-safe projection.
 - Hanya published, active, retail-enabled, fixed-price, ready-stock variants yang boleh masuk checkout slice.
 - Exact internal stock, material cost, supplier, margin, planned demand, profit, dan internal notes tidak pernah muncul pada customer response.
-- Customer APIs enforce `customer_id` ownership; guest APIs enforce order-scoped session ownership.
-- Magic links adalah hashed, short-lived, single-use exchange credentials dan tidak dipakai sebagai bearer URL berulang.
-- Guest session HttpOnly, Secure in production, SameSite, order-scoped, dan dilindungi dari CSRF/origin abuse.
+- Customer APIs enforce `customer_id` ownership. Historical compatibility
+  access, if present, remains a separate ownership-scoped read boundary and
+  cannot create a new transaction.
+- Customer session behavior follows `DEC-AUTH-010`; session expiry before order
+  creation requires reauthentication and full revalidation.
+- Session expiry after order/payment-attempt creation does not change stored
+  ownership or provider callback handling and does not extend `DEC-INV-01`.
 - ADR-002 applies to design files and every upload-dependent flow. Payment proof remains legacy-readable only; `DEC-PAY-02` disables new proof uploads.
-- Rate limits apply to checkout, magic-link issuance, token exchange, payment retries, and reconciliation-sensitive actions.
+- Rate limits apply to registration/login/recovery, checkout, payment retries,
+  and reconciliation-sensitive actions.
 - Sensitive events mencatat actor, timestamp, target, before/after, reason, dan correlation/idempotency reference.
-
 
 ## 10. Customer and Admin States
 
@@ -446,7 +521,9 @@ Admin transitions require least privilege, allowed-state validation, audit, and 
 - Product discovery shows only active-publication, fixed-price, ready-stock variants eligible for this candidate.
 - Cart and checkout handle loading, empty, validation, stale publication/price, stock conflict, retry, and transaction-unavailable states.
 - Checkout preview remains server-authoritative.
-- Tracking shows customer-safe order, provider-neutral payment state/action, reconciliation guidance, milestone, ETA, fulfillment, and exception states.
+- Tracking shows factual customer-safe milestone history, current/previous ETA
+  ranges, next action, safe exception/reason, provider-neutral payment
+  state/action, reconciliation guidance, and fulfillment under `DEC-ETA-01`.
 - Payment-proof upload is not part of the primary production experience.
 
 ### Admin states
@@ -496,7 +573,9 @@ Retail and B2B must both remain discoverable, but this candidate does not lock t
 
 ### Customer experience
 
-- Guest-first cart, preview, checkout, and tracking handle loading, empty, validation, conflict, retry, permission/session expiry, and `transaction_unavailable` states.
+- Visitor cart plus authenticated preview, checkout, and tracking handle
+  loading, empty, validation, auth handoff, conflict, retry,
+  permission/session expiry, and `transaction_unavailable` states.
 - Payment UI consumes provider-neutral action/state and does not assume a gateway vendor.
 - Tracking shows customer-safe payment, reconciliation, refund, fulfillment, milestone, and next-action states.
 - Retail and B2B discovery can be tested without asserting deferred labels, placement, order, or visual treatment.
@@ -504,7 +583,9 @@ Retail and B2B must both remain discoverable, but this candidate does not lock t
 ### Acceptance criteria untuk candidate
 
 - Candidate remains not approved for implementation.
-- Guest can preview fixed-price ready-stock items using an authoritative server response.
+- Anonymous visitors can browse and configure eligible fixed-price ready-stock
+  items; authenticated customers receive the authoritative checkout preview
+  before order creation.
 - Order creation and every line-item reservation succeed atomically or fail without partial writes.
 - Active catalog publication and authoritative product/variant pricing snapshots are reused.
 - Foundation reservation lifecycle remains `active → consumed | released | expired`.
@@ -512,7 +593,10 @@ Retail and B2B must both remain discoverable, but this candidate does not lock t
 - No provider-specific SDK, schema, webhook signature, or API is selected.
 - No new manual-transfer adapter or payment-proof production path is enabled.
 - Retail Order and B2B Quote/Project remain separate aggregates and state machines.
-- All listed business, provider, storage, protected-scope, and readiness decisions remain open.
+- Product, fulfillment, ETA, tax-display, after-sales, notification, and
+  reservation directions listed above are governed by their approved decisions;
+  provider/configuration choices, exact technical contracts, protected-scope
+  implementation, readiness, and go-live remain gated.
 
 ## 14. Operational Constraints dan Deferred Decisions
 
@@ -539,14 +623,57 @@ Retail and B2B must both remain discoverable, but this candidate does not lock t
 
 The following remain open:
 
-- shipping and pickup policy;
-- tax treatment;
-- reservation duration;
-- cancellation, refund, and return policy;
+- offer Simple/Detailed fields, file/storage limits, machine/process/build/
+  quantity/deadline/risk thresholds, default Assisted Retail Offer expiry,
+  exact technical contract, dan separately authorized implementation;
+- logistics provider and approved fulfillment configuration/operations;
+- ETA duration/calendar/buffer/reason profiles and exact state/API/schema;
+- Finance-approved versioned tax profile, implementation, and activation;
+- after-sales legal/customer terms, working-day configuration, provider
+  execution/timing, Finance accounting/tax correction, evidence
+  privacy/retention, abuse/fraud, long-term uncollected pickup, and exact
+  technical contract;
+- notification provider/worker, exact event/source mapping, preference UI,
+  implementation, migration, B2B policy, and activation;
 - protected-scope implementation permission;
 - payment provider;
 - production storage provider;
 - production readiness and go-live.
+
+Reservation duration is no longer open: `DEC-INV-01` fixes it at 30 minutes.
+Payment-method compatibility, expiry execution, late-success reconciliation,
+and implementation remain separately gated.
+
+Shipping/pickup policy is no longer open: `DEC-FUL-01` governs Rp0 pickup,
+domestic automatic rate, quote validity, snapshots, fallback, and
+pickup-overdue behavior. Provider/configuration/activation remain gated.
+
+ETA/milestone policy is no longer open: `DEC-ETA-01` governs pre-payment
+ranges, factual milestones, authorized audited updates, and `eta_overdue`.
+Operations configuration, exact technical contract, implementation, and
+activation remain gated. Retail notification policy follows amended
+`DEC-DATA-003`.
+
+Retail revision/after-sales policy is no longer open: `DEC-AFTER-01` governs
+the 48-hour file-revision window, lifecycle-specific cancellation/refund,
+two-working-day complaint intake, customer remedy, fee allocation, return
+shipping, SLA, and manager approval. Its listed legal, provider, Finance,
+privacy, technical, implementation, and activation gates remain. Notification
+policy follows amended `DEC-DATA-003`.
+
+Retail notification recipient/channel policy is no longer open: amended
+`DEC-DATA-003` governs authenticated owner and role-scoped recipients, event
+allowlists, dashboard/email behavior, safe payloads and links, at most five
+attempts, controlled resend, audit, retention, and no WhatsApp. Provider,
+worker, exact event/source mapping, preference UI, schema/source changes,
+migration, B2B policy, implementation, readiness, and go-live remain gated.
+
+Offer/file/quote-routing policy is no longer open: `DEC-OFFER-01` governs
+independent offer/pricing/fulfillment semantics, allowed-input behavior,
+automatic-pricing confirmation, mixed-cart/context handoff, Retail/B2B routing,
+and the Assisted Retail Offer. This candidate still excludes those flows;
+calibration, technical contract, storage readiness, implementation, migration,
+readiness, and go-live remain gated.
 
 No open item is silently resolved by this candidate.
 
@@ -561,7 +688,7 @@ Setelah spec ini disetujui stakeholder, implementation plan harus dipisah menjad
 | Phase 2 | Read-only Retail catalog |
 | Phase 3 | Local cart and authoritative checkout preview |
 | Phase 4 | Transactional order and stock reservation |
-| Phase 5 | Guest access and tracking |
+| Phase 5 | Authenticated customer access, session recovery, and tracking |
 | Phase 6 | Provider-neutral payment orchestration boundary; provider integration remains gated |
 | Phase 7 | Fulfillment and admin operations |
 | Phase 8 | Retail/B2B public website integration |
@@ -577,27 +704,70 @@ Tabel berikut mencatat risiko candidate, dampak, mitigation gate, serta owner at
 |---|---|---|---|
 | Keputusan bisnis belum dikonfirmasi | Implementasi salah arah atau rework | Phase 0 decision log; jangan enable mutation flags | Stakeholder/Product |
 | MongoDB transaction capability tidak tersedia | Partial order/reservation atau overselling | Capability preflight; controlled `503 transaction_unavailable`; no non-atomic fallback | Backend/Platform |
-| Payment/reservation timing belum disetujui | Stok dapat tertahan atau dilepas tidak konsisten | Keep duration open; do not enable mutation until policy is approved | Finance/Operations |
+| Payment/reservation implementation belum diverifikasi | Stok dapat tertahan atau dilepas tidak konsisten | Implement and verify `DEC-INV-01` atomically; do not enable mutation without provider compatibility and race evidence | Finance/Operations |
 | Payment exception tidak ter-reconcile | Salah status, refund, atau laporan keuangan | Reconciliation queue, idempotent case, SLA/age monitoring | Finance |
 | Legacy order/auth/API regression | Operasi lama terhenti | Compatibility projection dan regression suite | Backend/Order Admin |
-| Customer data leakage | Pelanggaran privasi | Ownership query, guest session, safe projection, forbidden-field tests | Security/Backend |
-| Shipping policy belum jelas | Total dan eligibility tidak konsisten | Versioned shipping config dan stale-preview conflict | Operations/Stakeholder |
+| Customer data leakage | Pelanggaran privasi | Authenticated ownership query, historical compatibility isolation, safe projection, forbidden-field tests | Security/Backend |
+| Provider/config fulfillment belum siap | Total dan eligibility tidak dapat diaktifkan dengan aman | Enforce `DEC-FUL-01`; versioned origin/location/package/service config; stale-preview conflict; no guessed rate | Operations/Finance |
 | Feature flag rollback tidak aman | Order aktif kehilangan akses | Disable mutation only; retain tracking/admin reconciliation | Release owner |
 | Retail mengaburkan B2B | Positioning dan conversion B2B turun | Preserve discoverability without locking deferred IA labels or visual treatment | Product/Brand |
 | Production storage belum siap | Design/upload data dapat hilang atau tidak aman | Block production upload until ADR-002 provider and readiness gates are approved | Operations |
 
 ## 17. Unresolved Risks dan Approval Checklist
 
-Before a Retail Order & Checkout implementation plan, Retail checkout implementation, or related production enablement, the following written decisions are still required:
+Before Retail checkout implementation or related production enablement, the
+following approvals/configurations are still required:
 
-- shipping and pickup policy;
-- tax treatment;
-- reservation duration;
-- cancellation, refund, and return policy;
+- logistics provider; approved origin, pickup location/hours/windows, package
+  profiles, domestic address validation, service allowlist, Finance treatment,
+  operations owner, and recovery procedure;
+- approved ETA duration/calendar/buffer/reason profiles and exact Retail
+  state/API/schema contract;
+- approved offer/configuration/file profiles and thresholds, default Assisted
+  Retail Offer expiry, and exact offer/quote technical contract;
+- Finance-approved versioned tax profile, implementation, and activation;
+- after-sales legal/customer terms, working-day configuration, provider
+  execution/timing, Finance accounting/tax correction, evidence
+  privacy/retention, abuse/fraud, long-term uncollected pickup, and exact
+  technical contract;
+- notification provider/worker, exact event/source mapping, preference UI,
+  schema/source implementation, migration, B2B policy, and activation;
 - protected-scope implementation permission;
 - payment gateway provider and provider activation;
 - production storage provider and ADR-002 readiness;
 - production readiness and go-live.
+
+`DEC-INV-01` already supplies the 30-minute reservation decision. A later
+implementation plan must reference it and retain its atomic expiry, retry,
+versioned-snapshot, and reconciliation requirements.
+
+`DEC-FUL-01` already supplies the pickup/delivery policy. A later implementation
+plan must retain provider-neutral automatic rates, the 30-minute application
+cap, explicit refresh/reconfirmation, immutable snapshots, quote fallback, and
+seven-day pickup-overdue behavior.
+
+`DEC-ETA-01` already supplies the Retail ETA/milestone policy. A later
+implementation plan must retain separate ready/arrival ranges, factual
+milestones, authorized audited updates, append-only history, customer-safe
+reasons, and `eta_overdue` without automatic after-sales action.
+
+`DEC-AFTER-01` already supplies the Retail revision/after-sales policy. A later
+implementation plan must retain its lifecycle boundaries, exact deadlines and
+SLA, customer-choice remedy, fee/return-shipping allocation, immutable
+snapshots, idempotent refund, scoped evidence, manager approval, and B2B
+separation without treating policy approval as activation.
+
+`DEC-RT-02` already supplies the account-required identity decision. A later
+implementation plan must retain authenticated `customer_id` ownership,
+non-authoritative cart handoff, full post-login revalidation, session-expiry
+behavior, and historical guest isolation.
+
+`DEC-OFFER-01` already supplies the offer/file/quote-routing product contract.
+A later separately authorized plan for calculated/quote flows must retain
+Niuva-authoritative profiles, customer confirmation and server revalidation,
+mixed-cart separation, context preservation, immutable offer versions,
+manager approval, expiry checks, normal Retail checkout entry, and strict
+Retail/B2B lifecycle separation.
 
 This gate does not block separate Foundation implementation planning and coding for approved transaction capability, catalog publication, inventory movement/balance/reservation contracts, or development/demo storage work, provided the work remains within approved scope and does not modify protected areas without permission.
 

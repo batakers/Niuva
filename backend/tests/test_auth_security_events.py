@@ -94,6 +94,7 @@ def test_event_rejects_values_outside_the_strict_allowlist(field, value):
         "subject_kind": "known_user",
         "subject_ref": "user-1",
         "surface": "admin",
+        "key_version": "v1",
     }
     payload[field] = value
     with pytest.raises(SecurityEventValidationError):
@@ -146,6 +147,18 @@ def test_missing_or_short_pseudonymization_key_fails_closed(key):
         EventPseudonymizer(key=key, key_version="v1")
 
 
+def test_missing_key_version_fails_closed():
+    with pytest.raises(SecurityEventValidationError, match="key version"):
+        AuthenticationSecurityEvent(
+            event_type="auth.login_succeeded",
+            outcome="success",
+            reason_code="credentials_verified",
+            subject_kind="system",
+            surface="system",
+            occurred_at=NOW,
+        ).to_document()
+
+
 def test_cleanup_uses_controlled_clock_and_bounded_limit():
     service, store = build_service()
     assert asyncio.run(service.cleanup(limit=1000)) == 3
@@ -160,6 +173,7 @@ def test_all_approved_event_families_build_without_sensitive_payload_fields():
             reason_code="internal_failure_safe",
             subject_kind="system",
             surface="system",
+            key_version="v1",
             occurred_at=NOW,
         ).to_document()
         assert set(document) == {
@@ -214,6 +228,7 @@ def test_timezone_naive_event_time_is_rejected():
             reason_code="internal_failure_safe",
             subject_kind="system",
             surface="system",
+            key_version="v1",
             occurred_at=datetime(2026, 7, 29),
         ).to_document()
 

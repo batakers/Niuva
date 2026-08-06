@@ -3,7 +3,7 @@
 Status: Context Only — Audit Evidence and Progress Tracker — Not Implementation Authority
 
 Baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
-Last updated: 2026-07-28 14:01:25 WIB (UTC+07:00)
+Last updated: 2026-08-05 (UTC+07:00)
 
 ## Status semantics
 
@@ -33,7 +33,7 @@ finding exists.
 
 | Layer | Document | Finding Prefix | Audit Status | Audit Completion | Readiness Score | Confidence | P0 | P1 | Baseline SHA | Last Updated | Next Step |
 | ----- | -------- | -------------- | ------------ | ---------------: | --------------: | ---------: | -: | -: | ------------ | ------------ | --------- |
-| 01 Frontend Engineering | [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | `FE` | `complete` | 100% | 55% | 85% | 0 | 4 | `c28684d` | 2026-07-28 | Resolve FE-ENV-001, then re-run release postbuild and browser journeys |
+| 01 Frontend Engineering | [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | `FE` | `requires_revalidation` | 100% historical | 55% historical | 85% historical | 0 | 4 historical | `c28684d` | 2026-08-05 | Re-run the full Layer 01 checklist at a selected current release candidate; retain the bounded PR #137 overlay and resolve FE-ENV-001 |
 | 02 UI/UX/Accessibility | [layers/02-ui-ux-accessibility.md](layers/02-ui-ux-accessibility.md) | `UX` | `complete` | 86% | 42% | 78% | 0 | 5 | `c28684d` | 2026-07-28 | Provision seeded non-production E2E credentials, then re-run Admin role/viewport/accessibility journeys and assistive-technology checks |
 | 03 Backend/API/Business Logic | [layers/03-backend-api-business-logic.md](layers/03-backend-api-business-logic.md) | `BE` | `complete` | 100% | 32% | 84% | 0 | 9 | `c28684d` | 2026-07-28 | Re-run real-replica-set/configured-service tests, then obtain approved remediation decisions for BE-001 through BE-009 |
 | 04 Database/Data Integrity | [layers/04-database-data-integrity.md](layers/04-database-data-integrity.md) | `DB` | `complete` | 94% | 44% | 78% | 0 | 13 | `c28684d` | 2026-07-28 | Resolve DB-001 through DB-014; obtain approved isolated Mongo topology, restore rehearsal, and migration evidence |
@@ -52,12 +52,34 @@ detail-register counts before cross-layer duplicate consolidation: 1 P0, 74
 P1, 42 P2 and 3 P3. Layer 03 and Layer 05 header counts are superseded where
 their detailed finding severity labels disagree.
 
-The scored HEAD still matches `c28684d`, but the local `origin/main` reference
-observed during final synthesis is
+At the 2026-07-28 final synthesis, the scored HEAD still matched `c28684d`, but
+the local `origin/main` reference observed during that historical synthesis was
 `f56a9d231f3baecf8aa7facc8dc42159474fbfe9`, 13 commits ahead. Its 45 changed
 paths include auth recovery/session source and tests, migrations 007–008,
 frontend auth, the transaction workflow, and both canonical registers.
-No layer score or finding status was inherited from those newer changes.
+No layer score or finding status was inherited from those newer changes. This
+paragraph remains historical provenance; the current PR #137 overlay is
+recorded above.
+
+## Current bounded frontend overlay
+
+Layer 01 now has a post-merge evidence overlay for PR #137 at
+`origin/main` `18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1`. The overlay records the
+merged Frontend Design-System Integration and Audit Correction scope only:
+
+- 62 Jest suites and 368 tests passed.
+- Production build passed; sitemap generation was skipped because the public
+  site origin was not configured.
+- Bundle checks passed 4/4 in report-only mode; no budget decision was applied.
+- Home design-system browser checks passed 4/4 viewports, and Retail discovery
+  checks passed 8/8 with synthetic API configuration and mocks.
+- Eight bounded CodeRabbit review items were reconciled in the merged source,
+  tests, or task-card evidence.
+
+The historical `c28684d` score, counts, and findings are not recalculated by
+this overlay. The Layer 01 status is therefore `requires_revalidation`, and
+the overlay does not establish production readiness, provider activation,
+migration, deployment, or go-live.
 
 ## Historical tracker and report reconciliation
 
@@ -104,6 +126,17 @@ environment or tooling blockers; these are not treated as passes.
   date.
 
 ## Changelog
+
+### 2026-08-05 — PR #137 frontend design-system post-merge overlay
+
+- Updated the Layer 01 tracker to distinguish its historical scored snapshot
+  from the current bounded PR #137 reconciliation evidence.
+- Recorded the merged SHA, 12/12 synthetic Home/Retail browser checks, full
+  Jest/build/bundle results, and the eight bounded CodeRabbit reconciliations.
+- Kept the historical score and finding counts unchanged and set current Layer
+  01 status to `requires_revalidation`.
+- No backend, provider, migration, deployment, production-readiness, or go-live
+  action was performed.
 
 ### 2026-07-28 — Layer 11 provisional production-readiness synthesis
 

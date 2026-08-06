@@ -1,6 +1,6 @@
+from api_contract import error_response
 from fastapi import Request
-from fastapi.responses import JSONResponse
-
+from starlette.responses import JSONResponse
 from transaction_execution import TransactionUnavailableError
 
 TRANSACTION_UNAVAILABLE_DETAIL = {
@@ -10,10 +10,12 @@ TRANSACTION_UNAVAILABLE_DETAIL = {
 
 
 async def transaction_unavailable_handler(
-    _request: Request,
+    request: Request,
     _exc: TransactionUnavailableError,
 ) -> JSONResponse:
-    return JSONResponse(
+    return error_response(
+        request,
         status_code=TransactionUnavailableError.status_code,
-        content={"detail": dict(TRANSACTION_UNAVAILABLE_DETAIL)},
+        detail=dict(TRANSACTION_UNAVAILABLE_DETAIL),
+        default_code=TransactionUnavailableError.code,
     )

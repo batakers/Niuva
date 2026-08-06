@@ -2,7 +2,6 @@ import asyncio
 
 import httpx
 from fastapi import FastAPI
-
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import (
     TransactionCommitOutcomeUnknownError,
@@ -40,11 +39,27 @@ def test_transaction_unavailable_response_uses_stable_existing_envelope():
     expected_message = "Operasi sementara tidak tersedia karena transaksi "
     expected_message += "database belum siap."
     assert response.status_code == 503
-    assert response.json() == {
+    body = response.json()
+    assert body["detail"] == {
+        "code": "transaction_unavailable",
+        "message": expected_message,
+    }
+    assert body["error"] == {
+        "code": "transaction_unavailable",
+        "message": expected_message,
+    }
+    assert body["request_id"]
+    assert response.headers["x-request-id"] == body["request_id"]
+    assert body == {
         "detail": {
             "code": "transaction_unavailable",
             "message": expected_message,
-        }
+        },
+        "error": {
+            "code": "transaction_unavailable",
+            "message": expected_message,
+        },
+        "request_id": body["request_id"],
     }
 
 
@@ -79,8 +94,9 @@ def test_unknown_commit_stays_internal_without_public_retry_mapping():
 
 
 def test_server_composes_one_shared_transaction_guard_and_handler():
-    from tests.test_identity_foundation import server
     from transaction_guard import TransactionMutationGuard
+
+    from tests.test_identity_foundation import server
 
     guard = server.app.state.transaction_guard
     handlers = server.app.exception_handlers

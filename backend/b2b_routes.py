@@ -1,14 +1,15 @@
+import inspect
 import logging
 from datetime import datetime
-import inspect
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
-
+from api_contract import error_responses
 from b2b_domain import B2BDomainError, project_customer_inquiry
+from b2b_pagination import PageRequest, build_page_request
 from b2b_service import B2BService
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from transaction_execution import TransactionUnavailableError
 
 logger = logging.getLogger(__name__)
@@ -41,18 +42,6 @@ class InquiryConversionPayload(BaseModel):
     expected_version: int = Field(ge=1)
     operation_id: UUID
     reason: str = Field(min_length=3, max_length=500)
-
-
-class ErrorBody(BaseModel):
-    code: str
-    message: str
-    details: dict[str, Any] | None = None
-
-
-class ErrorEnvelope(BaseModel):
-    detail: Any
-    error: ErrorBody
-    request_id: str
 
 
 class InquiryHistoryResponse(BaseModel):
@@ -101,16 +90,31 @@ class InquiryConversionResponse(BaseModel):
     quote: dict[str, Any]
 
 
-B2B_ERROR_RESPONSES = {
-    401: {"model": ErrorEnvelope, "description": "Authentication required"},
-    403: {"model": ErrorEnvelope, "description": "Permission denied"},
-    404: {"model": ErrorEnvelope, "description": "Resource not found"},
-    409: {"model": ErrorEnvelope, "description": "Command conflict"},
-    422: {"model": ErrorEnvelope, "description": "Request validation failed"},
-    429: {"model": ErrorEnvelope, "description": "Rate limit exceeded"},
-    500: {"model": ErrorEnvelope, "description": "Unexpected safe failure"},
-    503: {"model": ErrorEnvelope, "description": "Required transaction unavailable"},
-}
+class PaginationParams:
+    def __init__(
+        self,
+        limit: int = Query(default=50, ge=1, le=100),
+        cursor: str | None = Query(default=None, max_length=2048),
+        updated_from: str | None = Query(default=None, max_length=64),
+        updated_before: str | None = Query(default=None, max_length=64),
+    ):
+        self.limit = limit
+        self.cursor = cursor
+        self.updated_from = updated_from
+        self.updated_before = updated_before
+
+
+class InquiryPageResponse(BaseModel):
+    items: list[AdminInquiryResponse]
+    next_cursor: str | None
+
+
+class B2BPageResponse(BaseModel):
+    items: list[dict[str, Any]]
+    next_cursor: str | None
+
+
+B2B_ERROR_RESPONSES = error_responses(401, 403, 404, 409, 422, 429, 500, 503)
 
 
 class QuoteTransitionPayload(BaseModel):
@@ -245,6 +249,26 @@ def build_b2b_router(
                 },
             ) from exc
 
+    def pagination_request(
+        page: PaginationParams,
+        *,
+        status_filter: str | None = None,
+        project_id: str | None = None,
+    ) -> PageRequest:
+        try:
+            return build_page_request(
+                limit=page.limit,
+                cursor=page.cursor,
+                filters={"status": status_filter, "project_id": project_id},
+                updated_from=page.updated_from,
+                updated_before=page.updated_before,
+            )
+        except B2BDomainError as exc:
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail=exc.payload(),
+            ) from exc
+
     @router.post(
         "/inquiries",
         status_code=status.HTTP_201_CREATED,
@@ -272,14 +296,19 @@ def build_b2b_router(
 
     @router.get(
         "/admin/inquiries",
-        response_model=list[AdminInquiryResponse],
+        response_model=InquiryPageResponse,
         responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 422, 500)},
     )
     async def list_inquiries(
-        status_filter: str | None = None,
+        status_filter: str | None = Query(default=None, max_length=64),
+        page: PaginationParams = Depends(),
         _actor: dict = Depends(require_permission("inquiries.read")),
     ):
-        return await invoke(service().list_inquiries(status=status_filter))
+        return await invoke(
+            service().page_inquiries(
+                pagination_request(page, status_filter=status_filter)
+            )
+        )
 
     @router.get(
         "/admin/inquiries/{inquiry_id}",
@@ -341,14 +370,17 @@ def build_b2b_router(
 
     @router.get(
         "/admin/b2b/quotes",
-        response_model=list[dict[str, Any]],
+        response_model=B2BPageResponse,
         responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 422, 500)},
     )
     async def list_quotes(
-        status_filter: str | None = None,
+        status_filter: str | None = Query(default=None, max_length=64),
+        page: PaginationParams = Depends(),
         _actor: dict = Depends(require_permission("quotes.read")),
     ):
-        return await invoke(service().list_quotes(status=status_filter))
+        return await invoke(
+            service().page_quotes(pagination_request(page, status_filter=status_filter))
+        )
 
     @router.get(
         "/admin/b2b/quotes/{quote_id}",
@@ -455,12 +487,21 @@ def build_b2b_router(
             )
         )
 
-    @router.get("/admin/b2b/projects")
+    @router.get(
+        "/admin/b2b/projects",
+        response_model=B2BPageResponse,
+        responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 422, 500)},
+    )
     async def list_projects(
-        status_filter: str | None = None,
+        status_filter: str | None = Query(default=None, max_length=64),
+        page: PaginationParams = Depends(),
         _actor: dict = Depends(require_permission("projects.read")),
     ):
-        return await invoke(service().list_projects(status=status_filter))
+        return await invoke(
+            service().page_projects(
+                pagination_request(page, status_filter=status_filter)
+            )
+        )
 
     @router.get("/admin/b2b/projects/{project_id}")
     async def get_project(
@@ -504,23 +545,41 @@ def build_b2b_router(
             )
         )
 
-    @router.get("/admin/b2b/work-orders")
+    @router.get(
+        "/admin/b2b/work-orders",
+        response_model=B2BPageResponse,
+        responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 422, 500)},
+    )
     async def list_work_orders(
-        project_id: str | None = None,
-        status_filter: str | None = None,
+        project_id: str | None = Query(default=None, max_length=100),
+        status_filter: str | None = Query(default=None, max_length=64),
+        page: PaginationParams = Depends(),
         _actor: dict = Depends(require_permission("production.read")),
     ):
         return await invoke(
-            service().list_work_orders(project_id=project_id, status=status_filter)
+            service().page_work_orders(
+                pagination_request(
+                    page,
+                    project_id=project_id,
+                    status_filter=status_filter,
+                )
+            )
         )
 
-    @router.get("/admin/b2b/material-shortages")
+    @router.get(
+        "/admin/b2b/material-shortages",
+        response_model=B2BPageResponse,
+        responses={code: B2B_ERROR_RESPONSES[code] for code in (401, 403, 422, 500)},
+    )
     async def list_material_shortages(
-        status_filter: str | None = None,
+        status_filter: str | None = Query(default=None, max_length=64),
+        page: PaginationParams = Depends(),
         _actor: dict = Depends(require_permission("inventory.read")),
     ):
         return await invoke(
-            service().list_material_shortages(status=status_filter)
+            service().page_material_shortages(
+                pagination_request(page, status_filter=status_filter)
+            )
         )
 
     @router.get("/admin/b2b/work-orders/{work_order_id}")

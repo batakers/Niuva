@@ -207,7 +207,7 @@ export function BrandButton({
       {icon && (
         <span
           className={cn(
-            "grid h-7 w-7 shrink-0 place-items-center rounded-[0.625rem] transition-transform duration-emphasis ease-snap group-hover:translate-x-1 group-hover:-translate-y-px",
+            "grid h-7 w-7 shrink-0 place-items-center rounded-control transition-transform duration-emphasis ease-snap group-hover:translate-x-1 group-hover:-translate-y-px",
             iconClasses[variant] || iconClasses.secondary
           )}
         >
@@ -250,6 +250,123 @@ export function ULineMotif({ className, light = false }) {
   );
 }
 
+export const HOME_TRANSFORMATION_STAGES = Object.freeze([
+  {
+    title: "Need",
+    body: "Kebutuhan, target, pengguna, dan batasan dipahami sebagai titik mulai.",
+  },
+  {
+    title: "Research",
+    body: "Konteks, peluang, risiko, dan dasar keputusan dipetakan dengan bukti yang tersedia.",
+  },
+  {
+    title: "Experiment",
+    body: "Opsi, asumsi, material, dan pendekatan diuji dalam skala yang tepat.",
+  },
+  {
+    title: "Prototype",
+    body: "Konsep dibawa ke bentuk yang dapat dievaluasi dari sisi fungsi dan pengalaman.",
+  },
+  {
+    title: "Output",
+    body: "Hasil evaluasi menjadi output, dokumentasi, atau arah implementasi berikutnya.",
+  },
+]);
+
+/**
+ * One semantic transformation path, never a decorative U motif. Desktop uses
+ * one connected U-line; mobile keeps the same ordered stages as a static list.
+ */
+export function TransformationPath({
+  items = HOME_TRANSFORMATION_STAGES,
+  compact = false,
+  tone = "light",
+  className,
+}) {
+  const dark = tone === "dark";
+  const offsets = compact ? [0, 38, 60, 38, 0] : [0, 94, 144, 94, 0];
+  const path = compact
+    ? "M 100 24 C 205 24 210 78 300 78 C 390 78 410 110 500 110 C 590 110 610 78 700 78 C 790 78 795 24 900 24"
+    : "M 100 28 C 205 28 210 132 300 132 C 390 132 410 188 500 188 C 590 188 610 132 700 132 C 790 132 795 28 900 28";
+
+  return (
+    <div
+      className={cn("relative", className)}
+      data-transformation-path
+      data-transformation-variant={compact ? "compact" : "complete"}
+    >
+      <p className="sr-only">
+        Alur transformasi Niuva dari Need, Research, Experiment, Prototype,
+        sampai Output.
+      </p>
+      <ol
+        className={cn(
+          "relative ml-4 grid gap-6 border-l pl-6 md:ml-0 md:grid-cols-5 md:gap-4 md:border-l-0 md:pl-0",
+          compact ? "md:h-36" : "md:h-[17rem]",
+          dark ? "border-decoration-inverse-line" : "border-border-strong"
+        )}
+      >
+        <svg
+          aria-hidden="true"
+          viewBox={compact ? "0 0 1000 128" : "0 0 1000 210"}
+          preserveAspectRatio="none"
+          className={cn(
+            "pointer-events-none absolute inset-x-0 top-0 hidden h-full w-full md:block",
+            dark ? "text-text-inverse opacity-50" : "text-brand-secondary"
+          )}
+        >
+          <path
+            d={path}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={compact ? "8" : "7"}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        {items.map((item, index) => (
+          <li
+            key={item.title}
+            className="relative min-w-0 md:translate-y-[var(--path-y)] md:px-2 md:text-center"
+            style={{ "--path-y": `${offsets[index] || 0}px` }}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                "absolute -left-[2.65rem] top-0 grid h-9 w-9 place-items-center rounded-full border text-xs font-semibold md:relative md:left-auto md:top-auto md:mx-auto md:h-10 md:w-10",
+                dark
+                  ? "border-decoration-inverse-line bg-action-primary text-text-inverse"
+                  : "border-action-primary bg-surface-default text-text-primary"
+              )}
+            >
+              {index + 1}
+            </span>
+            <p
+              className={cn(
+                "font-heading text-sm font-semibold",
+                compact ? "md:mt-3 md:text-xs" : "md:mt-4 md:text-base",
+                dark ? "text-text-inverse" : "text-text-primary"
+              )}
+            >
+              {item.title}
+            </p>
+            {!compact && item.body && (
+              <p
+                className={cn(
+                  "mt-2 max-w-[34ch] text-sm leading-6 md:mx-auto",
+                  dark ? "text-text-inverse" : "text-text-secondary"
+                )}
+              >
+                {item.body}
+              </p>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export function DotPagination({ count = 5, active = 0, className }) {
   return (
     <div aria-hidden="true" className={cn("flex items-center gap-2", className)}>
@@ -257,7 +374,7 @@ export function DotPagination({ count = 5, active = 0, className }) {
         <span
           key={index}
           className={cn(
-            "h-2.5 rounded-full bg-[var(--color-brand-secondary)] transition-all duration-emphasis",
+            "h-2.5 rounded-full bg-brand-secondary transition-all duration-emphasis",
             index === active ? "w-8 bg-brand-primary" : "w-2.5 opacity-60"
           )}
         />
@@ -328,7 +445,7 @@ export function CapabilityPanel({
         </h3>
         <p className="mt-4 max-w-xl text-base leading-7 text-text-secondary">{item.body}</p>
         {item.role && (
-          <p className="mt-5 max-w-xl border-l-2 border-[var(--color-brand-primary)] pl-4 text-sm font-semibold leading-6 text-text-primary">
+          <p className="mt-5 max-w-xl border-l-2 border-brand-primary pl-4 text-sm font-semibold leading-6 text-text-primary">
             {item.role}
           </p>
         )}
@@ -471,7 +588,7 @@ export function ProcessTimeline({ items = [], className }) {
       {items.map((item, index) => (
         <li
           key={`${item.title}-${index}`}
-          className="brand-reveal border-t-2 border-[var(--color-brand-secondary)] pt-5"
+          className="brand-reveal border-t-2 border-brand-secondary pt-5"
         >
           {item.label && <p className="type-label text-text-secondary">{item.label}</p>}
           <h3 className={cn("type-heading-card text-text-primary", item.label && "mt-2")}>
@@ -511,7 +628,9 @@ export function ProjectCaseStudyCard({
   className,
   to,
   ctaLabel,
+  variant = "contained",
 }) {
+  const editorial = variant === "editorial";
   const Component = onClick ? "button" : Link;
   const image = project.image || project.images?.[0];
   const proofItems = [
@@ -524,7 +643,7 @@ export function ProjectCaseStudyCard({
   // Pure index%2 mirroring produced an unbroken run of image-and-text splits.
   // Every third case switches to a full-width band instead, so no more than two
   // neighbours ever share a layout family.
-  const wide = index % 3 === 2;
+  const wide = !editorial && index % 3 === 2;
   const reverse = !wide && index % 2 === 1;
 
   return (
@@ -534,14 +653,19 @@ export function ProjectCaseStudyCard({
       onClick={onClick}
       aria-label={`${actionLabel}: ${project.title}`}
       className={cn(
-        "brand-reveal group block w-full overflow-hidden rounded-card border border-border-default bg-surface-default text-left transition-colors duration-emphasis ease-snap hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2",
+        editorial
+          ? "brand-reveal group block w-full border-t border-border-default pt-8 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+          : "brand-reveal group block w-full overflow-hidden rounded-card border border-border-default bg-surface-default text-left transition-colors duration-emphasis ease-snap hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2",
         className
       )}
+      data-project-variant={variant}
     >
       <div
         className={cn(
           "grid gap-6",
-          wide
+          editorial
+            ? "lg:grid-cols-[minmax(0,1.14fr)_minmax(320px,0.86fr)] lg:items-center lg:gap-12"
+            : wide
             ? "lg:grid-cols-1 lg:gap-8"
             : "lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)] lg:gap-10"
         )}
@@ -550,7 +674,10 @@ export function ProjectCaseStudyCard({
           data-brand-visual
           className={cn(
             "relative min-h-0 overflow-hidden bg-surface-muted",
-            wide
+            editorial && "rounded-feature border border-border-default",
+            editorial
+              ? "aspect-[4/3] sm:aspect-[16/10]"
+              : wide
               ? "aspect-[16/9] lg:aspect-[21/9]"
               : "aspect-[4/3] sm:aspect-[16/10] lg:aspect-auto lg:min-h-full",
             reverse && "lg:order-2"
@@ -564,14 +691,24 @@ export function ProjectCaseStudyCard({
               height={project.imageHeight}
               loading="lazy"
               decoding="async"
-              className={cn("h-full w-full transition-transform duration-emphasis ease-snap group-hover:scale-[1.03]", project.imageFit === "contain" ? "object-contain" : "object-cover")}
+              className={cn(
+                "h-full w-full",
+                !editorial && "transition-transform duration-emphasis ease-snap group-hover:scale-[1.03]",
+                project.imageFit === "contain" ? "object-contain" : "object-cover"
+              )}
             />
           ) : (
             <ProjectMotifFallback />
           )}
         </div>
 
-        <div className={cn("flex min-w-0 flex-col px-5 pb-6 sm:px-7 sm:pb-8 lg:p-8", reverse && "lg:order-1")}>
+        <div
+          className={cn(
+            "flex min-w-0 flex-col",
+            editorial ? "lg:py-8" : "px-5 pb-6 sm:px-7 sm:pb-8 lg:p-8",
+            reverse && "lg:order-1"
+          )}
+        >
           <p className="type-label text-text-secondary">{project.category}</p>
           <h3 className="type-heading-subsection mt-4 max-w-2xl text-text-primary">
             {project.title}

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import { StatusBadge } from "@/components/operational/StatusStepper";
+import { PortfolioStatusBadge } from "@/components/admin/PortfolioStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/i18n";
 import { api, formatApiError } from "@/lib/api";
 import { fmtDate } from "@/lib/format";
-import { PORTFOLIO_ACTION_PERMISSIONS, hasPermission } from "@/lib/permissions";
+import {
+  PORTFOLIO_ACTION_PERMISSIONS,
+  PORTFOLIO_ROLLBACK_PERMISSION,
+  hasPermission,
+} from "@/lib/permissions";
 import { AdminLayout } from "./AdminLayout";
 
 const ACTION_TARGETS = {
@@ -25,6 +29,7 @@ const ACTION_TARGETS = {
   publish: "published",
   archive: "archived",
   restore: "draft",
+  revise: "draft",
 };
 
 // Only scheduling asks for a time; every other action is immediate.
@@ -180,7 +185,9 @@ export default function PortfolioDetail() {
             <SurfacePanelHeader className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="type-label text-text-secondary">{t("b2b.currentStatus")}</p>
-                <div className="mt-2"><StatusBadge status={record.status} /></div>
+                <div className="mt-2">
+                  <PortfolioStatusBadge status={record.status} />
+                </div>
               </div>
               {record.source_project_id && (
                 <Link
@@ -237,7 +244,8 @@ export default function PortfolioDetail() {
                         {fmtDate(revision.created_at)}
                       </p>
                     </div>
-                    {revision.revision !== revisions[0].revision && (
+                    {revision.revision !== revisions[0].revision &&
+                      hasPermission(user, PORTFOLIO_ROLLBACK_PERMISSION) && (
                       <Button
                         type="button"
                         variant="outline"
@@ -273,9 +281,11 @@ export default function PortfolioDetail() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      {event.from_status && <StatusBadge status={event.from_status} />}
+                      {event.from_status && (
+                        <PortfolioStatusBadge status={event.from_status} />
+                      )}
                       <ArrowRight className="h-3.5 w-3.5 text-text-disabled" aria-hidden="true" />
-                      <StatusBadge status={event.to_status} />
+                      <PortfolioStatusBadge status={event.to_status} />
                     </div>
                     <p className="mt-2 text-sm text-text-secondary">{event.reason}</p>
                     <p className="mt-1 font-mono text-[11px] text-text-disabled">
