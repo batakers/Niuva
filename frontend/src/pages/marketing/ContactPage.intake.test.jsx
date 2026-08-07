@@ -108,6 +108,33 @@ describe("Public project intake", () => {
     });
   });
 
+  test("shows a focused acknowledgement with the inquiry reference after submission", async () => {
+    renderPage();
+    fillBrief();
+    submitForm();
+
+    const acknowledgement = await screen.findByRole("status", {
+      name: /brief Anda sudah diterima/i,
+    });
+
+    expect(acknowledgement).toHaveTextContent("Nomor referensi inquiry");
+    expect(acknowledgement).toHaveTextContent("inq-1");
+    expect(screen.queryByTestId("contact-form")).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(acknowledgement);
+  });
+
+  test("restores the form and focus when the visitor starts another brief", async () => {
+    renderPage();
+    fillBrief();
+    submitForm();
+
+    await screen.findByTestId("contact-success");
+    fireEvent.click(screen.getByTestId("contact-new-submission"));
+
+    await waitFor(() => expect(screen.getByTestId("contact-form")).toBeInTheDocument());
+    expect(document.activeElement).toBe(screen.getByTestId("contact-name"));
+  });
+
   test("never flattens the brief into the legacy contact blob", async () => {
     renderPage();
     fillBrief();

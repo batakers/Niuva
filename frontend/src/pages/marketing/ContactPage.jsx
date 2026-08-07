@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MarketingLayout } from "@/components/layout/Layout";
 import { api, formatApiError } from "../../lib/api";
@@ -98,10 +98,59 @@ const responseSteps = [
   },
 ];
 
+function readInquiryReference(response) {
+  const reference = response?.data?.id;
+  return typeof reference === "string" && reference.trim() ? reference.trim() : "";
+}
+
+function InquiryAcknowledgement({ reference, onReset, acknowledgementRef }) {
+  return (
+    <div
+      ref={acknowledgementRef}
+      role="status"
+      aria-live="polite"
+      aria-labelledby="contact-success-title"
+      tabIndex={-1}
+      data-testid="contact-success"
+      className="rounded-card bg-surface-muted p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 sm:p-6 md:p-9"
+    >
+      <p className="brand-eyebrow">Brief terkirim</p>
+      <h3 id="contact-success-title" className="type-heading-card mt-4 text-text-primary">
+        Brief Anda sudah diterima.
+      </h3>
+      <p className="mt-4 text-base leading-7 text-text-secondary">
+        Tim Niuva akan meninjau konteks awal dan menghubungi Anda melalui kontak yang diberikan.
+      </p>
+      {reference && (
+        <p className="mt-6 border-y border-border-default py-4 text-sm leading-6 text-text-secondary">
+          Nomor referensi inquiry:{" "}
+          <span className="break-all font-mono-tech font-semibold text-text-primary">{reference}</span>
+        </p>
+      )}
+      <BrandButton type="button" onClick={onReset} className="mt-7" data-testid="contact-new-submission">
+        Kirim brief lain
+      </BrandButton>
+    </div>
+  );
+}
+
 export default function ContactPage() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [submission, setSubmission] = useState(null);
+  const acknowledgementRef = useRef(null);
+  const hadSubmission = useRef(false);
+
+  useEffect(() => {
+    if (submission) {
+      acknowledgementRef.current?.focus();
+    } else if (hadSubmission.current) {
+      document.getElementById("contact-name")?.focus();
+    }
+    hadSubmission.current = Boolean(submission);
+  }, [submission]);
+
   // Clearing on edit means the message disappears the moment the visitor acts
   // on it, instead of sitting there contradicting what they just typed.
   const set = (key) => (event) => {
@@ -148,8 +197,8 @@ export default function ContactPage() {
     };
 
     try {
-      await api.post("/inquiries", payload);
-      toast.success("Brief berhasil dikirim. Tim Niuva akan menghubungi Anda.");
+      const response = await api.post("/inquiries", payload);
+      setSubmission({ reference: readInquiryReference(response) });
       setForm(initialForm);
       setErrors({});
     } catch (error) {
@@ -157,6 +206,11 @@ export default function ContactPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const startNewSubmission = () => {
+    setSubmission(null);
+    setErrors({});
   };
 
   return (
@@ -218,17 +272,25 @@ export default function ContactPage() {
               </div>
 
               <div className="brand-reveal">
-                <ContactForm
-                  form={form}
-                  onChange={set}
-                  onSubmit={submit}
-                  loading={loading}
-                  errors={errors}
-                  needOptions={needOptions}
-                  timelineOptions={timelineOptions}
-                  submitLabel="Kirim Brief Project"
-                  className="bg-surface-muted"
-                />
+                {submission ? (
+                  <InquiryAcknowledgement
+                    reference={submission.reference}
+                    onReset={startNewSubmission}
+                    acknowledgementRef={acknowledgementRef}
+                  />
+                ) : (
+                  <ContactForm
+                    form={form}
+                    onChange={set}
+                    onSubmit={submit}
+                    loading={loading}
+                    errors={errors}
+                    needOptions={needOptions}
+                    timelineOptions={timelineOptions}
+                    submitLabel="Kirim Brief Project"
+                    className="bg-surface-muted"
+                  />
+                )}
               </div>
             </div>
           </PageContainer>
