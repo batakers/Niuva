@@ -118,7 +118,7 @@ state invariants remain.
 | Severity / status | `P1` / `resolved_in_source` |
 | Confidence | 100% |
 | Expected behavior | Duplicate quote variants remain distinct by `quote_line_id`; accepted line quantity and source version are preserved into Work Orders. |
-| Actual behavior | Quote lines receive server-owned immutable identities. Work Order API/service commands require exact `quote_line_id`, retain the Project's exact source version, and enforce cumulative quantity per line. Missing/duplicate historical identity and source-version mismatch fail with `quote_line_reconciliation_required`; no variant fallback remains. |
+| Actual behavior | Quote lines receive server-owned immutable identities. Work Order API/service commands require exact `quote_line_id`, retain the Project's exact source version, and enforce cumulative quantity per line. Snapshot/readiness validation rejects boolean/non-integer quantities and tampered line totals. Missing/duplicate historical identity and source-version mismatch fail with `quote_line_reconciliation_required`; no variant fallback remains. |
 | Evidence | `backend/b2b_domain.py`; `backend/b2b_service.py`; `backend/b2b_routes.py`; `backend/tests/test_b2b_work_orders.py`; `backend/tests/test_b2b_transaction_integration.py`. |
 | Impact | The original wrong-line and overcommit paths are closed in source. Historical records remain unchanged; an ambiguous record blocks dependent mutation. |
 | Recommendation / acceptance | Source acceptance is complete. Any execution against historical data remains separately gated by `DEC-DATA-002` and `docs/runbooks/QUOTE_LINE_RECONCILIATION_RUNBOOK.md`. |
