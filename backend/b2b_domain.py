@@ -55,6 +55,11 @@ PROJECT_TRANSITIONS = {
 }
 
 
+def _strict_int(value: object) -> bool:
+    """Accept JSON integer values, but never booleans masquerading as ints."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def build_quote_item_snapshot(
     item: dict,
     *,
@@ -69,8 +74,12 @@ def build_quote_item_snapshot(
     The snapshots are derived from the catalog rather than accepted from the
     caller: a client-asserted snapshot could claim anything.
     """
-    quantity = int(item["quantity"])
-    unit_price_minor = int(item["unit_price_minor"])
+    quantity = item["quantity"]
+    unit_price_minor = item["unit_price_minor"]
+    if not _strict_int(quantity) or quantity < 1:
+        raise ValueError("quote line quantity must be a positive integer")
+    if not _strict_int(unit_price_minor) or unit_price_minor < 0:
+        raise ValueError("quote line unit price must be a non-negative integer")
     snapshot = {
         "quote_line_id": str(uuid.uuid4()),
         "description": str(item.get("description", "")).strip(),
@@ -348,10 +357,13 @@ def validate_quote_readiness(version: dict) -> None:
         for index, item in enumerate(items)
         if (
             not str(item.get("description") or "").strip()
-            or not isinstance(item.get("quantity"), int)
+            or not _strict_int(item.get("quantity"))
             or item["quantity"] < 1
-            or not isinstance(item.get("unit_price_minor"), int)
+            or not _strict_int(item.get("unit_price_minor"))
             or item["unit_price_minor"] < 0
+            or not _strict_int(item.get("line_total_minor"))
+            or item["line_total_minor"]
+            != item["quantity"] * item["unit_price_minor"]
         )
     ]
     total_minor = version.get("total_minor")

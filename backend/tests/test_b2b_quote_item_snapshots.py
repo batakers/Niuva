@@ -10,7 +10,11 @@ import asyncio
 
 import pytest
 
-from b2b_domain import B2BDomainError, build_quote_item_snapshot
+from b2b_domain import (
+    B2BDomainError,
+    build_quote_item_snapshot,
+    validate_quote_readiness,
+)
 from b2b_service import B2BService
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeDatabase
 from tests.test_b2b_quote_lifecycle import converted_quote
@@ -55,6 +59,52 @@ def test_line_total_is_derived_never_accepted():
     )
 
     assert snapshot["line_total_minor"] == 3000
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["quantity", "unit_price_minor"],
+)
+def test_quote_line_numeric_invariants_reject_boolean_values(field):
+    item = {
+        "description": "Boolean must not be an integer",
+        "quantity": 1,
+        "unit_price_minor": 100,
+    }
+    item[field] = True
+
+    with pytest.raises(ValueError, match="quote line"):
+        build_quote_item_snapshot(item)
+
+
+@pytest.mark.parametrize(
+    ("mutator", "reason"),
+    [
+        (lambda item: item.update(quantity=True), "boolean quantity"),
+        (lambda item: item.update(line_total_minor=999), "tampered line total"),
+    ],
+)
+def test_historical_quote_readiness_rejects_non_authoritative_line_arithmetic(
+    mutator, reason
+):
+    item = build_quote_item_snapshot(
+        {"description": "Immutable line", "quantity": 2, "unit_price_minor": 100}
+    )
+    mutator(item)
+    version = {
+        "scope_snapshot": {
+            "company": "Acme",
+            "pic_name": "Ayu",
+            "pic_email": "ayu@example.com",
+            "need": "Signs",
+        },
+        "items": [item],
+        "total_minor": 200,
+    }
+
+    with pytest.raises(B2BDomainError) as rejected:
+        validate_quote_readiness(version)
+    assert rejected.value.code == "quote_not_ready", reason
 
 
 def test_quote_line_identity_is_generated_server_side_and_unique():
