@@ -248,6 +248,16 @@ class TransactionExecutor:
             raise AssertionError(message)
         except PyMongoError as exc:
             if _is_unavailable(exc):
+                self._emit(
+                    "transaction_rejected",
+                    operation_name=operation_name,
+                    outcome="unavailable",
+                    attempt=0,
+                    retry_mode=retry_mode,
+                    correlation_id=correlation_id,
+                    error_class="transaction_unavailable",
+                    duration_ms=elapsed_ms(),
+                )
                 raise TransactionUnavailableError() from exc
             raise
         finally:
