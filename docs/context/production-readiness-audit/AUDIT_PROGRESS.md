@@ -63,24 +63,6 @@ recorded above.
 
 ## Current bounded frontend overlay
 
-## Current backend authorization/integrity revalidation set
-
-The six requested feature revalidations were split into independent PRs from
-`origin/main` `dd4f535`:
-
-| Scope | Branch | PR | Commit | Status |
-| --- | --- | ---: | --- | --- |
-| Granular RBAC | `feat/granular-rbac` | [#214](https://github.com/batakers/Niuva/pull/214) | `c70b8e1` | Revalidation tests; Migration 006 remains gated |
-| Shared transaction executor | `fix/backend-transaction-executor-revalidation` | [#215](https://github.com/batakers/Niuva/pull/215) | `7f0963a` | Fail-closed startup/telemetry and retry matrix |
-| Quote-line identity | `fix/backend-quote-line-identity-v2` | [#216](https://github.com/batakers/Niuva/pull/216) | `9743471` | Immutable identity/invariant checks |
-| Customer-safe B2B projection | `fix/backend-customer-safe-projection` | [#211](https://github.com/batakers/Niuva/pull/211) | `4158b05` | Allowlist projection regression tests |
-| Legacy order compatibility | `fix/backend-legacy-order-projection-revalidation` | [#212](https://github.com/batakers/Niuva/pull/212) | `e0c96fd` | Read-only/customer-safe projection tests |
-| File authorization/security | `fix/backend-file-security-revalidation` | [#213](https://github.com/batakers/Niuva/pull/213) | `0431e4d` | Scope authorization and safe media tests |
-
-These PRs intentionally do not execute Migration 006, perform historical
-backfills, activate providers, or claim production evidence. Each remains
-independently reviewable and mergeable.
-
 Layer 01 now has a post-merge evidence overlay for PR #137 at
 `origin/main` `18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1`. The overlay records the
 merged Frontend Design-System Integration and Audit Correction scope only:
