@@ -60,6 +60,25 @@ jobs:
           backend/tests/test_auth_session_transaction_integration.py
           backend/tests/test_customer_session_integration.py
           backend/tests/test_auth_recovery_transaction_integration.py
+          backend/tests/test_migration_backup_restore.py
+          --junitxml=transaction-junit.xml
+      - name: Require complete transaction execution and record evidence
+        run: >-
+          python scripts/verify_pytest_evidence.py
+          --junit transaction-junit.xml
+          --profile transaction
+          --command "python -m pytest -n 0 -q [mandatory transaction modules]"
+          --output transaction-evidence.json
+      - name: Upload transaction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transaction-tests-${{ github.run_id }}
+          path: |
+            transaction-junit.xml
+            transaction-evidence.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Stop isolated MongoDB replica set
         if: always()
         run: docker compose -f docker-compose.transaction-test.yml down --volumes --remove-orphans

@@ -162,7 +162,26 @@ jobs:
             backend/tests/test_work_order_allocation_integration.py \
             scripts/load_readonly_api.py
       - name: Run complete backend suite
-        run: python -m pytest -q backend/tests
+        run: >-
+          python -m pytest -q backend/tests
+          --junitxml=backend-hermetic-junit.xml
+      - name: Enforce expected backend skips and record evidence
+        run: >-
+          python scripts/verify_pytest_evidence.py
+          --junit backend-hermetic-junit.xml
+          --profile hermetic
+          --command "python -m pytest -q backend/tests"
+          --output backend-hermetic-evidence.json
+      - name: Upload backend regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-hermetic-${{ github.run_id }}
+          path: |
+            backend-hermetic-junit.xml
+            backend-hermetic-evidence.json
+          if-no-files-found: error
+          retention-days: 14
 
   frontend:
     runs-on: ubuntu-latest
