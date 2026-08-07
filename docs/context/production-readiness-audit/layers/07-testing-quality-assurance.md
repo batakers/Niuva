@@ -591,6 +591,14 @@ to override the raw console results.
 
 ## 16. Changelog
 
+### 2026-08-07 — Backend quality baseline (10.3)
+
+- Added a report-only full-codebase Flake8, Mypy, Black, and isort collector to
+  the backend CI job, with raw artifacts, command/runtime/SHA provenance, and
+  explicit ownership for legacy findings.
+- Existing critical/scoped checks remain required; no whole-codebase threshold
+  is claimed until the owner decision and ratchet date are recorded.
+
 ### 2026-07-28 — Deep Layer 07 audit
 
 - Replaced the initialization placeholder with current test inventory,
