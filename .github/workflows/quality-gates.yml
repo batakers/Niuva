@@ -224,6 +224,17 @@ jobs:
             backend-hermetic-evidence.json
           if-no-files-found: error
           retention-days: 14
+      - name: Collect full backend quality baseline
+        if: always()
+        run: python scripts/collect_backend_quality_baseline.py --output-dir backend-quality-baseline
+      - name: Upload backend quality baseline
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-quality-baseline-${{ github.run_id }}
+          path: backend-quality-baseline
+          if-no-files-found: error
+          retention-days: 14
 
   frontend:
     runs-on: ubuntu-latest
