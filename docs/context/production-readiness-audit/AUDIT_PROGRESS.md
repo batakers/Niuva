@@ -3,7 +3,7 @@
 Status: Context Only — Audit Evidence and Progress Tracker — Not Implementation Authority
 
 Baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
-Last updated: 2026-08-07 (UTC+07:00)
+Last updated: 2026-08-05 (UTC+07:00)
 
 ## Status semantics
 
@@ -60,22 +60,6 @@ frontend auth, the transaction workflow, and both canonical registers.
 No layer score or finding status was inherited from those newer changes. This
 paragraph remains historical provenance; the current PR #137 overlay is
 recorded above.
-
-## Current bounded backend quality baseline overlay
-
-The 10.3 baseline is implemented on `chore/backend-quality-baseline` from
-`origin/main` `dd4f5356496bd16195808f410ed3cc940baeca9a`. CI keeps the existing
-critical Flake8 (`E9,F63,F7,F82`), scoped Mypy, Black/isort, and complete
-backend-suite checks required. A separate artifact now records the full-tree
-Flake8, Mypy, Black, and isort results with command, runtime, and SHA evidence;
-it is report-only until an owner-approved threshold and ratchet date exist.
-
-Initial local evidence recorded 1,998 Flake8 findings, 285 Mypy errors, 47
-Black files, and 53 isort files. These are legacy baseline measurements, not
-waivers. Backend owns runtime/tests, database owners review migrations, and the
-release/DevOps owner owns workflow evidence and required-check policy. The
-complete evidence and triage policy are in
-`docs/implementation/production-readiness/phases/BACKEND-QUALITY-BASELINE-2026-08-07.md`.
 
 ## Current bounded frontend overlay
 
@@ -142,13 +126,6 @@ environment or tooling blockers; these are not treated as passes.
   date.
 
 ## Changelog
-
-### 2026-08-07 — Backend quality baseline (10.3)
-
-- Added reproducible report-only full-tree Flake8, Mypy, Black, and isort
-  evidence to the required backend workflow.
-- Preserved critical and scoped required checks while documenting ownership and
-  the pending whole-codebase threshold decision.
 
 ### 2026-08-05 — PR #137 frontend design-system post-merge overlay
 
