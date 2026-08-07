@@ -538,6 +538,13 @@ upgrade, source edit, authority edit, commit, or push.
 
 ## 11. Changelog
 
+### 2026-08-07
+
+- Added a bounded current-main revalidation overlay for the dependency-lock
+  candidate at `origin/main` `dd4f535` / candidate commit `9366efe`.
+- Recorded exact-lock, Python 3.14.3, pip check, pip-audit, and license-report
+  evidence without promoting GOV-002/GOV-004/GOV-005/GOV-008 to resolved.
+
 ### 2026-07-28
 
 - Replaced the initialization-only Layer 10 template with the dependency,

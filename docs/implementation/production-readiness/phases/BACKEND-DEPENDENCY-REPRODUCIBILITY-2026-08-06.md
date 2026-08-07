@@ -2,7 +2,7 @@
 
 **Status:** bounded source and CI evidence; production-readiness and go-live
 remain separate gates
-**Baseline:** `origin/main` at `fbaa7bb9188c380dcd18290e46d5da6b3a3cb5b0`
+**Baseline:** `origin/main` at `dd4f5356496bd16195808f410ed3cc940baeca9a`
 
 ## Contract
 
