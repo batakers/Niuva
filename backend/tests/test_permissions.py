@@ -179,6 +179,30 @@ def test_multi_role_permissions_are_additive_and_internal():
     assert is_internal(user)
 
 
+def test_operational_roles_cannot_cross_identity_governance_boundary():
+    """Revalidate DEC-ACCESS-002's Super Admin-only governance boundary.
+
+    The wildcard permission is intentionally reserved for ``super_admin``;
+    adding a new operational role must not accidentally expose identity or
+    platform settings administration.
+    """
+    governance_permissions = {"roles.manage", "users.read", "settings.write"}
+    for role in ROLE_PERMISSIONS:
+        if role in {"super_admin", "retail_customer", "organization_customer"}:
+            continue
+        user_permissions = permissions_for(active(role))
+        assert not user_permissions & governance_permissions
+        assert "*" not in user_permissions
+
+
+def test_super_admin_is_the_only_role_with_unrestricted_authority():
+    assert permissions_for(active("super_admin")) == frozenset({"*"})
+    for role in ROLE_PERMISSIONS:
+        if role == "super_admin":
+            continue
+        assert "*" not in permissions_for(active(role))
+
+
 def test_route_permission_inventory_is_declared_and_governance_stays_owner_only():
     route_permissions = set()
     for source_path in BACKEND_DIR.rglob("*.py"):
