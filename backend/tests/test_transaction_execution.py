@@ -265,17 +265,64 @@ def test_exhausted_unknown_commit_result_does_not_rerun_or_abort():
 
 def test_connection_failure_is_normalized_without_secret_detail():
     error = ConnectionFailure("mongodb://user:secret@db.internal")
+    events = []
 
     async def run():
         executor = TransactionExecutor(
-            FakeClient(start_error=error), lambda: capabilities()
+            FakeClient(start_error=error),
+            lambda: capabilities(),
+            event_sink=lambda event, fields: events.append((event, fields)),
         )
         with pytest.raises(TransactionUnavailableError) as caught:
             await executor.execute(
                 lambda _session: None,
                 operation_name="catalog.publish",
+                correlation_id="corr-123",
             )
         assert "secret" not in str(caught.value)
         assert "db.internal" not in str(caught.value)
 
     asyncio.run(run())
+    assert events == [
+        (
+            "transaction_rejected",
+            {
+                "operation_name": "catalog.publish",
+                "outcome": "unavailable",
+                "attempt": 0,
+                "retry_mode": "never",
+                "correlation_id": "corr-123",
+                "error_class": "transaction_unavailable",
+            },
+        )
+    ]
+
+
+def test_non_unknown_commit_error_aborts_without_retrying_commit():
+    session = FakeSession([OperationFailure("commit rejected", code=123)])
+    events = []
+
+    async def run():
+        executor = TransactionExecutor(
+            FakeClient(session),
+            lambda: capabilities(),
+            event_sink=lambda event, fields: events.append((event, fields)),
+        )
+
+        async def callback(_session):
+            return "not committed"
+
+        with pytest.raises(OperationFailure):
+            await executor.execute(callback, operation_name="catalog.publish")
+
+    asyncio.run(run())
+    assert (session.starts, session.commits, session.aborts, session.ends) == (
+        1,
+        1,
+        1,
+        1,
+    )
+    assert [event for event, _fields in events] == [
+        "transaction_start",
+        "transaction_abort",
+    ]
