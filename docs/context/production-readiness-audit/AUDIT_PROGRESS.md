@@ -3,7 +3,7 @@
 Status: Context Only — Audit Evidence and Progress Tracker — Not Implementation Authority
 
 Baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
-Last updated: 2026-08-05 (UTC+07:00)
+Last updated: 2026-08-07 (UTC+07:00)
 
 ## Status semantics
 
@@ -35,15 +35,15 @@ finding exists.
 | ----- | -------- | -------------- | ------------ | ---------------: | --------------: | ---------: | -: | -: | ------------ | ------------ | --------- |
 | 01 Frontend Engineering | [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | `FE` | `requires_revalidation` | 100% historical | 55% historical | 85% historical | 0 | 4 historical | `c28684d` | 2026-08-05 | Re-run the full Layer 01 checklist at a selected current release candidate; retain the bounded PR #137 overlay and resolve FE-ENV-001 |
 | 02 UI/UX/Accessibility | [layers/02-ui-ux-accessibility.md](layers/02-ui-ux-accessibility.md) | `UX` | `complete` | 86% | 42% | 78% | 0 | 5 | `c28684d` | 2026-07-28 | Provision seeded non-production E2E credentials, then re-run Admin role/viewport/accessibility journeys and assistive-technology checks |
-| 03 Backend/API/Business Logic | [layers/03-backend-api-business-logic.md](layers/03-backend-api-business-logic.md) | `BE` | `complete` | 100% | 32% | 84% | 0 | 9 | `c28684d` | 2026-07-28 | Re-run real-replica-set/configured-service tests, then obtain approved remediation decisions for BE-001 through BE-009 |
-| 04 Database/Data Integrity | [layers/04-database-data-integrity.md](layers/04-database-data-integrity.md) | `DB` | `complete` | 94% | 44% | 78% | 0 | 13 | `c28684d` | 2026-07-28 | Resolve DB-001 through DB-014; obtain approved isolated Mongo topology, restore rehearsal, and migration evidence |
-| 05 Integration/Feature Parity | [layers/05-integration-feature-parity.md](layers/05-integration-feature-parity.md) | `INT` | `complete` | 92% | 38% | 82% | 0 | 10 | `c28684d` | 2026-07-28 | Resolve INT-001/002/003/005/006/007 decisions, then run seeded browser/API journeys |
-| 06 Security/Auth/Privacy | [layers/06-security-auth-privacy.md](layers/06-security-auth-privacy.md) | `SEC` | `complete` | 92% | 25% | 86% | 1 | 10 | `c28684d` | 2026-07-28 | Close/revalidate SEC-001 and applicable P1s; obtain approved production evidence for SEC-011 |
-| 07 Testing/Quality Assurance | [layers/07-testing-quality-assurance.md](layers/07-testing-quality-assurance.md) | `QA` | `complete` | 95% | 48% | 68% | 0 | 3 | `c28684d` | 2026-07-28 | Resolve QA-001–QA-007 owners/environments, then rerun blocked API/browser/artifact gates |
+| 03 Backend/API/Business Logic | [layers/03-backend-api-business-logic.md](layers/03-backend-api-business-logic.md) | `BE` | `requires_revalidation` | 100% historical | 32% historical | 84% historical | 0 | 9 historical | `c28684d` | 2026-08-07 | Rebaseline after PRs #211, #212, #215 and #216; historical-data and production evidence remain gated |
+| 04 Database/Data Integrity | [layers/04-database-data-integrity.md](layers/04-database-data-integrity.md) | `DB` | `requires_revalidation` | 94% historical | 44% historical | 78% historical | 0 | 13 historical | `c28684d` | 2026-08-07 | Revalidate Quote-line and transaction findings at `f21373a`; retain isolated-data, restore and migration gates |
+| 05 Integration/Feature Parity | [layers/05-integration-feature-parity.md](layers/05-integration-feature-parity.md) | `INT` | `requires_revalidation` | 92% historical | 38% historical | 82% historical | 0 | 10 historical | `c28684d` | 2026-08-07 | Revalidate B2B/customer-safe route coverage after PRs #211–#212 and #216; authenticated E2E remains open |
+| 06 Security/Auth/Privacy | [layers/06-security-auth-privacy.md](layers/06-security-auth-privacy.md) | `SEC` | `requires_revalidation` | 92% historical | 25% historical | 86% historical | 1 historical | 10 historical | `c28684d` | 2026-08-07 | Revalidate RBAC/file/customer projection evidence after PRs #211–#214; Migration 006 and production evidence remain gated |
+| 07 Testing/Quality Assurance | [layers/07-testing-quality-assurance.md](layers/07-testing-quality-assurance.md) | `QA` | `requires_revalidation` | 95% historical | 48% historical | 68% historical | 0 | 3 historical | `c28684d` | 2026-08-07 | Rebaseline test counts and quality signals from merged PRs #208 and #210; external production-like evidence remains open |
 | 08 DevOps/Deployment/Operations | [layers/08-devops-deployment-operations.md](layers/08-devops-deployment-operations.md) | `OPS` | `complete` | 92% | 29% | 86% | 0 | 10 | `c28684d` | 2026-07-28 | Obtain approved non-production staging-like artifact/backup/restore/smoke/rollback evidence; resolve OPS-001 through OPS-012 |
 | 09 Reliability/Performance/Observability | [layers/09-reliability-performance-observability.md](layers/09-reliability-performance-observability.md) | `SRE` | `complete` | 100% | 43% | 71% | 0 | 4 | `c28684d` | 2026-07-28 | Obtain owner decisions and production-like evidence, then remediate SRE-001 through SRE-010 in bounded phases |
-| 10 Dependencies/Maintainability/Governance | [layers/10-dependencies-maintainability-governance.md](layers/10-dependencies-maintainability-governance.md) | `GOV` | `complete` | 100% | 38% | 81% | 0 | 6 | `c28684d` | 2026-07-28 | Revalidate GOV-001–GOV-005 and GOV-014 after an approved dependency/governance baseline |
-| 11 Production-Readiness Summary | [layers/11-production-readiness-summary.md](layers/11-production-readiness-summary.md) | `SUM` | `complete` | 100% | 38% | 67% | 1 | 74 | `c28684d` | 2026-07-28 | Select one release-candidate SHA and revalidate affected layers; local `origin/main` is 13 commits ahead |
+| 10 Dependencies/Maintainability/Governance | [layers/10-dependencies-maintainability-governance.md](layers/10-dependencies-maintainability-governance.md) | `GOV` | `requires_revalidation` | 100% historical | 38% historical | 81% historical | 0 | 6 historical | `c28684d` | 2026-08-07 | Revalidate GOV findings against the merged dependency lock and report-only full quality baseline from PRs #209–#210 |
+| 11 Production-Readiness Summary | [layers/11-production-readiness-summary.md](layers/11-production-readiness-summary.md) | `SUM` | `requires_revalidation` | 100% historical | 38% historical | 67% historical | 1 historical | 74 historical | `c28684d` | 2026-08-07 | Select `f21373a` or a later approved release candidate and perform a new cross-layer synthesis |
 
 Layer 11 reports Production Environment / Go-Live Readiness separately at
 15%. Its verdict is `NOT PRODUCTION READY` and its strict final label is
@@ -60,6 +60,32 @@ frontend auth, the transaction workflow, and both canonical registers.
 No layer score or finding status was inherited from those newer changes. This
 paragraph remains historical provenance; the current PR #137 overlay is
 recorded above.
+
+## Current backend delivery reconciliation
+
+`origin/main` at `f21373a3b5aa3b8ed22b7b178b4800b9d16ce381` contains the
+nine independently reviewed backend deliveries from PRs #208 through #216.
+PRs #208–#210 were integrated sequentially; PRs #211–#216 were then rebased on
+that merged test/dependency/quality baseline. Every PR was merged only after
+backend, frontend, secret-scan and applicable real transaction checks passed.
+
+| Scope | PR | Merge SHA | Current result |
+| --- | ---: | --- | --- |
+| 10.1 Backend test completeness | #208 | `d0f39ff` | Hermetic, expected-skip, transaction and external evidence gates merged |
+| 10.2 Dependency reproducibility | #209 | `11cb7bd` | Hashed lock, Python 3.14.3 runtime, audit and license evidence merged |
+| 10.3 Lint/type-check baseline | #210 | `e7d57db` | Required scoped gates plus report-only full-tree artifact merged |
+| 2.2 Customer-safe B2B projection | #211 | `ab5b108` | Allowlist regression coverage merged |
+| 2.3 Legacy order compatibility | #212 | `cd425e8` | Read-only customer/internal projection coverage merged |
+| 2.4 File authorization/security | #213 | `9c851f6` | Fail-closed scope and safe media coverage merged |
+| 2.1 Granular RBAC | #214 | `d3cea50` | Permission governance revalidated; Migration 006 remains gated |
+| 3.1 Shared transaction executor | #215 | `ca862e4` | Startup rejection telemetry and retry behavior revalidated |
+| 3.2 Quote-line identity | #216 | `f21373a` | Immutable quantity/price/line-total invariants revalidated |
+
+This overlay is bounded repository/CI evidence. It does not claim historical
+data reconciliation, Migration 006 execution, provider activation,
+production-storage validation, deployment, or go-live readiness. Historical
+layer scores and finding counts remain unchanged until a full re-audit is
+performed on a selected release candidate.
 
 ## Current bounded frontend overlay
 
@@ -126,6 +152,16 @@ environment or tooling blockers; these are not treated as passes.
   date.
 
 ## Changelog
+
+### 2026-08-07 — Backend PR #208–#216 post-merge reconciliation
+
+- Recorded final merge SHAs and green CI disposition for the nine backend
+  test, dependency, quality, authorization, projection, storage and transaction
+  deliveries.
+- Marked affected historical layers `requires_revalidation` without promoting
+  repository evidence into production or go-live evidence.
+- Removed the stale current-next-step claim that `origin/main` was only 13
+  commits ahead of the historical audit baseline.
 
 ### 2026-08-05 — PR #137 frontend design-system post-merge overlay
 
