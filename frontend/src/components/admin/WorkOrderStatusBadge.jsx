@@ -5,6 +5,8 @@ import { useI18n } from "@/i18n";
 
 const WORK_ORDER_STATUS_TONES = {
   in_progress: "info",
+  quality_control: "warning",
+  rework: "warning",
   completed: "success",
   cancelled: "danger",
 };

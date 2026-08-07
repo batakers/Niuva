@@ -19,8 +19,12 @@ from b2b_domain import (
     validate_work_order_transition,
     work_order_next_actions,
 )
+from b2b_routes import (
+    WorkOrderCreatePayload,
+    WorkOrderQCPayload,
+    WorkOrderTransitionPayload,
+)
 from b2b_service import B2BService
-from b2b_routes import WorkOrderCreatePayload
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeDatabase
 from tests.test_b2b_quote_lifecycle import converted_quote
 
@@ -99,10 +103,13 @@ def test_a_line_without_materials_requires_nothing():
 def test_work_order_transition_graph():
     assert work_order_next_actions("planned") == ["start", "cancel"]
     validate_work_order_transition("planned", "in_progress", reason="Mulai produksi")
-    validate_work_order_transition("in_progress", "completed", reason="Selesai")
+    validate_work_order_transition(
+        "in_progress", "quality_control", reason="Produksi selesai"
+    )
+    validate_work_order_transition("rework", "in_progress", reason="Mulai rework")
 
     with pytest.raises(B2BDomainError) as skipped:
-        validate_work_order_transition("planned", "completed", reason="Lompat")
+        validate_work_order_transition("in_progress", "completed", reason="Lompat QC")
     assert skipped.value.code == "work_order_transition_invalid"
 
     with pytest.raises(B2BDomainError) as terminal:
@@ -112,6 +119,21 @@ def test_work_order_transition_graph():
     with pytest.raises(B2BDomainError) as missing:
         validate_work_order_transition("planned", "cancelled", reason="  ")
     assert missing.value.code == "reason_required"
+
+
+def test_work_order_api_requires_explicit_qc_command_for_completion():
+    command = {
+        "expected_version": 2,
+        "operation_id": "11111111-1111-1111-1111-111111111111",
+        "reason": "Production output is ready for inspection",
+    }
+    with pytest.raises(ValidationError):
+        WorkOrderTransitionPayload.model_validate(
+            {**command, "target_status": "completed"}
+        )
+
+    qc = WorkOrderQCPayload.model_validate({**command, "outcome": "passed"})
+    assert qc.outcome == "passed"
 
 
 async def active_project(db, service, *, quote_items=None):
@@ -571,3 +593,111 @@ async def run_closed_project_refuses_new_work():
 
 def test_a_closed_project_cannot_take_on_new_production():
     asyncio.run(run_closed_project_refuses_new_work())
+
+
+def test_qc_rework_and_pass_are_immutable_versioned_lifecycle_records():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        project, actor = await active_project(db, service)
+        work_order = await service.create_work_order(
+            project["id"],
+            expected_version=project["version"],
+            operation_id="op-qc-work-order",
+            reason="Create QC lifecycle run",
+            quote_line_id=first_quote_line_id(project),
+            quantity=1,
+            actor=actor,
+        )
+        started = await service.transition_work_order(
+            work_order["id"],
+            target_status="in_progress",
+            expected_version=work_order["version"],
+            operation_id="op-qc-start",
+            reason="Start production",
+            actor=actor,
+        )
+        awaiting_qc = await service.transition_work_order(
+            work_order["id"],
+            target_status="quality_control",
+            expected_version=started["version"],
+            operation_id="op-qc-submit",
+            reason="Production output ready",
+            actor=actor,
+        )
+        with pytest.raises(B2BDomainError) as transition_conflict:
+            await service.transition_work_order(
+                work_order["id"],
+                target_status="quality_control",
+                expected_version=started["version"],
+                operation_id="op-qc-submit",
+                reason="Different transition command",
+                actor=actor,
+            )
+        assert transition_conflict.value.code == "operation_id_conflict"
+        rework = await service.record_work_order_qc(
+            work_order["id"],
+            outcome="rework_required",
+            expected_version=awaiting_qc["version"],
+            operation_id="op-qc-first-result",
+            reason="Dimension outside tolerance",
+            actor={"id": "qc-1"},
+        )
+        replay = await service.record_work_order_qc(
+            work_order["id"],
+            outcome="rework_required",
+            expected_version=awaiting_qc["version"],
+            operation_id="op-qc-first-result",
+            reason="Dimension outside tolerance",
+            actor={"id": "qc-1"},
+        )
+
+        assert rework["status"] == replay["status"] == "rework"
+        assert rework["qc_records"][0]["outcome"] == "rework_required"
+        assert rework["rework_records"][0]["status"] == "open"
+        with pytest.raises(B2BDomainError) as conflict:
+            await service.record_work_order_qc(
+                work_order["id"],
+                outcome="passed",
+                expected_version=awaiting_qc["version"],
+                operation_id="op-qc-first-result",
+                reason="Different result",
+                actor={"id": "qc-1"},
+            )
+        assert conflict.value.code == "operation_id_conflict"
+
+        resumed = await service.transition_work_order(
+            work_order["id"],
+            target_status="in_progress",
+            expected_version=rework["version"],
+            operation_id="op-rework-resume",
+            reason="Correction started",
+            actor=actor,
+        )
+        assert resumed["rework_records"][0]["status"] == "resumed"
+        second_qc = await service.transition_work_order(
+            work_order["id"],
+            target_status="quality_control",
+            expected_version=resumed["version"],
+            operation_id="op-qc-resubmit",
+            reason="Corrected output ready",
+            actor=actor,
+        )
+        completed = await service.record_work_order_qc(
+            work_order["id"],
+            outcome="passed",
+            expected_version=second_qc["version"],
+            operation_id="op-qc-pass",
+            reason="All acceptance checks passed",
+            actor={"id": "qc-1"},
+        )
+
+        assert completed["status"] == "completed"
+        assert completed["completed_at"] == completed["updated_at"]
+        assert [record["outcome"] for record in completed["qc_records"]] == [
+            "rework_required",
+            "passed",
+        ]
+        assert completed["permitted_next_actions"] == []
+
+    asyncio.run(scenario())

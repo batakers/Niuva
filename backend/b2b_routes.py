@@ -202,7 +202,11 @@ class WorkOrderCommandPayload(BaseModel):
 
 
 class WorkOrderTransitionPayload(WorkOrderCommandPayload):
-    target_status: Literal["in_progress", "completed", "cancelled"]
+    target_status: Literal["in_progress", "quality_control", "cancelled"]
+
+
+class WorkOrderQCPayload(WorkOrderCommandPayload):
+    outcome: Literal["passed", "rework_required"]
 
 
 def build_b2b_router(
@@ -656,6 +660,23 @@ def build_b2b_router(
                     )
                     else None
                 ),
+            )
+        )
+
+    @router.post("/admin/b2b/work-orders/{work_order_id}/qc")
+    async def record_work_order_qc(
+        work_order_id: str,
+        payload: WorkOrderQCPayload,
+        actor: dict = Depends(require_permission("qc.write")),
+    ):
+        return await invoke(
+            service().record_work_order_qc(
+                work_order_id,
+                outcome=payload.outcome,
+                expected_version=payload.expected_version,
+                operation_id=str(payload.operation_id),
+                reason=payload.reason,
+                actor=actor,
             )
         )
 

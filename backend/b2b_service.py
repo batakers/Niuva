@@ -832,6 +832,8 @@ class B2BService:
                 line.get("material_snapshot"), quantity
             ),
             "reservation_ids": [],
+            "qc_records": [],
+            "rework_records": [],
             "history": [
                 {
                     "event": "work_order_created",
@@ -1299,9 +1301,16 @@ class B2BService:
         inventory_service=None,
     ) -> dict:
         work_order = await self._get_work_order(work_order_id)
+        command_fingerprint = quote_command_fingerprint(
+            "work_order.transition",
+            expected_version=expected_version,
+            reason=reason,
+            actor_user_id=actor.get("id"),
+            payload={"target_status": target_status},
+        )
         for event in work_order.get("history", []):
             if event.get("operation_id") == operation_id:
-                if event.get("to_status") != target_status:
+                if event.get("command_fingerprint") != command_fingerprint:
                     raise B2BDomainError(
                         409,
                         "operation_id_conflict",
@@ -1327,18 +1336,17 @@ class B2BService:
             work_order["status"], target_status, reason=reason
         )
 
-        # A run that reserved material cannot be called done while that material
-        # is still only reserved: the reservation would outlive the run and hold
-        # stock nobody can use.
+        # A run that reserved material cannot enter QC while that material is
+        # still only reserved: QC must inspect actual production, not a plan.
         if (
-            target_status == "completed"
+            target_status == "quality_control"
             and work_order.get("reservation_ids")
             and not work_order.get("materials_consumed")
         ):
             raise B2BDomainError(
                 409,
                 "work_order_materials_outstanding",
-                "Work Order tidak dapat diselesaikan sebelum material dikonsumsi.",
+                "Work Order tidak dapat masuk QC sebelum material dikonsumsi.",
                 details={"reservation_ids": work_order["reservation_ids"]},
             )
 
@@ -1349,6 +1357,7 @@ class B2BService:
             "actor_user_id": actor.get("id"),
             "reason": reason.strip(),
             "operation_id": operation_id,
+            "command_fingerprint": command_fingerprint,
             "timestamp": timestamp,
         }
         changes = {
@@ -1357,6 +1366,31 @@ class B2BService:
             "history": [*work_order.get("history", []), event],
             "updated_at": timestamp,
         }
+        if work_order["status"] == "rework" and target_status == "in_progress":
+            rework_records = deepcopy(work_order.get("rework_records") or [])
+            open_record = next(
+                (
+                    record
+                    for record in reversed(rework_records)
+                    if record.get("status") == "open"
+                ),
+                None,
+            )
+            if open_record is None:
+                raise B2BDomainError(
+                    409,
+                    "work_order_rework_record_missing",
+                    "Work Order rework tidak memiliki record yang dapat dilanjutkan.",
+                )
+            open_record.update(
+                {
+                    "status": "resumed",
+                    "resumed_at": timestamp,
+                    "resumed_by": actor.get("id"),
+                    "resume_reason": reason.strip(),
+                }
+            )
+            changes["rework_records"] = rework_records
         if (
             target_status == "cancelled"
             and work_order.get("reservation_ids")
@@ -1449,6 +1483,127 @@ class B2BService:
                 409,
                 "version_conflict",
                 "Work Order berubah selama transisi.",
+            )
+        return project_work_order({**work_order, **changes})
+
+    async def record_work_order_qc(
+        self,
+        work_order_id: str,
+        *,
+        outcome: str,
+        expected_version: int,
+        operation_id: str,
+        reason: str,
+        actor: dict,
+    ) -> dict:
+        """Record one immutable QC result and drive pass/rework status."""
+        work_order = await self._get_work_order(work_order_id)
+        command_fingerprint = quote_command_fingerprint(
+            "work_order.qc",
+            expected_version=expected_version,
+            reason=reason,
+            actor_user_id=actor.get("id"),
+            payload={"outcome": outcome},
+        )
+        for event in work_order.get("history", []):
+            if event.get("operation_id") == operation_id:
+                if (
+                    event.get("event") != "qc_recorded"
+                    or event.get("command_fingerprint") != command_fingerprint
+                ):
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk aksi berbeda.",
+                    )
+                return project_work_order(work_order)
+
+        if work_order["version"] != expected_version:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Work Order telah berubah. Muat versi terbaru sebelum QC.",
+                details={
+                    "current_version": work_order["version"],
+                    "current_status": work_order["status"],
+                },
+            )
+        if work_order["status"] != "quality_control":
+            raise B2BDomainError(
+                409,
+                "work_order_not_in_quality_control",
+                "Hasil QC hanya dapat dicatat saat Work Order berada pada QC.",
+                details={"current_status": work_order["status"]},
+            )
+        if outcome not in {"passed", "rework_required"}:
+            raise B2BDomainError(
+                422,
+                "qc_outcome_invalid",
+                "Hasil QC tidak dikenali.",
+            )
+        if not reason.strip():
+            raise B2BDomainError(
+                422, "reason_required", "Catatan hasil QC wajib diisi."
+            )
+
+        timestamp = now_iso()
+        qc_record_id = str(uuid.uuid4())
+        target_status = "completed" if outcome == "passed" else "rework"
+        qc_record = {
+            "id": qc_record_id,
+            "outcome": outcome,
+            "work_order_version": expected_version,
+            "recorded_by": actor.get("id"),
+            "reason": reason.strip(),
+            "recorded_at": timestamp,
+        }
+        event = {
+            "event": "qc_recorded",
+            "from_status": "quality_control",
+            "to_status": target_status,
+            "qc_record_id": qc_record_id,
+            "qc_outcome": outcome,
+            "actor_user_id": actor.get("id"),
+            "reason": reason.strip(),
+            "operation_id": operation_id,
+            "command_fingerprint": command_fingerprint,
+            "timestamp": timestamp,
+        }
+        changes = {
+            "status": target_status,
+            "version": expected_version + 1,
+            "qc_records": [*work_order.get("qc_records", []), qc_record],
+            "history": [*work_order.get("history", []), event],
+            "updated_at": timestamp,
+        }
+        if outcome == "rework_required":
+            changes["rework_records"] = [
+                *work_order.get("rework_records", []),
+                {
+                    "id": str(uuid.uuid4()),
+                    "qc_record_id": qc_record_id,
+                    "status": "open",
+                    "reason": reason.strip(),
+                    "created_by": actor.get("id"),
+                    "created_at": timestamp,
+                },
+            ]
+        else:
+            changes["completed_at"] = timestamp
+
+        result = await self.db.work_orders.update_one(
+            {
+                "id": work_order_id,
+                "version": expected_version,
+                "status": "quality_control",
+            },
+            {"$set": changes},
+        )
+        if not result.matched_count:
+            raise B2BDomainError(
+                409,
+                "version_conflict",
+                "Work Order berubah selama pencatatan QC.",
             )
         return project_work_order({**work_order, **changes})
 
