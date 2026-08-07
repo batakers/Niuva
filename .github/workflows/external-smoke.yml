@@ -53,6 +53,13 @@ jobs:
         run: >-
           python -m pytest -q backend/tests/external_smoke_test.py
           --junitxml=external-smoke-junit.xml
+      - name: Require complete external execution and record evidence
+        run: >-
+          python scripts/verify_pytest_evidence.py
+          --junit external-smoke-junit.xml
+          --profile external
+          --command "python -m pytest -q backend/tests/external_smoke_test.py"
+          --output external-smoke-evidence.json
       - name: Upload smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,5 +68,6 @@ jobs:
           path: |
             staging-smoke.json
             external-smoke-junit.xml
-          if-no-files-found: ignore
+            external-smoke-evidence.json
+          if-no-files-found: error
           retention-days: 14
