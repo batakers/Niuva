@@ -52,10 +52,10 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
 
 ## DEC-UX-003 — MVP User Flow and Canonical Route Contract
 
-- **Status:** Approved Decision — No Implementation Authority
+- **Status:** Approved Decision — Documentation Amendment; No Implementation Authority
 - **Decision owner:** Product decision authority
 - **Approver:** Explicit user approval
-- **Decision date:** 31 July 2026
+- **Decision date:** 31 July 2026; amended 8 August 2026
 - **Options:**
   1. Paket canonical route `NUF-R02` sampai `NUF-R12`, termasuk pemisahan
      Request/Offer, provider-neutral checkout, serta penajaman legacy
@@ -67,13 +67,16 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
 - **Recommended baseline:** Gunakan canonical public aliases, `/dashboard`,
   product configuration, Retail Request/Offer, `/retail/checkout`,
   `/orders/:id`, `/dashboard/notifications`, Admin Retail Request/Order/Case
-  queues, dan `/register` yang tetap berada di belakang activation contract.
+  queues, `/contact` untuk form-first B2B Inquiry dengan optional user-clicked
+  WhatsApp continuation, dan `/register` yang tetap berada di belakang
+  activation contract.
 - **Rationale:** Setiap durable intent memiliki satu route owner, Retail dan
   B2B tidak tercampur, dan historical legacy Order tetap tersedia tanpa menjadi
   work queue aktif.
-- **Impact:** Public redirects, customer account/navigation, Custom Print
-  configuration, quote-required handoff, Assisted Retail Offer, checkout return,
-  notification deep links, legacy compatibility, dan Admin queues.
+- **Impact:** Public redirects, public B2B intake, customer
+  account/navigation, Custom Print configuration, quote-required handoff,
+  Assisted Retail Offer, checkout return, notification deep links, legacy
+  compatibility, dan Admin queues.
 - **Dependencies:** `DEC-ARCH-01`, `DEC-RT-02`, `DEC-OFFER-01`,
   `DEC-AFTER-01`, `DEC-DATA-003`, `DEC-ACCESS-003`, dan `DEC-PAY-02`.
 - **Related ADR:** Route decision:
@@ -82,8 +85,12 @@ Setiap entry harus memiliki status, owner, approver, tanggal, options, recommend
   `docs/decisions/architecture/ADR-004-surface-boundary-topology.md`.
 - **Final decision:** `NUF-R02` sampai `NUF-R12` disetujui dengan penajaman
   bahwa `/order` tidak pernah menjadi checkout baru dan `/admin/orders`
-  sementara menjadi arsip legacy baca-saja. Cart/customer after-sales exact
-  routes, registration/security contract, implementation, migration, provider,
+  sementara menjadi arsip legacy baca-saja. Pada amendment 8 August 2026,
+  `/contact` ditetapkan sebagai form-first public B2B/partnership Inquiry;
+  setelah persistence berhasil, customer boleh membuka destination WhatsApp
+  public yang sudah disetujui dengan Inquiry UUID. Ini bukan notification,
+  webhook, campaign, atau portal B2B. Cart/customer after-sales exact routes,
+  registration/security/API contract, implementation, migration, provider,
   deployment, readiness, dan go-live tetap terpisah.
 
 ## DEC-RT-01 — First Retail Vertical Slice
