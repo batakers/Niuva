@@ -579,6 +579,17 @@ approved environment.
 
 ## 13. Changelog
 
+### 2026-08-07 — Granular RBAC repository revalidation
+
+- Revalidated the approved canonical role matrix, additive multi-role policy,
+  fail-closed legacy handling, route permission inventory, and the
+  Super Admin-only identity/settings boundary.
+- Added focused executable evidence in `backend/tests/test_permissions.py`
+  and the bounded record at
+  `docs/implementation/production-readiness/phases/RBAC-2.1-REVALIDATION-2026-08-07.md`.
+- Migration 006, account role assignment, production rollout, and go-live
+  remain separately gated and were not executed by this revalidation.
+
 ### 2026-07-28 — Layer 06 completed
 
 - Completed the requested repository/static security, authentication,
