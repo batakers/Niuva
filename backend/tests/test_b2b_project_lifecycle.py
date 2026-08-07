@@ -3,9 +3,9 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 import pytest
-
 from b2b_domain import B2BDomainError, validate_project_transition
 from b2b_service import B2BService
+
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeDatabase
 from tests.test_b2b_quote_lifecycle import converted_quote
 
@@ -76,9 +76,9 @@ def test_accepted_quote_creates_exactly_one_project():
         assert first["project"]["id"] == replay["project"]["id"]
         assert len(db.b2b_projects.items) == 1
         assert first["project"]["status"] == "planned"
-        assert first["project"]["source_quote_version_id"] == quote[
-            "accepted_version_id"
-        ]
+        assert (
+            first["project"]["source_quote_version_id"] == quote["accepted_version_id"]
+        )
         assert first["project"]["quote_snapshot"]["revision"] == 2
         assert first["quote"]["project_id"] == first["project"]["id"]
         assert first["quote"]["permitted_next_actions"] == []
@@ -92,6 +92,104 @@ def test_accepted_quote_creates_exactly_one_project():
                 actor=actor,
             )
         assert duplicate.value.code == "project_already_created"
+
+    asyncio.run(scenario())
+
+
+def test_project_creation_replay_is_bound_to_the_original_command():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        quote, actor = await accepted_quote(service)
+
+        await service.create_project_from_quote(
+            quote["id"],
+            expected_version=quote["version"],
+            operation_id="op-create-project",
+            reason="Accepted scope ready for delivery",
+            actor=actor,
+        )
+        with pytest.raises(B2BDomainError) as conflict:
+            await service.create_project_from_quote(
+                quote["id"],
+                expected_version=quote["version"],
+                operation_id="op-create-project",
+                reason="Different commercial command",
+                actor=actor,
+            )
+
+        assert conflict.value.code == "operation_id_conflict"
+        assert len(db.b2b_projects.items) == 1
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "corruption",
+    [
+        "current_version_id",
+        "sent_version_id",
+        "acceptance_version_id",
+        "acceptance_shape",
+    ],
+)
+def test_project_creation_rejects_inconsistent_accepted_version_links(corruption):
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        quote, actor = await accepted_quote(service)
+        stored = await db.b2b_quotes.find_one({"id": quote["id"]})
+        if corruption == "acceptance_shape":
+            changes = {"acceptance": "invalid"}
+        elif corruption == "acceptance_version_id":
+            acceptance = deepcopy(stored["acceptance"])
+            acceptance["version_id"] = "different-version"
+            changes = {"acceptance": acceptance}
+        else:
+            changes = {corruption: "different-version"}
+        await db.b2b_quotes.update_one({"id": quote["id"]}, {"$set": changes})
+
+        with pytest.raises(B2BDomainError) as rejected:
+            await service.create_project_from_quote(
+                quote["id"],
+                expected_version=quote["version"],
+                operation_id=f"op-mismatch-{corruption}",
+                reason="Reject inconsistent source",
+                actor=actor,
+            )
+
+        expected_code = (
+            "project_acceptance_evidence_missing"
+            if corruption == "acceptance_shape"
+            else "project_quote_version_mismatch"
+        )
+        assert rejected.value.code == expected_code
+        assert db.b2b_projects.items == []
+
+    asyncio.run(scenario())
+
+
+def test_project_creation_rejects_version_owned_by_another_quote():
+    async def scenario():
+        db = FakeDatabase()
+        service = B2BService(db=db, transaction_guard=EnabledGuard())
+        quote, actor = await accepted_quote(service)
+        await db.b2b_quote_versions.update_one(
+            {"id": quote["accepted_version_id"]},
+            {"$set": {"quote_id": "different-quote"}},
+        )
+
+        with pytest.raises(B2BDomainError) as rejected:
+            await service.create_project_from_quote(
+                quote["id"],
+                expected_version=quote["version"],
+                operation_id="op-foreign-version",
+                reason="Reject foreign source version",
+                actor=actor,
+            )
+
+        assert rejected.value.code == "project_quote_version_mismatch"
+        assert db.b2b_projects.items == []
 
     asyncio.run(scenario())
 

@@ -1566,6 +1566,16 @@ class B2BService:
         actor: dict,
     ) -> dict:
         quote = await self._get_quote(quote_id)
+        command_fingerprint = quote_command_fingerprint(
+            "project.create",
+            expected_version=expected_version,
+            reason=reason,
+            actor_user_id=actor.get("id"),
+            payload={
+                "quote_id": quote_id,
+                "accepted_version_id": quote.get("accepted_version_id"),
+            },
+        )
         if quote.get("project_id"):
             replay = next(
                 (
@@ -1577,8 +1587,14 @@ class B2BService:
                 None,
             )
             if replay:
+                if replay.get("command_fingerprint") != command_fingerprint:
+                    raise B2BDomainError(
+                        409,
+                        "operation_id_conflict",
+                        "Operation ID sudah digunakan untuk pembuatan Project berbeda.",
+                    )
                 project = await self._get_project(quote["project_id"])
-                version = await self._get_quote_version(quote["current_version_id"])
+                version = await self._get_quote_version(quote["accepted_version_id"])
                 return {
                     "quote": project_quote(quote, version),
                     "project": project_b2b_project(project),
@@ -1605,18 +1621,36 @@ class B2BService:
                 "project_creation_forbidden",
                 "Project hanya dapat dibuat dari Quote yang sudah accepted.",
             )
-        if not quote.get("acceptance"):
+        acceptance = quote.get("acceptance")
+        if not isinstance(acceptance, dict) or not acceptance:
             raise B2BDomainError(
                 409,
                 "project_acceptance_evidence_missing",
                 "Project memerlukan evidence penerimaan Quote yang lengkap.",
+            )
+        accepted_version_id = quote["accepted_version_id"]
+        if (
+            quote.get("current_version_id") != accepted_version_id
+            or quote.get("sent_version_id") != accepted_version_id
+            or acceptance.get("version_id") != accepted_version_id
+        ):
+            raise B2BDomainError(
+                409,
+                "project_quote_version_mismatch",
+                "Referensi versi Quote yang diterima tidak konsisten.",
             )
         if not reason.strip():
             raise B2BDomainError(
                 422, "reason_required", "Alasan pembuatan Project wajib diisi."
             )
 
-        accepted_version = await self._get_quote_version(quote["accepted_version_id"])
+        accepted_version = await self._get_quote_version(accepted_version_id)
+        if accepted_version.get("quote_id") != quote_id:
+            raise B2BDomainError(
+                409,
+                "project_quote_version_mismatch",
+                "Versi Quote yang diterima tidak dimiliki oleh Quote sumber.",
+            )
         require_exact_quote_line_identities(accepted_version.get("items") or [])
         timestamp = now_iso()
         project_id = str(uuid.uuid4())
@@ -1624,7 +1658,7 @@ class B2BService:
             "id": project_id,
             "quote_id": quote_id,
             "inquiry_id": quote["inquiry_id"],
-            "source_quote_version_id": quote["accepted_version_id"],
+            "source_quote_version_id": accepted_version_id,
             "quote_snapshot": deepcopy(accepted_version),
             "status": "planned",
             "version": 1,
@@ -1635,11 +1669,13 @@ class B2BService:
             "fulfilment_ids": [],
             "history": [
                 {
+                    "event": "project_created",
                     "from_status": None,
                     "to_status": "planned",
                     "actor_user_id": actor.get("id"),
                     "reason": reason.strip(),
                     "operation_id": operation_id,
+                    "command_fingerprint": command_fingerprint,
                     "timestamp": timestamp,
                 }
             ],
@@ -1653,6 +1689,7 @@ class B2BService:
             "actor_user_id": actor.get("id"),
             "reason": reason.strip(),
             "operation_id": operation_id,
+            "command_fingerprint": command_fingerprint,
             "timestamp": timestamp,
         }
         quote_changes = {
@@ -1664,13 +1701,12 @@ class B2BService:
 
         async def mutation(session):
             options = {"session": session}
-            await self.db.b2b_projects.insert_one(deepcopy(project), **options)
             result = await self.db.b2b_quotes.update_one(
                 {
                     "id": quote_id,
                     "version": expected_version,
                     "status": "accepted",
-                    "accepted_version_id": quote["accepted_version_id"],
+                    "accepted_version_id": accepted_version_id,
                     "project_id": None,
                 },
                 {"$set": quote_changes},
@@ -1682,6 +1718,7 @@ class B2BService:
                     "version_conflict",
                     "Quote berubah selama pembuatan Project.",
                 )
+            await self.db.b2b_projects.insert_one(deepcopy(project), **options)
             return {
                 "quote": project_quote({**quote, **quote_changes}, accepted_version),
                 "project": project_b2b_project(project),
