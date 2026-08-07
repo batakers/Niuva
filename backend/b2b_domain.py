@@ -464,14 +464,18 @@ def project_b2b_project(document: dict) -> dict:
 
 WORK_ORDER_ACTIONS = {
     "planned": ["start", "cancel"],
-    "in_progress": ["complete", "cancel"],
+    "in_progress": ["submit_for_qc", "cancel"],
+    "quality_control": ["pass_qc", "request_rework", "cancel"],
+    "rework": ["resume", "cancel"],
     "completed": [],
     "cancelled": [],
 }
 
 WORK_ORDER_TRANSITIONS = {
     "planned": {"in_progress", "cancelled"},
-    "in_progress": {"completed", "cancelled"},
+    "in_progress": {"quality_control", "cancelled"},
+    "quality_control": {"cancelled"},
+    "rework": {"in_progress", "cancelled"},
     "completed": set(),
     "cancelled": set(),
 }

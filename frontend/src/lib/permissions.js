@@ -56,8 +56,11 @@ export const B2B_ACTION_PERMISSIONS = Object.freeze({
   }),
   work_order: Object.freeze({
     start: "production.write",
-    complete: "production.write",
+    submit_for_qc: "production.write",
+    resume: "production.write",
     cancel: "production.write",
+    pass_qc: "qc.write",
+    request_rework: "qc.write",
     // Allocation and consumption move stock, so they follow inventory.
     allocate: "inventory.write",
     consume: "inventory.write",

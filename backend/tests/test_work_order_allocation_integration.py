@@ -367,14 +367,14 @@ async def run_consumption_draws_down_stock(database_name):
             actor=ACTOR,
         )
 
-        # A run holding reservations cannot be called done.
+        # A run holding reservations cannot enter QC.
         with pytest.raises(B2BDomainError) as gated:
             await b2b.transition_work_order(
                 started["id"],
-                target_status="completed",
+                target_status="quality_control",
                 expected_version=started["version"],
                 operation_id=operation_id(),
-                reason="Selesai tanpa konsumsi",
+                reason="QC tanpa konsumsi",
                 actor=ACTOR,
             )
         assert gated.value.code == "work_order_materials_outstanding"
@@ -395,13 +395,21 @@ async def run_consumption_draws_down_stock(database_name):
         assert current["mat-ply"]["on_hand"] == Decimal("9.0")
         assert current["mat-ink"]["on_hand"] == Decimal("46")
 
-        completed = await b2b.transition_work_order(
+        awaiting_qc = await b2b.transition_work_order(
             consumed["id"],
-            target_status="completed",
+            target_status="quality_control",
             expected_version=consumed["version"],
             operation_id=operation_id(),
             reason="Produksi selesai",
             actor=ACTOR,
+        )
+        completed = await b2b.record_work_order_qc(
+            awaiting_qc["id"],
+            outcome="passed",
+            expected_version=awaiting_qc["version"],
+            operation_id=operation_id(),
+            reason="Hasil QC sesuai",
+            actor={"id": "qc-integration"},
         )
         assert completed["status"] == "completed"
     finally:

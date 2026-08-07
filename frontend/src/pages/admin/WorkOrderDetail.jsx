@@ -26,8 +26,14 @@ import { AdminLayout } from "./AdminLayout";
 
 const TRANSITION_TARGETS = {
   start: "in_progress",
-  complete: "completed",
+  submit_for_qc: "quality_control",
+  resume: "in_progress",
   cancel: "cancelled",
+};
+
+const QC_OUTCOMES = {
+  pass_qc: "passed",
+  request_rework: "rework_required",
 };
 
 function operationId() {
@@ -112,6 +118,11 @@ export default function WorkOrderDetail() {
     try {
       if (action === "allocate" || action === "consume") {
         await api.post(`/admin/b2b/work-orders/${id}/${action}`, command);
+      } else if (QC_OUTCOMES[action]) {
+        await api.post(`/admin/b2b/work-orders/${id}/qc`, {
+          ...command,
+          outcome: QC_OUTCOMES[action],
+        });
       } else {
         await api.post(`/admin/b2b/work-orders/${id}/transitions`, {
           ...command,

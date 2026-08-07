@@ -56,7 +56,13 @@ describe("Work order command scoping", () => {
   test("separates production authority from stock authority", () => {
     // Moving a run through its lifecycle is a production act.
     expect(B2B_ACTION_PERMISSIONS.work_order.start).toBe("production.write");
-    expect(B2B_ACTION_PERMISSIONS.work_order.complete).toBe("production.write");
+    expect(B2B_ACTION_PERMISSIONS.work_order.submit_for_qc).toBe(
+      "production.write"
+    );
+    expect(B2B_ACTION_PERMISSIONS.work_order.resume).toBe("production.write");
+    // QC outcomes require an independent quality authority.
+    expect(B2B_ACTION_PERMISSIONS.work_order.pass_qc).toBe("qc.write");
+    expect(B2B_ACTION_PERMISSIONS.work_order.request_rework).toBe("qc.write");
     // Allocating and consuming move stock, so they follow inventory.
     expect(B2B_ACTION_PERMISSIONS.work_order.allocate).toBe("inventory.write");
     expect(B2B_ACTION_PERMISSIONS.work_order.consume).toBe("inventory.write");
@@ -86,6 +92,14 @@ describe("Work order detail surface", () => {
     expect(detailSource).toContain("expected_version: record.version");
     expect(detailSource).toContain("operation_id: operationId()");
     expect(detailSource).toContain("reason: reason.trim()");
+  });
+
+  test("records completion and rework through the dedicated QC command", () => {
+    expect(detailSource).toContain("QC_OUTCOMES");
+    expect(detailSource).toContain("pass_qc: \"passed\"");
+    expect(detailSource).toContain('request_rework: "rework_required"');
+    expect(detailSource).toContain("/admin/b2b/work-orders/${id}/qc");
+    expect(detailSource).not.toContain('complete: "completed"');
   });
 
   test("offers allocation and consumption from material state, not the graph", () => {
@@ -128,11 +142,17 @@ describe("Work order localization", () => {
     for (const key of [
       "admin.workOrders",
       "status.in_progress",
+      "status.quality_control",
+      "status.rework",
       "workOrder.requirementsNote",
       "workOrder.blockerShortage",
       "workOrder.action.allocate",
       "workOrder.action.consume",
+      "workOrder.action.submit_for_qc",
+      "workOrder.action.pass_qc",
+      "workOrder.action.request_rework",
       "workOrder.event.materials_allocated",
+      "workOrder.event.qc_recorded",
     ]) {
       expect(i18nSource.match(new RegExp(`"${key}":`, "g"))).toHaveLength(2);
     }
