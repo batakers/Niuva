@@ -3,6 +3,7 @@
 Status: **Approved Canonical**
 Draft date: 23 July 2026
 Approval date: 23 July 2026
+Last canonical amendment: 8 August 2026 — narrowed MVP B2B public intake
 Approval record: `docs/decisions/APPROVAL-NIUVA-CANONICAL-DOCUMENTATION-2026-07-23.md`
 Scope: Product, business, experience, data, operational, security, and implementation boundaries for the Niuva website and platform
 
@@ -197,6 +198,18 @@ accepting that offer creates no Order, reservation, payment attempt, or paid
 state; an accepted active offer enters the normal Retail checkout and is
 revalidated there. This fallback does not collapse the Retail and B2B
 lifecycles into one model. See `DEC-OFFER-01`.
+
+For the narrowed MVP, the first public B2B and partnership entry is a
+structured `/contact` form that may be submitted without login. The Inquiry is
+persisted with status `new` before an optional user-clicked continuation to the
+approved Niuva WhatsApp destination is shown. The existing Inquiry UUID is the
+customer reference; the operator remains responsible for manual triage and
+follow-up. This continuation is not an automatic notification, webhook,
+campaign, retry worker, or SLA reminder, and it does not alter the Retail
+no-WhatsApp notification boundary. Public raw-file upload and a customer B2B
+organization portal remain outside the narrowed MVP; quotation/project access
+still follows the broader organization-account direction when that surface is
+separately activated. `DEC-UX-003` governs the route amendment.
 
 ## 7. Public Website and Homepage
 
@@ -612,6 +625,7 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Retail is a secondary but clear Homepage path | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | MVP surfaces use one frontend application under one origin with route-based boundaries | Approved Architecture Decision | `docs/decisions/architecture/ADR-004-surface-boundary-topology.md` |
 | Canonical MVP public aliases, Retail account/configuration/request/offer/checkout and Order destinations, legacy-route treatment, and Admin Retail queue ownership | Approved Decision | `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md` |
+| Narrowed MVP B2B public intake uses a persisted form-first Inquiry with optional user-clicked WhatsApp continuation, existing Inquiry UUID reference, no public raw-file upload, and manual one-working-day follow-up target | Approved Decision — Documentation Only; No Implementation Authority | Amended `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md`; `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; explicit user approval recorded 8 August 2026 |
 | Experimental Editorial Hybrid | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | Homepage uses Poppins + Inter with the approved display/UI and body/metadata roles | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | U-curve is a semantic transformation path with two initial dominant placements | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |

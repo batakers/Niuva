@@ -1,14 +1,16 @@
 # DEC-UX-003 — MVP User Flow and Canonical Route Contract
 
 ID: `DEC-UX-003`
-Status: **Approved Decision — No Implementation Authority**
-Decision date: 31 July 2026
+Status: **Approved Decision — Documentation Amendment; No Implementation Authority**
+Decision date: 31 July 2026; amended 8 August 2026
 Decision owner: Product decision authority
 Decision source: Explicit user approval of `NUF-R01` through `NUF-R12` on
 31 July 2026, including the approved refinements to `NUF-R08` and `NUF-R09`
+and explicit approval of the B2B Form + WhatsApp documentation amendment on
+8 August 2026.
 Scope: MVP public aliases, Retail account/configuration/request/offer/checkout
-and Order destinations, legacy-route treatment, and Admin Studio Retail queue
-ownership
+and Order destinations, public B2B inquiry intake, legacy-route treatment, and
+Admin Studio Retail queue ownership
 Related architecture: `DEC-ARCH-01` / `ADR-004`
 
 ## Context
@@ -24,6 +26,11 @@ Order, B2B, and Admin Studio routes. It does not yet contain every route needed
 by the approved transactional journey. Several current paths also overlap or
 act as compatibility surfaces. A canonical route contract is therefore needed
 before prototype validation or technical-contract planning.
+
+The narrowed MVP also requires a low-friction B2B and partnership entry point.
+The public inquiry may begin without login, must be recorded before any
+follow-up handoff, and remains manually operated. This amendment records the
+approved form-first flow with an optional user-clicked WhatsApp continuation.
 
 `ADR-004` separately selects the MVP delivery topology. This decision defines
 route ownership within that topology; it does not treat a route as an
@@ -56,8 +63,53 @@ authorization boundary.
   not own separate content or a separate CMS record.
 - `/`, `/about`, `/contact`, `/privacy`, `/faq`, `/retail`, and
   `/retail/products/:slug` retain their current route responsibilities.
+- `/contact` owns the structured public B2B/partnership inquiry. It is
+  available without login and persists an Inquiry before showing an optional
+  WhatsApp continuation using the existing approved public-settings
+  destination. The Inquiry UUID is the MVP customer reference.
+- The primary project-discussion CTA enters the form-first flow. WhatsApp
+  remains a secondary contact action for a visitor who is not ready to submit
+  a brief.
 - Exact navigation composition, CTA copy, mobile treatment, and redirect
   implementation mechanics remain separate UX and technical work.
+
+### Public B2B inquiry amendment
+
+The approved MVP flow is:
+
+```text
+/contact#form-konsultasi
+  -> public form without login
+  -> persist Inquiry with status `new`
+  -> safe acknowledgement with the existing Inquiry UUID
+  -> optional user-clicked WhatsApp continuation
+  -> manual operator triage and follow-up
+  -> existing B2B Quote/Project conversion when appropriate
+```
+
+The form uses the existing Inquiry contract: `company`, `pic_name`,
+`pic_email`, required `pic_phone`, `need`, `timeline`, and `brief`. The
+customer-safe response may echo the submitter's own fields, but never exposes
+operator notes, triage history, provider payloads, private files, cost, or
+margin. The approved privacy checkbox copy is:
+
+> Saya setuju Niuva menggunakan data ini untuk meninjau inquiry dan
+> menghubungi saya terkait kebutuhan yang saya kirim. Data tidak digunakan
+> untuk marketing tanpa persetujuan terpisah.
+
+Public raw-file upload remains excluded from this MVP. An operator may request
+files later through an approved private storage process. Inquiry statuses remain
+`new -> reviewed -> contacted -> converted`, with permitted rejection
+transitions and no new quotation/project statuses added to the Inquiry.
+
+The customer-facing expectation is immediate durable acknowledgement and a
+first human response target of one working day. The target is owned by `Niuva
+Operations` and uses Monday–Friday, 09.00–17.00 WIB, excluding public holidays;
+it is not a quotation, price, or delivery guarantee. WhatsApp is not an
+automatic notification, webhook, campaign, retry-worker, or SLA-reminder
+channel. This amendment does not add a customer B2B portal to the narrowed
+MVP; organization-account quotation/project access remains a later platform
+surface.
 
 ### Retail account and notification namespace
 
@@ -164,7 +216,8 @@ authorization boundary.
 - Provider-specific payment paths, public file URLs, arbitrary return URLs,
   guest checkout/tracking, customer `.gcode`, WhatsApp automation, a free-form
   CMS, and a broad Admin audit/user-directory surface remain excluded by their
-  governing decisions.
+  governing decisions. The user-clicked B2B WhatsApp continuation above is not
+  WhatsApp automation and does not amend the Retail notification boundary.
 
 ## Consequences and Activation Gates
 
@@ -174,7 +227,9 @@ authorization boundary.
   product and experience inputs.
 - Customer registration/verification, exact deep-link/reference allowlists,
   Admin route-to-permission mappings, redirect mechanics, API/state/schema
-  contracts, provider selections, and legacy-retirement procedure remain open.
+  contracts, provider selections, runtime WhatsApp-settings verification, and
+  legacy-retirement procedure remain open. The approved product target does
+  not authorize those implementation or activation steps.
 - Current source remains implementation evidence only. Missing routes are not
   considered implemented, and existing routes are not considered complete or
   active merely because they are present.
@@ -191,4 +246,6 @@ authorization boundary.
 - [`DEC-OFFER-01-retail-offer-file-and-quote-routing.md`](../product/DEC-OFFER-01-retail-offer-file-and-quote-routing.md)
 - [`DEC-ACCESS-003-legacy-order-compatibility-and-customer-projection.md`](../access/DEC-ACCESS-003-legacy-order-compatibility-and-customer-projection.md)
 - [`DEC-DATA-003-notification-schema-retention-and-delivery-boundary.md`](../product/DEC-DATA-003-notification-schema-retention-and-delivery-boundary.md)
+- [`PRD_Platform_Niuva_v2_1_retail_b2b.md`](../../references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md)
+- [`2026-08-07-niuva-mvp-prd-promotion-amendment-b2b-form-whatsapp.md`](../../implementation/specs/candidates/2026-08-07-niuva-mvp-prd-promotion-amendment-b2b-form-whatsapp.md)
 - [`2026-07-31-niuva-mvp-user-flow-and-route-contract.md`](../../implementation/specs/candidates/2026-07-31-niuva-mvp-user-flow-and-route-contract.md)

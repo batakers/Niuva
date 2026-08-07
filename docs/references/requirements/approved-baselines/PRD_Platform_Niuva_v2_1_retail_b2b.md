@@ -1,7 +1,8 @@
 # PRD v2.1 — Platform Terpadu Niuva untuk Retail dan B2B
 
 Tanggal: 14 Juli 2026
-Status: Baseline disetujui untuk perencanaan implementasi
+Status: Baseline disetujui untuk perencanaan implementasi; diamendemen 8
+Agustus 2026 untuk intake B2B MVP
 Business source: `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`
 Product scope source: `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md`
 Design source: `docs/implementation/specs/active/2026-07-14-unified-retail-b2b-platform-design.md`
@@ -275,6 +276,46 @@ memakai accepted quotation/SOW/contract. Activation gates pada
 | FR-B2B-07 | Final approved design dikunci; perubahan berikutnya menjadi change request |
 | FR-B2B-08 | B2B mendukung invoice, transfer, DP, termin, dan purchase order reference |
 | FR-B2B-09 | Portal menampilkan milestone, ETA, next action, payment, QC, dan shipment yang aman bagi customer |
+
+#### Amendment MVP — public B2B intake, 8 August 2026
+
+The full v2.1 B2B organization, quotation, and project requirements remain
+the platform direction. For the narrowed MVP, the first public entry is a
+manual, form-first inquiry flow:
+
+- `/contact` accepts a B2B or partnership inquiry without login.
+- The form persists one Inquiry before offering any follow-up handoff.
+- The required public fields are `company`, `pic_name`, `pic_email`,
+  `pic_phone`, `need`, `timeline`, and `brief`; the existing Inquiry UUID is
+  the MVP customer reference.
+- The customer-safe response may echo the submitter's own fields, but does not
+  expose triage history, operator notes, provider payloads, cost, margin, or
+  private files.
+- After successful persistence, the customer may click through to the
+  approved Niuva public WhatsApp destination with the Inquiry reference. This
+  is a manual continuation, not an automatic notification, webhook, campaign,
+  retry worker, or SLA reminder.
+- Inquiry statuses retain the existing `new`, `reviewed`, `contacted`,
+  `converted`, and `rejected` state machine. Quotation and project states
+  remain separate B2B aggregates.
+- Public raw-file upload is excluded from this MVP. An operator may request
+  files later through an approved private storage process.
+- The approved privacy checkbox is required:
+
+  > Saya setuju Niuva menggunakan data ini untuk meninjau inquiry dan
+  > menghubungi saya terkait kebutuhan yang saya kirim. Data tidak digunakan
+  > untuk marketing tanpa persetujuan terpisah.
+
+The customer-facing expectation is immediate acknowledgement and a first
+human response target of one working day, owned by `Niuva Operations`, using
+Monday–Friday, 09.00–17.00 WIB, excluding public holidays. This is not a
+quotation, price, or delivery guarantee. The narrowed MVP does not activate a
+customer B2B organization portal; organization-account quotation/project
+access remains a later platform surface.
+
+This amendment is governed by the amended `DEC-UX-003` route decision and the
+promotion record:
+`docs/implementation/specs/candidates/2026-08-08-niuva-mvp-prd-promotion-amendment-request-b2b-form-whatsapp.md`.
 
 ### 9.4 CMS
 
