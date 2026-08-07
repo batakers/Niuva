@@ -3,7 +3,7 @@
 Status: Context Only — Audit Evidence and Progress Tracker — Not Implementation Authority
 
 Baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
-Last updated: 2026-08-07 (UTC+07:00)
+Last updated: 2026-08-05 (UTC+07:00)
 
 ## Status semantics
 
@@ -60,28 +60,6 @@ frontend auth, the transaction workflow, and both canonical registers.
 No layer score or finding status was inherited from those newer changes. This
 paragraph remains historical provenance; the current PR #137 overlay is
 recorded above.
-
-## Current bounded backend dependency revalidation overlay
-
-The dependency-lock candidate is based on current `origin/main` SHA
-`dd4f5356496bd16195808f410ed3cc940baeca9a` and is carried by branch
-`chore/backend-dependency-lock` (candidate commit `9366efe`). It is evidence for
-review, not a readiness or go-live disposition:
-
-- `backend/requirements.lock` resolves 72 distributions with exact versions
-  and hashes; the documented regeneration is byte-identical on repeat.
-- CPython `3.14.3` is declared in `.python-version` and the backend,
-  transaction, and external-smoke workflows consume the same runtime contract.
-- A clean hash-verified install reports `pip check` clean; `pip-audit 2.10.1`
-  reports zero known vulnerabilities; `pip-licenses 5.5.5` records 71 installed
-  distributions with no missing/unknown license metadata.
-- Motor deprecation, PyMongo 4.6.3 source-build behavior on CPython 3.14, MPL
-  review, and runtime/dev split remain explicitly open follow-up risks.
-
-This overlay revalidates the reproducibility evidence for GOV-002/GOV-005 and
-part of GOV-004/GOV-008. It does not close those findings until the candidate is
-reviewed and merged, and it does not resolve the separate package-manager,
-legal, lifecycle, ownership, or production-deployment decisions.
 
 ## Current bounded frontend overlay
 
