@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>R5 / R6 visual comparison</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px; background: #f1f4f7; color: #1c2b3a; font-family: Inter, "Segoe UI", sans-serif; }
+      h1 { margin: 0 0 8px; font-family: Poppins, "Segoe UI", sans-serif; font-size: 32px; }
+      p { margin: 0 0 28px; color: #52667a; }
+      .comparison { display: grid; gap: 28px; }
+      .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      figure { margin: 0; border: 1px solid #b9cad7; background: white; }
+      figcaption { padding: 10px 12px; border-bottom: 1px solid #b9cad7; font-size: 13px; font-weight: 700; }
+      img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; }
+    </style>
+  </head>
+  <body>
+    <h1>R5 / R6 visual comparison</h1>
+    <p>Anti-reference versus bounded R6. Semua gambar memakai data sintetis dan viewport 1440 × 900.</p>
+    <main class="comparison">
+      <section class="row" aria-label="B2B inquiry comparison">
+        <figure><figcaption>B2B Inquiry · R5 before</figcaption><img src="r5-b2b-1440.png" alt="R5 B2B Inquiry" /></figure>
+        <figure><figcaption>B2B Inquiry · R6 after</figcaption><img src="r6-b2b-1440.png" alt="R6 B2B Inquiry" /></figure>
+      </section>
+      <section class="row" aria-label="Retail comparison">
+        <figure><figcaption>Retail · R5 before</figcaption><img src="r5-retail-1440.png" alt="R5 Retail" /></figure>
+        <figure><figcaption>Retail · R6 after</figcaption><img src="r6-retail-1440.png" alt="R6 Retail" /></figure>
+      </section>
+      <section class="row" aria-label="Admin recovery comparison">
+        <figure><figcaption>Admin recovery · R5 before</figcaption><img src="r5-admin-conflict-1440.png" alt="R5 Admin conflict" /></figure>
+        <figure><figcaption>Admin recovery · R6 after</figcaption><img src="r6-admin-conflict-1440.png" alt="R6 Admin conflict" /></figure>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="id" data-page="review" data-family="review">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Kontrol reviewer untuk memilih fixture sintetis prototype Niuva." />
+    <title>Niuva R6 — Review Mode</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="review">
+    <!--
+      THESIS: Review controls are a compact evidence tool outside the product.
+      OWN-WORLD: dense neutral ledger, no marketing treatment. STORY: choose a scenario,
+      inspect its seed, reset persistence, then hand off into a clean participant page.
+      FIRST VIEWPORT: scenario, role, fixture, frame, and start action. FORM: fixed candidate
+      direction; no variation picker. FINISH: semantic tokens, low motion, explicit IDs,
+      traceable events, and no production endpoint.
+    -->
+    <a class="skip-link" href="#review-main">Lewati ke kontrol reviewer</a>
+    <header class="review-header">
+      <div class="review-brand">
+        <img src="assets/niuva-mark.svg" width="42" height="42" alt="" aria-hidden="true" />
+        <div>
+          <strong>Niuva R6</strong>
+          <span>Review Mode · evidence tool</span>
+        </div>
+      </div>
+      <span class="review-baseline">Baseline 237e64a</span>
+    </header>
+
+    <main id="review-main" class="review-main" tabindex="-1">
+      <header class="review-intro">
+        <div>
+          <p class="review-kicker">Synthetic validation control</p>
+          <h1>Pilih kondisi, lalu serahkan tugas yang bersih.</h1>
+          <p>Halaman ini khusus reviewer. Participant menerima navigation dan task controls produk tanpa ID, expected answer, atau evaluator hint.</p>
+        </div>
+        <button class="button button-quiet" type="button" data-action="reset-review">Reset semua state</button>
+      </header>
+
+      <section class="review-workspace" aria-labelledby="review-control-title">
+        <div class="review-control-panel">
+          <h2 id="review-control-title">Scenario seed</h2>
+          <label class="field" for="scenarioSelect">
+            <span>Scenario</span>
+            <select id="scenarioSelect" data-action="scenario-select"></select>
+          </label>
+          <dl class="review-readouts">
+            <div><dt>Role</dt><dd id="reviewRole">—</dd></div>
+            <div><dt>Fixture</dt><dd id="reviewFixture">—</dd></div>
+            <div><dt>Frame</dt><dd id="reviewFrame">—</dd></div>
+          </dl>
+          <a class="button button-primary review-handoff" id="handoffButton" href="index.html" data-action="handoff-participant">Mulai tugas Participant</a>
+          <p class="review-boundary">Handoff menyimpan seed hanya pada session browser dan membuka <code>index.html</code>. Tidak ada request eksternal.</p>
+        </div>
+
+        <div class="review-evidence-panel">
+          <div class="review-panel-heading">
+            <div>
+              <p class="review-kicker">Trace</p>
+              <h2>Event log</h2>
+            </div>
+            <span id="eventCount">0 events</span>
+          </div>
+          <ol id="eventList" class="event-log" aria-live="polite"></ol>
+        </div>
+      </section>
+
+      <section class="review-contract" aria-labelledby="review-contract-title">
+        <h2 id="review-contract-title">Review boundary</h2>
+        <ul>
+          <li>37 frame, 95 transition, 43 fixture, dan 44 scenario tetap deterministic.</li>
+          <li>Participant DOM tidak membawa ID packet, route contract, open gate, atau reviewer controls.</li>
+          <li>Reset menghapus seed dan event persistence sebelum memulai ulang.</li>
+          <li>Semua aksi memakai data sintetis dan berhenti sebelum provider atau sistem produksi.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="fixtures.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
