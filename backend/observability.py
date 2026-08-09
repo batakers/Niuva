@@ -1193,18 +1193,21 @@ class Observability:
             self._emit_alert_summary(summary)
 
     def _emit_alert_summary(self, summary: Mapping[str, object]) -> bool:
+        fields = {
+            "alert_family": summary.get("alert_family"),
+            "operation_name": summary.get("operation_name"),
+            "safe_outcome": summary.get("safe_outcome"),
+            "count": summary.get("count"),
+            "first_timestamp": summary.get("first_timestamp"),
+            "last_timestamp": summary.get("last_timestamp"),
+        }
+        attempt_count = summary.get("attempt_count")
+        if attempt_count is not None:
+            fields["attempt_count"] = attempt_count
         emitted = self.emit(
             "operational_alert",
             level=str(summary.get("level", "critical")),
-            fields={
-                "alert_family": summary.get("alert_family"),
-                "operation_name": summary.get("operation_name"),
-                "safe_outcome": summary.get("safe_outcome"),
-                "attempt_count": summary.get("attempt_count"),
-                "count": summary.get("count"),
-                "first_timestamp": summary.get("first_timestamp"),
-                "last_timestamp": summary.get("last_timestamp"),
-            },
+            fields=fields,
         )
         if emitted:
             summary["emitted_count"] = summary.get("count", 0)

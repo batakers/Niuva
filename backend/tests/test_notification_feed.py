@@ -842,6 +842,44 @@ def test_worker_snapshot_exposes_only_aggregate_backlog_state():
     asyncio.run(scenario())
 
 
+def test_worker_snapshot_normalizes_mongo_naive_due_timestamp():
+    async def scenario():
+        service, db = build_service()
+        moment = datetime(2026, 8, 5, 10, 0, tzinfo=timezone.utc)
+        db.notification_outbox.items.append(
+            {
+                "id": "pending-due",
+                "status": "pending",
+                "attempts": 0,
+                "next_attempt_at": moment - timedelta(seconds=10),
+            }
+        )
+
+        original_find = db.notification_outbox.find
+
+        def find_with_naive_timestamp(query, projection=None, **options):
+            cursor = original_find(query, projection, **options)
+            for item in cursor.items:
+                due_at = item.get("next_attempt_at")
+                if isinstance(due_at, datetime):
+                    item["next_attempt_at"] = due_at.replace(tzinfo=None)
+            return cursor
+
+        db.notification_outbox.find = find_with_naive_timestamp
+
+        snapshot = await service.worker_snapshot(at=moment)
+
+        assert snapshot == {
+            "pending_due": 1,
+            "processing": 0,
+            "oldest_due_age_seconds": 10,
+            "stale_leases": 0,
+            "exhausted": 0,
+        }
+
+    asyncio.run(scenario())
+
+
 def test_worker_claims_only_one_item_per_execution_slot():
     async def scenario():
         service, db = build_service()
@@ -1084,6 +1122,45 @@ def test_expired_lease_cannot_record_before_reclaim():
             )
         )[0]
         assert reclaimed["delivery_key"] == entry["delivery_key"]
+
+    asyncio.run(scenario())
+
+
+def test_delivery_result_normalizes_mongo_naive_lease_timestamp():
+    async def scenario():
+        service, db = build_service()
+        notification = await publish(service)
+        entry = await service.enqueue_delivery(
+            notification_id=notification["id"],
+            channel="email",
+            recipient="ops@niuva.test",
+            payload={},
+        )
+        moment = datetime.now(timezone.utc)
+        claimed = (await service.claim_pending(worker_id="worker-a", at=moment))[0]
+
+        original_find_one = db.notification_outbox.find_one
+
+        async def find_one_with_naive_timestamp(
+            query, projection=None, **options
+        ):
+            result = await original_find_one(query, projection, **options)
+            lease_until = result.get("lease_until") if result else None
+            if isinstance(lease_until, datetime):
+                result["lease_until"] = lease_until.replace(tzinfo=None)
+            return result
+
+        db.notification_outbox.find_one = find_one_with_naive_timestamp
+
+        delivered = await service.record_delivery_result(
+            entry["id"],
+            lease_token=claimed["lease_token"],
+            delivered=True,
+            at=moment,
+        )
+
+        assert delivered["status"] == "delivered"
+        assert delivered["attempts"] == 1
 
     asyncio.run(scenario())
 
