@@ -12,6 +12,7 @@ from notification_domain import (
     NOTIFICATION_RETENTION,
     NOTIFICATION_SCHEMA_VERSION,
     REFERENCE_ID_PATTERN,
+    as_utc_datetime,
     deduplication_key,
     deep_link_for,
     is_allowlisted_reference,
@@ -541,7 +542,7 @@ class NotificationService:
 
     async def worker_snapshot(self, *, at: datetime | None = None) -> dict[str, int]:
         """Return aggregate delivery state without exposing payloads or recipients."""
-        moment = at or now_utc()
+        moment = as_utc_datetime(at) or now_utc()
         retryable = {"attempts": {"$lt": MAX_DELIVERY_ATTEMPTS}}
         pending_due_query = {
             "status": "pending",
@@ -560,8 +561,8 @@ class NotificationService:
         ).sort("next_attempt_at", 1).limit(1).to_list(1)
         oldest_due_age_seconds = 0
         if oldest_due:
-            due_at = oldest_due[0].get("next_attempt_at")
-            if isinstance(due_at, datetime):
+            due_at = as_utc_datetime(oldest_due[0].get("next_attempt_at"))
+            if due_at is not None:
                 oldest_due_age_seconds = max(
                     0,
                     min(1_000_000, int((moment - due_at).total_seconds())),
@@ -713,18 +714,19 @@ class NotificationService:
                 "invalid_delivery_result",
                 "Hasil delivery outbox tidak valid.",
             )
-        timestamp = at or now_utc()
+        timestamp = as_utc_datetime(at) or now_utc()
         entry = await self.db.notification_outbox.find_one({"id": entry_id}, {"_id": 0})
         if not entry:
             raise NotificationError(
                 404, "outbox_entry_not_found", "Entri outbox tidak ditemukan."
             )
 
+        lease_until = as_utc_datetime(entry.get("lease_until"))
         if (
             entry.get("status") != "processing"
             or entry.get("lease_token") != lease_token
-            or not isinstance(entry.get("lease_until"), datetime)
-            or entry["lease_until"] <= timestamp
+            or lease_until is None
+            or lease_until <= timestamp
         ):
             raise NotificationError(
                 409,

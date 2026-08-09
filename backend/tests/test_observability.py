@@ -453,3 +453,35 @@ def test_alert_families_cover_api_dependency_worker_and_scheduler_signals():
         and alert["count"] >= 2
         for alert in alerts
     )
+
+
+def test_operational_alert_omits_missing_optional_attempt_count():
+    output = []
+
+    class Stream:
+        def write(self, value):
+            output.append(value)
+
+    observability = Observability(
+        emitter=JsonLineEmitter(stream=Stream(), error_stream=Stream())
+    )
+
+    for _index in range(20):
+        observability.record_http(
+            request_id=None,
+            route_template="/api/orders",
+            method="GET",
+            status_code=500,
+            duration_ms=1,
+        )
+    observability.flush_alerts()
+
+    alerts = [
+        json.loads(value)
+        for value in output
+        if json.loads(value)["event"] == "operational_alert"
+    ]
+    assert alerts
+    assert all("attempt_count" not in record["fields"] for record in alerts)
+    assert observability.emitter.schema_rejections == 0
+    assert observability.metrics.snapshot()["schema_rejections"] == 0
