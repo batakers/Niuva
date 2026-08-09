@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id" data-page="participant" data-family="public">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Pratinjau interaktif perjalanan layanan dan Retail Niuva dengan data simulasi." />
+    <title>Niuva — dari kebutuhan ke objek nyata</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="participant">
+    <!--
+      THESIS: Satu benang bukti menghubungkan kebutuhan, file, keputusan, dan objek fisik.
+      OWN-WORLD: Public bersifat editorial; Retail bekerja seperti lembar spesifikasi objek;
+      operasi bekerja seperti ledger yang tenang dan padat. STORY: pengguna selalu melihat
+      konteks, kondisi saat ini, dan satu tindakan berikutnya. FIRST VIEWPORT: identitas,
+      konteks tugas, dan tindakan utama terbaca tanpa evaluator chrome. FORM: arah visual
+      mengikuti sistem Niuva yang sudah disetujui. FINISH: Poppins/Inter roles, semantic blue,
+      garis bukti, radius terbatas, status faktual, motion hemat, dan data sintetis eksplisit.
+    -->
+    <a class="skip-link" href="#product-main">Lewati ke konten utama</a>
+
+    <header class="product-header" data-region="header">
+      <button class="brand-button" type="button" data-action="product-home" aria-label="Kembali ke beranda Niuva">
+        <img src="assets/niuva-mark.svg" width="48" height="48" alt="" aria-hidden="true" />
+        <span class="brand-wordmark">niuva</span>
+      </button>
+      <nav id="productNav" class="product-nav" aria-label="Navigasi utama"></nav>
+      <div id="accountContext" class="account-context" aria-label="Konteks pengguna"></div>
+    </header>
+
+    <div class="simulation-notice" role="note">
+      <strong>SIMULASI</strong>
+      <span>Data contoh; tidak ada file, pesan, pembayaran, atau pesanan nyata.</span>
+    </div>
+
+    <main id="product-main" class="product-main" tabindex="-1">
+      <div id="notice" class="notice" role="status" aria-live="polite" tabindex="-1"></div>
+      <section id="frameRoot" class="frame-root" aria-label="Konten tugas"></section>
+    </main>
+
+    <footer class="product-footer">
+      <span>Niuva · kebutuhan menjadi objek nyata</span>
+      <span>Data simulasi, tanpa transaksi nyata</span>
+    </footer>
+
+    <script src="fixtures.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
