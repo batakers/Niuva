@@ -1,0 +1,82 @@
+[
+  {
+    "width": 390,
+    "url": "/",
+    "targets": 9
+  },
+  {
+    "width": 390,
+    "url": "/projects",
+    "targets": 16
+  },
+  {
+    "width": 390,
+    "url": "/projects/pindad-ev-motor",
+    "targets": 8
+  },
+  {
+    "width": 390,
+    "url": "/contact",
+    "targets": 17
+  },
+  {
+    "width": 768,
+    "url": "/",
+    "targets": 10
+  },
+  {
+    "width": 768,
+    "url": "/projects",
+    "targets": 17
+  },
+  {
+    "width": 768,
+    "url": "/projects/pindad-ev-motor",
+    "targets": 9
+  },
+  {
+    "width": 768,
+    "url": "/contact",
+    "targets": 18
+  },
+  {
+    "width": 1024,
+    "url": "/",
+    "targets": 10
+  },
+  {
+    "width": 1024,
+    "url": "/projects",
+    "targets": 17
+  },
+  {
+    "width": 1024,
+    "url": "/projects/pindad-ev-motor",
+    "targets": 9
+  },
+  {
+    "width": 1024,
+    "url": "/contact",
+    "targets": 18
+  },
+  {
+    "width": 1440,
+    "url": "/",
+    "targets": 10
+  },
+  {
+    "width": 1440,
+    "url": "/projects",
+    "targets": 17
+  },
+  {
+    "width": 1440,
+    "url": "/projects/pindad-ev-motor",
+    "targets": 9
+  },
+  {
+    "width": 1440,
+    "url": "/contact",
+    "targets": 18
+  }
+]

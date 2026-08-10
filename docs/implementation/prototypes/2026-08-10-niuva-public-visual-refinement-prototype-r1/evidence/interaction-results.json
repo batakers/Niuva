@@ -1,0 +1,10 @@
+{
+  "pass": true,
+  "checks": [
+    "invalid summary focus",
+    "persistence unavailable recovery",
+    "success acknowledgement",
+    "map unavailable and retry",
+    "Review to Participant handoff"
+  ]
+}

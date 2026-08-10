@@ -1,0 +1,673 @@
+{
+  "matrix": [
+    {
+      "width": 390,
+      "route": "/",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "route": "/projects",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        },
+        {
+          "src": "/assets/projects/agate-motorcycle-simulator.webp",
+          "naturalWidth": 387,
+          "alt": "Simulator sepeda motor Agate sebagai contoh prototipe pengalaman"
+        },
+        {
+          "src": "/assets/projects/xeon-redesign.webp",
+          "naturalWidth": 553,
+          "alt": "Detail redesign Xeon sebagai contoh dokumentasi keputusan desain"
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "route": "/projects/pindad-ev-motor",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "route": "/projects/agate-motorcycle-simulator",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/agate-motorcycle-simulator.webp",
+          "naturalWidth": 387,
+          "alt": "Simulator sepeda motor Agate sebagai contoh prototipe pengalaman"
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "route": "/projects/xeon-redesign",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/xeon-redesign.webp",
+          "naturalWidth": 553,
+          "alt": "Detail redesign Xeon sebagai contoh dokumentasi keputusan desain"
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "route": "/contact",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "route": "/",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "route": "/projects",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        },
+        {
+          "src": "/assets/projects/agate-motorcycle-simulator.webp",
+          "naturalWidth": 387,
+          "alt": "Simulator sepeda motor Agate sebagai contoh prototipe pengalaman"
+        },
+        {
+          "src": "/assets/projects/xeon-redesign.webp",
+          "naturalWidth": 553,
+          "alt": "Detail redesign Xeon sebagai contoh dokumentasi keputusan desain"
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "route": "/projects/pindad-ev-motor",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "route": "/projects/agate-motorcycle-simulator",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/agate-motorcycle-simulator.webp",
+          "naturalWidth": 387,
+          "alt": "Simulator sepeda motor Agate sebagai contoh prototipe pengalaman"
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "route": "/projects/xeon-redesign",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/xeon-redesign.webp",
+          "naturalWidth": 553,
+          "alt": "Detail redesign Xeon sebagai contoh dokumentasi keputusan desain"
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "route": "/contact",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        }
+      ]
+    },
+    {
+      "width": 1024,
+      "route": "/",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        }
+      ]
+    },
+    {
+      "width": 1024,
+      "route": "/projects",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        },
+        {
+          "src": "/assets/projects/agate-motorcycle-simulator.webp",
+          "naturalWidth": 387,
+          "alt": "Simulator sepeda motor Agate sebagai contoh prototipe pengalaman"
+        },
+        {
+          "src": "/assets/projects/xeon-redesign.webp",
+          "naturalWidth": 553,
+          "alt": "Detail redesign Xeon sebagai contoh dokumentasi keputusan desain"
+        }
+      ]
+    },
+    {
+      "width": 1024,
+      "route": "/projects/pindad-ev-motor",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        }
+      ]
+    },
+    {
+      "width": 1024,
+      "route": "/projects/agate-motorcycle-simulator",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/agate-motorcycle-simulator.webp",
+          "naturalWidth": 387,
+          "alt": "Simulator sepeda motor Agate sebagai contoh prototipe pengalaman"
+        }
+      ]
+    },
+    {
+      "width": 1024,
+      "route": "/projects/xeon-redesign",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/xeon-redesign.webp",
+          "naturalWidth": 553,
+          "alt": "Detail redesign Xeon sebagai contoh dokumentasi keputusan desain"
+        }
+      ]
+    },
+    {
+      "width": 1024,
+      "route": "/contact",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "route": "/",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "route": "/projects",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        },
+        {
+          "src": "/assets/projects/agate-motorcycle-simulator.webp",
+          "naturalWidth": 387,
+          "alt": "Simulator sepeda motor Agate sebagai contoh prototipe pengalaman"
+        },
+        {
+          "src": "/assets/projects/xeon-redesign.webp",
+          "naturalWidth": 553,
+          "alt": "Detail redesign Xeon sebagai contoh dokumentasi keputusan desain"
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "route": "/projects/pindad-ev-motor",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/pindad-ev-motor.webp",
+          "naturalWidth": 555,
+          "alt": "Motor listrik Pindad sebagai contoh keluaran pengembangan objek fisik"
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "route": "/projects/agate-motorcycle-simulator",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/agate-motorcycle-simulator.webp",
+          "naturalWidth": 387,
+          "alt": "Simulator sepeda motor Agate sebagai contoh prototipe pengalaman"
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "route": "/projects/xeon-redesign",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        },
+        {
+          "src": "/assets/projects/xeon-redesign.webp",
+          "naturalWidth": 553,
+          "alt": "Detail redesign Xeon sebagai contoh dokumentasi keputusan desain"
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "route": "/contact",
+      "consoleIssues": [],
+      "externalRequests": [],
+      "overflow": false,
+      "undersized": [],
+      "forbidden": false,
+      "landmarks": true,
+      "live": true,
+      "skip": true,
+      "brokenImages": [],
+      "images": [
+        {
+          "src": "assets/niuva-mark.svg",
+          "naturalWidth": 738,
+          "alt": ""
+        }
+      ]
+    }
+  ],
+  "targeted": {
+    "deepLink": {
+      "logoSrc": "assets/niuva-mark.svg",
+      "artifactSrc": "/assets/projects/pindad-ev-motor.webp",
+      "logoWidth": 738,
+      "artifactWidth": 555,
+      "heading": "Pindad EV Motor"
+    },
+    "contactFirstViewport": {
+      "summaryVisible": true,
+      "startVisible": true,
+      "summaryBottom": 663.0625,
+      "startBottom": 725.0625,
+      "viewportHeight": 844,
+      "headerBottom": 116.1875,
+      "summaryText": "OWNER\nNiuva Operations\nRESPONS PERTAMA\nMaks. 1 hari kerja\nKALENDER\nSenin–Jumat · 09.00–17.00 WIB",
+      "startText": "Mulai isi form\n↓"
+    },
+    "invalidFocus": {
+      "activeId": "form-error-summary",
+      "top": 132.40625,
+      "headerBottom": 116.1875,
+      "scrollY": 810,
+      "documentTop": 942.40625,
+      "bodyHeight": 3481,
+      "visible": true,
+      "title": "Periksa beberapa bagian sebelum mengirim.\nBagian ini wajib diisi.\nBagian ini wajib diisi.\nBagian ini wajib diisi.\nBagian ini wajib diisi.\nBagian ini wajib diisi.\nPersetujuan diperlukan.\n\nData yang sudah diisi tetap dipertahankan."
+    },
+    "invalidManualScroll": {
+      "scrollY": 810,
+      "top": 132.40625,
+      "documentTop": 942.40625
+    },
+    "successFocus": {
+      "activeId": "contact-status",
+      "top": 131.796875,
+      "headerBottom": 116.1875,
+      "visible": true,
+      "title": "Brief Anda siap ditinjau."
+    }
+  },
+  "interaction": {
+    "mapRetry": true,
+    "successSubmit": {
+      "status": "Brief Anda siap ditinjau.",
+      "focused": "contact-status"
+    }
+  },
+  "errors": []
+}

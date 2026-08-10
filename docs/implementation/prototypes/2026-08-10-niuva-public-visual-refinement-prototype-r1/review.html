@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review harness — Niuva visual refinement</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="review-body">
+    <main class="review-shell" id="review-main">
+      <p class="review-kicker">REVIEW MODE · PROTOTYPE ONLY</p>
+      <h1>Siapkan keadaan yang ingin ditinjau</h1>
+      <p class="review-intro">
+        Pilih fixture sintetis, lalu buka Participant Mode dalam keadaan bersih.
+        Kontrol dan penanda di halaman ini tidak pernah ikut ke halaman peserta.
+      </p>
+      <section class="review-panel" aria-labelledby="review-controls-title">
+        <h2 id="review-controls-title">Fixture visual</h2>
+        <label for="fixture-select">Keadaan yang ingin dilihat</label>
+        <select id="fixture-select">
+          <option value="home">Home · artifact lead</option>
+          <option value="projects">Projects · detail artifact</option>
+          <option value="contact-empty">Contact · form kosong</option>
+          <option value="contact-invalid">Contact · validasi gagal</option>
+          <option value="contact-persistence-fail">Contact · penyimpanan gagal setelah submit</option>
+          <option value="contact-success">Contact · acknowledgement</option>
+          <option value="contact-unavailable">Contact · map unavailable</option>
+          <option value="contact-whatsapp">Contact · WhatsApp handoff (Inquiry belum tercatat)</option>
+        </select>
+        <div class="review-actions">
+          <button class="button button-primary" id="open-participant" type="button">Buka Participant Mode</button>
+          <button class="button button-quiet" id="clear-fixture" type="button">Reset fixture</button>
+        </div>
+        <p class="review-status" id="review-status" role="status" aria-live="polite">Belum ada fixture yang disiapkan.</p>
+      </section>
+      <section class="review-notes" aria-labelledby="review-notes-title">
+        <h2 id="review-notes-title">Batas review</h2>
+        <ul>
+          <li>Semua isi adalah simulasi lokal; tidak ada Inquiry atau handoff eksternal.</li>
+          <li>Nilai visual dibandingkan dengan task card dan evidence manifest.</li>
+          <li>Jangan menilai halaman ini sebagai bagian dari produk peserta.</li>
+        </ul>
+      </section>
+    </main>
+    <script src="/fixtures.js"></script>
+    <script>
+      (function () {
+        var select = document.getElementById("fixture-select");
+        var status = document.getElementById("review-status");
+        var key = "niuvalab.visualRefinementState";
+        var destinations = {
+          home: "/",
+          projects: "/projects/pindad-ev-motor",
+          "contact-empty": "/contact?state=empty",
+          "contact-invalid": "/contact?state=invalid",
+          "contact-persistence-fail": "/contact?state=persistence-fail",
+          "contact-success": "/contact?state=success",
+          "contact-unavailable": "/contact?state=unavailable",
+          "contact-whatsapp": "/contact?state=whatsapp"
+        };
+        document.getElementById("open-participant").addEventListener("click", function () {
+          var fixture = select.value;
+          sessionStorage.setItem(key, fixture);
+          status.textContent = "Fixture disiapkan. Participant Mode dibuka tanpa kontrol review.";
+          window.location.href = destinations[fixture];
+        });
+        document.getElementById("clear-fixture").addEventListener("click", function () {
+          sessionStorage.removeItem(key);
+          status.textContent = "Fixture direset.";
+        });
+      }());
+    </script>
+  </body>
+</html>
