@@ -240,6 +240,31 @@ revalidation below.
 Detailed Feature 3.2 evidence:
 [`2026-07-30-backend-quote-line-identity.md`](../implementation/history/2026-07-30-backend-quote-line-identity.md).
 
+### 3.4 Retail Order contract hardening update — 10 August 2026
+
+This current-source update supersedes only the earlier statement that no
+bounded Retail transaction contract slice had been selected. It does not
+activate or complete the Retail transaction lifecycle.
+
+- Feature 3.4A adds strict authenticated cart intent, semantic idempotency,
+  authoritative published/active catalog snapshots, bounded
+  quantity/currency/fulfilment rules, a basic provider-neutral lifecycle, and
+  append-only version-bound audit history.
+- Duplicate requests are accepted only when their operation ID and semantic
+  request fingerprint match exactly; changed reuse is rejected.
+- Concurrent lifecycle writers share an `id + version + status`
+  compare-and-swap precondition, so a stale command must not overwrite a
+  winning transition.
+- Focused verification passed `63` tests. Full backend regression passed
+  `1026` tests with `15` explicit environment-gated skips and `14` subtests;
+  expected-skip enforcement found zero unexpected skips.
+- Retail create/transition routes and checkout/payment capabilities remain
+  explicitly inactive. No database, reservation, provider, migration,
+  deployment, or shared/production environment was used.
+
+Detailed task/evidence:
+[`FEATURE-3.4A-retail-order-contract-hardening.md`](../implementation/production-readiness/phases/FEATURE-3.4A-retail-order-contract-hardening.md).
+
 ## 4. Verification Evidence
 
 ### 4.1 Reconciled internal backend suite — 27 July 2026

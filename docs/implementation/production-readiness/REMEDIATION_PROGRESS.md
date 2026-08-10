@@ -73,6 +73,15 @@ specific defect. Its historical-data gate belongs to later PHASE-02/PHASE-07/
 PHASE-10 execution and must not be represented as unfinished automatic
 backfill work.
 
+## Retail Order contract feature register — 10 August 2026
+
+This register records the bounded 3.4A source slice. It does not activate a
+Retail transaction capability or complete the broader Retail Order lifecycle.
+
+| Feature | Branch / baseline | Completed source scope | Verification | Important notes and exact next step | State |
+| --- | --- | --- | --- | --- | --- |
+| 3.4A Retail Order contract hardening | `feat/backend-retail-order-contract-hardening`; baseline `954837c` | Strict authenticated cart intent, stable semantic request fingerprint, exact replay/conflict classification, published/active authoritative catalog snapshot, bounded quantity/currency/fulfilment rules, provider-neutral lifecycle commands, append-only audit history, and compare-and-swap concurrency precondition. | Focused Retail matrix `63 passed`; full backend `1026 passed, 15 skipped, 14 subtests passed`; expected-skip enforcement found zero unexpected skips; focused MyPy, critical Flake8, changed-file Black/isort, and diff check passed. | Require PR CI/review. Keep create/transition routes and checkout/payment capabilities inactive. Atomic persistence, reservation, payment/provider, migration, deployment, readiness, and go-live require separate tasks and authority. | `source_candidate_pr_pending`; 3.4A only. |
+
 ## B2B operational lifecycle feature register — 31 July 2026
 
 This register distinguishes bounded internal Admin lifecycle hardening from

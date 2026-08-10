@@ -125,6 +125,8 @@ jobs:
           backend/readiness_health.py
           backend/notification_worker.py
           backend/quote_line_reconciliation_report.py
+          backend/retail_checkout_domain.py
+          backend/retail_order_contract.py
           backend/storage.py
           backend/transaction_api.py
       - name: Check remediation formatting
@@ -148,6 +150,8 @@ jobs:
             backend/readiness_health.py \
             backend/notification_worker.py \
             backend/quote_line_reconciliation_report.py \
+            backend/retail_checkout_domain.py \
+            backend/retail_order_contract.py \
             backend/storage.py \
             backend/server.py \
             backend/transaction_api.py \
@@ -163,6 +167,8 @@ jobs:
             backend/tests/test_readonly_load_probe.py \
             backend/tests/test_inventory_service.py \
             backend/tests/test_quote_line_reconciliation_report.py \
+            backend/tests/test_retail_checkout_domain.py \
+            backend/tests/test_retail_order_contract.py \
             backend/tests/test_transaction_error_contract.py \
             backend/tests/test_work_order_allocation_integration.py \
             scripts/load_readonly_api.py
@@ -185,6 +191,8 @@ jobs:
             backend/readiness_health.py \
             backend/notification_worker.py \
             backend/quote_line_reconciliation_report.py \
+            backend/retail_checkout_domain.py \
+            backend/retail_order_contract.py \
             backend/storage.py \
             backend/server.py \
             backend/transaction_api.py \
@@ -200,6 +208,8 @@ jobs:
             backend/tests/test_readonly_load_probe.py \
             backend/tests/test_inventory_service.py \
             backend/tests/test_quote_line_reconciliation_report.py \
+            backend/tests/test_retail_checkout_domain.py \
+            backend/tests/test_retail_order_contract.py \
             backend/tests/test_transaction_error_contract.py \
             backend/tests/test_work_order_allocation_integration.py \
             scripts/load_readonly_api.py
