@@ -1,0 +1,43 @@
+{
+  "run": "P2 visual polish focused browser revalidation",
+  "date": "2026-08-11",
+  "target": "http://127.0.0.1:4178",
+  "matrix": {
+    "routes": [
+      "/",
+      "/projects",
+      "/projects/pindad-ev-motor",
+      "/projects/agate-motorcycle-simulator",
+      "/projects/xeon-redesign",
+      "/contact"
+    ],
+    "viewports": [390, 768, 1024, 1440],
+    "passed": 24,
+    "total": 24
+  },
+  "technical": {
+    "console_errors_or_warnings": 0,
+    "page_errors": 0,
+    "external_requests": 0,
+    "horizontal_overflow": 0,
+    "broken_images": 0,
+    "visible_targets_below_44px": 0,
+    "missing_landmarks": 0,
+    "opaque_header": true
+  },
+  "focused": {
+    "projects_desktop_caption_and_alignment": "PASS",
+    "projects_mobile_caption": "PASS",
+    "retail_deferred_visible_without_hash_route": "PASS",
+    "map_unavailable_copy_and_retry": "PASS",
+    "persistence_fixture_label_after_submit": "PASS"
+  },
+  "screenshots": [
+    "p2-projects-1440.png",
+    "p2-projects-390.png",
+    "p2-home-retail-deferred-390.png",
+    "p2-contact-map-unavailable-390.png"
+  ],
+  "server_cleanup": "port-4178=free",
+  "scope": "prototype-only; no production, canonical, provider, commit, push, PR, or merge action"
+}
