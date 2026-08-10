@@ -401,7 +401,6 @@ def build_material_router(
         actor: dict = Depends(require_permission("materials.archive")),
     ):
         response.headers["Deprecation"] = "true"
-        response.headers["Sunset"] = "Wed, 15 Jul 2026 00:00:00 GMT"
         return serialize_material_for(actor, await invoke(
             service().archive_material(
                 material_id,

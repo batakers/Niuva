@@ -330,7 +330,10 @@ async def run_validation_and_compatibility_aliases():
         )
         assert deprecated_delete.status_code == 200
         assert deprecated_delete.headers["deprecation"] == "true"
+        assert "sunset" not in deprecated_delete.headers
         assert deprecated_delete.json()["id"] == material_id
+        assert deprecated_delete.json()["status"] == "archived"
+        assert deprecated_delete.json()["active"] is False
 
 
 def test_material_validation_and_delete_archive_alias():
