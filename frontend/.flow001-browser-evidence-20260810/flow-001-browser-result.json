@@ -1,0 +1,770 @@
+{
+  "generatedAt": "2026-08-10T07:58:51.340Z",
+  "baseUrl": "http://127.0.0.1:3000",
+  "browser": "Google Chrome via Playwright, isolated contexts",
+  "cases": [
+    {
+      "case": "services",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "requestedUrl": "http://127.0.0.1:3000/services?utm_source=legacy#capability",
+      "navigationStatus": 200,
+      "navigationError": null,
+      "finalUrl": "http://127.0.0.1:3000/capabilities?utm_source=legacy#capability",
+      "final": {
+        "path": "/capabilities",
+        "search": "?utm_source=legacy",
+        "hash": "#capability"
+      },
+      "dom": {
+        "title": "Capabilities Niuva - R&D, Design Engineering, dan Prototyping",
+        "h1": "Dari ide menjadi produk yang dapat diuji.",
+        "mainPresent": true,
+        "bodyText": "Lewati ke konten\nNiuva\n\nCapabilities\n\nDari ide menjadi produk yang dapat diuji.\n\nResearch & Development serta Design & Prototyping menjadi kapabilitas utama Niuva. Konsultasi, workshop, apparel, dan merchandise mendukung ekosistem inovasi yang lebih luas.\n\nDiskusikan Project\nLihat Projects\n\nKapabili",
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "bodyWidth": 390,
+        "viewportHeight": 844
+      },
+      "horizontalOverflow": 0,
+      "axe": {
+        "violationCount": 0,
+        "incompleteCount": 0,
+        "violations": [],
+        "incomplete": [],
+        "error": null
+      },
+      "diagnostics": {
+        "consoleErrors": [
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          }
+        ],
+        "pageErrors": [],
+        "requestFailures": [
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/content",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/content",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/content",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/content",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          }
+        ],
+        "apiResponses": []
+      },
+      "routePass": true,
+      "diagnosticsClean": false,
+      "screenshot": "D:\\NIUVA\\Niuva\\Niuva\\frontend\\.flow001-browser-evidence-20260810\\services-mobile.png"
+    },
+    {
+      "case": "services",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "requestedUrl": "http://127.0.0.1:3000/services?utm_source=legacy#capability",
+      "navigationStatus": 200,
+      "navigationError": null,
+      "finalUrl": "http://127.0.0.1:3000/capabilities?utm_source=legacy#capability",
+      "final": {
+        "path": "/capabilities",
+        "search": "?utm_source=legacy",
+        "hash": "#capability"
+      },
+      "dom": {
+        "title": "Capabilities Niuva - R&D, Design Engineering, dan Prototyping",
+        "h1": "Dari ide menjadi produk yang dapat diuji.",
+        "mainPresent": true,
+        "bodyText": "Lewati ke konten\nNiuva\nHome\nAbout\nCapabilities\nProjects\nContact\nRetail\nDiskusikan Project\n\nCapabilities\n\nDari ide menjadi produk yang dapat diuji.\n\nResearch & Development serta Design & Prototyping menjadi kapabilitas utama Niuva. Konsultasi, workshop, apparel, dan merchandise mendukung ekosistem in",
+        "documentWidth": 1440,
+        "viewportWidth": 1440,
+        "bodyWidth": 1440,
+        "viewportHeight": 900
+      },
+      "horizontalOverflow": 0,
+      "axe": {
+        "violationCount": 0,
+        "incompleteCount": 0,
+        "violations": [],
+        "incomplete": [],
+        "error": null
+      },
+      "diagnostics": {
+        "consoleErrors": [
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          }
+        ],
+        "pageErrors": [],
+        "requestFailures": [
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/content",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/content",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/content",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/content",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          }
+        ],
+        "apiResponses": []
+      },
+      "routePass": true,
+      "diagnosticsClean": false,
+      "screenshot": "D:\\NIUVA\\Niuva\\Niuva\\frontend\\.flow001-browser-evidence-20260810\\services-desktop.png"
+    },
+    {
+      "case": "portfolio",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "requestedUrl": "http://127.0.0.1:3000/portfolio?utm_source=legacy#project",
+      "navigationStatus": 200,
+      "navigationError": null,
+      "finalUrl": "http://127.0.0.1:3000/projects?utm_source=legacy#project",
+      "final": {
+        "path": "/projects",
+        "search": "?utm_source=legacy",
+        "hash": "#project"
+      },
+      "dom": {
+        "title": "Projects Niuva - Mobilitas, EV, Simulator, dan Produk Teknis",
+        "h1": "Bukti produk, mobilitas, dan simulator Niuva.",
+        "mainPresent": true,
+        "bodyText": "Lewati ke konten\nNiuva\n\nProjects\n\nBukti produk, mobilitas, dan simulator Niuva.\n\nHalaman ini menampilkan proyek sebagai mini case study, bukan galeri visual. Setiap case menjelaskan konteks, tantangan, solusi, output, dan kapabilitas yang digunakan Niuva.\n\nDiskusikan Project\nLihat Capabilities\nEmpat",
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "bodyWidth": 390,
+        "viewportHeight": 844
+      },
+      "horizontalOverflow": 0,
+      "axe": {
+        "violationCount": 0,
+        "incompleteCount": 0,
+        "violations": [],
+        "incomplete": [],
+        "error": null
+      },
+      "diagnostics": {
+        "consoleErrors": [
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          }
+        ],
+        "pageErrors": [],
+        "requestFailures": [
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/portfolio",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/portfolio",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/portfolio",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/portfolio",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          }
+        ],
+        "apiResponses": []
+      },
+      "routePass": true,
+      "diagnosticsClean": false,
+      "screenshot": "D:\\NIUVA\\Niuva\\Niuva\\frontend\\.flow001-browser-evidence-20260810\\portfolio-mobile.png"
+    },
+    {
+      "case": "portfolio",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "requestedUrl": "http://127.0.0.1:3000/portfolio?utm_source=legacy#project",
+      "navigationStatus": 200,
+      "navigationError": null,
+      "finalUrl": "http://127.0.0.1:3000/projects?utm_source=legacy#project",
+      "final": {
+        "path": "/projects",
+        "search": "?utm_source=legacy",
+        "hash": "#project"
+      },
+      "dom": {
+        "title": "Projects Niuva - Mobilitas, EV, Simulator, dan Produk Teknis",
+        "h1": "Bukti produk, mobilitas, dan simulator Niuva.",
+        "mainPresent": true,
+        "bodyText": "Lewati ke konten\nNiuva\nHome\nAbout\nCapabilities\nProjects\nContact\nRetail\nDiskusikan Project\n\nProjects\n\nBukti produk, mobilitas, dan simulator Niuva.\n\nHalaman ini menampilkan proyek sebagai mini case study, bukan galeri visual. Setiap case menjelaskan konteks, tantangan, solusi, output, dan kapabilitas",
+        "documentWidth": 1440,
+        "viewportWidth": 1440,
+        "bodyWidth": 1440,
+        "viewportHeight": 900
+      },
+      "horizontalOverflow": 0,
+      "axe": {
+        "violationCount": 0,
+        "incompleteCount": 0,
+        "violations": [],
+        "incomplete": [],
+        "error": null
+      },
+      "diagnostics": {
+        "consoleErrors": [
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+          }
+        ],
+        "pageErrors": [],
+        "requestFailures": [
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/portfolio",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/portfolio",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/portfolio",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/auth/me",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/portfolio",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          },
+          {
+            "path": "/api/settings",
+            "method": "GET",
+            "error": "net::ERR_CONNECTION_REFUSED"
+          }
+        ],
+        "apiResponses": []
+      },
+      "routePass": true,
+      "diagnosticsClean": false,
+      "screenshot": "D:\\NIUVA\\Niuva\\Niuva\\frontend\\.flow001-browser-evidence-20260810\\portfolio-desktop.png"
+    }
+  ],
+  "routePassCount": 4,
+  "routeCaseCount": 4,
+  "diagnosticsCleanCount": 0
+}
