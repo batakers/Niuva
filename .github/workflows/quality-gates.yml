@@ -118,6 +118,7 @@ jobs:
           backend/b2b_service.py
           backend/catalog_routes.py
           backend/content_domain.py
+          backend/contract_time.py
           backend/inventory_service.py
           backend/csv_safety.py
           backend/schema_manifest.py
@@ -143,6 +144,7 @@ jobs:
             backend/b2b_service.py \
             backend/catalog_routes.py \
             backend/content_domain.py \
+            backend/contract_time.py \
             backend/inventory_service.py \
             backend/csv_safety.py \
             backend/schema_manifest.py \
@@ -184,6 +186,7 @@ jobs:
             backend/b2b_service.py \
             backend/catalog_routes.py \
             backend/content_domain.py \
+            backend/contract_time.py \
             backend/inventory_service.py \
             backend/csv_safety.py \
             backend/schema_manifest.py \

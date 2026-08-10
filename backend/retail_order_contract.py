@@ -15,6 +15,7 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
+from contract_time import parse_aware_timestamp
 from retail_domain import RETAIL_TRANSITIONS
 
 
@@ -54,19 +55,13 @@ def _require_text(value: Any, *, field: str, maximum: int = 500) -> str:
 def _require_timestamp(value: Any, *, field: str) -> tuple[str, datetime]:
     timestamp = _require_text(value, field=field, maximum=100)
     try:
-        parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        parsed = parse_aware_timestamp(timestamp)
     except ValueError as exc:
         raise RetailOrderContractError(
             "retail_order_timestamp_invalid",
             f"{field} harus memakai ISO 8601 bertimezone.",
             details={"field": field},
         ) from exc
-    if parsed.tzinfo is None or parsed.utcoffset() is None:
-        raise RetailOrderContractError(
-            "retail_order_timestamp_invalid",
-            f"{field} harus memakai ISO 8601 bertimezone.",
-            details={"field": field},
-        )
     return timestamp, parsed
 
 
@@ -80,6 +75,11 @@ def retail_transition_command_fingerprint(
 ) -> str:
     """Bind an operation ID to the exact semantic transition command."""
 
+    if isinstance(expected_version, bool) or not isinstance(expected_version, int):
+        raise RetailOrderContractError(
+            "retail_order_version_invalid",
+            "Expected version Retail Order tidak valid.",
+        )
     command = {
         "actor_id": _require_text(actor_id, field="actor_id", maximum=200),
         "expected_version": expected_version,
@@ -89,11 +89,6 @@ def retail_transition_command_fingerprint(
             target_status, field="target_status", maximum=100
         ),
     }
-    if isinstance(expected_version, bool) or not isinstance(expected_version, int):
-        raise RetailOrderContractError(
-            "retail_order_version_invalid",
-            "Expected version Retail Order tidak valid.",
-        )
     encoded = json.dumps(
         command, ensure_ascii=True, separators=(",", ":"), sort_keys=True
     ).encode("utf-8")
@@ -336,7 +331,7 @@ def apply_retail_order_transition(
     """Return an updated aggregate, an exact replay, or a named conflict."""
 
     validate_retail_order_history(order)
-    occurred_at, _ = _require_timestamp(occurred_at, field="occurred_at")
+    occurred_at, occurred_time = _require_timestamp(occurred_at, field="occurred_at")
     command_fingerprint = retail_transition_command_fingerprint(
         target_status=target_status,
         expected_version=expected_version,
@@ -353,6 +348,16 @@ def apply_retail_order_transition(
                     "Operation ID Retail Order sudah digunakan untuk command berbeda.",
                 )
             return deepcopy(dict(order))
+
+    _, current_updated_time = _require_timestamp(
+        order["updated_at"], field="order.updated_at"
+    )
+    if occurred_time < current_updated_time:
+        raise RetailOrderContractError(
+            "retail_order_timestamp_invalid",
+            "Waktu transisi Retail Order tidak boleh sebelum updated_at.",
+            details={"field": "occurred_at"},
+        )
 
     if order["version"] != expected_version:
         raise RetailOrderContractError(

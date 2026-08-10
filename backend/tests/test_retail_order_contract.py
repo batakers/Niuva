@@ -206,6 +206,13 @@ def test_audit_time_must_be_timezone_aware(occurred_at):
     )
 
 
+def test_transition_time_cannot_move_before_current_aggregate_time():
+    assert_contract_error(
+        "retail_order_timestamp_invalid",
+        lambda: transition(initial_order(), occurred_at="2026-08-04T11:59:00+00:00"),
+    )
+
+
 def test_history_validation_rejects_rewrite_gap_and_duplicate_operation():
     valid = transition(initial_order())
 

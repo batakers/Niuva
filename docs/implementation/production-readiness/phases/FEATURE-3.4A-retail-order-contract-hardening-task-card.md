@@ -1,6 +1,6 @@
 # Feature 3.4A — Retail Order Contract Hardening Task Card
 
-Status: **bounded source candidate — local verification passed; PR/CI pending**
+Status: **bounded source candidate — local verification passed; PR #226 open**
 
 Branch: `feat/backend-retail-order-contract-hardening`
 
@@ -51,6 +51,7 @@ activation-gated invariants.
 ## Expected files
 
 - `backend/retail_checkout_domain.py`
+- `backend/contract_time.py`
 - `backend/retail_order_contract.py`
 - focused Retail contract and route-lockdown tests
 - `.github/workflows/quality-gates.yml`
@@ -83,8 +84,8 @@ go-live are not authorized by this task.
 
 ## Local verification evidence
 
-- Focused Retail checkout/lifecycle/aggregate/route matrix: `63 passed`.
-- Full backend regression: `1026 passed, 15 skipped, 14 subtests passed`;
+- Focused Retail checkout/lifecycle/aggregate/route matrix: `68 passed`.
+- Full backend regression: `1031 passed, 15 skipped, 14 subtests passed`;
   expected-skip enforcement reported zero unexpected skips.
 - Focused MyPy, repository critical Flake8 policy, changed-file Black/isort,
   and `git diff --check`: passed.

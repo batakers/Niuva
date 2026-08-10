@@ -158,6 +158,22 @@ def test_operation_id_accepts_only_an_exact_semantic_replay():
     )
 
 
+@pytest.mark.parametrize(
+    "existing_operation",
+    [
+        "not-a-mapping",
+        {"operation_id": "other-operation", "request_fingerprint": "abc"},
+        {"operation_id": INTENT["operation_id"], "request_fingerprint": ""},
+        {"operation_id": INTENT["operation_id"]},
+    ],
+)
+def test_operation_record_must_match_the_contract(existing_operation):
+    assert_contract_error(
+        "checkout_operation_record_invalid",
+        lambda: classify_checkout_operation(INTENT, existing_operation),
+    )
+
+
 @pytest.mark.parametrize("quantity", [0, 1001, True, 1.5])
 def test_quantity_is_positive_bounded_and_integer(quantity):
     payload = copy.deepcopy(INTENT)

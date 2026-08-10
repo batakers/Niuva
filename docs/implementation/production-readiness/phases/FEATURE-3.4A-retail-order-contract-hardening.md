@@ -1,6 +1,6 @@
 # Feature 3.4A — Retail Order Contract Hardening
 
-Status: **bounded source candidate; PR and CI pending**
+Status: **bounded source candidate; PR #226 open**
 
 Branch: `feat/backend-retail-order-contract-hardening`
 
@@ -21,7 +21,7 @@ Task card:
 - Currency uses a strict uppercase three-letter format and cannot be mixed
   within one checkout snapshot.
 - Product, variant, publication, price, tax-policy, and fulfilment-policy facts
-  are detached into a customer-safe immutable snapshot; internal catalog
+  are detached into a customer-safe historical snapshot; internal catalog
   fields are not copied.
 - A pure Retail Order aggregate contract starts at `created`, follows only the
   approved next state, binds transitions to exact command fingerprints, and
@@ -43,9 +43,9 @@ environment integration.
 Executed from the isolated feature worktree:
 
 - Focused checkout, lifecycle, aggregate, and route-lockdown matrix:
-  `63 passed`.
+  `68 passed`.
 - Full hermetic backend regression:
-  `1026 passed, 15 skipped, 14 subtests passed`; expected-skip enforcement
+  `1031 passed, 15 skipped, 14 subtests passed`; expected-skip enforcement
   reported zero unexpected skips.
 - Focused MyPy for both contract modules: passed with no issues.
 - Repository critical Flake8 policy (`E9,F63,F7,F82`): passed.
@@ -58,7 +58,7 @@ contracts and retains inactive persistence/runtime boundaries.
 
 ## Remaining gates
 
-- Pull-request CI and review must pass before merge.
+- Pull-request CI and review on PR #226 must pass before merge.
 - Atomic operation-key persistence, active order creation, reservation,
   payment attempt, webhook, refund, reconciliation, provider integration,
   migrations, deployment, readiness, and go-live remain separately gated.

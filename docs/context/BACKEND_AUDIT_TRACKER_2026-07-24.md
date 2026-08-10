@@ -255,8 +255,8 @@ activate or complete the Retail transaction lifecycle.
 - Concurrent lifecycle writers share an `id + version + status`
   compare-and-swap precondition, so a stale command must not overwrite a
   winning transition.
-- Focused verification passed `63` tests. Full backend regression passed
-  `1026` tests with `15` explicit environment-gated skips and `14` subtests;
+- Focused verification passed `68` tests. Full backend regression passed
+  `1031` tests with `15` explicit environment-gated skips and `14` subtests;
   expected-skip enforcement found zero unexpected skips.
 - Retail create/transition routes and checkout/payment capabilities remain
   explicitly inactive. No database, reservation, provider, migration,

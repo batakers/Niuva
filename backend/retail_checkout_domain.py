@@ -13,8 +13,9 @@ import json
 import re
 from collections.abc import Mapping
 from copy import deepcopy
-from datetime import datetime
 from typing import Any
+
+from contract_time import parse_aware_timestamp
 
 _ALLOWED_INTENT_FIELDS = frozenset(
     {"customer_id", "operation_id", "items", "fulfilment_method"}
@@ -171,7 +172,10 @@ def checkout_request_fingerprint(payload: Mapping[str, Any]) -> str:
     therefore remains detectable as a conflict.
     """
 
-    normalized = normalize_checkout_intent(payload)
+    return _normalized_checkout_fingerprint(normalize_checkout_intent(payload))
+
+
+def _normalized_checkout_fingerprint(normalized: Mapping[str, Any]) -> str:
     fingerprint_input = {
         "customer_id": normalized["customer_id"],
         "fulfilment_method": normalized["fulfilment_method"],
@@ -218,7 +222,7 @@ def classify_checkout_operation(
             "checkout_operation_record_invalid",
             "Record idempotency checkout tidak sesuai kontrak.",
         )
-    if stored_fingerprint != checkout_request_fingerprint(normalized):
+    if stored_fingerprint != _normalized_checkout_fingerprint(normalized):
         raise RetailCheckoutContractError(
             "checkout_operation_id_conflict",
             "Operation ID checkout sudah digunakan untuk intent berbeda.",
@@ -269,19 +273,13 @@ def _require_timestamp(value: Any, *, field: str) -> str:
         maximum=100,
     )
     try:
-        parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        parse_aware_timestamp(timestamp)
     except ValueError as exc:
         raise RetailCheckoutContractError(
             "checkout_capture_time_invalid",
             "Waktu snapshot checkout harus memakai ISO 8601 bertimezone.",
             details={"field": field},
         ) from exc
-    if parsed.tzinfo is None or parsed.utcoffset() is None:
-        raise RetailCheckoutContractError(
-            "checkout_capture_time_invalid",
-            "Waktu snapshot checkout harus memakai ISO 8601 bertimezone.",
-            details={"field": field},
-        )
     return timestamp
 
 
