@@ -29,6 +29,59 @@
 - Do not add dependencies, change global configuration, or modify secrets without explicit approval.
 - Follow approved migration and execution gates; a documentation plan does not authorize application implementation.
 
+## Frontend and UX/UI Workflow
+
+- This workflow applies to public, marketing, portfolio, Retail, customer,
+  authentication, Admin, dashboard, prototype, page-design, and design-system
+  work.
+- Resolve design authority through the canonical order above, `DESIGN.md`, the
+  applicable UX or operations decision, the active public brand guardrail when
+  relevant, the current component register, and current source/tests. Then use
+  the `impeccable` skill as the primary frontend-design workflow and visual
+  quality gate. Impeccable guides execution; it does not replace canonical
+  product or design authority.
+- Use the Impeccable Brand register for public, marketing, and portfolio
+  surfaces. Use its Product register for customer, authentication, Retail,
+  Admin, dashboard, and operational surfaces. Read both for cross-surface work
+  and preserve the distinct purposes of each surface.
+- Treat Frontend Design, Frontend Dev, Effective HTML, Taste, Baoyu Design,
+  UI/UX Pro Max, Emil Design Engineering, and Fullstack Dev guidance as filtered
+  supporting references only. Fullstack guidance informs lifecycle,
+  authorization, privacy, data, security, and provider boundaries; it does not
+  define visual direction. Report conflicts instead of silently overriding
+  Niuva authority.
+- Inspect and adapt existing Niuva routes, components, semantic tokens, assets,
+  content, and real states before creating new patterns. Do not replace the
+  product with a transferable agency, marketplace, dashboard, or generic SaaS
+  template.
+- Apply first-order, second-order, and logo-hidden anti-template checks. Reject
+  unjustified repeated card grids, tiny uppercase eyebrows, decorative section
+  numbering, bento composition, glass effects, gradients, dark mode, fake
+  metrics or telemetry, generic hero copy, and motion that does not explain
+  hierarchy, process, feedback, or media state.
+- Do not silently replace the approved Poppins/Inter roles, Niuva palette and
+  blue semantics, existing tokens, or approved brand assets. A new font,
+  dependency, image-generation workflow, motion library, dark mode, or visual
+  identity change requires applicable authority, a concrete need, and separate
+  approval where repository rules require it.
+- Design and verify the relevant default, hover, focus, active, disabled,
+  loading, empty, error, conflict, recovery, and success states. Include stale,
+  expired, offline, or uncertain states when the underlying lifecycle can
+  produce them. Important feedback must remain visible to sighted users and
+  must not exist only in an ARIA live region.
+- Use readable normal-text contrast of at least 4.5:1, at least 16px mobile body
+  text, a 44px general mobile interaction target, and approximately 65-75ch for
+  prose where the content type permits. Verify semantic structure, labels,
+  keyboard and focus behavior, zoom/reflow, reduced motion, and responsive
+  behavior including the 390px mobile baseline and representative wider
+  viewports.
+- Before claiming frontend completion, run proportional source/tests plus the
+  applicable Impeccable detector, browser interaction checks, and screenshot
+  critique. For broad redesign or prototype gates, close P0/P1 findings and
+  record remaining P2/P3 follow-ups instead of iterating without a stopping
+  rule. A prototype pass never implies application implementation, deployment,
+  production readiness, or go-live approval.
+
 ## Team AI-Agent Workflow
 
 For coordinated AI-assisted work, follow
