@@ -62,7 +62,7 @@ Evidence utama: `frontend/src/App.js:139-190`,
 | ID | Work item | Status | Dependencies / gate | Acceptance evidence |
 | --- | --- | --- | --- | --- |
 | AUD-001 | Simpan audit user-flow dan design-system current main | `analysis_done` | Tidak ada | Temuan dengan path/line; baseline `d4bf4ac` |
-| FLOW-001 | Disposition alias `/services` dan `/portfolio` | `waiting_lead` | Keputusan route/redirect dan exact file scope | Route behavior sesuai DEC-UX-003; regression test |
+| FLOW-001 | Disposition alias `/services` dan `/portfolio` | `accepted` | Lead verification tercatat; exact frontend route scope | Route behavior sesuai DEC-UX-003; regression test |
 | FLOW-002 | Inquiry reference/acknowledgement inline di `/contact` | `ready_for_verification` | Lead verification masih diperlukan; backend contract existing dipakai apa adanya | 201 + reference asli, 422/429/503, focus dan regression evidence |
 | RETAIL-001 | Registration dan `/dashboard/notifications` | `waiting_lead` | Auth, abuse-control, notification contract | Route, unauthorized state, keyboard/browser evidence |
 | RETAIL-002 | Retail configure → request/offer → checkout | `waiting_lead` | Provider-neutral API, payment/fulfillment decisions | End-to-end contract, no unsafe mutation, responsive/a11y evidence |
@@ -154,3 +154,18 @@ Evidence utama: `frontend/src/App.js:139-190`,
 > **Runtime:** Docker Desktop running, MongoDB replica set `rs0` writable, backend berjalan tanpa `--reload` di port `8001`; frontend existing berjalan di port `3000`.
 > **Limitations/risks:** Readiness `503` karena migration 007–009 belum applied; migration sengaja tidak dijalankan karena di luar scope dan memerlukan backup/approval. Console browser memuat `401` anonymous auth probes dan satu `422` yang memang disengaja untuk test; tidak ada React runtime warning/error baru pada success path. Smoke membuat lima inquiry sintetis di database lokal; tidak ada target production.
 > **Status:** `Ready for Lead Verification`
+
+## Verification refresh FLOW-001 - 10 Agustus 2026
+
+> **Observed at:** `2026-08-10T14:59:45+07:00` (Asia/Jakarta; browser evidence)
+> **Work item:** `FLOW-001`
+> **Baseline:** `a61cc2be6a10a4dd5e04d4343cf9d293404a8f30` / tree `b3b509e988af151320d9d1e98ce332a724cd1eb1`
+> **Scope:** Existing route registrations and `PublicAliasRedirect` contract in `frontend/src/App.js`, plus `frontend/src/App.route.contract.test.js`; no frontend source, backend, migration, dependency, or config change was made.
+> **Decision/approval:** `DEC-UX-003` remains the route authority: `/services` redirects to `/capabilities`, and `/portfolio` redirects to `/projects`. Lead acceptance is recorded from the user's explicit statement on 10 Agustus 2026 (Asia/Jakarta); the acceptance is limited to the frontend route-alias scope.
+> **Tests/checks:** `npm test -- --watchAll=false --runInBand src/App.route.contract.test.js` - **1 suite / 3 tests passed**. `git diff --check -- .` produced no whitespace errors; only the existing LF/CRLF normalization warnings.
+> **Browser evidence:** Isolated system Chrome/Playwright loaded all four alias/viewport combinations with navigation HTTP `200`. Final URLs preserved the exact query/hash: `/services?utm_source=legacy#capability` -> `/capabilities?utm_source=legacy#capability`; `/portfolio?utm_source=legacy#project` -> `/projects?utm_source=legacy#project`.
+> **Responsive/accessibility:** Viewports `390x844` and `1440x900` passed route assertions in **4/4** runs; horizontal overflow was `0 px`; axe reported **0 violations / 0 incomplete** in each run; page errors were `0`.
+> **Runtime/network limitations:** Backend was not started for this frontend-only route check. Each isolated page recorded expected connection failures for local `/api/auth/me`, `/api/settings`, and the relevant `/api/content` or `/api/portfolio` probes; these are environment diagnostics, not redirect failures. Chrome DevTools MCP was unavailable, so the fallback isolated Playwright + system Chrome harness was used.
+> **Evidence:** `frontend/.flow001-browser-evidence-20260810/flow-001-browser-result.json` and `services-mobile.png`, `services-desktop.png`, `portfolio-mobile.png`, `portfolio-desktop.png`.
+> **Lead verification:** User stated: "Saya menerima FLOW-001 sebagai Lead. Redirect dan query/hash preservation sesuai DEC-UX-003. Acceptance terbatas pada frontend route alias; tidak mencakup backend, migration, deployment, atau go-live." on 10 Agustus 2026 (Asia/Jakarta). No commit, push, PR, deployment, migration, or go-live action was performed.
+> **Status:** `accepted`
