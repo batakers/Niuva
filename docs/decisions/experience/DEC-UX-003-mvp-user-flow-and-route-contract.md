@@ -2,15 +2,17 @@
 
 ID: `DEC-UX-003`
 Status: **Approved Decision — Documentation Amendment; No Implementation Authority**
-Decision date: 31 July 2026; amended 8 August 2026
+Decision date: 31 July 2026; amended 8 and 11 August 2026
 Decision owner: Product decision authority
 Decision source: Explicit user approval of `NUF-R01` through `NUF-R12` on
 31 July 2026, including the approved refinements to `NUF-R08` and `NUF-R09`
 and explicit approval of the B2B Form + WhatsApp documentation amendment on
-8 August 2026.
-Scope: MVP public aliases, Retail account/configuration/request/offer/checkout
-and Order destinations, public B2B inquiry intake, legacy-route treatment, and
-Admin Studio Retail queue ownership
+8 August 2026. The owner reviewed the remediated Public route-localization
+packet and explicitly authorized its documentation-only canonical promotion on
+11 August 2026.
+Scope: localized MVP Public marketing routes and aliases, Retail
+account/configuration/request/offer/checkout and Order destinations, public B2B
+inquiry intake, legacy-route treatment, and Admin Studio Retail queue ownership
 Related architecture: `DEC-ARCH-01` / `ADR-004`
 
 ## Context
@@ -31,6 +33,12 @@ The narrowed MVP also requires a low-friction B2B and partnership entry point.
 The public inquiry may begin without login, must be recorded before any
 follow-up handoff, and remains manually operated. This amendment records the
 approved form-first flow with an optional user-clicked WhatsApp continuation.
+
+The 11 August 2026 amendment makes unprefixed Indonesian and `/en`-prefixed
+English URLs the canonical Public marketing route family. It preserves former
+Public paths as compatibility redirects, keeps downstream Retail routes
+unprefixed, and records project-detail localization only as a reserved naming
+direction. It does not activate routes or multilingual runtime behavior.
 
 `ADR-004` separately selects the MVP delivery topology. This decision defines
 route ownership within that topology; it does not treat a route as an
@@ -53,32 +61,109 @@ authorization boundary.
 6. Approval of a route does not imply that its page, API, schema, provider, or
    operational capability exists or is active.
 
-### Public canonical routes and aliases
+### Public canonical routes, locales, and aliases
 
-- `/capabilities` is the canonical capability/service overview.
-- `/services` is a permanent compatibility redirect to `/capabilities` and
-  must not own separate content or a separate CMS record.
-- `/projects` is the canonical project/portfolio proof surface.
-- `/portfolio` is a permanent compatibility redirect to `/projects` and must
-  not own separate content or a separate CMS record.
-- `/`, `/about`, `/contact`, `/privacy`, `/faq`, `/retail`, and
-  `/retail/products/:slug` retain their current route responsibilities.
-- `/contact` owns the structured public B2B/partnership inquiry. It is
-  available without login and persists an Inquiry before showing an optional
-  WhatsApp continuation using the existing approved public-settings
-  destination. The Inquiry UUID is the MVP customer reference.
-- The primary project-discussion CTA enters the form-first flow. WhatsApp
-  remains a secondary contact action for a visitor who is not ready to submit
-  a brief.
-- Exact navigation composition, CTA copy, mobile treatment, and redirect
-  implementation mechanics remain separate UX and technical work.
+The 11 August amendment supersedes the former canonical use of
+`/capabilities` and `/projects` without deleting its history. The active
+documentation contract is:
+
+| Page responsibility | Indonesian | English |
+|---|---|---|
+| Homepage | `/` | `/en` |
+| Company and approach | `/tentang` | `/en/about` |
+| Service overview | `/layanan` | `/en/services` |
+| Project archive | `/proyek` | `/en/projects` |
+| B2B inquiry and contact | `/kontak` | `/en/contact` |
+| Retail entry | `/retail` | `/en/retail` |
+| FAQ | `/faq` | `/en/faq` |
+| Privacy | `/privasi` | `/en/privacy` |
+
+All canonical route strings are lowercase. The service navigation label is
+`Layanan` in Indonesian and `Services` in English. A conventional globe plus
+the visible active code `ID` or `EN` opens explicit language choices; it is not
+an unexplained globe-only control.
+
+Compatibility paths use a one-hop permanent HTTP `308` redirect at the public
+delivery boundary:
+
+| Superseded path | Canonical destination |
+|---|---|
+| `/about` | `/tentang` |
+| `/capabilities` | `/layanan` |
+| `/services` | `/layanan` |
+| `/projects` | `/proyek` |
+| `/portfolio` | `/proyek` |
+| `/contact` | `/kontak` |
+| `/privacy` | `/privasi` |
+| `/en/capabilities` | `/en/services` |
+
+A compatibility redirect carries applicable query parameters in its `Location`
+target. A URL fragment is client-side state and is not sent to the server; when
+the `Location` value does not replace it, a conforming user agent inherits the
+original fragment under RFC 9110 Section 10.2.2. This browser behavior must be
+verified at the selected delivery boundary. The compatibility path owns no
+content, CMS record, sitemap entry, canonical tag, or independent analytics
+identity and resolves directly to its final destination. Exact server, edge,
+or hosting mechanics remain separately gated.
+
+For a complete translated pair:
+
+- Indonesian markup uses `lang="id"` and `hreflang="id"`; English markup uses
+  `lang="en"` and `hreflang="en"`;
+- each localized page is self-canonical and references its counterpart
+  reciprocally;
+- `x-default` points to the Indonesian route with the same content
+  responsibility, while only the Homepage pair uses `/` as `x-default`;
+- both localized canonical URLs enter the applicable sitemap; and
+- the language selector links the exact counterpart without automatic IP,
+  browser-language, or inferred-location redirection.
+
+System, navigation, form, error, privacy, and conversion copy must be complete
+in Indonesian and English before the language switch activates. Indonesian CMS
+content is required and English is optional. If English content is missing, the
+English route may show Indonesian with the visible notice `English translation
+belum tersedia`; it emits `noindex,follow`, points canonical metadata to the
+same-content Indonesian route, stays out of the English sitemap and
+`hreflang` set, and never uses automatic machine translation. When English is
+ready, the route becomes self-canonical and enters the reciprocal annotation
+and sitemap set.
+
+The same explicit language preference applies across Public, Retail, Login,
+customer, and Admin surfaces. The localized Retail entry navigates between
+`/retail` and `/en/retail`. On retained unprefixed downstream Retail, Login,
+customer, Admin, and operational routes, a language choice preserves the
+current canonical URL and owned-resource context while updating the stored
+preference and supported interface copy. It must not invent an `/en`
+counterpart or return the user to the Retail entry. Private and operational
+routes remain unprefixed and `noindex`. The existing `/retail/products/:slug`,
+`/retail/products/:slug/configure`, Request, Offer, checkout, Order, and other
+downstream Retail routes also remain unprefixed and retain their current route
+and lifecycle responsibilities. This amendment makes no multilingual SEO or
+indexability decision for those retained Retail routes.
+
+The candidate prefixes `/proyek/:slug` and `/en/projects/:slug`, using one
+stable slug for one project record, are a reserved naming direction only. They
+do not create active route ownership, navigation, CMS URL output, `hreflang`,
+sitemap, analytics, or implementation authority.
+
+`/kontak` owns the structured public B2B/partnership inquiry, with
+`/en/contact` as its translated counterpart. It is available without login and
+persists an Inquiry before showing an optional WhatsApp continuation using the
+existing approved public-settings destination. The Inquiry UUID is the MVP
+customer reference. The primary project-discussion CTA enters this form-first
+flow. WhatsApp remains a secondary contact action for a visitor who is not
+ready to submit a brief.
+
+Exact mega-menu composition, CTA copy beyond localized route labels, mobile
+layout, redirect infrastructure, and route implementation remain separate UX
+and technical work.
 
 ### Public B2B inquiry amendment
 
 The approved MVP flow is:
 
 ```text
-/contact#form-konsultasi
+/kontak#form-konsultasi or /en/contact#form-konsultasi
   -> public form without login
   -> persist Inquiry with status `new`
   -> safe acknowledgement with the existing Inquiry UUID
@@ -190,7 +275,7 @@ surface.
 | Candidate ID | Approved selection | Canonical authority |
 |---|---|---|
 | `NUF-R01` | Single-application, single-origin, route-based MVP topology | `DEC-ARCH-01` / `ADR-004` |
-| `NUF-R02` | Canonical `/capabilities` and `/projects`; compatibility redirects from `/services` and `/portfolio` | This decision |
+| `NUF-R02` | Canonical localized Public marketing routes use unprefixed Indonesian and `/en`-prefixed English paths; `/layanan` and `/proyek` replace the former canonical `/capabilities` and `/projects`; legacy paths redirect permanently in one hop; project-detail prefixes remain reserved; downstream Retail routes remain unprefixed | This decision |
 | `NUF-R03` | Retain `/dashboard` for MVP | This decision |
 | `NUF-R04` | Use `/retail/products/:slug/configure` | This decision |
 | `NUF-R05` | Separate owned Retail Request and Assisted Retail Offer routes | This decision |
@@ -206,6 +291,12 @@ surface.
 
 - Subdomain-separated or separately deployed frontend surfaces are not selected
   for MVP. Reopening them requires a superseding architecture decision.
+- Keeping English route slugs as the canonical Indonesian Public route family,
+  or localizing only one marketing path, is not selected.
+- Translating each individual project slug is not selected; if project detail
+  is later activated, one stable slug identifies one underlying project record.
+- Sending every `x-default` annotation to the Homepage is not selected;
+  fallback responsibility stays with the same content pair.
 - `/account` is not introduced as an alternative MVP namespace.
 - Request and Offer are not collapsed into an Order or into one ambiguous
   route.
@@ -225,6 +316,10 @@ surface.
   route/subdomain/separate-application selection.
 - Prototype and technical-contract work may use these route names as approved
   product and experience inputs.
+- The localized Public route amendment requires a complete old-to-new URL map,
+  permanent delivery-boundary redirects, updated internal links, canonical and
+  language annotations, sitemap output, direct-load verification, and
+  migration monitoring before activation.
 - Customer registration/verification, exact deep-link/reference allowlists,
   Admin route-to-permission mappings, redirect mechanics, API/state/schema
   contracts, provider selections, runtime WhatsApp-settings verification, and
@@ -249,3 +344,5 @@ surface.
 - [`PRD_Platform_Niuva_v2_1_retail_b2b.md`](../../references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md)
 - [`2026-08-07-niuva-mvp-prd-promotion-amendment-b2b-form-whatsapp.md`](../../implementation/specs/candidates/2026-08-07-niuva-mvp-prd-promotion-amendment-b2b-form-whatsapp.md)
 - [`2026-07-31-niuva-mvp-user-flow-and-route-contract.md`](../../implementation/specs/candidates/2026-07-31-niuva-mvp-user-flow-and-route-contract.md)
+- [`CONFIRMED_CANDIDATE_DESIGN_BRIEF.md`](../../implementation/specs/candidates/2026-08-11-niuva-stage-b-visual-world-exploration/CONFIRMED_CANDIDATE_DESIGN_BRIEF.md)
+- [`PUBLIC_ROUTE_LOCALIZATION_AMENDMENT_PACKET.md`](../../implementation/specs/candidates/2026-08-11-niuva-stage-b-visual-world-exploration/PUBLIC_ROUTE_LOCALIZATION_AMENDMENT_PACKET.md)

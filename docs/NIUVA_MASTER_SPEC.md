@@ -3,7 +3,8 @@
 Status: **Approved Canonical**
 Draft date: 23 July 2026
 Approval date: 23 July 2026
-Last canonical amendment: 8 August 2026 — narrowed MVP B2B public intake
+Last canonical amendment: 11 August 2026 — localized Public marketing routes
+and compatibility redirects
 Approval record: `docs/decisions/APPROVAL-NIUVA-CANONICAL-DOCUMENTATION-2026-07-23.md`
 Scope: Product, business, experience, data, operational, security, and implementation boundaries for the Niuva website and platform
 
@@ -200,7 +201,9 @@ revalidated there. This fallback does not collapse the Retail and B2B
 lifecycles into one model. See `DEC-OFFER-01`.
 
 For the narrowed MVP, the first public B2B and partnership entry is a
-structured `/contact` form that may be submitted without login. The Inquiry is
+structured `/kontak` form, with `/en/contact` as its translated counterpart,
+that may be submitted without login. The former `/contact` path permanently
+redirects to `/kontak`. The Inquiry is
 persisted with status `new` before an optional user-clicked continuation to the
 approved Niuva WhatsApp destination is shown. The existing Inquiry UUID is the
 customer reference; the operator remains responsible for manual triage and
@@ -222,7 +225,33 @@ The Homepage uses a **Unified Homepage**:
 - The Homepage must not be Retail-first, marketplace-first, or e-commerce-only.
 - It must not resemble a generic SaaS, generic vendor, or AI-generated landing page.
 
-This is an explicit user decision recorded during documentation consolidation, 23 July 2026. It closes the former deferred Homepage-pattern decision. Detailed Retail/B2B navigation treatment remains deferred.
+This is an explicit user decision recorded during documentation consolidation,
+23 July 2026. It closes the former deferred Homepage-pattern decision. Exact
+mega-menu composition and responsive navigation implementation remain
+separately gated; the localized Public route names, language counterpart
+behavior, and compatibility aliases are governed by `DEC-UX-003`.
+
+### Public route localization
+
+Indonesian Public marketing routes are unprefixed and use lowercase Indonesian
+slugs. English counterparts use `/en` plus lowercase English slugs. The
+canonical pairs are `/` and `/en`, `/tentang` and `/en/about`, `/layanan` and
+`/en/services`, `/proyek` and `/en/projects`, `/kontak` and `/en/contact`,
+`/retail` and `/en/retail`, `/faq` and `/en/faq`, and `/privasi` and
+`/en/privacy`.
+
+Former Public paths remain one-hop permanent compatibility redirects with no
+independent content, CMS, sitemap, canonical, or analytics ownership. Complete
+translated pairs are self-canonical and reciprocal; `x-default` retains the
+same content responsibility and uses `/` only for the Homepage pair. Missing
+English CMS content follows the approved honest, non-indexed fallback without
+machine translation.
+
+The existing unprefixed Retail product, configurator, and downstream
+transaction routes retain their current responsibilities. Project-detail
+prefixes are reserved naming direction only and do not create active route,
+navigation, sitemap, CMS URL, analytics, or implementation authority. See
+`DEC-UX-003` for the complete route, alias, locale, and activation boundary.
 
 ### Visual direction
 
@@ -624,7 +653,7 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Business/B2B is the primary Homepage narrative | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | Retail is a secondary but clear Homepage path | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | MVP surfaces use one frontend application under one origin with route-based boundaries | Approved Architecture Decision | `docs/decisions/architecture/ADR-004-surface-boundary-topology.md` |
-| Canonical MVP public aliases, Retail account/configuration/request/offer/checkout and Order destinations, legacy-route treatment, and Admin Retail queue ownership | Approved Decision | `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md` |
+| Localized canonical MVP Public marketing routes and aliases, retained downstream Retail routes, Retail account/configuration/request/offer/checkout and Order destinations, legacy-route treatment, and Admin Retail queue ownership | Approved Decision — Documentation Amendment; No Implementation Authority | `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md`; explicit owner promotion approval recorded 11 August 2026 |
 | Narrowed MVP B2B public intake uses a persisted form-first Inquiry with optional user-clicked WhatsApp continuation, existing Inquiry UUID reference, no public raw-file upload, and manual one-working-day follow-up target | Approved Decision — Documentation Only; No Implementation Authority | Amended `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md`; `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; explicit user approval recorded 8 August 2026 |
 | Experimental Editorial Hybrid | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
 | Homepage uses Poppins + Inter with the approved display/UI and body/metadata roles | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
@@ -677,7 +706,7 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Protected-scope implementation permission | Bounded approval | Auth/session, legacy-order quarantine, publication/data-integrity remediation, and Retail discovery per `DEC-REMED-001`; payment, fulfillment, production storage, Organization Portal, rollout, and go-live remain open |
 | Production readiness | Open | Feature activation and operational handover |
 | Production go-live | Open | Public production availability |
-| Service taxonomy rename | Deferred | Public content model and navigation labels |
+| Broader service-taxonomy and CMS content-model rename | Deferred | The umbrella navigation label `Layanan` / `Services` and localized route are resolved by `DEC-UX-003`; individual service taxonomy changes remain deferred |
 | Office & Signage placement | Deferred | Public capabilities and brand taxonomy |
 | Visual rollout to About, Capabilities, Projects, and Contact | Deferred | Public-route redesign outside Homepage |
 | Poppins + Inter implementation rollout to About, Capabilities, Projects, and Contact | Deferred | Public-route typography migration outside Homepage |
@@ -696,7 +725,9 @@ tracking, after-sales, or any other gated capability.
 ## 17. Implementation Boundaries
 
 - Approval of this Master Specification does not automatically authorize implementation.
-- Homepage approval does not authorize redesign of About, Capabilities, Projects, Contact, authentication, customer portal, Admin Studio, backend, or API surfaces.
+- Homepage approval does not authorize redesign of About/Tentang,
+  Layanan/Services, Proyek/Projects, Kontak/Contact, authentication, customer
+  portal, Admin Studio, backend, or API surfaces.
 - Route and topology approval does not authorize route, navigation, redirect,
   authentication, API, schema, migration, or infrastructure changes.
 - UI redesign does not change backend authorization, aggregate boundaries, state machines, or data privacy rules.
