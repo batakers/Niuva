@@ -108,6 +108,7 @@ describe("Notification localization", () => {
       "notifications.markRead",
       "notifications.markAllRead",
       "notifications.noUnread",
+      "notifications.loadFailed",
       "notifications.recurrence",
     ]) {
       expect(i18nSource.match(new RegExp(`"${key}":`, "g"))).toHaveLength(2);

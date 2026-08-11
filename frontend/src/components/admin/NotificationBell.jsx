@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, CheckCheck } from "lucide-react";
+import { AlertCircle, Bell, CheckCheck, RefreshCw } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
+import { api, formatApiError } from "@/lib/api";
 import { useI18n } from "@/i18n";
 
 /**
@@ -22,11 +23,13 @@ export function NotificationBell() {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const containerRef = useRef(null);
   const buttonRef = useRef(null);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError("");
     Promise.all([
       api.get("/notifications", { params: { limit: 20 } }),
       // Authoritative: counting unread items in the loaded page would stop
@@ -37,7 +40,9 @@ export function NotificationBell() {
         setItems(feed.data || []);
         setUnread(count.data?.unread || 0);
       })
-      .catch(() => {})
+      .catch((requestError) =>
+        setError(formatApiError(requestError.response?.data?.detail))
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -145,6 +150,30 @@ export function NotificationBell() {
               <p className="px-4 py-6 text-center type-body-small text-text-secondary">
                 {t("common.loading")}
               </p>
+            ) : error ? (
+              <div
+                role="alert"
+                className="flex flex-col items-center gap-2 border-b border-border-default px-4 py-6 text-center"
+              >
+                <AlertCircle
+                  className="h-6 w-6 text-status-error"
+                  aria-hidden="true"
+                />
+                <p className="type-body-small font-medium text-text-primary">
+                  {t("notifications.loadFailed")}
+                </p>
+                <p className="text-xs text-text-secondary">{error}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11"
+                  onClick={load}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {t("common.retry")}
+                </Button>
+              </div>
             ) : items.length === 0 ? (
               <p className="px-4 py-6 text-center type-body-small text-text-secondary">
                 {t("notifications.bellEmpty")}
