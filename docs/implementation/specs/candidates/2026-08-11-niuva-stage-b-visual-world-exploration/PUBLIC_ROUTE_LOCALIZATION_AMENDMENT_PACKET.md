@@ -66,7 +66,7 @@ authorized source, migration, delivery, and validation task.
 | --- | --- | --- |
 | `PRL-01` | Use lowercase, language-specific Public marketing slugs: unprefixed Indonesian and `/en`-prefixed English. | The route communicates the selected language consistently with the localized navigation and page copy. |
 | `PRL-02` | Localize a project-detail route prefix but keep the individual project `:slug` stable across ID and EN. | One project retains one durable CMS identity without requiring operators to maintain paired slugs. |
-| `PRL-03` | Redirect superseded Public paths permanently, in one hop, to the localized canonical destination while preserving applicable query and fragment context. | Existing links remain recoverable without duplicate content, CMS records, sitemap entries, or analytics identities. |
+| `PRL-03` | Redirect superseded Public paths permanently, in one hop, to the localized canonical destination while carrying applicable query parameters and preserving browser fragment context through standards-defined user-agent inheritance. | Existing links remain recoverable without duplicate content, CMS records, sitemap entries, or analytics identities. |
 
 All canonical route strings are lowercase. Mixed-case examples such as
 `/Layanan` and `/en/Services` are not canonical and must not be emitted by the
@@ -144,7 +144,10 @@ The target contract is an HTTP `308` permanent redirect at the eventual public
 delivery boundary. The implementation must:
 
 - resolve in one hop to the final localized canonical URL;
-- preserve query parameters and avoid dropping browser fragment context;
+- carry applicable query parameters in `Location`; because a fragment is not
+  sent to the server, leave it unoverridden so a conforming user agent inherits
+  the original fragment under RFC 9110 Section 10.2.2, then verify that browser
+  behavior at the selected delivery boundary;
 - exclude redirect-only URLs from the sitemap and `hreflang` set;
 - emit no canonical tag that points to a redirect-only URL;
 - create no duplicate CMS record or independent analytics page identity; and
@@ -178,11 +181,14 @@ The language control is a labelled choice, not an unlabeled toggle:
 - mobile exposes full `Bahasa Indonesia` and `English` choices high in the
   menu;
 - the accessible name states the current language and action;
-- a Public choice is a real link to the current page's localized counterpart;
+- on a complete localized Public pair, each choice is a real link to the
+  current page's counterpart;
 - no IP, browser-language, or inferred-location redirect overrides the user's
   explicit choice; and
-- private surfaces use the same stored preference without gaining `/en`
-  prefixes.
+- `/retail` and `/en/retail` navigate to one another, while retained unprefixed
+  downstream Retail, Login, customer, Admin, and operational routes preserve
+  the current canonical URL and owned-resource context, update the same stored
+  preference and supported interface copy, and gain no invented `/en` path.
 
 ## 7. Canonical, `hreflang`, sitemap, and fallback rules
 
@@ -280,9 +286,23 @@ An eventual implementation task must audit and update, at minimum:
 - CMS URL builders or preview links that emit Public routes.
 
 Before implementation, the task must identify every route string by source
-search, define an exact redirect matrix, preserve query/hash behavior, and
-verify direct loads on the deployment topology. No source file listed here is
-authorized for change by this packet.
+search, define an exact redirect matrix, carry query parameters, verify
+standards-defined browser fragment inheritance, and verify direct loads on the
+deployment topology. No source file listed here is authorized for change by
+this packet.
+
+Before activation, that implementation task must also provide:
+
+- an atomic rollout and rollback matrix for route registration, compatibility
+  redirects, internal links, canonical tags, `hreflang`, and sitemap output,
+  without leaving mixed content ownership or redirect loops;
+- rollback triggers for unexpected 404s, redirect failures or loops, canonical
+  or `hreflang` mismatches, sitemap drift, and material indexing anomalies;
+- a named accountable delivery owner, reviewer, and operational handover
+  recipient rather than assuming ownership from this documentation packet; and
+- captured before/after evidence for direct loads, redirect status and
+  `Location`, query handling, browser fragment behavior, canonical and
+  `hreflang` output, sitemap membership, monitoring, and rollback verification.
 
 ## 12. Validation and approval checklist
 
@@ -303,6 +323,8 @@ authorized for change by this packet.
       for the Homepage pair.
 - [x] English-missing fallback, `noindex`, sitemap, and `hreflang` boundaries
       remain explicit.
+- [x] Later implementation requires explicit rollout, rollback, ownership,
+      handover, monitoring, and verification evidence before activation.
 - [x] Owner reviewed the remediated packet.
 - [x] Owner explicitly authorized documentation-only canonical promotion.
 - [x] `DEC-UX-003`, `NIUVA_MASTER_SPEC.md`, `DOCUMENT_REGISTER.md`, and

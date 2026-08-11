@@ -3,7 +3,7 @@
 Status: **Approved Canonical**
 Register date: 23 July 2026
 Approval date: 23 July 2026
-Last amendment date: 8 August 2026
+Last amendment date: 11 August 2026
 Approval record: `docs/decisions/APPROVAL-NIUVA-CANONICAL-DOCUMENTATION-2026-07-23.md`
 
 This register indexes active product, experience, operational-design, and architecture decisions. It does not convert open consequences into approved decisions and does not provide implementation or go-live authorization.

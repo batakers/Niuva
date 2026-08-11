@@ -64,7 +64,7 @@ use.
 | `NCDB-12` | System and conversion copy must be complete in ID/EN before the switch activates. CMS Indonesian is required and English is optional; missing English falls back honestly to Indonesian without machine translation and remains excluded from the English index set. |
 | `NCDB-13` | The Homepage is a curated entry rather than a one-page replacement for the Public site: it shows at most three featured projects, About remains concise and factual, and Home carries only a compact FAQ preview linked to the full secondary FAQ route. |
 | `NCDB-14` | Project-detail prefixes and stable cross-language slugs are a reserved naming direction only. They do not create active canonical route ownership, indexability, navigation, or implementation authority; the exact production project-detail route remains separately gated. |
-| `NCDB-15` | Superseded public paths become one-hop permanent compatibility redirects to the localized canonical route, preserve applicable query and fragment context, and own no content, CMS record, sitemap entry, canonical identity, or independent analytics identity. |
+| `NCDB-15` | Superseded public paths become one-hop permanent compatibility redirects to the localized canonical route, carry applicable query parameters, preserve browser fragment context through standards-defined user-agent inheritance, and own no content, CMS record, sitemap entry, canonical identity, or independent analytics identity. |
 
 ## Visual-world contract
 
@@ -133,11 +133,19 @@ Desktop behavior is click-triggered, not hover-only. Escape, outside click,
 visible focus, focus return, and `aria-expanded` are required. The language
 control is not a globe-only mystery control: it keeps the conventional globe
 icon and the visible active code (`ID` or `EN`), then opens explicit language
-choices whose links target the current page's localized counterpart.
+choices. On a complete localized Public pair, each choice is a real link to the
+current page's counterpart.
 
 Mobile uses one menu drawer with a `Layanan` / `Services` accordion. The full
 language choices appear high in the menu rather than after every navigation
 item; the active language remains visible and programmatically determinable.
+
+The localized Retail entry navigates between `/retail` and `/en/retail`. On
+retained unprefixed downstream Retail, Login, customer, Admin, and operational
+routes, changing language keeps the current canonical URL and owned-resource
+context while updating the stored global preference and supported interface
+copy. It neither invents an `/en` counterpart nor returns the user to the
+Retail entry.
 
 Retail remains a quiet top-level link despite also appearing in the mega-menu.
 This is intentional discoverability, not equal narrative weight.
@@ -239,10 +247,13 @@ the public indexed route contract.
 | `/en/capabilities` | `/en/services` |
 
 Each compatibility path uses a one-hop permanent redirect (`308` at the target
-HTTP boundary), preserves the applicable query and fragment context, and owns
-no separate page, CMS record, sitemap entry, canonical tag, or analytics
-identity. The canonical implementation must not emit uppercase alternatives
-such as `/Layanan` or `/en/Services`.
+HTTP boundary) whose `Location` carries applicable query parameters. A fragment
+is client-side state and is not sent to the server; when `Location` does not
+replace it, a conforming user agent inherits the original fragment under RFC
+9110 Section 10.2.2. This browser behavior must be validated at the selected
+delivery boundary. The path owns no separate page, CMS record, sitemap entry,
+canonical tag, or analytics identity. The canonical implementation must not
+emit uppercase alternatives such as `/Layanan` or `/en/Services`.
 
 For a complete localized pair:
 

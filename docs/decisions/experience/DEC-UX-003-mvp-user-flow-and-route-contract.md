@@ -97,10 +97,14 @@ delivery boundary:
 | `/privacy` | `/privasi` |
 | `/en/capabilities` | `/en/services` |
 
-A compatibility path preserves applicable query and browser-fragment context,
-owns no content, CMS record, sitemap entry, canonical tag, or independent
-analytics identity, and resolves directly to its final destination. Exact
-server, edge, or hosting mechanics remain separately gated.
+A compatibility redirect carries applicable query parameters in its `Location`
+target. A URL fragment is client-side state and is not sent to the server; when
+the `Location` value does not replace it, a conforming user agent inherits the
+original fragment under RFC 9110 Section 10.2.2. This browser behavior must be
+verified at the selected delivery boundary. The compatibility path owns no
+content, CMS record, sitemap entry, canonical tag, or independent analytics
+identity and resolves directly to its final destination. Exact server, edge,
+or hosting mechanics remain separately gated.
 
 For a complete translated pair:
 
@@ -125,8 +129,13 @@ ready, the route becomes self-canonical and enters the reciprocal annotation
 and sitemap set.
 
 The same explicit language preference applies across Public, Retail, Login,
-customer, and Admin surfaces. Private and operational routes remain unprefixed
-and `noindex`. The existing `/retail/products/:slug`,
+customer, and Admin surfaces. The localized Retail entry navigates between
+`/retail` and `/en/retail`. On retained unprefixed downstream Retail, Login,
+customer, Admin, and operational routes, a language choice preserves the
+current canonical URL and owned-resource context while updating the stored
+preference and supported interface copy. It must not invent an `/en`
+counterpart or return the user to the Retail entry. Private and operational
+routes remain unprefixed and `noindex`. The existing `/retail/products/:slug`,
 `/retail/products/:slug/configure`, Request, Offer, checkout, Order, and other
 downstream Retail routes also remain unprefixed and retain their current route
 and lifecycle responsibilities. This amendment makes no multilingual SEO or
