@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="id" data-language="id" data-capture="false">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta
+      name="description"
+      content="Prototype Homepage Niuva R4: mitra inovasi dan pengembangan produk dengan empat layanan utama dan jalur Retail yang terpisah."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23648fba' d='M3 3h4v7a2 2 0 0 1-4 0V3Zm6 0h4v7a6 6 0 0 1-6 6v-4a2 2 0 0 0 2-2V3Z'/%3E%3C/svg%3E" />
+    <link id="canonical-link" rel="canonical" href="/" />
+    <link id="alternate-id" rel="alternate" hreflang="id" href="/" />
+    <link id="alternate-en" rel="alternate" hreflang="en" href="/en" />
+    <link id="alternate-default" rel="alternate" hreflang="x-default" href="/" />
+    <title>Niuva Dari ide menuju produk yang dapat diuji</title>
+    <script>
+      (function () {
+        var path = window.location.pathname.replace(/\/$/, "");
+        var language = path === "/en" ? "en" : "id";
+        document.documentElement.lang = language;
+        document.documentElement.dataset.language = language;
+        document.documentElement.dataset.capture = new URLSearchParams(window.location.search).get("capture") === "1" ? "true" : "false";
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!--
+      THESIS: Niuva is an innovation and product-development partner; 3D printing is one realization method, not the entire identity.
+      OWN-WORLD: Official ni mark, tonal Niuva blue, Mona Sans, one restrained Bona Nova italic role, and an FDM contour signature.
+      STORY: A visitor understands the partnership offer, sees how Niuva works, inspects factual project evidence, then chooses B2B or Retail.
+      FIRST VIEWPORT: Centered and project-neutral. No split hero, dashboard mockup, fake metric, or one-project shortcut.
+      FORM: Calm editorial rhythm inspired by the owner's references, translated into Niuva-specific evidence and lifecycle boundaries.
+      FINISH: Prototype completion requires browser evidence and an explicit candidate verdict; it does not amend DESIGN.md or production source.
+    -->
+    <a class="skip-link" href="#main-content" data-i18n="skip">Lewati ke konten utama</a>
+
+    <div class="prototype-boundary" role="note" data-i18n="boundary">
+      Prototype visual R4 · bukan website production
+    </div>
+
+    <header class="site-header" data-header>
+      <div class="header-inner">
+        <a class="brand" href="#main-content" data-brand-link aria-label="Niuva, kembali ke awal">
+          <img src="/assets/niuva-mark.svg" width="48" height="48" alt="" aria-hidden="true" />
+          <span>Niuva</span>
+        </a>
+
+        <nav class="desktop-nav" aria-label="Navigasi utama" data-i18n-aria="mainNav">
+          <div class="services-disclosure">
+            <button
+              class="nav-item nav-disclosure"
+              id="services-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="services-panel"
+            >
+              <span data-i18n="services">Layanan</span>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+            </button>
+
+            <div class="mega-menu" id="services-panel" hidden>
+              <div class="mega-main">
+                <p class="mega-heading" data-i18n="developIdeas">Kembangkan ide</p>
+                <a href="#services"><strong>Research &amp; Development</strong><span data-i18n="rndNote">Menjernihkan masalah dan menentukan bukti yang perlu dibangun.</span></a>
+                <a href="#services"><strong>Consultant &amp; Workshop</strong><span data-i18n="consultNote">Membuka ruang belajar dan keputusan bersama tim.</span></a>
+                <a href="#services"><strong>Design &amp; Prototyping</strong><span data-i18n="designNote">Mengubah arah menjadi bentuk yang dapat diuji.</span></a>
+              </div>
+              <div class="mega-retail">
+                <p class="mega-heading" data-i18n="printChoose">Cetak &amp; pilih produk</p>
+                <a class="mega-service" href="#services"><strong>Apparel &amp; Merchandise</strong><span data-i18n="apparelNote">Layanan utama untuk kebutuhan apparel, merchandise, branding, dan produk siap pesan.</span></a>
+                <div class="mega-retail-routes">
+                  <a href="#retail"><strong>Custom 3D Print</strong><span data-i18n="customNote">Konfigurasi cetak untuk kebutuhan yang dapat dihitung otomatis.</span></a>
+                  <a href="#retail"><strong>Ready Products</strong><span data-i18n="readyNote">Produk siap pesan dan kategori merchandise Niuva.</span></a>
+                  <a class="mega-support" href="#self-service"><span data-i18n="selfService">Sewa &amp; Self Service</span><span aria-hidden="true">↗</span></a>
+                </div>
+              </div>
+              <div class="mega-footer">
+                <p data-i18n="megaBoundary">Kebutuhan custom, jumlah besar, atau kapasitas yang belum dapat divalidasi akan diarahkan ke inquiry.</p>
+                <a href="#partnership" data-i18n="discussNeeds">Diskusikan kebutuhan</a>
+              </div>
+            </div>
+          </div>
+          <a class="nav-item" href="#projects" data-i18n="projects">Projects</a>
+          <a class="nav-item" href="#orientation" data-i18n="about">Tentang</a>
+          <a class="nav-item" href="#partnership" data-i18n="contact">Kontak</a>
+          <a class="nav-item nav-retail" href="#retail">Retail</a>
+        </nav>
+
+        <div class="header-actions">
+          <div class="language-disclosure">
+            <button
+              class="language-toggle"
+              id="language-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="language-menu"
+              aria-label="Pilih bahasa. Bahasa aktif Indonesia"
+              data-i18n-aria="languageToggle"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 2.6 4 5.6 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.6-4-9s1.4-6.4 4-9Z" /></svg>
+              <span data-active-language>ID</span>
+              <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+            </button>
+            <div class="language-menu" id="language-menu" hidden>
+              <a href="/" lang="id" data-language-link="id"><span>Bahasa Indonesia</span><strong>ID</strong></a>
+              <a href="/en" lang="en" data-language-link="en"><span>English</span><strong>EN</strong></a>
+            </div>
+          </div>
+          <button class="sign-in" type="button" data-prototype-action="signin" data-i18n="signIn">Masuk</button>
+          <a class="header-cta" href="#partnership" data-i18n="discussProject">Diskusikan project</a>
+        </div>
+
+        <button
+          class="mobile-menu-toggle"
+          id="mobile-menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="mobile-menu"
+        >
+          <span data-i18n="menu">Menu</span>
+          <span class="menu-icon" aria-hidden="true"><i></i><i></i></span>
+        </button>
+      </div>
+
+      <nav class="mobile-menu" id="mobile-menu" aria-label="Navigasi mobile" data-i18n-aria="mobileNav" hidden>
+        <div class="mobile-menu-topline">
+          <span data-i18n="explore">Jelajahi Niuva</span>
+          <div class="mobile-language-links" aria-label="Pilihan bahasa" data-i18n-aria="languageChoice">
+            <a href="/" lang="id" data-language-link="id">ID</a>
+            <a href="/en" lang="en" data-language-link="en">EN</a>
+          </div>
+        </div>
+        <button
+          class="mobile-services-toggle"
+          id="mobile-services-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="mobile-services"
+        >
+          <span data-i18n="services">Layanan</span><span aria-hidden="true">+</span>
+        </button>
+        <div class="mobile-services" id="mobile-services" hidden>
+          <strong data-i18n="developIdeas">Kembangkan ide</strong>
+          <a href="#services">Research &amp; Development</a>
+          <a href="#services">Consultant &amp; Workshop</a>
+          <a href="#services">Design &amp; Prototyping</a>
+          <strong data-i18n="printChoose">Cetak &amp; pilih produk</strong>
+          <a href="#services">Apparel &amp; Merchandise</a>
+          <a href="#retail">Custom 3D Print</a>
+          <a href="#retail">Ready Products</a>
+          <a href="#self-service" data-i18n="selfService">Sewa &amp; Self Service</a>
+        </div>
+        <a href="#projects" data-i18n="projects">Projects</a>
+        <a href="#orientation" data-i18n="about">Tentang</a>
+        <a href="#partnership" data-i18n="contact">Kontak</a>
+        <a href="#retail">Retail</a>
+        <button type="button" data-prototype-action="signin" data-i18n="signIn">Masuk</button>
+        <a class="mobile-primary" href="#partnership" data-i18n="discussProject">Diskusikan project</a>
+      </nav>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      <div class="hero-orientation-shell">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="hero-context" data-i18n="heroContext">Innovation &amp; product development partner</p>
+          <h1 id="hero-title">
+            <span data-i18n="heroLead">Dari ide menuju</span>
+            <em data-i18n="heroEmphasis">produk yang dapat diuji.</em>
+          </h1>
+          <p class="hero-lede" data-i18n="heroLede">
+            Niuva mendampingi tim melalui riset, rekayasa, desain, prototyping, dan realisasi produk.
+          </p>
+          <div class="hero-actions" aria-label="Pilihan awal" data-i18n-aria="initialChoices">
+            <a class="button button-primary" href="#partnership" data-i18n="discussProject">Diskusikan project</a>
+            <a class="button button-text" href="#retail"><span data-i18n="exploreRetail">Jelajahi Retail</span><span aria-hidden="true">↘</span></a>
+          </div>
+        </div>
+
+        <div class="contour-stage" data-contour-stage>
+          <svg class="contour-field" viewBox="0 0 1600 430" preserveAspectRatio="none" aria-hidden="true">
+            <g class="contour-lines">
+              <path d="M-90 226 C145 120 325 345 555 237 S945 91 1188 220 S1468 331 1692 184" />
+              <path d="M-90 242 C145 136 325 361 555 253 S945 107 1188 236 S1468 347 1692 200" />
+              <path d="M-90 258 C145 152 325 377 555 269 S945 123 1188 252 S1468 363 1692 216" />
+              <path d="M-90 274 C145 168 325 393 555 285 S945 139 1188 268 S1468 379 1692 232" />
+              <path d="M-90 290 C145 184 325 409 555 301 S945 155 1188 284 S1468 395 1692 248" />
+              <path d="M-90 306 C145 200 325 425 555 317 S945 171 1188 300 S1468 411 1692 264" />
+              <path d="M-90 322 C145 216 325 441 555 333 S945 187 1188 316 S1468 427 1692 280" />
+              <path d="M-90 338 C145 232 325 457 555 349 S945 203 1188 332 S1468 443 1692 296" />
+              <path d="M-90 354 C145 248 325 473 555 365 S945 219 1188 348 S1468 459 1692 312" />
+              <path d="M-90 370 C145 264 325 489 555 381 S945 235 1188 364 S1468 475 1692 328" />
+              <path d="M-90 386 C145 280 325 505 555 397 S945 251 1188 380 S1468 491 1692 344" />
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <section class="orientation section-wrap" id="orientation" aria-labelledby="orientation-title">
+        <div class="orientation-copy">
+          <p class="section-label" data-i18n="orientationLabel">Satu partner, dua cara memulai</p>
+          <h2 id="orientation-title" data-i18n="orientationTitle">Mulai dari pertanyaan yang belum selesai atau kebutuhan yang sudah siap dibuat.</h2>
+        </div>
+        <div class="orientation-routes">
+          <article class="route-primary">
+            <div>
+              <h3 data-i18n="partnershipTitle">Partnership &amp; pengembangan</h3>
+              <p data-i18n="partnershipCopy">Untuk R&amp;D, konsultasi, workshop, desain, dan prototyping yang membutuhkan dialog sebelum arah dikunci.</p>
+              <a href="#partnership" data-i18n="startConversation">Mulai percakapan</a>
+            </div>
+          </article>
+          <article class="route-secondary">
+            <div>
+              <h3>Retail</h3>
+              <p data-i18n="retailRouteCopy">Untuk Custom 3D Print, Ready Products, serta Sewa &amp; Self Service dengan jalur transaksi tersendiri.</p>
+              <a href="#retail" data-i18n="seeRetailPaths">Lihat jalur Retail</a>
+            </div>
+          </article>
+        </div>
+      </section>
+      </div>
+
+      <section class="process-section" id="process" aria-labelledby="process-title">
+        <div class="section-wrap process-heading">
+          <p class="section-label" data-i18n="processLabel">Cara kerja</p>
+          <h2 id="process-title" data-i18n="processTitle">Lima tahap untuk mengurangi asumsi sebelum keputusan tumbuh lebih mahal.</h2>
+        </div>
+        <ol class="process-rail section-wrap" aria-label="Tahap kerja Niuva" data-i18n-aria="processAria">
+          <li><span>Need</span><strong data-i18n="need">Kebutuhan</strong><p data-i18n="needCopy">Memahami tujuan, batas, dan pertanyaan yang belum terjawab.</p></li>
+          <li><span>Research</span><strong data-i18n="research">Riset</strong><p data-i18n="researchCopy">Mengumpulkan konteks yang cukup untuk memilih arah.</p></li>
+          <li><span>Experiment</span><strong data-i18n="experiment">Eksperimen</strong><p data-i18n="experimentCopy">Menguji kemungkinan sebelum bentuk dianggap final.</p></li>
+          <li><span>Prototype</span><strong data-i18n="prototype">Prototipe</strong><p data-i18n="prototypeCopy">Mewujudkan keputusan menjadi sesuatu yang dapat dialami.</p></li>
+          <li><span>Output</span><strong data-i18n="output">Hasil</strong><p data-i18n="outputCopy">Membaca bukti dan menentukan langkah berikutnya.</p></li>
+        </ol>
+      </section>
+
+      <section class="chapters section-wrap" aria-labelledby="chapters-title">
+        <header class="chapters-intro">
+          <p class="section-label" data-i18n="chaptersLabel">Tiga bab, satu alur</p>
+          <h2 id="chapters-title" data-i18n="chaptersTitle">Memahami. Membentuk. Membuktikan.</h2>
+          <p data-i18n="chaptersCopy">Setiap project bergerak dengan kedalaman berbeda. Struktur ini menjaga proses terbaca tanpa memaksa lima tahap menjadi lima section yang berulang.</p>
+        </header>
+
+        <article class="chapter chapter-understand">
+          <div class="chapter-copy">
+            <h3 data-i18n="understand">Memahami</h3>
+            <p data-i18n="understandCopy">Kami memulai dari kebutuhan, konteks pengguna, risiko, dan bukti apa yang benar-benar perlu dibangun.</p>
+            <ul>
+              <li data-i18n="understandPoint1">Brief dan ruang masalah</li>
+              <li data-i18n="understandPoint2">Pertanyaan riset dan batas keputusan</li>
+              <li data-i18n="understandPoint3">Rencana eksperimen yang proporsional</li>
+            </ul>
+          </div>
+          <figure class="chapter-illustration chapter-illustration-understand">
+            <svg viewBox="0 0 640 480" role="img" aria-labelledby="understand-visual-title understand-visual-desc">
+              <title id="understand-visual-title" data-i18n="understandVisualTitle">Dari banyak batas menuju satu pertanyaan yang dapat diuji</title>
+              <desc id="understand-visual-desc" data-i18n="understandVisualDesc">Empat jalur kebutuhan dan batas keputusan berkumpul menjadi satu fokus pengujian.</desc>
+              <rect class="illustration-ground" x="1" y="1" width="638" height="478" rx="18" />
+              <g class="illustration-inputs">
+                <circle cx="92" cy="106" r="17" />
+                <circle cx="92" cy="198" r="17" />
+                <circle cx="92" cy="290" r="17" />
+                <circle cx="92" cy="382" r="17" />
+                <path d="M122 106 H212" />
+                <path d="M122 198 H212" />
+                <path d="M122 290 H212" />
+                <path d="M122 382 H212" />
+              </g>
+              <g class="illustration-convergence">
+                <path d="M212 106 C286 106 278 206 350 224" />
+                <path d="M212 198 C284 198 288 218 350 232" />
+                <path d="M212 290 C284 290 288 254 350 244" />
+                <path d="M212 382 C286 382 278 274 350 252" />
+                <circle class="illustration-focus-ring" cx="390" cy="238" r="46" />
+                <circle class="illustration-focus-core" cx="390" cy="238" r="15" />
+                <path class="illustration-output-line" d="M436 238 H526" />
+                <path class="illustration-output-line" d="M526 205 V271" />
+                <circle class="illustration-output-point" cx="526" cy="238" r="22" />
+              </g>
+            </svg>
+            <figcaption data-i18n="understandIllustrationCaption">Ilustrasi konseptual · kebutuhan dan batas keputusan dipusatkan menjadi satu pertanyaan uji.</figcaption>
+          </figure>
+        </article>
+
+        <article class="chapter chapter-shape">
+          <figure class="chapter-illustration chapter-illustration-shape">
+            <svg viewBox="0 0 640 480" role="img" aria-labelledby="shape-visual-title shape-visual-desc">
+              <title id="shape-visual-title" data-i18n="shapeVisualTitle">Lapisan keputusan membentuk objek yang dapat diuji</title>
+              <desc id="shape-visual-desc" data-i18n="shapeVisualDesc">Serangkaian lapisan FDM bergerak dari garis datar menuju bentuk fisik dengan titik sambungan.</desc>
+              <rect class="illustration-ground" x="1" y="1" width="638" height="478" rx="18" />
+              <g class="illustration-layers">
+                <path d="M86 348 C170 302 230 356 314 310 S462 268 554 314" />
+                <path d="M86 326 C170 280 230 334 314 288 S462 246 554 292" />
+                <path d="M86 304 C170 258 230 312 314 266 S462 224 554 270" />
+                <path d="M86 282 C170 236 230 290 314 244 S462 202 554 248" />
+                <path d="M86 260 C170 214 230 268 314 222 S462 180 554 226" />
+              </g>
+              <path class="illustration-form" d="M222 286 C236 232 276 188 332 176 C390 164 442 190 466 236 L448 286 C420 312 386 326 340 326 C292 326 252 314 222 286 Z" />
+              <path class="illustration-form-cut" d="M306 251 C322 228 350 218 376 225 C400 232 414 250 412 270 C382 284 342 286 310 274 Z" />
+              <g class="illustration-joints">
+                <circle cx="246" cy="286" r="12" />
+                <circle cx="444" cy="278" r="12" />
+                <path d="M246 298 V354" />
+                <path d="M444 290 V346" />
+              </g>
+            </svg>
+            <figcaption data-i18n="shapeIllustrationCaption">Ilustrasi konseptual · lapisan, bentuk, material, dan sambungan mulai menjadi keputusan fisik.</figcaption>
+          </figure>
+          <div class="chapter-copy">
+            <h3 data-i18n="shape">Membentuk</h3>
+            <p data-i18n="shapeCopy">Keputusan mulai memiliki dimensi, material, sambungan, dan konsekuensi yang bisa diuji bersama.</p>
+            <ul>
+              <li data-i18n="shapePoint1">Desain dan rekayasa</li>
+              <li data-i18n="shapePoint2">Iterasi bentuk dan material</li>
+              <li data-i18n="shapePoint3">Prototyping melalui fasilitas Niuva</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="chapter chapter-prove">
+          <div class="chapter-copy">
+            <h3 data-i18n="prove">Membuktikan</h3>
+            <p data-i18n="proveCopy">Prototype menjadi alat untuk melihat apa yang bekerja, apa yang perlu diubah, dan apakah gagasan siap bergerak lebih jauh.</p>
+            <ul>
+              <li data-i18n="provePoint1">Pengujian dan demonstrasi</li>
+              <li data-i18n="provePoint2">Evaluasi keputusan</li>
+              <li data-i18n="provePoint3">Realisasi satuan hingga kebutuhan skala lebih besar</li>
+            </ul>
+          </div>
+          <figure class="chapter-illustration chapter-illustration-prove">
+            <svg viewBox="0 0 640 480" role="img" aria-labelledby="prove-visual-title prove-visual-desc">
+              <title id="prove-visual-title" data-i18n="proveVisualTitle">Objek melewati pengujian dan kembali membawa bukti</title>
+              <desc id="prove-visual-desc" data-i18n="proveVisualDesc">Sebuah objek uji bergerak melalui tiga checkpoint, lalu hasilnya membentuk jalur umpan balik.</desc>
+              <rect class="illustration-ground" x="1" y="1" width="638" height="478" rx="18" />
+              <g class="illustration-checkpoints">
+                <path d="M104 122 V356" />
+                <path d="M320 84 V394" />
+                <path d="M536 122 V356" />
+                <circle cx="104" cy="238" r="17" />
+                <circle cx="320" cy="238" r="17" />
+                <circle cx="536" cy="238" r="17" />
+              </g>
+              <path class="illustration-test-path" d="M104 238 C168 154 244 154 320 238 S472 322 536 238" />
+              <path class="illustration-feedback-path" d="M536 286 C462 398 196 398 104 286" />
+              <path class="illustration-feedback-arrow" d="M118 274 L104 286 L124 292" />
+              <g class="illustration-specimen">
+                <path d="M272 206 H366 L392 238 L366 270 H272 L248 238 Z" />
+                <circle cx="286" cy="238" r="10" />
+                <circle cx="354" cy="238" r="10" />
+              </g>
+            </svg>
+            <figcaption data-i18n="proveIllustrationCaption">Ilustrasi konseptual · prototype diuji, dibaca, lalu mengembalikan bukti untuk keputusan berikutnya.</figcaption>
+          </figure>
+        </article>
+      </section>
+
+      <section class="projects" id="projects" aria-labelledby="projects-title">
+        <div class="section-wrap projects-heading">
+          <p class="section-label" data-i18n="projectsLabel">Project evidence</p>
+          <h2 id="projects-title" data-i18n="projectsTitle">Bentuk akhir hanya berarti ketika keputusan di belakangnya tetap terbaca.</h2>
+          <a href="#projects" data-prototype-action="projects" data-i18n="viewAllProjects">Lihat seluruh Projects</a>
+        </div>
+
+        <div class="project-list section-wrap">
+          <article class="project-entry">
+            <figure><img src="/assets/projects/pindad-ev-motor.webp" width="738" height="555" alt="Motor listrik hijau Pindad EV Motor" data-i18n-alt="pindadAlt" /><figcaption data-i18n="pindadCaption">Objek akhir Pindad EV Motor sebagaimana tercantum dalam Company Profile Niuva.</figcaption></figure>
+            <div class="project-copy"><span>Product development</span><h3>Pindad EV Motor</h3><p data-i18n="pindadCopy">Pengembangan kendaraan listrik yang mempertemukan kebutuhan produk, rekayasa, bentuk, dan pengujian.</p><button type="button" data-prototype-action="project" data-project="Pindad EV Motor"><span data-i18n="readProject">Baca project</span><span aria-hidden="true">↗</span></button></div>
+          </article>
+
+          <article class="project-entry project-entry-reverse">
+            <figure><img src="/assets/projects/xeon-redesign.webp" width="738" height="553" alt="Visual redesain sepeda motor biru Xeon" data-i18n-alt="xeonAlt" /><figcaption data-i18n="xeonCaption">Visual Xeon Redesign sebagaimana tercantum dalam Company Profile Niuva.</figcaption></figure>
+            <div class="project-copy"><span>Design &amp; prototyping</span><h3>Xeon Redesign</h3><p data-i18n="xeonCopy">Eksplorasi bentuk kendaraan yang membuat arah desain dapat dibaca sebelum bergerak ke realisasi berikutnya.</p><button type="button" data-prototype-action="project" data-project="Xeon Redesign"><span data-i18n="readProject">Baca project</span><span aria-hidden="true">↗</span></button></div>
+          </article>
+
+          <article class="project-entry">
+            <figure><img src="/assets/projects/agate-motorcycle-simulator.webp" width="738" height="553" alt="Dokumentasi prototype Agate Motorcycle Simulator" data-i18n-alt="agateAlt" /><figcaption data-i18n="agateCaption">Dokumentasi proses Motorcycle Simulator sebagaimana tercantum dalam Company Profile Niuva.</figcaption></figure>
+            <div class="project-copy"><span>Interactive prototype</span><h3>Agate Motorcycle Simulator</h3><p data-i18n="agateCopy">Prototype fisik yang menyatukan mekanik, kelistrikan, dan pengalaman interaksi untuk kebutuhan simulasi.</p><button type="button" data-prototype-action="project" data-project="Agate Motorcycle Simulator"><span data-i18n="readProject">Baca project</span><span aria-hidden="true">↗</span></button></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="services section-wrap" id="services" aria-labelledby="services-title">
+        <header class="services-heading">
+          <p class="section-label" data-i18n="servicesLabel">Layanan Niuva</p>
+          <h2 id="services-title" data-i18n="servicesTitle">Kemampuan yang mengikuti pertanyaan bukan paket yang dipaksakan sejak awal.</h2>
+          <p data-i18n="servicesCopy">Niuva dapat masuk pada tahap riset, pembelajaran tim, desain, prototype, atau realisasi produk sesuai kebutuhan project.</p>
+        </header>
+        <div class="service-grid">
+          <article><h3>Research &amp; Development</h3><p data-i18n="serviceRnd">Membaca masalah, menyusun eksperimen, dan mengurangi asumsi sebelum keputusan besar dibuat.</p><a href="#services" data-prototype-action="service" data-service="Research &amp; Development" data-i18n="viewService">Lihat layanan</a></article>
+          <article><h3>Consultant &amp; Workshop</h3><p data-i18n="serviceConsult">Mendampingi tim melalui konsultasi, workshop, dan pembelajaran yang berangkat dari kebutuhan nyata.</p><a href="#services" data-prototype-action="service" data-service="Consultant &amp; Workshop" data-i18n="viewService">Lihat layanan</a></article>
+          <article><h3>Design &amp; Prototyping</h3><p data-i18n="serviceDesign">Menerjemahkan keputusan menjadi desain dan prototype fisik yang dapat diuji, diperbaiki, dan direalisasikan.</p><a href="#services" data-prototype-action="service" data-service="Design &amp; Prototyping" data-i18n="viewService">Lihat layanan</a></article>
+          <article><h3>Apparel &amp; Merchandise</h3><p data-i18n="serviceApparel">Mengembangkan apparel dan merchandise untuk kebutuhan custom, branding, partnership, maupun kategori Ready Products.</p><a href="#services" data-prototype-action="service" data-service="Apparel &amp; Merchandise" data-i18n="viewService">Lihat layanan</a></article>
+        </div>
+      </section>
+
+      <section class="retail" id="retail" aria-labelledby="retail-title">
+        <div class="section-wrap retail-heading">
+          <h2 id="retail-title" data-i18n="retailTitle">Ketika kebutuhannya sudah cukup jelas, mulai dari jalur yang sesuai.</h2>
+          <p data-i18n="retailCopy">Retail tetap bagian dari satu Niuva, tetapi memiliki alur konfigurasi, transaksi, dan tracking yang terpisah dari partnership.</p>
+        </div>
+        <div class="retail-doors section-wrap">
+          <article class="retail-custom">
+            <div><span>Custom 3D Print</span><h3 data-i18n="customTitle">Konfigurasikan kebutuhan cetak.</h3><p data-i18n="customCopy">Pilih spesifikasi, unggah file, lihat harga saat kombinasi dapat dihitung, lalu lanjut ke checkout.</p></div>
+            <button type="button" data-prototype-action="retail"><span data-i18n="exploreCustom">Jelajahi Custom 3D Print</span><span aria-hidden="true">↗</span></button>
+          </article>
+          <article class="retail-ready">
+            <div><span>Ready Products</span><h3 data-i18n="readyTitle">Temukan produk yang siap dipesan.</h3><p data-i18n="readyCopy">Keychain, miniatur, pajangan, merchandise, dan kategori produk Niuva yang berkembang.</p></div>
+            <button type="button" data-prototype-action="retail"><span data-i18n="exploreReady">Lihat Ready Products</span><span aria-hidden="true">↗</span></button>
+          </article>
+        </div>
+        <div class="retail-support section-wrap" id="self-service">
+          <p><strong data-i18n="selfService">Sewa &amp; Self Service</strong><span data-i18n="selfServiceCopy">Akses workstation, printer, atau membership melalui jalur reservasi yang tetap terpisah dari katalog produk.</span></p>
+          <button type="button" data-prototype-action="retail" data-i18n="learnSelfService">Pelajari jalurnya</button>
+        </div>
+        <p class="retail-boundary section-wrap" data-i18n="retailBoundary">Jumlah besar, material khusus, kapasitas yang belum pasti, atau harga yang tidak dapat divalidasi otomatis akan dialihkan ke inquiry tanpa membuat Order, reservasi, atau pembayaran.</p>
+      </section>
+
+      <section class="partnership section-wrap" id="partnership" aria-labelledby="partnership-title">
+        <div class="partnership-copy">
+          <h2 id="partnership-title" data-i18n="partnershipHeading">Bawa kebutuhan, batas, atau pertanyaan yang sedang Anda hadapi.</h2>
+          <p data-i18n="partnershipBody">Form inquiry mencatat brief agar Niuva Operations dapat meninjaunya. WhatsApp tersedia sebagai pilihan lanjutan setelah inquiry dikirim.</p>
+          <button class="button button-primary" type="button" data-prototype-action="inquiry" data-i18n="openContact">Buka halaman Kontak</button>
+        </div>
+        <aside class="partnership-details" aria-labelledby="partnership-details-title">
+          <h3 id="partnership-details-title" data-i18n="contactDetailsTitle">Saat Anda membuka halaman Kontak</h3>
+          <dl>
+            <div><dt data-i18n="contactOwnerLabel">Ditinjau oleh</dt><dd data-i18n="responseOwner">Niuva Operations</dd></div>
+            <div><dt data-i18n="contactResponseLabel">Waktu respons</dt><dd data-i18n="responseTime">Maksimal 1 hari kerja · Senin–Jumat, 09.00–17.00 WIB, hari libur dikecualikan</dd></div>
+            <div><dt data-i18n="contactFlowLabel">Alur lanjutan</dt><dd data-i18n="contactFlowValue">Inquiry dicatat lebih dahulu. WhatsApp tersedia sebagai pilihan setelah form dikirim.</dd></div>
+          </dl>
+          <small data-i18n="inquiryBoundary">Prototype ini tidak mengirim atau menyimpan data.</small>
+        </aside>
+      </section>
+
+      <section class="faq section-wrap" aria-labelledby="faq-title">
+        <header><h2 id="faq-title" data-i18n="faqTitle">Pertanyaan sebelum memulai.</h2></header>
+        <div class="faq-list">
+          <details><summary><span data-i18n="faq1Q">Apakah saya harus sudah mempunyai desain final?</span><span aria-hidden="true">+</span></summary><p data-i18n="faq1A">Tidak. Untuk partnership, Niuva dapat mulai dari kebutuhan, masalah, referensi, atau batas yang Anda miliki. Retail Custom 3D Print membutuhkan file ketika masuk ke tahap konfigurasi.</p></details>
+          <details><summary><span data-i18n="faq2Q">Kapan pesanan Retail berubah menjadi inquiry?</span><span aria-hidden="true">+</span></summary><p data-i18n="faq2A">Ketika jumlah, material, kapasitas, harga, ETA, atau fulfillment tidak dapat divalidasi otomatis. Konteks tetap dibawa ke inquiry tanpa menciptakan transaksi.</p></details>
+          <details><summary><span data-i18n="faq3Q">Apakah Niuva hanya mengerjakan 3D printing?</span><span aria-hidden="true">+</span></summary><p data-i18n="faq3A">Tidak. 3D printing adalah salah satu cara realisasi. Niuva juga bekerja pada riset, konsultasi, workshop, desain, rekayasa, prototyping, dan realisasi produk.</p></details>
+        </div>
+      </section>
+
+    </main>
+
+    <div class="terminal-canvas">
+      <svg class="closing-contour" viewBox="0 0 1600 520" preserveAspectRatio="none" aria-hidden="true">
+          <g>
+            <path d="M-90 260 C155 150 340 382 585 264 S980 120 1230 258 S1510 366 1695 220" />
+            <path d="M-90 292 C155 182 340 414 585 296 S980 152 1230 290 S1510 398 1695 252" />
+            <path d="M-90 324 C155 214 340 446 585 328 S980 184 1230 322 S1510 430 1695 284" />
+            <path d="M-90 356 C155 246 340 478 585 360 S980 216 1230 354 S1510 462 1695 316" />
+            <path d="M-90 388 C155 278 340 510 585 392 S980 248 1230 386 S1510 494 1695 348" />
+          </g>
+      </svg>
+
+      <section class="closing" aria-labelledby="closing-title">
+        <div class="section-wrap closing-inner">
+          <h2 id="closing-title"><span data-i18n="closingLead">Ide yang baik membutuhkan</span> <em data-i18n="closingEmphasis">bukti yang dapat disentuh.</em></h2>
+          <p data-i18n="closingCopy">Mulai percakapan dengan Niuva, atau masuk ke Retail ketika kebutuhannya sudah siap dikonfigurasi.</p>
+          <div><a class="button button-light" href="#partnership" data-i18n="discussProject">Diskusikan project</a><a class="button button-dark-text" href="#retail" data-i18n="exploreRetail">Jelajahi Retail</a></div>
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <div class="section-wrap footer-row">
+          <a class="brand brand-light" href="#main-content"><img src="/assets/niuva-mark.svg" width="40" height="40" alt="" aria-hidden="true" /><span>Niuva</span></a>
+          <nav class="footer-links" aria-label="Navigasi footer" data-i18n-aria="footerNav">
+            <a href="#services" data-i18n="services">Layanan</a>
+            <a href="#projects" data-i18n="projects">Projects</a>
+            <a href="#retail">Retail</a>
+            <a href="#partnership" data-i18n="contact">Kontak</a>
+            <button type="button" data-prototype-action="privacy" data-i18n="privacy">Privasi</button>
+          </nav>
+          <div class="footer-meta"><span>© Niuva 2026</span><a href="/" lang="id">ID</a><a href="/en" lang="en">EN</a></div>
+        </div>
+      </footer>
+    </div>
+
+    <div class="prototype-toast" id="prototype-toast" role="status" aria-live="polite" hidden>
+      <p id="prototype-toast-message"></p>
+      <button type="button" data-dismiss-toast aria-label="Tutup pemberitahuan" data-i18n-aria="dismissNotice">×</button>
+    </div>
+    <div id="prototype-status" class="sr-only" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

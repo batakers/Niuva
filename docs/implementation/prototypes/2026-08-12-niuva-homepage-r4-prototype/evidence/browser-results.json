@@ -1,0 +1,1232 @@
+{
+  "generatedAt": "2026-08-12T12:21:00.221Z",
+  "base": "http://127.0.0.1:4198",
+  "records": [
+    {
+      "language": "id",
+      "route": "/",
+      "heading": "Dari ide menuju produk yang dapat diuji.",
+      "width": 320,
+      "height": 844,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — Dari ide menuju produk yang dapat diuji",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.024,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 320,
+      "clientWidth": 320,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": false,
+        "mobileToggleVisible": true
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/",
+      "activeLanguage": "Bahasa IndonesiaID",
+      "sectionTops": [
+        68,
+        848,
+        1830,
+        3069,
+        6271,
+        10136,
+        11677,
+        13432,
+        14668,
+        15214
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 38,
+          "top": 2276,
+          "width": 266
+        },
+        {
+          "left": 38,
+          "top": 2412,
+          "width": 266
+        },
+        {
+          "left": 38,
+          "top": 2549,
+          "width": 266
+        },
+        {
+          "left": 38,
+          "top": 2685,
+          "width": 266
+        },
+        {
+          "left": 38,
+          "top": 2821,
+          "width": 266
+        }
+      ],
+      "processLayout": "266px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "Lihat layanan"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 1,
+      "partnershipTopDelta": 498.640625,
+      "partnershipDetailsAfterCopy": true,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 2,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-id-320-viewport.png",
+      "fullPageScreenshot": null
+    },
+    {
+      "language": "id",
+      "route": "/",
+      "heading": "Dari ide menuju produk yang dapat diuji.",
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — Dari ide menuju produk yang dapat diuji",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.024,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": false,
+        "mobileToggleVisible": true
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/",
+      "activeLanguage": "Bahasa IndonesiaID",
+      "sectionTops": [
+        68,
+        888,
+        1849,
+        3131,
+        6157,
+        9788,
+        11319,
+        13029,
+        14244,
+        14767
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 38,
+          "top": 2338,
+          "width": 336
+        },
+        {
+          "left": 38,
+          "top": 2474,
+          "width": 336
+        },
+        {
+          "left": 38,
+          "top": 2610,
+          "width": 336
+        },
+        {
+          "left": 38,
+          "top": 2746,
+          "width": 336
+        },
+        {
+          "left": 38,
+          "top": 2883,
+          "width": 336
+        }
+      ],
+      "processLayout": "336px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "Lihat layanan"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 1,
+      "partnershipTopDelta": 506.609375,
+      "partnershipDetailsAfterCopy": true,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 2,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-id-390-viewport.png",
+      "fullPageScreenshot": "homepage-r4-id-390-full.png"
+    },
+    {
+      "language": "id",
+      "route": "/",
+      "heading": "Dari ide menuju produk yang dapat diuji.",
+      "width": 768,
+      "height": 900,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — Dari ide menuju produk yang dapat diuji",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.028,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": false,
+        "mobileToggleVisible": true
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/",
+      "activeLanguage": "Bahasa IndonesiaID",
+      "sectionTops": [
+        72,
+        900,
+        1674,
+        2762,
+        6452,
+        9983,
+        10917,
+        12415,
+        13400,
+        13952
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 42,
+          "top": 2038,
+          "width": 706
+        },
+        {
+          "left": 42,
+          "top": 2174,
+          "width": 706
+        },
+        {
+          "left": 42,
+          "top": 2292,
+          "width": 706
+        },
+        {
+          "left": 42,
+          "top": 2410,
+          "width": 706
+        },
+        {
+          "left": 42,
+          "top": 2528,
+          "width": 706
+        }
+      ],
+      "processLayout": "706px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "Lihat layanan"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 1,
+      "partnershipTopDelta": 346.328125,
+      "partnershipDetailsAfterCopy": true,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 2,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-id-768-viewport.png",
+      "fullPageScreenshot": null
+    },
+    {
+      "language": "id",
+      "route": "/",
+      "heading": "Dari ide menuju produk yang dapat diuji.",
+      "width": 1024,
+      "height": 900,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — Dari ide menuju produk yang dapat diuji",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.028000030517578125,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": true,
+        "mobileToggleVisible": false
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/",
+      "activeLanguage": "Bahasa IndonesiaID",
+      "sectionTops": [
+        80,
+        900,
+        1554,
+        2191,
+        4368,
+        7152,
+        8024,
+        9051,
+        9855,
+        10234
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 24,
+          "top": 1889,
+          "width": 195
+        },
+        {
+          "left": 219,
+          "top": 1889,
+          "width": 195
+        },
+        {
+          "left": 414,
+          "top": 1889,
+          "width": 195
+        },
+        {
+          "left": 610,
+          "top": 1889,
+          "width": 195
+        },
+        {
+          "left": 805,
+          "top": 1889,
+          "width": 195
+        }
+      ],
+      "processLayout": "195.188px 195.203px 195.203px 195.203px 195.188px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "Lihat layanan"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 2,
+      "partnershipTopDelta": 0,
+      "partnershipDetailsAfterCopy": false,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 1,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-id-1024-viewport.png",
+      "fullPageScreenshot": null
+    },
+    {
+      "language": "id",
+      "route": "/",
+      "heading": "Dari ide menuju produk yang dapat diuji.",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — Dari ide menuju produk yang dapat diuji",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.028,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": true,
+        "mobileToggleVisible": false
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/",
+      "activeLanguage": "Bahasa IndonesiaID",
+      "sectionTops": [
+        80,
+        900,
+        1761,
+        2507,
+        5071,
+        8028,
+        9016,
+        10241,
+        11122,
+        11538
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 130,
+          "top": 2178,
+          "width": 236
+        },
+        {
+          "left": 366,
+          "top": 2178,
+          "width": 236
+        },
+        {
+          "left": 602,
+          "top": 2178,
+          "width": 236
+        },
+        {
+          "left": 838,
+          "top": 2178,
+          "width": 236
+        },
+        {
+          "left": 1074,
+          "top": 2178,
+          "width": 236
+        }
+      ],
+      "processLayout": "236px 236px 236px 236px 236px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "Lihat layanan"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 2,
+      "partnershipTopDelta": 0,
+      "partnershipDetailsAfterCopy": false,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 1,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-id-1440-viewport.png",
+      "fullPageScreenshot": "homepage-r4-id-1440-full.png"
+    },
+    {
+      "language": "en",
+      "route": "/en",
+      "heading": "From an idea to a product you can test.",
+      "width": 320,
+      "height": 844,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — From an idea to a product you can test",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.024,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 320,
+      "clientWidth": 320,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": false,
+        "mobileToggleVisible": true
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/en",
+      "activeLanguage": "EnglishEN",
+      "sectionTops": [
+        68,
+        848,
+        1793,
+        3053,
+        6099,
+        9888,
+        11404,
+        13081,
+        14277,
+        14786
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 38,
+          "top": 2239,
+          "width": 266
+        },
+        {
+          "left": 38,
+          "top": 2396,
+          "width": 266
+        },
+        {
+          "left": 38,
+          "top": 2532,
+          "width": 266
+        },
+        {
+          "left": 38,
+          "top": 2668,
+          "width": 266
+        },
+        {
+          "left": 38,
+          "top": 2805,
+          "width": 266
+        }
+      ],
+      "processLayout": "266px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "View service"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 1,
+      "partnershipTopDelta": 461.203125,
+      "partnershipDetailsAfterCopy": true,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 2,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-en-320-viewport.png",
+      "fullPageScreenshot": null
+    },
+    {
+      "language": "en",
+      "route": "/en",
+      "heading": "From an idea to a product you can test.",
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — From an idea to a product you can test",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.024,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": false,
+        "mobileToggleVisible": true
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/en",
+      "activeLanguage": "EnglishEN",
+      "sectionTops": [
+        68,
+        888,
+        1804,
+        3050,
+        6031,
+        9618,
+        11107,
+        12749,
+        13898,
+        14422
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 38,
+          "top": 2293,
+          "width": 336
+        },
+        {
+          "left": 38,
+          "top": 2429,
+          "width": 336
+        },
+        {
+          "left": 38,
+          "top": 2547,
+          "width": 336
+        },
+        {
+          "left": 38,
+          "top": 2665,
+          "width": 336
+        },
+        {
+          "left": 38,
+          "top": 2802,
+          "width": 336
+        }
+      ],
+      "processLayout": "336px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "View service"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 1,
+      "partnershipTopDelta": 462,
+      "partnershipDetailsAfterCopy": true,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 2,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-en-390-viewport.png",
+      "fullPageScreenshot": null
+    },
+    {
+      "language": "en",
+      "route": "/en",
+      "heading": "From an idea to a product you can test.",
+      "width": 768,
+      "height": 900,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — From an idea to a product you can test",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.028,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": false,
+        "mobileToggleVisible": true
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/en",
+      "activeLanguage": "EnglishEN",
+      "sectionTops": [
+        72,
+        900,
+        1674,
+        2762,
+        6422,
+        9953,
+        10887,
+        12361,
+        13346,
+        13897
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 42,
+          "top": 2038,
+          "width": 706
+        },
+        {
+          "left": 42,
+          "top": 2174,
+          "width": 706
+        },
+        {
+          "left": 42,
+          "top": 2292,
+          "width": 706
+        },
+        {
+          "left": 42,
+          "top": 2410,
+          "width": 706
+        },
+        {
+          "left": 42,
+          "top": 2528,
+          "width": 706
+        }
+      ],
+      "processLayout": "706px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "View service"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 1,
+      "partnershipTopDelta": 346.328125,
+      "partnershipDetailsAfterCopy": true,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 2,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-en-768-viewport.png",
+      "fullPageScreenshot": null
+    },
+    {
+      "language": "en",
+      "route": "/en",
+      "heading": "From an idea to a product you can test.",
+      "width": 1024,
+      "height": 900,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — From an idea to a product you can test",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.028000030517578125,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": true,
+        "mobileToggleVisible": false
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/en",
+      "activeLanguage": "EnglishEN",
+      "sectionTops": [
+        80,
+        900,
+        1554,
+        2191,
+        4368,
+        7132,
+        7980,
+        9007,
+        9815,
+        10194
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 24,
+          "top": 1889,
+          "width": 195
+        },
+        {
+          "left": 219,
+          "top": 1889,
+          "width": 195
+        },
+        {
+          "left": 414,
+          "top": 1889,
+          "width": 195
+        },
+        {
+          "left": 610,
+          "top": 1889,
+          "width": 195
+        },
+        {
+          "left": 805,
+          "top": 1889,
+          "width": 195
+        }
+      ],
+      "processLayout": "195.188px 195.203px 195.203px 195.203px 195.188px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "View service"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 2,
+      "partnershipTopDelta": 0,
+      "partnershipDetailsAfterCopy": false,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 1,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-en-1024-viewport.png",
+      "fullPageScreenshot": null
+    },
+    {
+      "language": "en",
+      "route": "/en",
+      "heading": "From an idea to a product you can test.",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "consoleEvents": [],
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedResponses": [],
+      "sectionOrderValid": true,
+      "mobileProcessVertical": true,
+      "desktopProcessHorizontal": true,
+      "recordFailed": false,
+      "title": "Niuva — From an idea to a product you can test",
+      "headingMatch": true,
+      "heroCenterDelta": 0,
+      "heroTrackingRatio": -0.028,
+      "bodyFont": "\"Mona Sans Candidate\", \"Segoe UI\", sans-serif",
+      "accentFont": "\"Bona Nova Candidate\", Georgia, serif",
+      "bodyFontSize": 16,
+      "loadedMona": true,
+      "loadedBona": true,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "smallTargets": [],
+      "brokenImages": [],
+      "missingAlt": [],
+      "landmarks": {
+        "siteHeader": 1,
+        "main": 1,
+        "footer": 1,
+        "desktopNavVisible": true,
+        "mobileToggleVisible": false
+      },
+      "skipTarget": "#main-content",
+      "liveRegion": "polite",
+      "canonicalPath": "/en",
+      "activeLanguage": "EnglishEN",
+      "sectionTops": [
+        80,
+        900,
+        1699,
+        2445,
+        4926,
+        7743,
+        8717,
+        10000,
+        10880,
+        11296
+      ],
+      "processSeparated": true,
+      "contourBridgeContinues": true,
+      "contourBridgeEndsBeforeContent": true,
+      "contourOverscan": true,
+      "heroFootnoteCount": 0,
+      "processItems": [
+        {
+          "left": 130,
+          "top": 2115,
+          "width": 236
+        },
+        {
+          "left": 366,
+          "top": 2115,
+          "width": 236
+        },
+        {
+          "left": 602,
+          "top": 2115,
+          "width": 236
+        },
+        {
+          "left": 838,
+          "top": 2115,
+          "width": 236
+        },
+        {
+          "left": 1074,
+          "top": 2115,
+          "width": 236
+        }
+      ],
+      "processLayout": "236px 236px 236px 236px 236px",
+      "processLastConnector": "none",
+      "boundaryVisible": true,
+      "illustrationCount": 3,
+      "illustrationCaptionCount": 3,
+      "chapterPhotoCount": 0,
+      "serviceCount": 4,
+      "serviceBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "serviceLinkLabels": [
+        "View service"
+      ],
+      "serviceHighlightCount": 0,
+      "retailHeadingColumns": 2,
+      "partnershipTopDelta": 0,
+      "partnershipDetailsAfterCopy": false,
+      "contactDetailRows": 3,
+      "faqAnswerSurfaceCount": 3,
+      "closingContourBelowActions": true,
+      "terminalContourContinues": true,
+      "closingRetailBackground": "rgb(49, 95, 143)",
+      "footerRowCount": 1,
+      "officialMarkCount": 2,
+      "visibleWideRules": 3,
+      "participantLeaks": 0,
+      "viewportScreenshot": "homepage-r4-en-1440-viewport.png",
+      "fullPageScreenshot": null
+    }
+  ],
+  "interactions": {
+    "servicesMenu": {
+      "expanded": "true",
+      "hidden": false,
+      "columns": "538.797px 359.203px",
+      "groups": 2
+    },
+    "servicesEscape": {
+      "expanded": "false",
+      "hidden": true,
+      "focus": "services-toggle"
+    },
+    "languageMenu": {
+      "expanded": "true",
+      "hidden": false,
+      "links": [
+        {
+          "text": "Bahasa IndonesiaID",
+          "href": "/",
+          "current": "page"
+        },
+        {
+          "text": "EnglishEN",
+          "href": "/en",
+          "current": null
+        }
+      ]
+    },
+    "projectBoundary": {
+      "visible": true,
+      "text": "Detail Pindad EV Motor tidak diaktifkan di prototype Homepage R4."
+    },
+    "retailBoundary": {
+      "visible": true,
+      "text": "Jalur Retail ditampilkan sebagai arah navigasi saja. Katalog, konfigurator, checkout, dan pembayaran tidak diaktifkan di prototype ini."
+    },
+    "serviceBoundary": {
+      "visible": true,
+      "text": "Halaman detail Research & Development sudah menjadi arah yang disetujui, tetapi route detailnya belum diaktifkan di prototype Homepage R4."
+    },
+    "privacyBoundary": {
+      "visible": true,
+      "text": "Halaman Privasi tidak diaktifkan di prototype Homepage R4."
+    },
+    "mobileMenu": {
+      "expanded": "true",
+      "hidden": false,
+      "focusInside": true,
+      "visibleLanguageLinks": 2
+    },
+    "mobileServices": {
+      "expanded": "true",
+      "hidden": false,
+      "groups": 2
+    },
+    "mobileEscape": {
+      "expanded": "false",
+      "hidden": true,
+      "focus": "mobile-menu-toggle",
+      "bodyLocked": false
+    },
+    "faq": {
+      "openCount": 1,
+      "openIndex": 1
+    },
+    "reducedMotion": {
+      "duration": "1e-06s",
+      "iterations": "1",
+      "terminalDuration": "1e-06s",
+      "fieldTransform": "none",
+      "revealOpacity": "1"
+    },
+    "ambientMotion": {
+      "before": {
+        "group": "matrix(1, 0, 0, 0.960062, -31.9752, 7.98759)",
+        "layer": "matrix(1, 0, 0, 1, 0, -2.7576)"
+      },
+      "after": {
+        "group": "matrix(1, 0, 0, 0.963375, -30.6499, 7.32495)",
+        "layer": "matrix(1, 0, 0, 1, 0, -1.46159)"
+      },
+      "changed": true
+    },
+    "pointer": {
+      "x": "3.84px",
+      "y": "-1.28px"
+    },
+    "firstFocus": "skip-link",
+    "skipTarget": "main-content"
+  },
+  "totals": {
+    "matrix": 10,
+    "failedRecords": 0,
+    "interactionFailed": false
+  },
+  "failed": false
+}
