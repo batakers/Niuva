@@ -11,6 +11,7 @@
       title: "Niuva — Dari ide menuju produk yang dapat diuji",
       description: "Prototype Homepage Niuva R4: mitra inovasi dan pengembangan produk dengan empat layanan utama dan jalur Retail yang terpisah.",
       boundary: "Prototype visual R4 · bukan website production",
+      brandLink: "Niuva, kembali ke awal",
       mainNav: "Navigasi utama",
       mobileNav: "Navigasi mobile",
       languageToggle: "Pilih bahasa. Bahasa aktif Indonesia",
@@ -52,6 +53,7 @@
       description: "Niuva Homepage R4 prototype: an innovation and product-development partner with four primary services and a distinct Retail path.",
       skip: "Skip to main content",
       boundary: "R4 visual prototype · not the production website",
+      brandLink: "Niuva, back to the top",
       mainNav: "Main navigation",
       mobileNav: "Mobile navigation",
       languageToggle: "Choose language. Active language English",
@@ -246,6 +248,11 @@
     if (except !== "language") setDisclosure(languageToggle, languageMenu, false, false);
   }
 
+  function setMobileServices(open) {
+    setDisclosure(mobileServicesToggle, mobileServices, open, false);
+    mobileServicesToggle.querySelector("span:last-child").textContent = open ? "−" : "+";
+  }
+
   servicesToggle.addEventListener("click", function () {
     var next = servicesToggle.getAttribute("aria-expanded") !== "true";
     closeDesktopDisclosures("services");
@@ -263,12 +270,12 @@
     setDisclosure(mobileToggle, mobileMenu, next, false);
     document.body.classList.toggle("mobile-menu-open", next);
     if (next) mobileMenu.querySelector("a,button").focus();
+    else setMobileServices(false);
   });
 
   mobileServicesToggle.addEventListener("click", function () {
     var next = mobileServicesToggle.getAttribute("aria-expanded") !== "true";
-    setDisclosure(mobileServicesToggle, mobileServices, next, false);
-    mobileServicesToggle.querySelector("span:last-child").textContent = next ? "−" : "+";
+    setMobileServices(next);
   });
 
   document.addEventListener("click", function (event) {
@@ -292,7 +299,7 @@
     }
     if (mobileToggle.getAttribute("aria-expanded") === "true") {
       setDisclosure(mobileToggle, mobileMenu, false, true);
-      setDisclosure(mobileServicesToggle, mobileServices, false, false);
+      setMobileServices(false);
       document.body.classList.remove("mobile-menu-open");
     }
   });
@@ -300,6 +307,7 @@
   mobileMenu.querySelectorAll('a[href^="#"]').forEach(function (link) {
     link.addEventListener("click", function () {
       setDisclosure(mobileToggle, mobileMenu, false, false);
+      setMobileServices(false);
       document.body.classList.remove("mobile-menu-open");
     });
   });
@@ -381,8 +389,9 @@
     revealTargets.forEach(function (element) { observer.observe(element); });
   }
 
+  var header = document.querySelector("[data-header]");
   window.addEventListener("scroll", function () {
-    document.querySelector("[data-header]").classList.toggle("is-scrolled", window.scrollY > 12);
+    header.classList.toggle("is-scrolled", window.scrollY > 12);
   }, { passive: true });
 
   applyCopy();

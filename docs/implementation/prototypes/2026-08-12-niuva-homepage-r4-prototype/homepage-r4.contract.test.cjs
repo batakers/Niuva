@@ -10,6 +10,7 @@ const html = read("index.html");
 const css = read("styles.css");
 const app = read("app.js");
 const server = read("server.cjs");
+const browserValidator = read("browser-validate.cjs");
 const manifest = read("ASSET_MANIFEST.md");
 const readme = read("README.md");
 const brief = fs.readFileSync(
@@ -27,7 +28,9 @@ const brief = fs.readFileSync(
 
 function section(source, start, end) {
   const startIndex = source.indexOf(start);
+  assert.ok(startIndex >= 0, `missing section start marker: ${start}`);
   const endIndex = source.indexOf(end, startIndex);
+  assert.ok(endIndex > startIndex, `missing section end marker: ${end}`);
   return source.slice(startIndex, endIndex);
 }
 
@@ -185,11 +188,39 @@ test("ID and EN cover the new Service, Contact, footer, and boundary copy", () =
     "contactFlowLabel",
     "contactFlowValue",
     "footerNav",
+    "brandLink",
     "privacy",
     "toastService",
     "toastPrivacy"
   ]) assert.match(app, new RegExp(`${key}:`));
   assert.doesNotMatch(app, /localStorage|navigator\.language|machine translation|translate\.googleapis/i);
+});
+
+test("review remediations preserve localized and single-announcement interaction state", () => {
+  assert.match(html, /data-brand-link[^>]+data-i18n-aria="brandLink"/);
+  assert.match(app, /brandLink: "Niuva, kembali ke awal"/);
+  assert.match(app, /brandLink: "Niuva, back to the top"/);
+  assert.doesNotMatch(html, /id="prototype-toast"[^>]+aria-live=/);
+  assert.equal((html.match(/aria-live="polite"/g) || []).length, 1);
+  assert.match(app, /function setMobileServices\(open\)/);
+  assert.match(app, /setMobileServices\(false\)/);
+});
+
+test("local server and browser validator fail safely and remain portable", () => {
+  assert.match(server, /catch \{[\s\S]*writeHead\(400/);
+  assert.match(server, /stream\.on\("error", \(\) => response\.destroy\(\)\)/);
+  assert.match(browserValidator, /NIUVA_HOMEPAGE_R4_PLAYWRIGHT_ROOT/);
+  assert.match(browserValidator, /const baseHostname = new URL\(base\)\.hostname/);
+  assert.match(browserValidator, /target\.hostname !== baseHostname/);
+  assert.match(browserValidator, /finally \{[\s\S]*if \(browser\) await browser\.close\(\)/);
+  assert.doesNotMatch(browserValidator, /C:\\\\/);
+});
+
+test("asset provenance and hidden-content utilities remain reviewable", () => {
+  assert.match(manifest, /frontend\/public\/niuva-mark\.svg/);
+  assert.match(manifest, /motorcycle-simulator\.webp[^\n]+\n\nThe local worktree/);
+  assert.doesNotMatch(css, /clip: rect\(/);
+  assert.match(css, /clip-path: inset\(50%\)/);
 });
 
 test("participant and platform boundaries remain explicit", () => {

@@ -21,7 +21,13 @@ const mime = {
 
 http.createServer((request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "127.0.0.1"}`);
-  const pathname = homepageRoutes.has(url.pathname) ? "/index.html" : decodeURIComponent(url.pathname);
+  let pathname;
+  try {
+    pathname = homepageRoutes.has(url.pathname) ? "/index.html" : decodeURIComponent(url.pathname);
+  } catch {
+    response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" }).end("Bad request");
+    return;
+  }
   const filePath = path.resolve(root, `.${pathname}`);
 
   if (filePath !== root && !filePath.startsWith(root + path.sep)) {
@@ -39,7 +45,9 @@ http.createServer((request, response) => {
       "Cache-Control": "no-store",
       "Content-Type": mime[path.extname(filePath).toLowerCase()] || "application/octet-stream"
     });
-    fs.createReadStream(filePath).pipe(response);
+    const stream = fs.createReadStream(filePath);
+    stream.on("error", () => response.destroy());
+    stream.pipe(response);
   });
 }).listen(port, "127.0.0.1", () => {
   console.log(`Niuva Homepage R4 prototype: http://127.0.0.1:${port}/`);

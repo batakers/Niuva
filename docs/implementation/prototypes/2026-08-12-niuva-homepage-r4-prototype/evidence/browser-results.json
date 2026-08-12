@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-12T12:21:00.221Z",
-  "base": "http://127.0.0.1:4198",
+  "generatedAt": "2026-08-12T13:19:51.279Z",
+  "base": "http://127.0.0.1:4203",
   "records": [
     {
       "language": "id",
@@ -40,6 +40,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, kembali ke awal",
       "canonicalPath": "/",
       "activeLanguage": "Bahasa IndonesiaID",
       "sectionTops": [
@@ -153,19 +155,21 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, kembali ke awal",
       "canonicalPath": "/",
       "activeLanguage": "Bahasa IndonesiaID",
       "sectionTops": [
         68,
         888,
-        1849,
-        3131,
-        6157,
-        9788,
-        11319,
-        13029,
-        14244,
-        14767
+        1804,
+        3086,
+        6112,
+        9743,
+        11274,
+        12984,
+        14199,
+        14723
       ],
       "processSeparated": true,
       "contourBridgeContinues": true,
@@ -175,27 +179,27 @@
       "processItems": [
         {
           "left": 38,
-          "top": 2338,
+          "top": 2293,
           "width": 336
         },
         {
           "left": 38,
-          "top": 2474,
+          "top": 2429,
           "width": 336
         },
         {
           "left": 38,
-          "top": 2610,
+          "top": 2566,
           "width": 336
         },
         {
           "left": 38,
-          "top": 2746,
+          "top": 2702,
           "width": 336
         },
         {
           "left": 38,
-          "top": 2883,
+          "top": 2838,
           "width": 336
         }
       ],
@@ -266,6 +270,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, kembali ke awal",
       "canonicalPath": "/",
       "activeLanguage": "Bahasa IndonesiaID",
       "sectionTops": [
@@ -379,6 +385,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, kembali ke awal",
       "canonicalPath": "/",
       "activeLanguage": "Bahasa IndonesiaID",
       "sectionTops": [
@@ -492,6 +500,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, kembali ke awal",
       "canonicalPath": "/",
       "activeLanguage": "Bahasa IndonesiaID",
       "sectionTops": [
@@ -605,6 +615,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, back to the top",
       "canonicalPath": "/en",
       "activeLanguage": "EnglishEN",
       "sectionTops": [
@@ -718,6 +730,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, back to the top",
       "canonicalPath": "/en",
       "activeLanguage": "EnglishEN",
       "sectionTops": [
@@ -831,6 +845,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, back to the top",
       "canonicalPath": "/en",
       "activeLanguage": "EnglishEN",
       "sectionTops": [
@@ -944,6 +960,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, back to the top",
       "canonicalPath": "/en",
       "activeLanguage": "EnglishEN",
       "sectionTops": [
@@ -1057,6 +1075,8 @@
       },
       "skipTarget": "#main-content",
       "liveRegion": "polite",
+      "politeLiveRegionCount": 1,
+      "brandLabel": "Niuva, back to the top",
       "canonicalPath": "/en",
       "activeLanguage": "EnglishEN",
       "sectionTops": [
@@ -1192,7 +1212,10 @@
       "expanded": "false",
       "hidden": true,
       "focus": "mobile-menu-toggle",
-      "bodyLocked": false
+      "bodyLocked": false,
+      "servicesExpanded": "false",
+      "servicesHidden": true,
+      "servicesGlyph": "+"
     },
     "faq": {
       "openCount": 1,
@@ -1207,12 +1230,12 @@
     },
     "ambientMotion": {
       "before": {
-        "group": "matrix(1, 0, 0, 0.960062, -31.9752, 7.98759)",
-        "layer": "matrix(1, 0, 0, 1, 0, -2.7576)"
+        "group": "matrix(1, 0, 0, 0.96004, -31.9842, 7.99208)",
+        "layer": "matrix(1, 0, 0, 1, 0, -2.79548)"
       },
       "after": {
-        "group": "matrix(1, 0, 0, 0.963375, -30.6499, 7.32495)",
-        "layer": "matrix(1, 0, 0, 1, 0, -1.46159)"
+        "group": "matrix(1, 0, 0, 0.96318, -30.7279, 7.36397)",
+        "layer": "matrix(1, 0, 0, 1, 0, -1.50796)"
       },
       "changed": true
     },

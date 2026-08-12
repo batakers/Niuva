@@ -43,7 +43,7 @@ direction. It does not silently amend the current canonical service hierarchy.
 - `node --check server.cjs`: PASS.
 - `node --check browser-validate.cjs`: PASS.
 - `node --check homepage-r4.contract.test.cjs`: PASS.
-- `node --test homepage-r4.contract.test.cjs`: **15/15 PASS**.
+- `node --test homepage-r4.contract.test.cjs`: **18/18 PASS**.
 - root-file whitespace and final-newline check: PASS.
 - official mark provenance: `assets/niuva-mark.svg` is byte-identical to
   `frontend/public/niuva-mark.svg` and is paired with the text `Niuva` in the
@@ -124,13 +124,32 @@ boundary. The typography warning below remains open before canonical adoption.
 - `R4-P1-06`: Closing/footer contour collision and abrupt separation — CLOSED.
 - `R4-P2-01`: excessive wide horizontal rules — CLOSED; final count is three.
 
+## Corrective review revalidation
+
+The PR review remediation was revalidated on 2026-08-12 without changing the
+approved visual direction:
+
+- all seven CodeRabbit inline findings were reproduced or verified against the
+  current source and corrected;
+- malformed percent-encoding returns HTTP 400, the local server remains alive,
+  and a normal Homepage request still returns HTTP 200;
+- the browser matrix remains 10/10 PASS across ID/EN and 320, 390, 768, 1024,
+  and 1440px;
+- the localized brand accessible name and single polite live region pass in all
+  ten matrix records;
+- Escape closes the mobile Services disclosure, restores its `+` glyph, and
+  returns focus to the mobile-menu toggle; and
+- an intentional browser-validation failure exits with no leaked Playwright
+  browser process.
+
 ## Remaining conditions
 
 ### `R4-P2-02` — Impeccable typography warning
 
-The single final detector run reports `overused-font` for `Mona Sans`. The
-detector's rule explicitly includes Mona Sans even though its short description
-does not name it. This warning is not suppressed. R4 retains Mona Sans + Bona
+The final corrective detector run continues to report `overused-font` for
+`Mona Sans`. The detector's rule explicitly includes Mona Sans even though its
+short description does not name it. This warning is not suppressed. R4 retains
+Mona Sans + Bona
 Nova because the owner selected this candidate pair and the complete visual
 composition passes the current anti-template checks. Typography must be
 reviewed again before any design-system or production-source promotion.

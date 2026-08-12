@@ -2,18 +2,17 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const worktreeRoot = path.resolve(__dirname, "..", "..", "..", "..");
-const mainRoot = "C:\\Portfolio\\Niuva\\Niuva-main-latest";
-const crossSurfaceRoot = "C:\\tmp\\niuva-cross-surface-ux-ui-prototype-r1";
+const playwrightRoots = [
+  process.env.NIUVA_HOMEPAGE_R4_PLAYWRIGHT_ROOT,
+  path.join(worktreeRoot, "frontend")
+].filter(Boolean);
 const playwrightPath = require.resolve("playwright", {
-  paths: [
-    path.join(worktreeRoot, "frontend"),
-    path.join(mainRoot, "frontend"),
-    path.join(crossSurfaceRoot, "frontend")
-  ]
+  paths: playwrightRoots
 });
 const { chromium } = require(playwrightPath);
 
 const base = process.env.NIUVA_HOMEPAGE_R4_URL || "http://127.0.0.1:4198";
+const baseHostname = new URL(base).hostname;
 const evidenceRoot = path.join(__dirname, "evidence");
 const screenshotRoot = path.join(evidenceRoot, "screenshots");
 fs.mkdirSync(screenshotRoot, { recursive: true });
@@ -58,7 +57,7 @@ async function openPage(browser, options) {
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("request", (request) => {
     const target = new URL(request.url());
-    if (target.hostname !== "127.0.0.1") externalRequests.push(request.url());
+    if (target.hostname !== baseHostname) externalRequests.push(request.url());
   });
   page.on("response", (response) => {
     if (response.status() >= 400) failedResponses.push({ status: response.status(), url: response.url() });
@@ -67,10 +66,12 @@ async function openPage(browser, options) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
-  const records = [];
-  const interactions = {};
-  let failed = false;
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+    const records = [];
+    const interactions = {};
+    let failed = false;
 
   for (const variant of variants) {
     for (const width of widths) {
@@ -169,6 +170,8 @@ async function openPage(browser, options) {
           },
           skipTarget: document.querySelector(".skip-link")?.getAttribute("href") || null,
           liveRegion: document.querySelector("#prototype-status")?.getAttribute("aria-live") || null,
+          politeLiveRegionCount: document.querySelectorAll('[aria-live="polite"]').length,
+          brandLabel: document.querySelector("[data-brand-link]")?.getAttribute("aria-label") || null,
           canonicalPath: canonical ? new URL(canonical.href).pathname : null,
           activeLanguage: activeLanguage?.textContent.trim() || null,
           sectionTops,
@@ -219,6 +222,7 @@ async function openPage(browser, options) {
         ? new Set(evidence.processItems.map((item) => item.top)).size === 1
         : true;
       const expectedCanonical = variant.language === "en" ? "/en" : "/";
+      const expectedBrandLabel = variant.language === "en" ? "Niuva, back to the top" : "Niuva, kembali ke awal";
       const recordFailed = !response || response.status() !== 200
         || session.consoleEvents.length > 0
         || session.pageErrors.length > 0
@@ -241,6 +245,8 @@ async function openPage(browser, options) {
         || (width > 900 ? !evidence.landmarks.desktopNavVisible : !evidence.landmarks.mobileToggleVisible)
         || evidence.skipTarget !== "#main-content"
         || evidence.liveRegion !== "polite"
+        || evidence.politeLiveRegionCount !== 1
+        || evidence.brandLabel !== expectedBrandLabel
         || evidence.canonicalPath !== expectedCanonical
         || !evidence.activeLanguage
         || !sectionOrderValid
@@ -370,7 +376,10 @@ async function openPage(browser, options) {
     expanded: document.getElementById("mobile-menu-toggle").getAttribute("aria-expanded"),
     hidden: document.getElementById("mobile-menu").hidden,
     focus: document.activeElement?.id || null,
-    bodyLocked: document.body.classList.contains("mobile-menu-open")
+    bodyLocked: document.body.classList.contains("mobile-menu-open"),
+    servicesExpanded: document.getElementById("mobile-services-toggle").getAttribute("aria-expanded"),
+    servicesHidden: document.getElementById("mobile-services").hidden,
+    servicesGlyph: document.querySelector("#mobile-services-toggle span:last-child").textContent
   }));
   await mobile.context.close();
 
@@ -461,6 +470,9 @@ async function openPage(browser, options) {
     || !interactions.mobileEscape.hidden
     || interactions.mobileEscape.focus !== "mobile-menu-toggle"
     || interactions.mobileEscape.bodyLocked
+    || interactions.mobileEscape.servicesExpanded !== "false"
+    || !interactions.mobileEscape.servicesHidden
+    || interactions.mobileEscape.servicesGlyph !== "+"
     || interactions.faq.openCount !== 1
     || interactions.faq.openIndex !== 1
     || !Number.isFinite(duration)
@@ -490,8 +502,10 @@ async function openPage(browser, options) {
   fs.writeFileSync(path.join(evidenceRoot, "browser-results.json"), JSON.stringify(output, null, 2) + "\n", "utf8");
   console.log(JSON.stringify({ totals: output.totals, interactions, failed }, null, 2));
 
-  await browser.close();
-  process.exitCode = failed ? 1 : 0;
+    process.exitCode = failed ? 1 : 0;
+  } finally {
+    if (browser) await browser.close();
+  }
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

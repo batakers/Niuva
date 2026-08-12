@@ -83,7 +83,7 @@ by `index.html`, `styles.css`, or `app.js`.
 ## Verification carried forward
 
 - source syntax checks: PASS;
-- contract tests: **15/15 PASS**;
+- contract tests: **18/18 PASS**;
 - browser matrix: **10/10 PASS**;
 - focused browser interactions: PASS;
 - 320, 390, 768, 1024, and 1440px evidence: PASS;
@@ -99,7 +99,7 @@ by `index.html`, `styles.css`, or `app.js`.
 2. Copy only the 31 exact-scope files above.
 3. Verify that R2, R3, and all nine excluded carryovers are absent.
 4. Stage explicit paths only; do not use `git add .`.
-5. Re-run syntax, 15 contract tests, whitespace checks, and referenced-asset
+5. Re-run syntax, 18 contract tests, whitespace checks, and referenced-asset
    checks in the clean worktree.
 6. Request separate authorization before commit, push, and PR creation.
 7. Keep the PR prototype-only; do not combine it with canonical amendments or

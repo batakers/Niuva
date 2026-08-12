@@ -7,7 +7,7 @@ production, marketing, redistribution, or CMS publication right.
 
 | Prototype path | Repository source | Use |
 | --- | --- | --- |
-| `assets/niuva-mark.svg` | `frontend/src/assets/brand/niuva-mark.svg` | Header and footer identity |
+| `assets/niuva-mark.svg` | `frontend/public/niuva-mark.svg` | Header and footer identity |
 
 ## Existing project assets
 
@@ -20,6 +20,7 @@ Company Profile identifies.
 | `assets/projects/pindad-ev-motor.webp` | `frontend/src/assets/projects/pindad-ev-motor.webp` | Pindad EV Motor project evidence |
 | `assets/projects/xeon-redesign.webp` | `frontend/src/assets/projects/xeon-redesign.webp` | Xeon Redesign project evidence |
 | `assets/projects/agate-motorcycle-simulator.webp` | `frontend/src/assets/projects/agate-motorcycle-simulator.webp` | Motorcycle Simulator project evidence |
+
 The local worktree also contains `assets/projects/agate-bicycle-arcade.webp`
 as an R2/R3 carryover. R4 does not render it, so it is excluded from the
 candidate publication scope.

@@ -86,6 +86,13 @@ Use `Ctrl+C` in the terminal to stop the local server.
 
 ## Validation
 
+The browser validator requires Playwright with its Chromium browser. By
+default, it resolves the repository's existing frontend development dependency
+from `<current worktree>/frontend`; run `npm ci` there first when dependencies
+are not installed. If Playwright is already installed in another isolated
+worktree, set `NIUVA_HOMEPAGE_R4_PLAYWRIGHT_ROOT` to that worktree's `frontend`
+directory. The selected directory must contain `node_modules/playwright`.
+
 ```powershell
 node --check app.js
 node --check server.cjs
