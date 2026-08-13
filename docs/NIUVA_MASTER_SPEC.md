@@ -67,15 +67,17 @@ Sources: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_
 
 ## 3. Business Positioning
 
-The primary positioning is:
+The primary company positioning is:
 
-> Mitra R&D, design engineering, dan prototyping untuk pengembangan produk inovatif.
+> Mitra inovasi dan pengembangan produk yang menghubungkan riset, konsultasi, desain, prototyping, dan realisasi.
 
 Niuva must be understood as a strategic product-development partner that connects research, design, engineering, prototyping, testing, and implementation.
 
-Retail is an additional transaction journey. It must not replace the main positioning or make Niuva marketplace-first, Retail-first, e-commerce-only, or merchandise-led. R&D, design engineering, prototyping, and real project evidence remain prominent across the public brand experience.
+This company positioning does not establish a hierarchy among Service categories. Research & Development, Consultant & Workshop, Design & Prototyping, and Apparel & Merchandise are four primary Services with equal information and visual rank.
 
-Sources: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/historical-active/PRS_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`.
+Retail is an additional transaction journey. It must not replace the main positioning or make Niuva marketplace-first, Retail-first, e-commerce-only, or merchandise-led. The four primary Services and real project evidence remain prominent across the public brand experience.
+
+Sources: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/historical-active/PRS_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md`.
 
 ## 4. Users and Roles
 
@@ -652,7 +654,7 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | One website and one operational platform | Approved Baseline | `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Retail and Business/B2B are separate customer journeys | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Shared foundations do not merge Retail and B2B lifecycles | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
-| R&D, design engineering, and prototyping remain the primary positioning | Historical Active + Approved v2.1 continuation | `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Innovation and product-development partnership remains the primary company positioning; it does not rank the four Services | Approved Positioning — Service rank governed by DEC-UX-004 | `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md` |
 | Retail is an additional transaction journey | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
 | Unified Homepage | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | Business/B2B is the primary Homepage narrative | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |

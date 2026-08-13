@@ -257,6 +257,25 @@ worktrees. Shared-file ownership must be explicit; route pages, domain
 lifecycle maps, and provider/security behavior remain outside visual-system
 authority.
 
+### Migration stage-control contract
+
+Every stage requires a separately approved task card. Before cutover, that task
+card must name the Driver and surface owner, record the compatibility baseline,
+define the rollback trigger and exact recoverable action, and identify the
+handover evidence and recipient. The controls below are minimums; they do not
+authorize source changes, provider activation, deployment, readiness, or
+go-live.
+
+| Stage | Compatibility-preserving cutover check | Rollback trigger and action | Handover owner and evidence |
+|---|---|---|---|
+| 1. Foundation | Current token, font, focus, shared-component API, route, i18n, test-id, and accessibility consumers pass through recorded compatibility aliases. | Any current consumer, build, test, focus, or accessibility regression blocks cutover; revert the bounded foundation change and retain the previous mappings before any surface migrates. | Foundation Driver to affected surface owners: consumer inventory, before/after checks, compatibility map, changelog, and rollback reference. |
+| 2. Homepage R4 | Current Public routes, CMS content, ID/EN, loading/error, responsive, focus, and accessibility contracts pass against the adapted React slice. | Any route, CMS, locale, action, focus, or accessibility regression blocks cutover; revert the Homepage slice while retaining compatible foundation contracts. | Public owner to Foundation Driver: route/content map, focused tests, browser matrix, screenshot review, and rollback reference. |
+| 3. Auth | Customer/Admin separation, invitation, recovery, session, role, error, and provider-neutral contracts remain unchanged and no Google provider is activated. | Any authentication, session, recovery, role, provider-boundary, or accessibility regression blocks cutover; revert the Auth presentation slice and retain the prior routes/components. | Account/Auth owner to Product/authority reviewer: role/state matrix, focused tests, browser evidence, provider non-activation evidence, and rollback reference. |
+| 4. Remaining Public | Each route slice preserves localized canonical URLs/aliases, CMS and SEO fields, ID/EN behavior, internal links, authentic assets, and accessibility contracts. | Any route, locale, CMS, indexing, asset, link, or accessibility regression blocks only the affected slice; revert that slice without rolling back accepted independent routes. | Public owner to Product/authority reviewer: route inventory, link/SEO/i18n checks, asset provenance, browser evidence, and rollback reference. |
+| 5. Commerce and Account | Retail Order and B2B Quote/Project lifecycles remain separate; `quote_required` fails closed; pricing, provider gates, permissions, and customer-data projections remain intact. | Any lifecycle merge, unauthorized transaction, pricing/state inconsistency, provider activation, permission regression, or customer-data leak blocks cutover; revert the affected Retail/Customer slice to its compatible predecessor. | Commerce/Account owner to Product/authority reviewer: lifecycle/state matrix, authorization and projection tests, browser evidence, and rollback reference. |
+| 6. Operations | Admin/CMS routes preserve granular roles, permissions, conflicts, retries, audit/history presentation, lifecycle ownership, and customer-safe projections. | Any permission, conflict/retry, audit/history, lifecycle, or data-projection regression blocks cutover; revert the affected operational slice and restore its previous component mapping. | Operations owner to Product/authority reviewer: role matrix, conflict/retry and audit checks, projection evidence, browser evidence, and rollback reference. |
+| 7. Cleanup | Current `origin/main` shows zero consumers; replacements and migration notes exist; focused and aggregate checks pass; removal has separate approval. | Any remaining consumer, dependency/build/runtime regression, missing rollback evidence, or failed aggregate check blocks removal; restore the prior alias/component/dependency and reopen the migration item. | Foundation Driver and affected surface owner: zero-consumer evidence, dependency diff, focused/aggregate checks, removal changelog, and rollback reference. |
+
 ## Adoption checklist
 
 Before a page or component is migrated:
