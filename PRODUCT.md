@@ -3,8 +3,20 @@
 ## Product Shape
 
 Niuva is one website and one operational platform. Its primary positioning is a
-strategic partner for R&D, design engineering, and prototyping; Retail adds a
-safe transaction journey without reducing the brand to a commodity marketplace.
+strategic partner for innovation and product development; Retail adds a safe
+transaction journey without reducing the brand to a commodity marketplace.
+
+Niuva has four globally primary Services with equal information and visual
+rank:
+
+- Research & Development;
+- Consultant & Workshop;
+- Design & Prototyping; and
+- Apparel & Merchandise.
+
+Equal Service rank does not merge customer journeys. Business/B2B remains the
+Homepage's primary narrative, while Retail remains secondary but clearly
+discoverable.
 
 ## Two Customer Journeys
 
@@ -29,6 +41,10 @@ This file is an orientation, not the detailed product specification. Start with
 Detailed requirements remain in the approved BRD, PRS, PRD, and Unified
 Retail-B2B platform design baselines. Technical constraints remain in the
 applicable ADRs and approved decisions.
+
+`DEC-UX-004` and `DESIGN.md` govern the approved NDS 2.0 digital design target,
+surface-specific composition, component/state contracts, and staged migration.
+They do not authorize production implementation by themselves.
 
 ## Deferred Decisions
 

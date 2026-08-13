@@ -13,6 +13,7 @@
 ## Non-Negotiable Implementation Guardrails
 
 - The Homepage direction is Unified Homepage with a B2B-primary narrative and a Retail secondary path; detailed Retail/B2B navigation remains deferred.
+- Research & Development, Consultant & Workshop, Design & Prototyping, and Apparel & Merchandise are four globally primary Services with equal information and visual rank.
 - Retail and B2B are two journeys within one website and operational platform. Preserve their separate Retail Order and B2B Quote/Project lifecycles.
 - Enforce authorization in backend handlers and data queries with least privilege. Customer-facing data must exclude internal cost, margin, supplier, profit, and internal notes.
 - Transaction-required cross-collection mutations fail closed when MongoDB transaction capability is unavailable. Do not add a non-atomic fallback.
@@ -59,10 +60,13 @@
   numbering, bento composition, glass effects, gradients, dark mode, fake
   metrics or telemetry, generic hero copy, and motion that does not explain
   hierarchy, process, feedback, or media state.
-- Do not silently replace the approved Poppins/Inter roles, Niuva palette and
-  blue semantics, existing tokens, or approved brand assets. A new font,
-  dependency, image-generation workflow, motion library, dark mode, or visual
-  identity change requires applicable authority, a concrete need, and separate
+- Follow the NDS 2.0 target and compatibility contract in `DESIGN.md` and
+  `DEC-UX-004`. Do not create new consumers of deprecated Poppins, Inter,
+  hosted JetBrains Mono, old palette values, or compatibility aliases. Do not
+  remove existing consumers until an approved migration records replacement,
+  consumer evidence, verification, and rollback. A new dependency,
+  image-generation workflow, motion library, dark mode, or visual-identity
+  change still requires applicable authority, a concrete need, and separate
   approval where repository rules require it.
 - Design and verify the relevant default, hover, focus, active, disabled,
   loading, empty, error, conflict, recovery, and success states. Include stale,
