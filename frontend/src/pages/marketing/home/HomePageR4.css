@@ -3,6 +3,7 @@
   --home-r4-muted: var(--color-text-secondary);
   --home-r4-blue: var(--color-identity-signature);
   --home-r4-dark: var(--public-evidence-surface);
+
   overflow: clip;
 }
 
@@ -123,6 +124,7 @@
 .home-r4-contour {
   --fdm-pointer-x: 0px;
   --fdm-pointer-y: 0px;
+
   pointer-events: auto;
   position: absolute;
   left: 50%;
@@ -148,7 +150,7 @@
 
 .home-r4-contour path {
   fill: none;
-  stroke: currentColor;
+  stroke: currentcolor;
   stroke-width: 1.35;
   vector-effect: non-scaling-stroke;
 }
@@ -382,7 +384,7 @@
 .home-r4-chapter-visual path,
 .home-r4-chapter-visual circle {
   fill: none;
-  stroke: currentColor;
+  stroke: currentcolor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 3;
@@ -626,8 +628,8 @@
 .home-r4-retail-boundary {
   max-width: 78ch;
   margin: var(--space-8) 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.875rem !important;
+  color: var(--home-r4-muted);
+  font-size: 1rem;
 }
 
 .home-r4-contact {
@@ -721,6 +723,12 @@
   display: none;
 }
 
+.home-r4-faq-list summary:focus-visible {
+  outline: 3px solid;
+  outline-color: var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
 .home-r4-faq-list summary svg {
   transition: transform var(--motion-standard) var(--ease-standard);
 }
@@ -784,6 +792,13 @@
 
 .home-r4-closing-link {
   color: var(--color-text-inverse) !important;
+}
+
+.home-r4-projects a:focus-visible,
+.home-r4-closing a:focus-visible {
+  outline: 3px solid;
+  outline-color: var(--nds-blue-300);
+  outline-offset: 3px;
 }
 
 @keyframes home-r4-contour-drift {

@@ -7,6 +7,7 @@ const read = (...segments) =>
 const homeSource = read("HomePage.jsx");
 const visualSource = read("home", "HomePageVisuals.jsx");
 const styleSource = read("home", "HomePageR4.css");
+const normalizeWhitespace = (source) => source.replace(/\s+/g, " ");
 
 describe("NDS 2.0 Homepage R4 production pilot contract", () => {
   test("keeps the centered project-neutral hero and one bounded identity gesture", () => {
@@ -51,9 +52,15 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
       expect(homeSource).toContain(`key: "${chapter}"`);
       expect(visualSource).toContain(`type === "${chapter}"`);
     }
-    expect(homeSource).toContain('project.title.includes("Pindad")');
-    expect(homeSource).toContain('project.title.includes("Xeon")');
-    expect(homeSource).toContain('project.title.includes("Motorcycle Simulator")');
+    for (const title of [
+      "Pengembangan Motor EV PT Pindad",
+      "Redesain Motor Xeon",
+      "Motorcycle Simulator Agate",
+    ]) {
+      expect(homeSource).toContain(`"${title}"`);
+    }
+    expect(homeSource).toContain("project.title === title");
+    expect(homeSource).not.toContain("project.title.includes");
     expect(homeSource).toContain("Company Profile Niuva");
   });
 
@@ -61,7 +68,9 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
     expect(homeSource).toContain('to="/contact"');
     expect(homeSource).toContain('to="/retail"');
     expect(homeSource).toContain('to="/projects"');
-    expect(homeSource).toContain("tanpa\n          membuat Order, reservasi, atau pembayaran");
+    expect(normalizeWhitespace(homeSource)).toContain(
+      "tanpa membuat Order, reservasi, atau pembayaran",
+    );
     expect(homeSource).not.toContain("checkout(");
     expect(homeSource).not.toContain("payment(");
     expect(homeSource).not.toContain("fetch(");
@@ -74,5 +83,11 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
     expect(styleSource).not.toContain("transition: all");
     expect(styleSource).not.toContain("linear-gradient");
     expect(styleSource).not.toContain("backdrop-filter");
+    expect(normalizeWhitespace(styleSource)).toContain(
+      ".home-r4-retail-boundary { max-width: 78ch; margin: var(--space-8) 0 0; color: var(--home-r4-muted); font-size: 1rem; }",
+    );
+    expect(normalizeWhitespace(styleSource)).toContain(
+      ".home-r4-projects a:focus-visible, .home-r4-closing a:focus-visible { outline: 3px solid; outline-color: var(--nds-blue-300);",
+    );
   });
 });

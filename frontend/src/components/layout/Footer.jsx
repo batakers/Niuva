@@ -21,9 +21,9 @@ function HomepageTerminalFooter({ currentYear }) {
         <Link
           to="/"
           aria-label="Niuva - Beranda"
-          className="inline-flex min-h-11 items-center rounded-control px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity-support focus-visible:ring-offset-2 focus-visible:ring-offset-public-evidence [&>span>span]:text-text-inverse"
+          className="inline-flex min-h-11 items-center rounded-control px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity-support focus-visible:ring-offset-2 focus-visible:ring-offset-public-evidence"
         >
-          <BrandIdentity />
+          <BrandIdentity className="[--color-text-primary-rgb:var(--color-text-inverse-rgb)]" />
         </Link>
 
         <nav
@@ -49,9 +49,7 @@ function HomepageTerminalFooter({ currentYear }) {
   );
 }
 
-export function Footer() {
-  const currentYear = new Date().getFullYear();
-  const { pathname } = useLocation();
+function LegacyFooter({ currentYear }) {
   const { contact } = usePublicSettings();
   const navigation = [
     { label: "Home", to: "/" },
@@ -62,10 +60,6 @@ export function Footer() {
     { label: "Retail", to: "/retail" },
     { label: "Contact", to: "/contact" },
   ];
-
-  if (pathname === "/") {
-    return <HomepageTerminalFooter currentYear={currentYear} />;
-  }
 
   return (
     <footer
@@ -125,4 +119,15 @@ export function Footer() {
       </div>
     </footer>
   );
+}
+
+export function Footer() {
+  const currentYear = new Date().getFullYear();
+  const { pathname } = useLocation();
+
+  if (pathname === "/") {
+    return <HomepageTerminalFooter currentYear={currentYear} />;
+  }
+
+  return <LegacyFooter currentYear={currentYear} />;
 }

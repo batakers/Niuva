@@ -7,7 +7,7 @@ Status: **LOCAL IMPLEMENTATION VERIFIED - SHARED INTEGRATION GATE REQUIRED**
 - **Product owner:** Faiz
 - **Surface owner and Driver:** Faiz with Codex assistance
 - **Branch:** `feat/niuva-gate2-lane-a-public`
-- **Worktree:** `C:\tmp\niuva-gate2-lane-a-public-20260813`
+- **Worktree:** isolated Lane A worktree from the recorded baseline
 - **Selected baseline:** `origin/main` at
   `3fe2aecdc2aad0ab5f962ae8283965b7da8ec98d`
 - **Foundation dependency:** PR #238 merged before this branch was created
@@ -182,11 +182,15 @@ contracts. It must not paste prototype HTML/JavaScript wholesale.
 
 - **Rollback trigger:** route, CMS/content, locale, SEO, action, focus,
   accessibility, visual P0/P1, or build regression.
-- **Recoverable action:** revert only the bounded Homepage slice while retaining
-  the merged NDS 2.0 foundation.
+- **Recoverable action:** revert the bounded Homepage slice together with its
+  Homepage-only Footer variant and tests while retaining the merged NDS 2.0
+  foundation. The rollback unit includes `Footer.jsx` and `Footer.test.jsx`;
+  do not retain the terminal Footer after reverting the Homepage composition.
+- **Post-rollback checks:** verify `/` no longer renders the terminal Footer and
+  `/about` still renders the legacy Footer and contact composition.
 - **Handover evidence:** exact changed paths, route/content map, tests, browser
-  matrix, screenshot critique, detector result, asset provenance, open P2/P3,
-  and rollback reference.
+  matrix, screenshot critique, detector result, asset provenance, `/` and
+  `/about` rollback checks, open P2/P3, and rollback reference.
 
 ## Local implementation evidence - 13 August 2026
 
@@ -197,8 +201,8 @@ deployment areas remain unchanged.
 
 Verification completed against the selected baseline:
 
-- focused Homepage, Footer, and Layout tests: 4 suites, 16 tests passed;
-- proportional frontend suite: 66 suites, 408 tests passed;
+- focused Homepage, Footer, and Layout tests: 4 suites, 17 tests passed;
+- proportional frontend suite: 66 suites, 409 tests passed;
 - optimized production build and report-only bundle measurement: passed;
 - Impeccable detector, executed once against the final Homepage and Footer
   source:
@@ -217,6 +221,20 @@ Verification completed against the selected baseline:
   horizontal overflow, no target below 44 pixels, no console/network failure,
   and zero scoped Axe violations; `/about` retains the legacy Footer; and
 - source diff whitespace check: passed.
+
+Corrective review confirmation additionally verified that the Homepage terminal
+Footer does not issue a duplicate public-settings request, its BrandIdentity
+wordmark resolves to inverse white through the supported semantic token path,
+dark-surface project and Closing links receive the light focus ring, the
+Retail inquiry boundary remains 16px body copy, and the pending contour pointer
+frame is cancelled before reset. Browser confirmation at 390 and 1440 pixels
+again produced zero scoped Axe violations, `0px` seam and overflow deltas, and
+no undersized visible targets. The only HTTP 404 remained the known local
+unauthenticated `/api/auth/me` bootstrap response, outside this slice.
+
+Stylelint is not declared in this repository and was not installed during the
+corrective pass. The four exact formatting/value findings reported by the
+review service were corrected and source-checked without adding a dependency.
 
 Finish review results:
 

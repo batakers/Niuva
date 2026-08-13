@@ -4,15 +4,10 @@ import { MemoryRouter } from "react-router-dom";
 
 import { Footer } from "./Footer";
 
+const mockUsePublicSettings = jest.fn();
+
 jest.mock("@/lib/publicSettings", () => ({
-  usePublicSettings: () => ({
-    contact: {
-      email: "hello@example.test",
-      location: "Bandung",
-      whatsapp: "+62 812 0000 0000",
-      whatsappHref: "https://wa.me/6281200000000",
-    },
-  }),
+  usePublicSettings: () => mockUsePublicSettings(),
 }));
 
 function renderFooter(pathname) {
@@ -22,6 +17,18 @@ function renderFooter(pathname) {
     </MemoryRouter>,
   );
 }
+
+beforeEach(() => {
+  mockUsePublicSettings.mockReset();
+  mockUsePublicSettings.mockReturnValue({
+    contact: {
+      email: "hello@example.test",
+      location: "Bandung",
+      whatsapp: "+62 812 0000 0000",
+      whatsappHref: "https://wa.me/6281200000000",
+    },
+  });
+});
 
 test("joins the Homepage closing canvas with a minimal terminal Footer", () => {
   renderFooter("/");
@@ -46,6 +53,12 @@ test("joins the Homepage closing canvas with a minimal terminal Footer", () => {
   );
   expect(within(footer).queryByText("Navigasi")).not.toBeInTheDocument();
   expect(within(footer).queryByText("hello@example.test")).not.toBeInTheDocument();
+  expect(mockUsePublicSettings).not.toHaveBeenCalled();
+
+  const wordmark = within(footer).getByText("Niuva").parentElement;
+  expect(wordmark).toHaveClass(
+    "[--color-text-primary-rgb:var(--color-text-inverse-rgb)]",
+  );
 });
 
 test("preserves the existing Footer composition outside the Homepage", () => {
@@ -60,4 +73,5 @@ test("preserves the existing Footer composition outside the Homepage", () => {
     "href",
     "mailto:hello@example.test",
   );
+  expect(mockUsePublicSettings).toHaveBeenCalledTimes(1);
 });

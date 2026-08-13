@@ -38,6 +38,7 @@ export function HomeFdmContour({ variant = "light", className = "" }) {
         : null;
 
     const resetPointer = () => {
+      window.cancelAnimationFrame?.(frame);
       node.style.setProperty("--fdm-pointer-x", "0px");
       node.style.setProperty("--fdm-pointer-y", "0px");
     };

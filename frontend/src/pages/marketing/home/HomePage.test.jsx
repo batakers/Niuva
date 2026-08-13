@@ -1,8 +1,9 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import HomePage from "../HomePage";
+import { HomeFdmContour } from "./HomePageVisuals";
 
 let mockPublicSettings = {
   status: "ready",
@@ -95,4 +96,46 @@ test("shows public-settings loading and recoverable error states without hiding 
     "Detail terbaru belum dapat dimuat",
   );
   expect(screen.getByRole("link", { name: /Buka halaman Kontak/i })).toBeInTheDocument();
+
+  mockPublicSettings = { status: "disabled", contact: {} };
+  rerender(
+    <MemoryRouter>
+      <HomePage />
+    </MemoryRouter>,
+  );
+
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Buka halaman Kontak/i })).toBeInTheDocument();
+});
+
+test("cancels a pending contour pointer frame before resetting its offset", () => {
+  const originalMatchMedia = window.matchMedia;
+  const originalRequestAnimationFrame = window.requestAnimationFrame;
+  const originalCancelAnimationFrame = window.cancelAnimationFrame;
+  const requestAnimationFrame = jest.fn(() => 41);
+  const cancelAnimationFrame = jest.fn();
+
+  window.matchMedia = jest.fn((query) => ({
+    matches: query.includes("pointer: fine"),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  }));
+  window.requestAnimationFrame = requestAnimationFrame;
+  window.cancelAnimationFrame = cancelAnimationFrame;
+
+  try {
+    render(<HomeFdmContour />);
+    const contour = screen.getByTestId("home-fdm-contour-light");
+
+    fireEvent.pointerMove(contour, { clientX: 120, clientY: 80 });
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerLeave(contour);
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(41);
+  } finally {
+    window.matchMedia = originalMatchMedia;
+    window.requestAnimationFrame = originalRequestAnimationFrame;
+    window.cancelAnimationFrame = originalCancelAnimationFrame;
+  }
 });

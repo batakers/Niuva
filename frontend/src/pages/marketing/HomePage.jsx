@@ -26,13 +26,15 @@ const services = SERVICE_ORDER.map((slug) =>
   profileContent.services.find((service) => service.slug === slug),
 ).filter(Boolean);
 
-const projects = [
-  profileContent.projects.find((project) => project.title.includes("Pindad")),
-  profileContent.projects.find((project) => project.title.includes("Xeon")),
-  profileContent.projects.find((project) =>
-    project.title.includes("Motorcycle Simulator"),
-  ),
-].filter(Boolean);
+const PROJECT_ORDER = [
+  "Pengembangan Motor EV PT Pindad",
+  "Redesain Motor Xeon",
+  "Motorcycle Simulator Agate",
+];
+
+const projects = PROJECT_ORDER.map((title) =>
+  profileContent.projects.find((project) => project.title === title),
+).filter(Boolean);
 
 const processStages = [
   {
