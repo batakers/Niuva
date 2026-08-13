@@ -3,8 +3,8 @@
 Status: **Approved Canonical**
 Draft date: 23 July 2026
 Approval date: 23 July 2026
-Last canonical amendment: 11 August 2026 — localized Public marketing routes
-and compatibility redirects
+Last canonical amendment: 13 August 2026 — NDS 2.0 cross-surface
+design-system reconstruction target and migration guardrail
 Approval record: `docs/decisions/APPROVAL-NIUVA-CANONICAL-DOCUMENTATION-2026-07-23.md`
 Scope: Product, business, experience, data, operational, security, and implementation boundaries for the Niuva website and platform
 
@@ -67,15 +67,17 @@ Sources: `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_
 
 ## 3. Business Positioning
 
-The primary positioning is:
+The primary company positioning is:
 
-> Mitra R&D, design engineering, dan prototyping untuk pengembangan produk inovatif.
+> Mitra inovasi dan pengembangan produk yang menghubungkan riset, konsultasi, desain, prototyping, dan realisasi.
 
 Niuva must be understood as a strategic product-development partner that connects research, design, engineering, prototyping, testing, and implementation.
 
-Retail is an additional transaction journey. It must not replace the main positioning or make Niuva marketplace-first, Retail-first, e-commerce-only, or merchandise-led. R&D, design engineering, prototyping, and real project evidence remain prominent across the public brand experience.
+This company positioning does not establish a hierarchy among Service categories. Research & Development, Consultant & Workshop, Design & Prototyping, and Apparel & Merchandise are four primary Services with equal information and visual rank.
 
-Sources: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/historical-active/PRS_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`.
+Retail is an additional transaction journey. It must not replace the main positioning or make Niuva marketplace-first, Retail-first, e-commerce-only, or merchandise-led. The four primary Services and real project evidence remain prominent across the public brand experience.
+
+Sources: `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/historical-active/PRS_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md`.
 
 ## 4. Users and Roles
 
@@ -255,26 +257,27 @@ navigation, sitemap, CMS URL, analytics, or implementation authority. See
 
 ### Visual direction
 
-The approved direction is **Experimental Editorial Hybrid**:
-
-- technical personality and transformation logic from Experimental Engineering Studio;
-- clarity, typography, project presentation, and restraint from Editorial Product Studio.
+The approved target is **Niuva Design System 2.0 (NDS 2.0)**: one Niuva
+identity expressed through distinct Public, Commerce, Account, and Operations
+surface registers. It retains the editorial clarity, authentic evidence, open
+project presentation, restrained motion, and anti-template intent of
+`DEC-UX-002`, while `DEC-UX-004` governs the reconstructed visual foundation,
+cross-surface contracts, and compatibility-preserving migration.
 
 ### Homepage rules
 
-- Poppins is used for display, headings, navigation-style UI, and buttons.
-- Inter is used for body copy, labels, captions, forms, and public metadata.
-- Monospace is used only for real technical data and never as decorative shorthand for engineering.
-- The U-curve is a semantic transformation path: `Need → Research → Experiment → Prototype → Output`.
-- The initial Homepage has two dominant U-curve placements: one compact path in the hero and one complete path in the process section.
-- The U-curve is not wallpaper and is not repeated across cards or sections.
-- Public motion intensity is at most 5/10 and must explain hierarchy, process, or media state.
+- Mona Sans Variable is the primary display, body, and UI family across digital surfaces.
+- Bona Nova Italic is restricted to at most one short expressive interruption in a Public composition; it is not used in Commerce, Account, Operations, forms, tables, badges, or statuses.
+- System monospace is used only where fixed width materially improves genuine code, hash, or machine values; it is never a decorative technical voice.
+- The five-stage semantic transformation path remains `Need → Research → Experiment → Prototype → Output` and appears once as a dedicated process rail.
+- The FDM contour is a separate, bounded identity gesture derived from additive layers. It is not the process rail, wallpaper, live telemetry, production progress, capacity, or an Order state.
+- Motion uses one restrained Niuva grammar and must explain hierarchy, process, feedback, or media state.
 - Reduced-motion mode must show all content, stages, media, and actions without motion-dependent meaning.
 - Portfolio content uses authentic evidence and mini case studies with context, challenge, method or solution, output, and capability proven.
-- Research & Development and Design & Prototyping remain the primary capabilities.
-- Consultant & Workshop and Apparel & Merchandise remain supporting capabilities.
+- Research & Development, Consultant & Workshop, Design & Prototyping, and Apparel & Merchandise are four globally primary Services with equal information and visual rank.
+- Equal Service rank does not change the B2B-primary Homepage narrative or the secondary but clearly discoverable Retail journey.
 
-Sources: `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`; `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`.
+Sources: `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`; `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md`; `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md`; `DESIGN.md`.
 
 ## 8. Brand System
 
@@ -286,16 +289,20 @@ Sources: `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`;
 
 ### Palette and color behavior
 
-The approved palette consists of Niuva Blue `#6390BB`, Sky Blue `#8AAECF`, Blue Dark `#4A72A0`, Midnight `#1C2B3A`, Steel `#3D5266`, Smoke `#6B7A8D`, Silver `#E2E8EE`, Frost `#EBF1F7`, Cloud `#F8F9FB`, and Pure White `#FFFFFF`, with semantic success, warning, and error colors where operationally required.
+Niuva blue remains the primary identity color through the contrast-aware tonal
+family defined in `DESIGN.md`. Semantic success, warning, danger, information,
+and neutral roles remain independent from identity color and must use approved
+foreground/background pairings.
 
 Blue is scarce and purposeful. Use it for identity, primary action, focus/active state, meaningful diagrams, selected emphasis, and real status semantics. Do not turn every card, label, divider, or background into a blue accent. Accessible interaction contrast takes priority over decorative use.
 
 ### Typography, shape, elevation, and media
 
-- Poppins + Inter is the official public-brand typography baseline. This baseline defines the intended brand system; it does not claim that implementation has already been migrated across every public route.
-- Homepage use is locked: Poppins is used for display, headings, navigation-style UI, and buttons; Inter is used for body copy, labels, captions, forms, and metadata.
-- Migration or rollout to About, Capabilities, Projects, and Contact remains deferred.
-- Permanent broader digital-brand publication remains tied to the deferred Brand Guidelines v1.1.
+- Mona Sans Variable is the NDS 2.0 primary digital family across Public, Commerce, Account, and Operations.
+- Bona Nova Italic is a bounded Public-only expressive role and system monospace is reserved for genuine fixed-width technical values.
+- Production font delivery is self-hosted, license-recorded WOFF2 with measured fallback behavior and no duplicate external delivery path.
+- Poppins, Inter, hosted JetBrains Mono, old palette values, and old aliases may remain only as recorded compatibility contracts until separately authorized migrations remove all consumers; they receive no new consumer.
+- Permanent print/brand-guideline publication remains tied to the deferred Brand Guidelines v1.1; NDS 2.0 governs the approved digital target and migration guardrail.
 - Radius is controlled by component meaning; full pills are reserved for controls or states that require them.
 - Elevation is flat-first: borders, spacing, and hierarchy precede shadow.
 - Photography must show authentic projects, people, process, materials, testing, workshops, or environments. Stock imagery must not be represented as Niuva project evidence.
@@ -304,7 +311,7 @@ Blue is scarce and purposeful. Use it for identity, primary action, focus/active
 
 Public brand pages may be more expressive and editorial. Retail, customer portals, and operational surfaces must apply the same identity with greater clarity, restraint, and task focus.
 
-Sources: `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `docs/references/brand/BRAND_WEBSITE_AUDIT.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`.
+Sources: `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md`; `DESIGN.md`.
 
 ## 9. Surface-Specific Experience Rules
 
@@ -647,7 +654,7 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | One website and one operational platform | Approved Baseline | `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Retail and Business/B2B are separate customer journeys | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Shared foundations do not merge Retail and B2B lifecycles | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
-| R&D, design engineering, and prototyping remain the primary positioning | Historical Active + Approved v2.1 continuation | `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
+| Innovation and product-development partnership remains the primary company positioning; it does not rank the four Services | Approved Positioning — Service rank governed by DEC-UX-004 | `docs/references/requirements/historical-active/BRD_Website_Niuva.md`; `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md`; `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md` |
 | Retail is an additional transaction journey | Approved Baseline | `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md` |
 | Unified Homepage | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
 | Business/B2B is the primary Homepage narrative | Approved Decision | `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md` |
@@ -655,11 +662,11 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | MVP surfaces use one frontend application under one origin with route-based boundaries | Approved Architecture Decision | `docs/decisions/architecture/ADR-004-surface-boundary-topology.md` |
 | Localized canonical MVP Public marketing routes and aliases, retained downstream Retail routes, Retail account/configuration/request/offer/checkout and Order destinations, legacy-route treatment, and Admin Retail queue ownership | Approved Decision — Documentation Amendment; No Implementation Authority | `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md`; explicit owner promotion approval recorded 11 August 2026 |
 | Narrowed MVP B2B public intake uses a persisted form-first Inquiry with optional user-clicked WhatsApp continuation, existing Inquiry UUID reference, no public raw-file upload, and manual one-working-day follow-up target | Approved Decision — Documentation Only; No Implementation Authority | Amended `docs/decisions/experience/DEC-UX-003-mvp-user-flow-and-route-contract.md`; `docs/references/requirements/approved-baselines/PRD_Platform_Niuva_v2_1_retail_b2b.md`; explicit user approval recorded 8 August 2026 |
-| Experimental Editorial Hybrid | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
-| Homepage uses Poppins + Inter with the approved display/UI and body/metadata roles | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
-| U-curve is a semantic transformation path with two initial dominant placements | Approved Decision | `docs/decisions/experience/DEC-UX-002-homepage-experimental-editorial-hybrid.md` |
+| NDS 2.0 cross-surface design-system reconstruction target and staged compatibility-preserving migration | Approved Decision — Documentation Amendment; No Implementation Authority | `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md` |
+| Mona Sans Variable primary digital family, bounded Public-only Bona Nova Italic, and system monospace only for genuine technical values | Approved Target — Implementation Separately Gated | `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md`; `DESIGN.md` |
+| Five-stage semantic transformation path appears once as a dedicated process rail; bounded FDM contour remains a separate identity gesture | Approved Target — Implementation Separately Gated | `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md`; `DESIGN.md` |
 | Official company mark is the `ni` brandmark | Supporting official brand authority + active decision | `docs/references/brand/NIUVA_BRAND_GUIDELINES_V1.0.pdf`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
-| Primary and supporting capability hierarchy | Historical Active Baseline | `docs/references/requirements/historical-active/PRS_Website_Niuva.md`; `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md` |
+| Research & Development, Consultant & Workshop, Design & Prototyping, and Apparel & Merchandise are four globally primary Services with equal information and visual rank | Approved Decision — Documentation Amendment; No Implementation Authority | `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md` |
 | Fixed, calculated, and quote-required pricing | Approved Baseline | `docs/references/requirements/approved-baselines/PRS_Platform_Niuva_v2_1_retail_b2b_addendum.md` |
 | Retail offer/file eligibility, automatic-pricing confirmation, quote routing, mixed-cart separation, and Assisted Retail Offer | Approved Product Contract — Activation Gated | `docs/decisions/product/DEC-OFFER-01-retail-offer-file-and-quote-routing.md` |
 | Custom 3D Print progressive material plus exact machine-time policy `NIUVA-CP-FDM-001`, with final-only half-up rounding | Approved Commercial Policy — Activation Gated | `docs/decisions/product/DEC-PRICE-001-custom-print-commercial-pricing.md` |
@@ -706,10 +713,10 @@ Technical sources: `docs/decisions/architecture/ADR-001-mongodb-transaction-capa
 | Protected-scope implementation permission | Bounded approval | Auth/session, legacy-order quarantine, publication/data-integrity remediation, and Retail discovery per `DEC-REMED-001`; payment, fulfillment, production storage, Organization Portal, rollout, and go-live remain open |
 | Production readiness | Open | Feature activation and operational handover |
 | Production go-live | Open | Public production availability |
-| Broader service-taxonomy and CMS content-model rename | Deferred | The umbrella navigation label `Layanan` / `Services` and localized route are resolved by `DEC-UX-003`; individual service taxonomy changes remain deferred |
+| Service taxonomy and CMS implementation migration | Direction resolved — implementation gated | `DEC-UX-004` resolves the four equal primary Services; exact CMS schema/content migration, aliases, backfill, rollout, and compatibility removal require separate implementation authority |
 | Office & Signage placement | Deferred | Public capabilities and brand taxonomy |
-| Visual rollout to About, Capabilities, Projects, and Contact | Deferred | Public-route redesign outside Homepage |
-| Poppins + Inter implementation rollout to About, Capabilities, Projects, and Contact | Deferred | Public-route typography migration outside Homepage |
+| NDS 2.0 rollout beyond separately approved pilots | Approved target — implementation gated | Exact source scope, migration, browser evidence, rollout, rollback, and compatibility removal require separate authorization |
+| Mona Sans/Bona Nova font delivery and legacy typography migration | Approved target — implementation gated | License record, WOFF2 assets, measured fallback, bundle/runtime evidence, consumer migration, and removal require separate authorization |
 | Brand Guidelines v1.1 | Deferred | Permanent brand-system publication |
 | Process-photography acquisition | Open dependency | Broader About/Projects/public narrative rollout |
 

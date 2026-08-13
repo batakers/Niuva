@@ -4,8 +4,8 @@ Status: **Active integration register — reconciled implementation evidence at
 `origin/main`; not independent product or Git-delivery authority**
 
 Current reconciliation baseline: `origin/main` at
-`e7ab3d5ad7a08cb06f17b641ac741cfa618f89d4` through PR #233, inspected 11
-August 2026 (Asia/Jakarta).
+`1db565c8001ab9612db677cfb25e073562760890`, inspected 13 August 2026
+(Asia/Jakarta).
 
 Historical integration baseline: `origin/main` at
 `18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1` through PR #137, inspected 5 August
@@ -15,8 +15,9 @@ evidence.
 
 Owner-accepted candidate architecture direction is recorded in
 [`2026-08-11-niuva-frontend-stack-component-architecture-decision-packet.md`](../../specs/candidates/2026-08-11-niuva-frontend-stack-component-architecture-decision-packet.md).
-That packet is merged candidate documentation, not canonical authority or
-implementation authorization.
+That packet remains candidate provenance. `DEC-UX-004` and `DESIGN.md` now
+govern the NDS 2.0 target where they restate or supersede its direction. None
+of these documents independently authorize source or dependency changes.
 
 ## Purpose
 
@@ -26,9 +27,9 @@ adopted yet. It preserves the current React/Tailwind/shadcn-style/Radix stack.
 It does not authorize a dependency change or make an unused file canonical.
 
 This reconciliation records current component and dependency evidence plus the
-relationship to owner-accepted `FSA-01` through `FSA-12`. It does not promote
-those candidate decisions, amend `DESIGN.md`, move files, create a new layer,
-or authorize cleanup or implementation.
+relationship between owner-accepted `FSA-01` through `FSA-12` and the approved
+NDS 2.0 target. It does not move files, create a new layer, change a component,
+remove compatibility, or authorize cleanup or implementation.
 
 ## Canonical layers
 
@@ -43,11 +44,13 @@ or authorize cleanup or implementation.
 
 <!-- markdownlint-enable MD013 -->
 
-## Owner-accepted candidate architecture relationship
+## Candidate architecture and NDS 2.0 relationship
 
-`FSA-01` through `FSA-12` are owner-accepted **candidate planning direction**.
-They constrain subsequent planning but do not replace the canonical authority
-order or authorize source and dependency changes.
+`FSA-01` through `FSA-12` remain owner-accepted **candidate planning
+provenance**. `DEC-UX-004` and `DESIGN.md` are authoritative for the promoted
+NDS 2.0 foundation, surface, component, motion, responsive, external-intake,
+governance, compatibility, and migration clauses. Neither candidate nor
+canonical documentation authorizes source or dependency changes by itself.
 
 <!-- markdownlint-disable MD013 -->
 
@@ -67,6 +70,20 @@ order or authorize source and dependency changes.
 | `FSA-12` | Keep dependency cleanup, build migration, and framework upgrades in separate audited tasks. |
 
 <!-- markdownlint-enable MD013 -->
+
+The current NDS 2.0 implementation relationship is:
+
+- **retain/adapt:** current React, Router, CRA/CRACO, Tailwind, semantic CSS
+  variables, Radix wrappers, CVA, Lucide, Sonner, Axios, Zod, bounded GSAP,
+  Recharts, and current test foundation;
+- **compatibility only:** Poppins, Inter, hosted JetBrains Mono, old color/token
+  aliases, and current visual consumers receive no new consumer and remain
+  until an approved migration records zero-consumer evidence;
+- **quarantined:** `Drawer` remains unused while it imports undeclared `vaul`;
+- **provisional:** unused `Progress`, `ResponsiveTable`, `Separator`,
+  `StatCard`, and `Tooltip` require a bounded adoption review before use; and
+- **separately gated:** NDS 2.0 token/font implementation, Homepage R4, Auth,
+  remaining surfaces, dependency cleanup, and compatibility removal.
 
 ## Shared UI inventory
 
@@ -121,9 +138,9 @@ component merely because a local file exists.
 | CVA-backed internal contracts | Runtime dependency on CVA plus Niuva-owned local composition | `Alert`, `Badge`, `Button`, state components, `Label`, `Skeleton`, `SurfacePanel`, and `TechnicalLabel` use local APIs. Historical upstream provenance is not asserted where it is not recorded. |
 | `Sonner` wrapper | Runtime dependency | Adopted for transient feedback only; critical state remains visible in-page. |
 | Lucide icons | Runtime dependency used across current source | Icons supplement labels and meaning; they do not become a separate visual identity or color-only status authority. |
-| GSAP and `@gsap/react` | Runtime dependency with one current non-test consumer in `components/brand/BrandSystem.jsx` | Candidate `FSA-06` keeps GSAP as a bounded exception; this register does not authorize broader use. |
+| GSAP and `@gsap/react` | Runtime dependency with one current non-test consumer in `components/brand/BrandSystem.jsx` | `DSR-15` keeps GSAP as a bounded Public signature exception; this register does not authorize broader use. |
 | Recharts | Runtime dependency with one current non-test consumer in `pages/admin/AdminDashboard.jsx` | Use only for factual operational data. `DEC-OPS-001` prohibits fabricated telemetry and does not select a permanent visualization library. |
-| Framer Motion | Installed runtime dependency with zero current non-test source consumers | Candidate for a separate dependency audit only; no removal or new canonical use is authorized. |
+| Framer Motion | Installed runtime dependency with zero current non-test source consumers | `DSR-15` adds no new Framer Motion consumer. Removal still requires a separate dependency audit and zero-consumer verification. |
 | `Drawer` / `vaul` | Local wrapper imports an undeclared package; zero consumers | Remains quarantined. Do not install `vaul`, import Drawer, or delete it through reconciliation. |
 | React Bits, Magic UI, Motion Primitives, Kokonut UI, Animate UI, Aceternity, and similar catalogs | Reference only unless a later intake record says otherwise | No catalog becomes the Niuva design system. Local adaptation or dependency adoption requires source URL/revision, license, dependency delta, accessibility, motion, performance, adaptation, owner, and status evidence. |
 
@@ -151,7 +168,7 @@ component merely because a local file exists.
 ## Current import evidence
 
 Counts below exclude test files and were reconciled against the current
-`e7ab3d5` source baseline:
+`1db565c` source baseline:
 
 <!-- markdownlint-disable MD013 -->
 
@@ -190,7 +207,7 @@ not represented as a fresh test run against `e7ab3d5`.
 
 ### Current reconciliation verification
 
-The `e7ab3d5` reconciliation performed read-only source and package inspection:
+The `1db565c` reconciliation performed read-only source and package inspection:
 
 - the component directories remain `admin`, `auth`, `brand`, `layout`,
   `operational`, `retail`, and `ui`; `components/customer` and `features` remain
@@ -200,52 +217,64 @@ The `e7ab3d5` reconciliation performed read-only source and package inspection:
   stepper contracts plus their test;
 - installed Radix imports, active GSAP and Recharts consumers, zero Framer
   Motion consumers, and the undeclared `vaul` import match the provenance table;
-- the owner-accepted FSA packet exists in the selected `origin/main`; and
+- the FSA packet, Homepage R4 prototype, and approved reconstruction packet
+  exist in the selected `origin/main` or this documentation-only promotion
+  worktree as recorded provenance; and
 - no source, package manifest, lockfile, component status, or dependency was
   changed during this documentation reconciliation.
 
-Focused Jest tests were not rerun: the clean reconciliation worktree has no
-installed frontend dependencies, and the existing main-worktree
-`node_modules` does not contain CRACO or React Scripts. No dependency install,
-junction, or configuration change was performed for a documentation-only task.
+Frontend tests were not rerun because this reconciliation changes documentation
+only and does not alter source, package manifests, lockfiles, or configuration.
+No dependency install, junction, or configuration change was performed.
 
 Neither historical nor current evidence covers authenticated Admin role-matrix
 behavior, independent visual acceptance, human screen-reader review, provider
 or production infrastructure, or go-live readiness.
 
-## Candidate validation and later migration sequence
+## NDS 2.0 implementation and migration sequence
 
-### Candidate architecture validation
+Only after exact-file implementation authorization:
 
-1. **Architecture packet:** `FSA-01` through `FSA-12` are owner-accepted
-   candidate planning direction and merged as documentation.
-2. **Component evidence:** reconcile this existing register without replacing
-   it or changing source.
-3. **Visual foundation:** prepare candidate typography, palette, tokens, and
-   motion grammar without silently overriding current canonical decisions.
-4. **Pilot:** build one separately authorized centered Public hero in isolation.
-5. **Validation:** verify browser behavior, responsiveness, accessibility,
-   reduced motion, performance, provenance, and anti-template specificity.
-6. **Decision review:** accept, revise, or reject the candidate from evidence.
-7. **Promotion:** prepare a separate canonical amendment request before any
-   production rollout.
+1. **Foundation:** implement approved tokens, self-hosted fonts, focus, shared
+   primitives, state contracts, compatibility aliases, and proportional tests.
+2. **Homepage R4:** adapt the accepted Public pilot into current React, route,
+   CMS, i18n, loading/error, responsive, and accessibility contracts.
+3. **Auth:** adapt the accepted Account visual direction while preserving
+   Customer/Admin, invitation, recovery, session, role, and provider gates.
+4. **Remaining Public:** migrate About/Tentang, Layanan/Services, Projects,
+   Contact, FAQ, and Privacy through bounded route slices.
+5. **Commerce and Account:** introduce surface-native Retail and Customer
+   composition while preserving Order, quote, provider, and customer-data
+   boundaries.
+6. **Operations:** decompose Admin/CMS compositions without changing granular
+   roles, permissions, lifecycle ownership, or audit behavior.
+7. **Cleanup:** remove compatibility aliases, provisional components,
+   prototype debt, and unused dependencies only after zero-consumer evidence,
+   migration notes, passing checks, and separately approved removal.
 
-### Later production surface order
+Foundation merges before parallel Public, Account/Commerce, and Operations
+worktrees. Shared-file ownership must be explicit; route pages, domain
+lifecycle maps, and provider/security behavior remain outside visual-system
+authority.
 
-Only after applicable promotion and implementation authorization:
+### Migration stage-control contract
 
-1. **Auth:** separate customer/staff meaning and normalize recovery forms and
-   states.
-2. **Customer Portal:** prioritize status, next action, files, payment,
-   milestones, and history using calm hierarchy rather than field cards.
-3. **Retail:** introduce commerce-specific catalog/product composition while
-   retaining shared identity and current business/API contracts.
-4. **Admin Studio:** decompose oversized pages, scope lifecycle statuses, and
-   retain dense task-oriented behavior.
-5. **Public:** reduce repeated composition and verify editorial consistency
-   without importing operational UI or changing unapproved route scope.
-6. **Cleanup audit:** identify truly unused components and dependencies.
-   Removal, commit, push, PR, deployment, and go-live remain separately gated.
+Every stage requires a separately approved task card. Before cutover, that task
+card must name the Driver and surface owner, record the compatibility baseline,
+define the rollback trigger and exact recoverable action, and identify the
+handover evidence and recipient. The controls below are minimums; they do not
+authorize source changes, provider activation, deployment, readiness, or
+go-live.
+
+| Stage | Compatibility-preserving cutover check | Rollback trigger and action | Handover owner and evidence |
+|---|---|---|---|
+| 1. Foundation | Current token, font, focus, shared-component API, route, i18n, test-id, and accessibility consumers pass through recorded compatibility aliases. | Any current consumer, build, test, focus, or accessibility regression blocks cutover; revert the bounded foundation change and retain the previous mappings before any surface migrates. | Foundation Driver to affected surface owners: consumer inventory, before/after checks, compatibility map, changelog, and rollback reference. |
+| 2. Homepage R4 | Current Public routes, CMS content, ID/EN, loading/error, responsive, focus, and accessibility contracts pass against the adapted React slice. | Any route, CMS, locale, action, focus, or accessibility regression blocks cutover; revert the Homepage slice while retaining compatible foundation contracts. | Public owner to Foundation Driver: route/content map, focused tests, browser matrix, screenshot review, and rollback reference. |
+| 3. Auth | Customer/Admin separation, invitation, recovery, session, role, error, and provider-neutral contracts remain unchanged and no Google provider is activated. | Any authentication, session, recovery, role, provider-boundary, or accessibility regression blocks cutover; revert the Auth presentation slice and retain the prior routes/components. | Account/Auth owner to Product/authority reviewer: role/state matrix, focused tests, browser evidence, provider non-activation evidence, and rollback reference. |
+| 4. Remaining Public | Each route slice preserves localized canonical URLs/aliases, CMS and SEO fields, ID/EN behavior, internal links, authentic assets, and accessibility contracts. | Any route, locale, CMS, indexing, asset, link, or accessibility regression blocks only the affected slice; revert that slice without rolling back accepted independent routes. | Public owner to Product/authority reviewer: route inventory, link/SEO/i18n checks, asset provenance, browser evidence, and rollback reference. |
+| 5. Commerce and Account | Retail Order and B2B Quote/Project lifecycles remain separate; `quote_required` fails closed; pricing, provider gates, permissions, and customer-data projections remain intact. | Any lifecycle merge, unauthorized transaction, pricing/state inconsistency, provider activation, permission regression, or customer-data leak blocks cutover; revert the affected Retail/Customer slice to its compatible predecessor. | Commerce/Account owner to Product/authority reviewer: lifecycle/state matrix, authorization and projection tests, browser evidence, and rollback reference. |
+| 6. Operations | Admin/CMS routes preserve granular roles, permissions, conflicts, retries, audit/history presentation, lifecycle ownership, and customer-safe projections. | Any permission, conflict/retry, audit/history, lifecycle, or data-projection regression blocks cutover; revert the affected operational slice and restore its previous component mapping. | Operations owner to Product/authority reviewer: role matrix, conflict/retry and audit checks, projection evidence, browser evidence, and rollback reference. |
+| 7. Cleanup | Current `origin/main` shows zero consumers; replacements and migration notes exist; focused and aggregate checks pass; removal has separate approval. | Any remaining consumer, dependency/build/runtime regression, missing rollback evidence, or failed aggregate check blocks removal; restore the prior alias/component/dependency and reopen the migration item. | Foundation Driver and affected surface owner: zero-consumer evidence, dependency diff, focused/aggregate checks, removal changelog, and rollback reference. |
 
 ## Adoption checklist
 

@@ -2,9 +2,25 @@
 
 ID: `DEC-UX-002`
 Title: Homepage Experimental Editorial Hybrid
-Status: **Approved Decision**
+Status: **Approved Decision — Partially Superseded by `DEC-UX-004`**
 Decision date: 13 July 2026; reconfirmed 23 July 2026
 Decision source: `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`; explicit user decision recorded during documentation consolidation, 23 July 2026.
+
+## 13 August 2026 Supersession
+
+`DEC-UX-004` supersedes only these conflicting clauses:
+
+- Poppins and Inter as the production Homepage typography (`DEC-UX-002.1`);
+- exactly two dominant U-curve placements (`DEC-UX-002.2`), while retaining the
+  five-stage semantic transformation path;
+- two primary and two supporting capability ranks; and
+- transitional palette, typography, contour, component, state, and migration
+  guidance where NDS 2.0 now defines the approved target.
+
+This record remains authoritative provenance for editorial clarity, authentic
+evidence, open project presentation, restrained motion, official-mark use, and
+rejection of generic, card-heavy, or AI-generated Homepage composition. The
+historical decision below is retained rather than rewritten.
 
 ## Context
 
@@ -104,3 +120,4 @@ The Brand Guidelines, prototype review, and implementation plan remain useful re
 - `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`
 - `doc/brand/HOMEPAGE_PRODUCTION_IMPLEMENTATION_PLAN.md`
 - `docs/decisions/experience/DEC-UX-001-unified-homepage-b2b-primary.md`
+- `docs/decisions/experience/DEC-UX-004-cross-surface-design-system-reconstruction.md`
