@@ -43,20 +43,33 @@ function findMatches(pattern, files = implementationSources()) {
 describe("frontend design-system foundation", () => {
   test("ships the approved self-hosted font assets with recorded hashes", () => {
     const fontRoot = path.join(frontendRoot, "public", "fonts", "niuva");
-    const expectedHashes = {
+    const expectedBinaryHashes = {
       "MonaSansVF.woff2":
         "fd40288d051171b51e3d01f36790604470dbb4d4fc5b36ee5a8119f4f4c6b3e1",
       "BonaNova-Italic.woff2":
         "8559973f32b6b84f226af7589016056f7841bc48d12a3024a3f3c5afbda27164",
+    };
+    const expectedLicenseHashes = {
       "OFL-Mona-Sans.txt":
-        "d7fdb7f636f8dab1b6ebd9152bdfd265682587d9610c478776732ddefe8238e8",
+        "1eb33139d205c43cdfa3f5c8debc87275ca2ab5fff20fe05039a23e0e85111ed",
       "OFL-Bona-Nova.txt":
-        "34e391920e8bdc1952b122b9fab086e6c229c6245aafd6ff2fa17724fd62a86d",
+        "692b6af789d7374401035e1e474b4ad0b951ea1139c2d041db6e24abbdef21e0",
     };
 
-    for (const [file, expectedHash] of Object.entries(expectedHashes)) {
+    for (const [file, expectedHash] of Object.entries(expectedBinaryHashes)) {
       const content = fs.readFileSync(path.join(fontRoot, file));
       const actualHash = crypto.createHash("sha256").update(content).digest("hex");
+      expect(actualHash).toBe(expectedHash);
+    }
+
+    for (const [file, expectedHash] of Object.entries(expectedLicenseHashes)) {
+      const content = fs
+        .readFileSync(path.join(fontRoot, file), "utf8")
+        .replace(/\r\n?/g, "\n");
+      const actualHash = crypto
+        .createHash("sha256")
+        .update(content, "utf8")
+        .digest("hex");
       expect(actualHash).toBe(expectedHash);
     }
   });

@@ -1,6 +1,6 @@
 # NDS 2.0 Foundation Implementation Task Card
 
-Status: **IMPLEMENTED AND VERIFIED LOCALLY — PUBLICATION NOT YET AUTHORIZED**
+Status: **IMPLEMENTED, VERIFIED, AND PUBLISHED IN PR #238 — MERGE NOT AUTHORIZED**
 
 ## Identity and baseline
 
@@ -11,9 +11,9 @@ Status: **IMPLEMENTED AND VERIFIED LOCALLY — PUBLICATION NOT YET AUTHORIZED**
 - **Selected baseline:** `origin/main` at
   `c5054ede2ae868858b8764c27587c10144bf39a4`
 - **Date:** 13 August 2026, Asia/Jakarta
-- **Publication authority:** local implementation and verification only.
-  Commit, push, PR, merge, deployment, readiness, and go-live require separate
-  approval.
+- **Publication authority:** commit, push, and PR publication were authorized
+  and executed in PR #238. Merge, deployment, readiness, and go-live require
+  separate approval.
 
 ## Objective
 
@@ -155,8 +155,8 @@ the bounded foundation PR without requiring route or data migration.
 
 The handover must state changed and intentionally unchanged files, tests and
 browser checks run, font provenance and hashes, compatibility contracts kept,
-remaining risks, rollback, and the separate approval still required for
-commit/push/PR/merge and for the Homepage/Auth production pilots.
+remaining risks, rollback, and the separate approval still required for merge
+and for the Homepage/Auth production pilots.
 
 ## Verification and findings
 
@@ -179,6 +179,14 @@ Passed locally on 13 August 2026:
 - font/license SHA-256 values matched the approved R4 provenance; and
 - `git diff --check`: passed.
 
+The first PR #238 frontend run exposed an operating-system line-ending defect
+in the license-text hash assertion: Windows materialized CRLF while the Linux
+runner used LF. The corrective contract keeps raw byte hashes for both WOFF2
+files and hashes both license files after canonical LF normalization. The full
+local frontend suite, dependency audit, bundle tests, production build, and
+five-viewport Playwright foundation matrix passed again after this correction;
+the GitHub CI rerun remains the merge gate.
+
 Impeccable detector disposition:
 
 - three warnings identify Inter in the compatibility Google-font delivery;
@@ -196,7 +204,8 @@ separate optional maintenance action.
 
 ## Publication boundary and next gate
 
-The worktree remains uncommitted. Stage, commit, push, PR, merge, Homepage R4
+PR #238 is open with merge intentionally withheld. Merge, Homepage R4
 adaptation, Auth adaptation, and the three parallel surface lanes each require
-their applicable separate approval. Rollback before publication remains an
-exact-path restore/delete inside this isolated worktree.
+their applicable separate approval. Before merge, rollback is closing the PR
+or reverting its bounded branch commits; after a future merge, rollback remains
+a standard revert of the bounded foundation PR.
