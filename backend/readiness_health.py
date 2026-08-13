@@ -181,7 +181,9 @@ class ReadinessProbeCoordinator:
         self._schema_snapshot: _Snapshot | None = None
         self._transaction_task: asyncio.Task[DatabaseCapabilities] | None = None
         self._schema_task: asyncio.Task[dict] | None = None
-        self._dependency_task: asyncio.Task[tuple[DatabaseCapabilities, dict]] | None = None
+        self._dependency_task: (
+            asyncio.Task[tuple[DatabaseCapabilities, dict]] | None
+        ) = None
         self._transaction_lock = asyncio.Lock()
         self._schema_lock = asyncio.Lock()
         self._dependency_lock = asyncio.Lock()
