@@ -181,8 +181,10 @@ class ReadinessProbeCoordinator:
         self._schema_snapshot: _Snapshot | None = None
         self._transaction_task: asyncio.Task[DatabaseCapabilities] | None = None
         self._schema_task: asyncio.Task[dict] | None = None
+        self._dependency_task: asyncio.Task[tuple[DatabaseCapabilities, dict]] | None = None
         self._transaction_lock = asyncio.Lock()
         self._schema_lock = asyncio.Lock()
+        self._dependency_lock = asyncio.Lock()
 
     def _next_generation(self) -> int:
         self._generation += 1
@@ -294,6 +296,40 @@ class ReadinessProbeCoordinator:
             value = unavailable_schema_status()
         return self._publish_schema(value, generation)
 
+    async def _run_dependency_probes(
+        self,
+        generation: int,
+        *,
+        refresh_transaction: bool,
+    ) -> tuple[DatabaseCapabilities, dict]:
+        capabilities, schema_status = await asyncio.gather(
+            self._transaction(
+                generation,
+                force_refresh=refresh_transaction,
+            ),
+            self._schema(generation),
+        )
+        return capabilities, schema_status
+
+    async def _dependencies(
+        self,
+        generation: int,
+        *,
+        refresh_transaction: bool,
+    ) -> tuple[DatabaseCapabilities, dict]:
+        async with self._dependency_lock:
+            task = self._dependency_task
+            if task is None or task.done():
+                task = asyncio.create_task(
+                    self._run_dependency_probes(
+                        generation,
+                        refresh_transaction=refresh_transaction,
+                    )
+                )
+                self._dependency_task = task
+        assert task is not None
+        return await asyncio.shield(task)
+
     async def _probe(
         self,
         generation: int,
@@ -315,12 +351,9 @@ class ReadinessProbeCoordinator:
                 failed,
                 unavailable_schema_status(),
             )
-        capabilities, schema_status = await asyncio.gather(
-            self._transaction(
-                generation,
-                force_refresh=refresh_transaction,
-            ),
-            self._schema(generation),
+        capabilities, schema_status = await self._dependencies(
+            generation,
+            refresh_transaction=refresh_transaction,
         )
         return ReadinessDependencies(True, capabilities, schema_status)
 
@@ -330,14 +363,32 @@ class ReadinessProbeCoordinator:
         refresh_transaction: bool = False,
     ) -> ReadinessDependencies:
         generation = self._next_generation()
+        probe_task = asyncio.create_task(
+            self._probe(
+                generation,
+                refresh_transaction=refresh_transaction,
+            )
+        )
         try:
-            return await asyncio.wait_for(
-                self._probe(
-                    generation,
-                    refresh_transaction=refresh_transaction,
-                ),
+            await asyncio.sleep(0)
+            done, _ = await asyncio.wait(
+                {probe_task},
                 timeout=self.total_timeout,
             )
+            if not done:
+                probe_task.cancel()
+                await asyncio.gather(probe_task, return_exceptions=True)
+                await self._cancel_probe_tasks()
+                failed = self._publish_transaction(
+                    failed_capabilities(self.clock),
+                    generation,
+                )
+                return ReadinessDependencies(
+                    False,
+                    failed,
+                    unavailable_schema_status(),
+                )
+            return await probe_task
         except Exception:
             failed = self._publish_transaction(
                 failed_capabilities(self.clock),
@@ -360,7 +411,15 @@ class ReadinessProbeCoordinator:
         return value
 
     async def close(self) -> None:
-        tasks = [self._transaction_task, self._schema_task]
+        await self._cancel_probe_tasks()
+
+    async def _cancel_probe_tasks(self, *extra_tasks: asyncio.Task) -> None:
+        tasks = [
+            self._dependency_task,
+            self._transaction_task,
+            self._schema_task,
+            *extra_tasks,
+        ]
         for task in tasks:
             if task is not None and not task.done():
                 task.cancel()

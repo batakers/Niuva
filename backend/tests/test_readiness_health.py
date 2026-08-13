@@ -177,7 +177,8 @@ def test_compatibility_probe_closes_tasks_left_after_total_timeout():
             schema_probe=slow_schema_probe,
             transaction_timeout=10,
             schema_timeout=10,
-            total_timeout=0.001,
+            # Give both child probes time to start before exercising total cleanup.
+            total_timeout=0.1,
             clock=lambda: NOW,
         )
         return result, transaction_cancelled.is_set(), schema_cancelled.is_set()
