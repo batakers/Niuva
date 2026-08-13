@@ -34,6 +34,11 @@ jest.mock("sonner", () => ({
   toast: { success: jest.fn(), error: jest.fn() },
 }));
 
+jest.mock("@/context/AuthContext", () => ({
+  AuthProvider: ({ children }) => <>{children}</>,
+  useAuth: () => ({ user: null, logout: jest.fn() }),
+}));
+
 const { toast } = require("sonner");
 
 function fillBrief({ message } = {}) {
@@ -73,6 +78,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  window.history.replaceState({}, "", "/");
+  window.localStorage.clear();
   api.get.mockResolvedValue({ data: [] });
   api.post.mockResolvedValue({ data: { id: "inq-1", status: "new" } });
 });
@@ -169,5 +176,22 @@ describe("Public project intake", () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Terlalu banyak permintaan.")
     );
+  });
+
+  test("renders mandatory Contact form, error, and CTA copy in English", () => {
+    window.history.replaceState({}, "", "/en/contact");
+    renderPage();
+
+    expect(
+      screen.getByRole("heading", { name: "Start a project discussion with a useful brief." }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Name/)).toBeRequired();
+    expect(screen.getByLabelText(/^Company \/ Institution/)).toBeRequired();
+    expect(screen.getByLabelText(/^WhatsApp number/)).toBeRequired();
+    expect(screen.getByRole("option", { name: "Other collaboration" })).toHaveValue(
+      "Kolaborasi lainnya",
+    );
+    expect(screen.getByRole("button", { name: "Send project brief" })).toBeEnabled();
+    expect(screen.queryByText("Kirim brief project")).not.toBeInTheDocument();
   });
 });

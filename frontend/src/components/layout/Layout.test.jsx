@@ -16,11 +16,12 @@ describe("MarketingLayout public metadata", () => {
     document.head.innerHTML = "";
     document.title = "";
     window.scrollTo = jest.fn();
+    HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   test("keeps privacy metadata aligned with the active scope", async () => {
     render(
-      <MemoryRouter initialEntries={["/privacy"]}>
+      <MemoryRouter initialEntries={["/privasi"]}>
         <MarketingLayout hideFooter>
           <p>Privacy content</p>
         </MarketingLayout>
@@ -28,7 +29,7 @@ describe("MarketingLayout public metadata", () => {
     );
 
     await waitFor(() => {
-      expect(document.title).toBe("Privacy Policy - PT Niuva Inovasi Utama");
+      expect(document.title).toBe("Kebijakan Privasi - PT Niuva Inovasi Utama");
     });
 
     const description = document.querySelector('meta[name="description"]');
@@ -36,7 +37,7 @@ describe("MarketingLayout public metadata", () => {
 
     expect(description).toHaveAttribute(
       "content",
-      "Kebijakan privasi Niuva menjelaskan data yang dikumpulkan melalui form contact dan pemesanan, serta hak pengguna terkait data tersebut.",
+      "Pelajari bagaimana Niuva menggunakan dan melindungi data yang dikirim melalui inquiry, akun, dan layanan Retail.",
     );
     expect(description).not.toHaveAttribute(
       "content",
@@ -44,12 +45,90 @@ describe("MarketingLayout public metadata", () => {
     );
     expect(canonical).toHaveAttribute(
       "href",
-      expect.stringMatching(/\/privacy$/),
+      expect.stringMatching(/\/privasi$/),
     );
+    expect(document.querySelector('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "index, follow",
+    );
+    expect(
+      document.querySelector('link[rel="alternate"][hreflang="en"]'),
+    ).toHaveAttribute("href", expect.stringMatching(/\/en\/privacy$/));
     expect(screen.getByRole("link", { name: "Lewati ke konten" })).toHaveAttribute(
       "href",
       "#main-content",
     );
+  });
+
+  test("marks untranslated English CMS content as fallback without reciprocal hreflang", async () => {
+    render(
+      <MemoryRouter initialEntries={["/en/about"]}>
+        <MarketingLayout hideFooter>
+          <p>Konten Indonesia</p>
+        </MarketingLayout>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(document.title).toBe(
+        "About Niuva - Innovation and Product Development Partner",
+      );
+    });
+
+    expect(document.querySelector('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "noindex, follow",
+    );
+    expect(document.querySelector('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      expect.stringMatching(/\/tentang$/),
+    );
+    expect(
+      document.querySelector('link[rel="alternate"][hreflang]'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "English translation belum tersedia",
+    );
+    expect(screen.getByText("Konten Indonesia").parentElement).toHaveAttribute(
+      "lang",
+      "id",
+    );
+  });
+
+  test("moves a canonical hash destination below the shared navigation", () => {
+    render(
+      <MemoryRouter initialEntries={["/layanan#apparel-merchandise"]}>
+        <MarketingLayout hideFooter>
+          <section id="apparel-merchandise">Apparel & Merchandise</section>
+        </MarketingLayout>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText("Apparel & Merchandise"),
+    ).toHaveProperty("scrollIntoView");
+    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+    });
+    expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+
+  test("falls back to the page top when a malformed hash has no destination", () => {
+    expect(() => {
+      render(
+        <MemoryRouter initialEntries={["/layanan#%E0%A4%A"]}>
+          <MarketingLayout hideFooter>
+            <p>Layanan</p>
+          </MarketingLayout>
+        </MemoryRouter>,
+      );
+    }).not.toThrow();
+
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
   });
 });
 
