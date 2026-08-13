@@ -68,10 +68,10 @@ The original recursive `backend` arguments allowed an untracked local backup
 virtual environment to enter the Flake8 walk. The reproduced local directory
 contained 5,015 Python files and occupied 322 MB. The corrected tracked-file
 manifest contains 169 Python files, excludes every untracked/generated tree by
-construction, and completed all four tools in 4.16 seconds. Its Flake8 output
+construction, and completed all four tools in 3.68 seconds. Its Flake8 output
 was 168 KiB rather than the reported approximately 13 MiB polluted output.
 
-At stacked audit base `9073d36`, the corrected report recorded Flake8 `2,045`,
+At stacked audit base `9073d36`, the corrected report recorded Flake8 `2,046`,
 Mypy `288`, Black `47`, and isort `51` findings. These remain report-only debt;
 the required critical/scoped CI checks remain blocking. See the
 [current-main quality evidence packet](QUALITY-EVIDENCE-CURRENT-MAIN-REVALIDATION-2026-08-14.md)

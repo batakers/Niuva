@@ -1,3 +1,4 @@
+import asyncio
 import time
 from enum import Enum
 from typing import Awaitable, Callable, NoReturn, TypeVar
@@ -57,6 +58,12 @@ def _is_unavailable(exc: PyMongoError) -> bool:
 
 def _noop_event_sink(_event: str, _fields: dict[str, object]) -> None:
     return None
+
+
+def _retry_backoff_seconds(attempt: int) -> float:
+    """Yield briefly so a competing transaction can finish before retry."""
+
+    return min(0.01 * (2 ** (attempt - 1)), 0.1)
 
 
 class TransactionExecutor:
@@ -229,6 +236,7 @@ class TransactionExecutor:
                             error_class="database_error",
                             duration_ms=elapsed_ms(),
                         )
+                        await asyncio.sleep(_retry_backoff_seconds(attempt))
                         continue
                     raise
                 except BaseException:
