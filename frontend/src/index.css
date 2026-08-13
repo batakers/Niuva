@@ -97,8 +97,8 @@
   --font-family-nds-display: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
   --font-family-nds-body: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
   --font-family-nds-ui: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
-  --font-family-nds-expression: 'Bona Nova', Georgia, serif;
-  --font-family-nds-technical: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --font-family-nds-expression: 'Bona Nova', georgia, serif;
+  --font-family-nds-technical: ui-monospace, 'SFMono-Regular', consolas, 'Liberation Mono', monospace;
 
   /* Compatibility roles: kept functional while surfaces migrate separately. */
   --font-family-sans: 'Poppins', system-ui, sans-serif;
@@ -627,6 +627,7 @@ body {
   --font-family-body: var(--font-family-nds-body);
   --font-family-technical: var(--font-family-nds-technical);
   --color-surface-page: var(--public-canvas);
+
   background: var(--public-canvas);
   color: var(--color-text-primary);
   font-family: var(--font-family-body);
@@ -637,6 +638,7 @@ body {
   --font-family-body: var(--font-family-nds-body);
   --font-family-technical: var(--font-family-nds-technical);
   --color-surface-page: var(--commerce-canvas);
+
   background: var(--commerce-canvas);
   color: var(--color-text-primary);
   font-family: var(--font-family-body);
@@ -647,6 +649,7 @@ body {
   --font-family-body: var(--font-family-nds-body);
   --font-family-technical: var(--font-family-nds-technical);
   --color-surface-page: var(--account-canvas);
+
   background: var(--account-canvas);
   color: var(--color-text-primary);
   font-family: var(--font-family-body);
@@ -657,6 +660,7 @@ body {
   --font-family-body: var(--font-family-nds-body);
   --font-family-technical: var(--font-family-nds-technical);
   --color-surface-page: var(--operations-canvas);
+
   background: var(--operations-canvas);
   color: var(--color-text-primary);
   font-family: var(--font-family-body);
