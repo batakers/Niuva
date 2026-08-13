@@ -52,6 +52,7 @@ test("announces notification load failures and retries without showing an empty 
   const alert = await screen.findByRole("alert");
   expect(alert).toHaveTextContent("Notifikasi tidak berhasil dimuat.");
   expect(alert).toHaveTextContent("Layanan notifikasi tidak tersedia.");
+  expect(formatApiError).toHaveBeenCalledWith("offline");
   expect(screen.queryByText("Tidak ada notifikasi.")).not.toBeInTheDocument();
 
   shouldFail = false;

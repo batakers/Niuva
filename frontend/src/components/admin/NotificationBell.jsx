@@ -162,7 +162,7 @@ export function NotificationBell() {
                 <p className="type-body-small font-medium text-text-primary">
                   {t("notifications.loadFailed")}
                 </p>
-                <p className="text-xs text-text-secondary">{error}</p>
+                <p className="type-body text-text-secondary">{error}</p>
                 <Button
                   type="button"
                   variant="outline"
