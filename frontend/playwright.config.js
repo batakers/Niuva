@@ -3,9 +3,10 @@ const { defineConfig, devices } = require("@playwright/test");
 /**
  * Browser verification for the Admin Studio.
  *
- * The four widths are the ones the plan names, and they are projects rather
- * than assertions inside one run: a layout that breaks only at 768 should fail
- * as its own result, not be buried in a suite that happened to pass at 1440.
+ * The canonical 390px baseline, 320px resilience floor, and three wider widths
+ * are projects rather than assertions inside one run: a layout that breaks
+ * only at 768 should fail as its own result, not be buried in a suite that
+ * happened to pass at 1440.
  *
  * BASE_URL points at an already-running app. Nothing here starts a server, so
  * a missing environment fails loudly instead of silently testing nothing.
@@ -13,7 +14,8 @@ const { defineConfig, devices } = require("@playwright/test");
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 
 const VIEWPORTS = {
-  mobile: { width: 375, height: 812 },
+  resilience: { width: 320, height: 720 },
+  mobile: { width: 390, height: 844 },
   tablet: { width: 768, height: 1024 },
   laptop: { width: 1024, height: 768 },
   desktop: { width: 1440, height: 900 },

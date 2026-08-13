@@ -12,13 +12,15 @@ import { cn } from "@/lib/utils";
  * *action* affordances (buttons).
  */
 const alertVariants = cva(
-  "rounded-control border p-3 text-sm",
+  "rounded-control border p-3 text-base leading-6 md:text-sm md:leading-5",
   {
     variants: {
       tone: {
-        error: "border-status-error/40 bg-status-error/10 text-status-error",
-        warning: "border-status-warning/40 bg-status-warning/10 text-status-warning",
-        default: "border-border-default bg-surface-muted text-text-secondary",
+        info: "border-status-info bg-status-info-surface text-status-info",
+        success: "border-status-success bg-status-success-surface text-status-success",
+        warning: "border-status-warning bg-status-warning-surface text-status-warning",
+        error: "border-status-error bg-status-error-surface text-status-error",
+        default: "border-border-decorative bg-surface-muted text-text-secondary",
       },
     },
     defaultVariants: {
@@ -29,10 +31,13 @@ const alertVariants = cva(
 
 const Alert = React.forwardRef(
   ({ className, tone, role = "alert", ...props }, ref) => {
+    const resolvedTone = tone || "error";
+
     return (
       <div
         ref={ref}
         role={role}
+        data-tone={resolvedTone}
         className={cn(alertVariants({ tone }), className)}
         {...props}
       />

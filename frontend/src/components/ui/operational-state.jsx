@@ -1,5 +1,7 @@
 import {
   AlertTriangle,
+  CheckCircle2,
+  CircleHelp,
   Clock3,
   FileQuestion,
   Loader2,
@@ -20,6 +22,9 @@ const STATE_META = {
   conflict: { icon: ShieldAlert, tone: "text-status-warning" },
   stale: { icon: RefreshCw, tone: "text-status-warning" },
   expired: { icon: Clock3, tone: "text-status-warning" },
+  unavailable: { icon: WifiOff, tone: "text-status-error" },
+  uncertain: { icon: CircleHelp, tone: "text-status-warning" },
+  success: { icon: CheckCircle2, tone: "text-status-success" },
 };
 
 export function OperationalState({
@@ -35,15 +40,18 @@ export function OperationalState({
     tone: "text-text-secondary",
   };
   const Icon = meta.icon;
-  const urgent = state === "error" || state === "conflict";
+  const urgent =
+    state === "error" || state === "conflict" || state === "uncertain";
 
   return (
     <section
       data-testid={`operational-state-${state}`}
+      data-state={state}
+      role={urgent ? "alert" : "status"}
       aria-live={urgent ? "assertive" : "polite"}
       aria-busy={state === "loading" ? "true" : undefined}
       className={cn(
-        "flex min-h-52 flex-col items-center justify-center border border-border-default bg-surface-default p-8 text-center",
+        "flex min-h-52 flex-col items-center justify-center border border-border-decorative bg-surface-default p-8 text-center",
         className
       )}
     >
@@ -60,7 +68,7 @@ export function OperationalState({
         {title}
       </h2>
       {description && (
-        <p className="mt-2 max-w-lg text-sm leading-6 text-text-secondary">
+        <p className="mt-2 max-w-lg text-base leading-6 text-text-secondary md:text-sm">
           {description}
         </p>
       )}

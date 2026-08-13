@@ -1,7 +1,18 @@
 import { render, screen } from "@testing-library/react";
 import { OperationalState } from "./operational-state";
 
-test.each(["loading", "empty", "no-match", "error", "conflict", "stale", "expired"])(
+test.each([
+  "loading",
+  "empty",
+  "no-match",
+  "error",
+  "conflict",
+  "stale",
+  "expired",
+  "unavailable",
+  "uncertain",
+  "success",
+])(
   "announces the %s operational state",
   (state) => {
     render(<OperationalState state={state} title={`${state} title`} />);
@@ -9,7 +20,9 @@ test.each(["loading", "empty", "no-match", "error", "conflict", "stale", "expire
     expect(screen.getByText(`${state} title`)).toBeInTheDocument();
     expect(screen.getByTestId(`operational-state-${state}`)).toHaveAttribute(
       "aria-live",
-      state === "error" || state === "conflict" ? "assertive" : "polite"
+      state === "error" || state === "conflict" || state === "uncertain"
+        ? "assertive"
+        : "polite"
     );
   }
 );

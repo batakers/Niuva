@@ -1,11 +1,13 @@
 # Niuva Frontend Component Register
 
-Status: **Active integration register — reconciled implementation evidence at
-`origin/main`; not independent product or Git-delivery authority**
+Status: **Active integration register — reconciled baseline plus bounded Gate
+1 foundation evidence; not independent product or Git-delivery authority**
 
-Current reconciliation baseline: `origin/main` at
-`1db565c8001ab9612db677cfb25e073562760890`, inspected 13 August 2026
-(Asia/Jakarta).
+Selected implementation baseline: `origin/main` at
+`c5054ede2ae868858b8764c27587c10144bf39a4`, inspected 13 August 2026
+(Asia/Jakarta). The Gate 1 change set described below is bounded work on top of
+that baseline; its Git integration state must be read from the applicable task
+card and repository rather than inferred from this register.
 
 Historical integration baseline: `origin/main` at
 `18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1` through PR #137, inspected 5 August
@@ -26,10 +28,11 @@ design-system convergence, which require domain scoping, and which must not be
 adopted yet. It preserves the current React/Tailwind/shadcn-style/Radix stack.
 It does not authorize a dependency change or make an unused file canonical.
 
-This reconciliation records current component and dependency evidence plus the
+This reconciliation records current component and dependency evidence, the
 relationship between owner-accepted `FSA-01` through `FSA-12` and the approved
-NDS 2.0 target. It does not move files, create a new layer, change a component,
-remove compatibility, or authorize cleanup or implementation.
+NDS 2.0 target, and the separately authorized Gate 1 foundation contract. It
+does not authorize page migration, cleanup, dependency changes, provider
+activation, deployment, readiness, or go-live.
 
 ## Canonical layers
 
@@ -82,8 +85,38 @@ The current NDS 2.0 implementation relationship is:
 - **quarantined:** `Drawer` remains unused while it imports undeclared `vaul`;
 - **provisional:** unused `Progress`, `ResponsiveTable`, `Separator`,
   `StatCard`, and `Tooltip` require a bounded adoption review before use; and
-- **separately gated:** NDS 2.0 token/font implementation, Homepage R4, Auth,
-  remaining surfaces, dependency cleanup, and compatibility removal.
+- **Gate 1 foundation:** NDS 2.0 values, semantic and surface aliases, local
+  typography targets, motion/focus roles, and bounded shared primitives are
+  introduced through a compatibility-preserving change set; and
+- **separately gated:** Homepage R4, Auth, remaining surfaces, dependency
+  cleanup, and compatibility removal.
+
+## Gate 1 foundation contract
+
+The separately authorized Gate 1 change set introduces the following bounded
+contracts without migrating any route page:
+
+- self-hosted Mona Sans Variable and Bona Nova Italic under
+  `frontend/public/fonts/niuva/`, including OFL files, SHA-256 provenance, and
+  `font-display: swap`; Bona Nova remains a Public-only expressive role and is
+  not globally preloaded;
+- one Niuva blue family mapped through core action, text, surface, border,
+  focus, and status roles, including RGB-channel aliases so existing Tailwind
+  opacity consumers such as `bg-status-warning/10` remain functional;
+- opt-in Public, Commerce, Account, and Operations surface aliases; existing
+  `brand-page`, `admin-workbench`, Poppins, Inter, JetBrains Mono, HSL, and
+  semantic aliases remain available until a later zero-consumer removal gate;
+- `0/120/180/280ms` interaction timing, a 15-second ambient role, named
+  enter/exit curves, and reduced-motion handling that removes movement without
+  globally forcing every duration to `0.01ms`;
+- visible focus and bounded Button, form-control, FormField, Alert,
+  OperationalState, and Skeleton/SkeletonGroup state contracts; and
+- 320px resilience plus 390/768/1024/1440px browser projects in the existing
+  Playwright configuration.
+
+This foundation does not activate Mona Sans on a route by default. Surface
+adoption remains opt-in through a separately approved pilot so the current
+pages do not receive an unreviewed global visual cutover.
 
 ## Shared UI inventory
 
@@ -94,13 +127,13 @@ every current usage already meets the design system.
 
 | Contract | State | Canonical use | Constraint / next action |
 | --- | --- | --- | --- |
-| `Button` | Adopted | Action hierarchy, loading, disabled, and focus behavior | Preserve existing variants and `rounded-control`; use `asChild` for Link actions instead of copying button classes. |
-| `Input`, `Textarea`, `Label`, `FormField` | Adopted | Accessible form controls and validation layout | Keep labels and errors explicit; Auth remediation must reuse these contracts. |
+| `Button` | Adopted | Action hierarchy, loading, disabled, and focus behavior | Preserve existing variants and `rounded-control`; unavailable `asChild` actions remain non-operable and exposed with `aria-disabled`; use `asChild` for Link actions instead of copying button classes. |
+| `Input`, `Textarea`, `Label`, `FormField` | Adopted | Accessible form controls and validation layout | Keep labels, hints, errors, `aria-describedby`, and `aria-errormessage` explicit; Auth remediation must reuse these contracts. |
 | `Select`, `Switch`, `Tabs` | Adopted | Accessible bounded choices and mode switching | Preserve Radix keyboard/focus behavior; do not replace with page-local controls. |
 | `Dialog`, `AlertDialog` | Adopted | Modal tasks and destructive confirmation | Keep title/description and focus restoration; do not use as decorative containers. |
 | `Table` | Adopted | Dense tabular operational data | Mobile behavior belongs to a domain composition; do not force desktop tables into narrow viewports. |
 | `Alert` | Adopted | Inline semantic feedback | Use for actionable state, not generic colored decoration. |
-| `Skeleton` | Adopted | Shape-preserving loading state | Motion must remain reduced-motion safe. |
+| `Skeleton`, `SkeletonGroup` | Adopted | Shape-preserving loading state with one explicit loading announcement | Match final content hierarchy; visual placeholders remain hidden from assistive technology and pulse remains reduced-motion safe. |
 | `Sonner` | Adopted | Transient global feedback | Do not use a toast as the only record of a critical error or next action. |
 | `EmptyState`, `ErrorState`, `OperationalState` | Adopted | Loading, no-data, error, conflict, and recovery presentation | Copy must be clear and non-terminal; customer-safe and permission-safe content remains mandatory. |
 | `SurfacePanel`, `SurfacePanelHeader` | Adopted | Meaningful operational/customer grouping | One panel per meaningful region; avoid nested card soup and decorative header bands. |
@@ -167,8 +200,8 @@ component merely because a local file exists.
 
 ## Current import evidence
 
-Counts below exclude test files and were reconciled against the current
-`1db565c` source baseline:
+Counts below exclude test files and were reconciled against the selected
+`c5054ed` source baseline:
 
 <!-- markdownlint-disable MD013 -->
 
@@ -179,7 +212,7 @@ Counts below exclude test files and were reconciled against the current
 | `ResponsiveTable` | 0 | Remains provisional and unused; its file existence is not adoption evidence. |
 | `Drawer` | 0 | Remains quarantined; `vaul` is still undeclared. |
 | `SurfacePanel` / `SurfacePanelHeader` module | 29 | Adopted broadly; semantic grouping remains a per-surface review obligation. Two unused candidate components importing it do not make those candidates adopted. |
-| `TechnicalLabel` | 12 | Adopted only under the restricted metadata contract; Product Editor validation copy no longer uses it. |
+| `TechnicalLabel` | 13 | Adopted under the restricted metadata contract, including the bounded Brand Lab prototype consumer; ordinary validation and navigation copy must not use it. |
 | `EmptyState` | 17 | Adopted across bounded empty-data surfaces and two unused candidate wrappers. |
 | `StatusStepper` | 1 | Imported only by legacy Customer Order detail. |
 | `Navbar` | 1 | Imported only by `Layout`; it composes `PublicNavigation` and `OperationalNavigation`. |
@@ -205,9 +238,10 @@ unauthenticated Admin sign-in accessibility, and protected-route redirects.
 These results remain provenance for the original integration scope. They are
 not represented as a fresh test run against `e7ab3d5`.
 
-### Current reconciliation verification
+### Selected-baseline reconciliation verification
 
-The `1db565c` reconciliation performed read-only source and package inspection:
+The `c5054ed` reconciliation performed source, package, and authority
+inspection before Gate 1 implementation:
 
 - the component directories remain `admin`, `auth`, `brand`, `layout`,
   `operational`, `retail`, and `ui`; `components/customer` and `features` remain
@@ -217,15 +251,44 @@ The `1db565c` reconciliation performed read-only source and package inspection:
   stepper contracts plus their test;
 - installed Radix imports, active GSAP and Recharts consumers, zero Framer
   Motion consumers, and the undeclared `vaul` import match the provenance table;
-- the FSA packet, Homepage R4 prototype, and approved reconstruction packet
-  exist in the selected `origin/main` or this documentation-only promotion
-  worktree as recorded provenance; and
-- no source, package manifest, lockfile, component status, or dependency was
-  changed during this documentation reconciliation.
+- the FSA packet, Homepage R4 prototype, approved reconstruction packet,
+  `DEC-UX-004`, and amended `DESIGN.md` exist in the selected `origin/main` as
+  recorded authority or provenance; and
+- the package manifest and lockfile remain unchanged by the bounded Gate 1
+  implementation.
 
-Frontend tests were not rerun because this reconciliation changes documentation
-only and does not alter source, package manifests, lockfiles, or configuration.
-No dependency install, junction, or configuration change was performed.
+### Gate 1 foundation verification
+
+The bounded Gate 1 change was verified locally on 13 August 2026:
+
+- all **64/64 Jest suites and 401/401 tests** passed;
+- all **5/5 bundle-contract tests** and the production-dependency audit passed;
+- the optimized production build compiled, produced a report-only total of
+  588.06 kB gzip, and added no approved budget decision; sitemap generation was
+  correctly skipped because `REACT_APP_PUBLIC_SITE_URL` was not configured;
+- the focused Playwright foundation matrix passed **5/5** at 320, 390, 768,
+  1024, and 1440 pixels, covering local font delivery, runtime token values,
+  focus and 44px targets, disabled/loading/error/recovery, reduced motion,
+  overflow, layout shift below 0.1, and automated WCAG A/AA checks;
+- contrast checks passed for core text/action/status pairs at 4.5:1 or better,
+  and control-border/focus pairs at 3:1 or better;
+- production CSS contained the retained opacity utilities, including
+  `bg-status-warning/10`, `bg-action-primary/5`, and
+  `disabled:bg-disabled-surface`;
+- copied font and license hashes matched the approved Homepage R4 provenance;
+  and
+- `git diff --check` passed before documentation closeout.
+
+The Impeccable detector was run exactly once after UI edits. It reported three
+expected compatibility warnings for the still-delivered Inter family and one
+false-positive warning for Mona Sans. Inter cannot be removed in Gate 1 because
+current consumers have not completed surface migration; Mona Sans is the
+approved NDS 2.0 target. No detector P0/P1 finding or new transferable page
+composition was introduced.
+
+`npm ci --no-audit --no-fund` populated only ignored local `node_modules` for
+verification. It did not change `package.json`, `package-lock.json`, repository
+dependencies, secrets, providers, or environment configuration.
 
 Neither historical nor current evidence covers authenticated Admin role-matrix
 behavior, independent visual acceptance, human screen-reader review, provider

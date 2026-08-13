@@ -1,4 +1,5 @@
 const fs = require("fs");
+const crypto = require("crypto");
 const path = require("path");
 
 const { buttonVariants } = require("./button");
@@ -40,6 +41,86 @@ function findMatches(pattern, files = implementationSources()) {
 }
 
 describe("frontend design-system foundation", () => {
+  test("ships the approved self-hosted font assets with recorded hashes", () => {
+    const fontRoot = path.join(frontendRoot, "public", "fonts", "niuva");
+    const expectedHashes = {
+      "MonaSansVF.woff2":
+        "fd40288d051171b51e3d01f36790604470dbb4d4fc5b36ee5a8119f4f4c6b3e1",
+      "BonaNova-Italic.woff2":
+        "8559973f32b6b84f226af7589016056f7841bc48d12a3024a3f3c5afbda27164",
+      "OFL-Mona-Sans.txt":
+        "d7fdb7f636f8dab1b6ebd9152bdfd265682587d9610c478776732ddefe8238e8",
+      "OFL-Bona-Nova.txt":
+        "34e391920e8bdc1952b122b9fab086e6c229c6245aafd6ff2fa17724fd62a86d",
+    };
+
+    for (const [file, expectedHash] of Object.entries(expectedHashes)) {
+      const content = fs.readFileSync(path.join(fontRoot, file));
+      const actualHash = crypto.createHash("sha256").update(content).digest("hex");
+      expect(actualHash).toBe(expectedHash);
+    }
+  });
+
+  test("defines NDS typography roles without removing compatibility delivery", () => {
+    const css = fs.readFileSync(path.join(sourceRoot, "index.css"), "utf8");
+    const fontCss = fs.readFileSync(
+      path.join(frontendRoot, "public", "fonts", "niuva", "fonts.css"),
+      "utf8"
+    );
+    const document = fs.readFileSync(
+      path.join(frontendRoot, "public", "index.html"),
+      "utf8"
+    );
+
+    expect(fontCss).toContain("font-family: 'Mona Sans'");
+    expect(fontCss).toContain("url('./MonaSansVF.woff2')");
+    expect(fontCss).toContain("font-family: 'Bona Nova'");
+    expect(fontCss.match(/font-display:\s*swap/g)).toHaveLength(2);
+    expect(css).toContain("--font-family-nds-display: 'Mona Sans'");
+    expect(css).toContain("--font-family-nds-expression: 'Bona Nova'");
+    expect(css).toContain("--font-family-sans: 'Poppins'");
+    expect(document).toContain("%PUBLIC_URL%/fonts/niuva/fonts.css");
+    expect(document).toContain("family=Poppins");
+    expect(document).not.toContain("BonaNova-Italic.woff2");
+  });
+
+  test("maps NDS values through semantic and surface aliases", () => {
+    const css = fs.readFileSync(path.join(sourceRoot, "index.css"), "utf8");
+
+    for (const contract of [
+      "--nds-blue-50: #F1F6FA",
+      "--nds-blue-500: #6390BB",
+      "--nds-blue-700: #315F8F",
+      "--nds-blue-950: #0E1B27",
+      "--color-surface-canvas: #F8FAFC",
+      "--color-action-primary: var(--nds-blue-700)",
+      "--color-action-primary-rgb: 49 95 143",
+      "--color-border-control: #708BA3",
+      "--public-canvas: var(--color-surface-canvas)",
+      "--commerce-summary-surface: var(--color-surface-default)",
+      "--account-task-surface: var(--color-surface-default)",
+      "--operations-row-surface: var(--color-surface-default)",
+    ]) {
+      expect(css).toContain(contract);
+    }
+  });
+
+  test("uses the approved motion grammar without a global reduced-motion wipe", () => {
+    const css = fs.readFileSync(path.join(sourceRoot, "index.css"), "utf8");
+
+    expect(css).toContain("--motion-instant: 0ms");
+    expect(css).toContain("--motion-fast: 120ms");
+    expect(css).toContain("--motion-standard: 180ms");
+    expect(css).toContain("--motion-deliberate: 280ms");
+    expect(css).toContain("--motion-ambient: 15s");
+    expect(css).toContain("--ease-standard: cubic-bezier(0.2, 0, 0, 1)");
+    expect(css).toContain("--ease-enter: cubic-bezier(0, 0, 0.2, 1)");
+    expect(css).toContain("--ease-exit: cubic-bezier(0.3, 0, 1, 0.3)");
+    expect(css).not.toContain("animation-duration: 0.01ms");
+    expect(css).not.toContain("transition-duration: 0.01ms");
+    expect(css).not.toMatch(/transition\s*:\s*all\b/);
+  });
+
   test("retains the existing shadcn-style configuration", () => {
     const config = JSON.parse(
       fs.readFileSync(path.join(frontendRoot, "components.json"), "utf8")
@@ -63,6 +144,28 @@ describe("frontend design-system foundation", () => {
     expect(buttonVariants({ variant: "destructive" })).toEqual(
       expect.stringContaining("bg-destructive")
     );
+  });
+
+  test("keeps adopted controls on explicit transitions and control boundaries", () => {
+    const adoptedControls = [
+      "button.jsx",
+      "input.jsx",
+      "textarea.jsx",
+      "select.jsx",
+      "switch.jsx",
+      "tabs.jsx",
+    ];
+
+    for (const file of adoptedControls) {
+      const source = fs.readFileSync(path.resolve(__dirname, file), "utf8");
+      expect(source).not.toContain("transition-all");
+    }
+
+    for (const file of ["input.jsx", "textarea.jsx", "select.jsx"]) {
+      const source = fs.readFileSync(path.resolve(__dirname, file), "utf8");
+      expect(source).toContain("border-border-control");
+      expect(source).toContain("aria-invalid:border-status-error");
+    }
   });
 
   test("keeps shared panels on semantic surface contracts", () => {
@@ -130,6 +233,39 @@ describe("frontend design-system foundation", () => {
     expect(tailwindSource).toContain(
       "'decoration-inverse-line': 'var(--color-decoration-inverse-line)'"
     );
+  });
+
+  test("maps NDS typography, states, surfaces, and motion through Tailwind", () => {
+    const tailwindSource = fs.readFileSync(
+      path.join(frontendRoot, "tailwind.config.js"),
+      "utf8"
+    );
+
+    for (const mapping of [
+      "'nds-display': [\"var(--font-family-nds-display)\"]",
+      "expression: [\"var(--font-family-nds-expression)\"]",
+      "const withOpacity = (token) => `rgb(var(${token}) / <alpha-value>)`",
+      "'action-primary': withOpacity('--color-action-primary-rgb')",
+      "'disabled-surface': withOpacity('--color-disabled-surface-rgb')",
+      "'public-canvas': 'var(--public-canvas)'",
+      "DEFAULT: withOpacity('--color-status-success-rgb')",
+      "surface: 'var(--color-status-success-surface)'",
+      "deliberate: 'var(--motion-deliberate)'",
+      "enter: 'var(--ease-enter)'",
+      "exit: 'var(--ease-exit)'",
+    ]) {
+      expect(tailwindSource).toContain(mapping);
+    }
+  });
+
+  test("uses 390px as the design baseline and 320px as the resilience floor", () => {
+    const playwrightSource = fs.readFileSync(
+      path.join(frontendRoot, "playwright.config.js"),
+      "utf8"
+    );
+
+    expect(playwrightSource).toContain("resilience: { width: 320, height: 720 }");
+    expect(playwrightSource).toContain("mobile: { width: 390, height: 844 }");
   });
 
   test("keeps the undeclared vaul Drawer quarantined", () => {
