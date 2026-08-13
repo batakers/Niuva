@@ -1,0 +1,16 @@
+@font-face {
+  font-family: 'Mona Sans';
+  src: url('./MonaSansVF.woff2') format('woff2-variations');
+  font-style: normal;
+  font-weight: 200 900;
+  font-stretch: 75% 125%;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Bona Nova';
+  src: url('./BonaNova-Italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}

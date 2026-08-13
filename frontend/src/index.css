@@ -3,34 +3,104 @@
 @tailwind utilities;
 
 :root {
-  /* Canonical public semantic colors. */
-  --color-brand-primary: #6390BB;
-  --color-brand-secondary: #8AAECF;
-  --color-action-primary: #4A72A0;
-  --color-action-primary-hover: #1C2B3A;
-  --color-surface-page: #F8F9FB;
+  /* NDS 2.0 global identity values. Route pages consume semantic aliases. */
+  --nds-blue-50: #F1F6FA;
+  --nds-blue-100: #E3EEF6;
+  --nds-blue-200: #C8DCEB;
+  --nds-blue-300: #A6C3DA;
+  --nds-blue-400: #7EA5C5;
+  --nds-blue-500: #6390BB;
+  --nds-blue-600: #4875A3;
+  --nds-blue-700: #315F8F;
+  --nds-blue-800: #244B73;
+  --nds-blue-900: #193753;
+  --nds-blue-950: #0E1B27;
+  --nds-canvas: #F8FAFC;
+  --nds-white: #FFFFFF;
+  --nds-ink-secondary: #44586B;
+  --nds-ink-muted: #566B7D;
+  --nds-ink-disabled: #627486;
+  --nds-border-control: #708BA3;
+  --nds-border-decorative: #C8D7E4;
+
+  /* Core semantic roles. */
+  --color-identity-signature: var(--nds-blue-500);
+  --color-identity-signature-rgb: 99 144 187;
+  --color-identity-support: var(--nds-blue-300);
+  --color-identity-support-rgb: 166 195 218;
+  --color-action-primary: var(--nds-blue-700);
+  --color-action-primary-rgb: 49 95 143;
+  --color-action-primary-hover: var(--nds-blue-800);
+  --color-action-primary-hover-rgb: 36 75 115;
+  --color-action-primary-active: var(--nds-blue-900);
+  --color-action-primary-active-rgb: 25 55 83;
+  --color-surface-canvas: #F8FAFC;
+  --color-surface-canvas-rgb: 248 250 252;
   --color-surface-default: #FFFFFF;
-  --color-surface-muted: #EBF1F7;
-  --color-surface-highlight: #E2E8EE;
-  --color-text-primary: #1C2B3A;
-  --color-text-secondary: #3D5266;
-  --color-text-disabled: #6B7A8D;
+  --color-surface-default-rgb: 255 255 255;
+  --color-surface-muted: #EDF4F8;
+  --color-surface-muted-rgb: 237 244 248;
+  --color-surface-selected: var(--nds-blue-50);
+  --color-surface-selected-rgb: 241 246 250;
+  --color-surface-highlight: var(--nds-blue-100);
+  --color-surface-highlight-rgb: 227 238 246;
+  --color-text-primary: #0E1B27;
+  --color-text-primary-rgb: 14 27 39;
+  --color-text-secondary: #44586B;
+  --color-text-secondary-rgb: 68 88 107;
+  --color-text-muted: #566B7D;
+  --color-text-muted-rgb: 86 107 125;
+  --color-text-disabled: #627486;
+  --color-text-disabled-rgb: 98 116 134;
   --color-text-inverse: #FFFFFF;
-  --color-border-default: #E2E8EE;
-  --color-border-strong: #8AAECF;
-  --color-focus-ring: #4A72A0;
-  --color-status-success: #2E8452;
-  --color-status-warning: #B87B1E;
-  --color-status-error: #C14444;
-  --color-disabled-surface: #E2E8EE;
-  --color-overlay-scrim: rgba(28, 43, 58, 0.72);
-  --color-navigation-backdrop: rgba(248, 249, 251, 0.96);
-  --color-decoration-brand-soft: rgba(138, 174, 207, 0.28);
+  --color-text-inverse-rgb: 255 255 255;
+  --color-border-control: #708BA3;
+  --color-border-control-rgb: 112 139 163;
+  --color-border-decorative: #C8D7E4;
+  --color-border-decorative-rgb: 200 215 228;
+  --color-focus-ring: var(--nds-blue-700);
+  --color-focus-ring-rgb: 49 95 143;
+  --color-status-info: #214C78;
+  --color-status-info-rgb: 33 76 120;
+  --color-status-info-surface: #E8F2FA;
+  --color-status-success: #23643A;
+  --color-status-success-rgb: 35 100 58;
+  --color-status-success-surface: #E8F5EC;
+  --color-status-warning: #6B4E00;
+  --color-status-warning-rgb: 107 78 0;
+  --color-status-warning-surface: #FFF3CC;
+  --color-status-error: #8F2430;
+  --color-status-error-rgb: 143 36 48;
+  --color-status-error-surface: #FBEAEC;
+  --color-disabled-surface: var(--nds-blue-100);
+  --color-disabled-surface-rgb: 227 238 246;
+  --color-overlay-scrim: rgba(14, 27, 39, 0.74);
+  --color-navigation-backdrop: rgba(248, 250, 252, 0.96);
+  --color-decoration-brand-soft: rgba(166, 195, 218, 0.28);
   --color-decoration-brand-line: rgba(99, 144, 187, 0.24);
   --color-decoration-brand-strong: rgba(99, 144, 187, 0.55);
   --color-decoration-inverse-line: rgba(255, 255, 255, 0.38);
 
-  /* Typography roles. */
+  /* Compatibility aliases retained until separately gated zero-consumer removal. */
+  --color-brand-primary: var(--color-identity-signature);
+  --color-brand-primary-rgb: var(--color-identity-signature-rgb);
+  --color-brand-secondary: var(--color-identity-support);
+  --color-brand-secondary-rgb: var(--color-identity-support-rgb);
+  --color-surface-page: var(--color-surface-canvas);
+  --color-surface-page-rgb: var(--color-surface-canvas-rgb);
+  --color-border-default: var(--color-border-decorative);
+  --color-border-default-rgb: var(--color-border-decorative-rgb);
+  --color-border-strong: var(--color-border-control);
+  --color-border-strong-rgb: var(--color-border-control-rgb);
+
+  /* NDS 2.0 typography targets. Surface pilots opt into these roles. */
+  --font-family-nds-display: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-family-nds-body: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-family-nds-ui: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-family-nds-expression: 'Bona Nova', georgia, serif;
+  --font-family-nds-technical: ui-monospace, 'SFMono-Regular', consolas, 'Liberation Mono', monospace;
+
+  /* Compatibility roles: kept functional while surfaces migrate separately. */
   --font-family-sans: 'Poppins', system-ui, sans-serif;
   --font-family-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-family-display: var(--font-family-sans);
@@ -61,21 +131,35 @@
   --type-navigation-size: 0.9375rem;
   --type-navigation-leading: 1.25rem;
 
-  /* Canonical spacing and layout roles. */
-  --space-0: 0;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-  --space-24: 6rem;
-  --space-30: 7.5rem;
+  /* NDS 2.0 global spacing values and compatibility aliases. */
+  --nds-space-0: 0;
+  --nds-space-1: 0.25rem;
+  --nds-space-2: 0.5rem;
+  --nds-space-3: 0.75rem;
+  --nds-space-4: 1rem;
+  --nds-space-5: 1.25rem;
+  --nds-space-6: 1.5rem;
+  --nds-space-8: 2rem;
+  --nds-space-10: 2.5rem;
+  --nds-space-12: 3rem;
+  --nds-space-16: 4rem;
+  --nds-space-20: 5rem;
+  --nds-space-24: 6rem;
+  --nds-space-30: 7.5rem;
+  --space-0: var(--nds-space-0);
+  --space-1: var(--nds-space-1);
+  --space-2: var(--nds-space-2);
+  --space-3: var(--nds-space-3);
+  --space-4: var(--nds-space-4);
+  --space-5: var(--nds-space-5);
+  --space-6: var(--nds-space-6);
+  --space-8: var(--nds-space-8);
+  --space-10: var(--nds-space-10);
+  --space-12: var(--nds-space-12);
+  --space-16: var(--nds-space-16);
+  --space-20: var(--nds-space-20);
+  --space-24: var(--nds-space-24);
+  --space-30: var(--nds-space-30);
   --space-page-gutter-mobile: 1rem;
   --space-page-gutter-tablet: 1.5rem;
   --space-page-gutter-desktop: 2rem;
@@ -93,41 +177,70 @@
   --measure-prose: 65ch;
   --measure-prose-extended: 70ch;
 
-  /* Shape, elevation, and motion roles. */
-  --radius-none: 0;
-  --radius-sm: 0.5rem;
-  --radius-control: 0.75rem;
-  --radius-card: 1rem;
-  --radius-panel: 1.25rem;
-  --radius-feature: 1.5rem;
+  /* Shape, elevation, focus, and motion roles. */
+  --nds-radius-none: 0;
+  --nds-radius-sm: 0.5rem;
+  --nds-radius-control: 0.75rem;
+  --nds-radius-surface: 1rem;
+  --nds-radius-panel: 1.25rem;
+  --nds-radius-feature: 1.5rem;
+  --radius-none: var(--nds-radius-none);
+  --radius-sm: var(--nds-radius-sm);
+  --radius-control: var(--nds-radius-control);
+  --radius-card: var(--nds-radius-surface);
+  --radius-panel: var(--nds-radius-panel);
+  --radius-feature: var(--nds-radius-feature);
   --radius-full: 999px;
   --shadow-none: none;
-  --shadow-surface: 0 1px 2px rgba(28, 43, 58, 0.06);
-  --shadow-navigation: 0 8px 24px rgba(28, 43, 58, 0.09);
-  --shadow-overlay: 0 18px 48px rgba(28, 43, 58, 0.16);
-  --shadow-focus-ring: 0 0 0 3px rgba(74, 114, 160, 0.22);
-  --motion-fast: 150ms;
-  --motion-standard: 200ms;
-  --motion-emphasis: 300ms;
-  --motion-reveal: 450ms;
-  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-reveal: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-surface: 0 1px 2px rgba(14, 27, 39, 0.06);
+  --shadow-navigation: 0 8px 24px rgba(14, 27, 39, 0.09);
+  --shadow-overlay: 0 18px 48px rgba(14, 27, 39, 0.16);
+  --shadow-focus-ring: 0 0 0 3px rgba(49, 95, 143, 0.22);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 3px;
+  --motion-instant: 0ms;
+  --motion-fast: 120ms;
+  --motion-standard: 180ms;
+  --motion-deliberate: 280ms;
+  --motion-ambient: 15s;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 0.3);
+  /* Existing names remain aliases until their consumers migrate. */
+  --motion-emphasis: var(--motion-deliberate);
+  --motion-reveal: var(--motion-deliberate);
+  --ease-reveal: var(--ease-enter);
   --nav-offset: 6.25rem;
   --space-page-start: clamp(6.5rem, 7.2vw, 7rem);
   --space-section-header: clamp(1.5rem, 2.6vw, 2.5rem);
   --space-cta-section: clamp(3.75rem, 5.6vw, 5.5rem);
   --space-footer: clamp(2.75rem, 4.4vw, 4rem);
 
+  /* Surface aliases describe purpose; they do not merge domain lifecycles. */
+  --public-canvas: var(--color-surface-canvas);
+  --public-evidence-surface: var(--nds-blue-950);
+  --public-expression-color: var(--nds-blue-500);
+  --commerce-canvas: var(--color-surface-canvas);
+  --commerce-summary-surface: var(--color-surface-default);
+  --commerce-selected-surface: var(--color-surface-selected);
+  --account-canvas: var(--color-surface-canvas);
+  --account-task-surface: var(--color-surface-default);
+  --account-recovery-surface: var(--color-surface-muted);
+  --operations-canvas: var(--color-surface-canvas);
+  --operations-row-surface: var(--color-surface-default);
+  --operations-row-selected: var(--color-surface-selected);
+  --operations-density-row: 3rem;
+
   /* Operational HSL compatibility layer. Public components must not use these. */
   --niuva-blue: 209 38% 56%;
-  --sky-blue: 209 40% 68%;
-  --blue-dark: 212 36% 46%;
-  --midnight: 211 35% 17%;
-  --steel: 210 25% 32%;
-  --smoke: 215 14% 49%;
-  --silver: 210 17% 91%;
-  --frost: 210 38% 95%;
-  --cloud: 220 18% 98%;
+  --sky-blue: 207 43% 75%;
+  --blue-dark: 211 49% 38%;
+  --midnight: 209 47% 10%;
+  --steel: 209 22% 34%;
+  --smoke: 210 16% 46%;
+  --silver: 208 34% 84%;
+  --frost: 202 44% 95%;
+  --cloud: 210 40% 98%;
   --pure-white: 0 0% 100%;
 
   /* shadcn-compatible tokens */
@@ -152,7 +265,7 @@
   --accent: var(--silver);
   --accent-foreground: var(--midnight);
 
-  --destructive: 0 50% 51%;
+  --destructive: 353 60% 35%;
   --destructive-foreground: var(--pure-white);
 
   --border: var(--silver);
@@ -166,11 +279,11 @@
   --surface-3: var(--silver);
   --signal: var(--niuva-blue);
   --signal-hover: var(--midnight);
-  --warm: 36 72% 42%;
-  --success: 145 48% 35%;
-  --warning: 36 72% 42%;
-  --error: 0 50% 51%;
-  --info: var(--blue-dark);
+  --warm: 44 100% 21%;
+  --success: 141 48% 27%;
+  --warning: 44 100% 21%;
+  --error: 353 60% 35%;
+  --info: 210 57% 30%;
 }
 
 .admin-workbench {
@@ -226,9 +339,9 @@ body {
   }
 }
 
-:where(a, button, input, textarea, select):focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 3px;
+:where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 ::selection {
@@ -488,10 +601,6 @@ body {
     opacity: 1 !important;
     transform: none !important;
   }
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
 }
 
 .prose-constrained {
@@ -509,6 +618,58 @@ body {
   background: var(--color-surface-page);
   color: var(--color-text-primary);
   font-family: var(--font-family-body);
+}
+
+/* NDS surface scopes are opt-in migration targets. Existing scopes remain
+   compatibility contracts until their separately approved route slices. */
+.nds-public-surface {
+  --font-family-display: var(--font-family-nds-display);
+  --font-family-body: var(--font-family-nds-body);
+  --font-family-technical: var(--font-family-nds-technical);
+  --color-surface-page: var(--public-canvas);
+
+  background: var(--public-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+}
+
+.nds-commerce-surface {
+  --font-family-display: var(--font-family-nds-display);
+  --font-family-body: var(--font-family-nds-body);
+  --font-family-technical: var(--font-family-nds-technical);
+  --color-surface-page: var(--commerce-canvas);
+
+  background: var(--commerce-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+}
+
+.nds-account-surface {
+  --font-family-display: var(--font-family-nds-display);
+  --font-family-body: var(--font-family-nds-body);
+  --font-family-technical: var(--font-family-nds-technical);
+  --color-surface-page: var(--account-canvas);
+
+  background: var(--account-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+}
+
+.nds-operations-surface {
+  --font-family-display: var(--font-family-nds-display);
+  --font-family-body: var(--font-family-nds-body);
+  --font-family-technical: var(--font-family-nds-technical);
+  --color-surface-page: var(--operations-canvas);
+
+  background: var(--operations-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+}
+
+.nds-public-surface .nds-expression {
+  font-family: var(--font-family-nds-expression);
+  font-style: italic;
+  font-weight: 400;
 }
 
 .brand-page section[id] {

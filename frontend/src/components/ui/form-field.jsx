@@ -2,8 +2,6 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 
-let fieldIdCounter = 0;
-
 /**
  * FormField — connects Label to Input via auto-generated id.
  * Displays optional error message with role="alert".
@@ -15,20 +13,29 @@ let fieldIdCounter = 0;
  */
 const FormField = React.forwardRef(
   ({ className, label, hint, error, children, required, ...props }, ref) => {
-    const idRef = React.useRef(`ff-${++fieldIdCounter}`);
-    const id = idRef.current;
+    const generatedId = React.useId().replaceAll(":", "");
+    const childProps = React.isValidElement(children) ? children.props : {};
+    const id = childProps.id || `ff-${generatedId}`;
     const errorId = `${id}-error`;
     const hintId = `${id}-hint`;
+    const describedBy = [
+      childProps["aria-describedby"],
+      hint ? hintId : undefined,
+      error ? errorId : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
     // Clone the child input to inject id and aria attributes
     const input = React.isValidElement(children)
       ? React.cloneElement(children, {
           id,
-          "aria-invalid": error ? true : undefined,
-          "aria-describedby": cn(
-            error ? errorId : undefined,
-            hint ? hintId : undefined
-          ) || undefined,
+          required: childProps.required ?? required,
+          "aria-invalid": error ? true : childProps["aria-invalid"],
+          "aria-describedby": describedBy,
+          "aria-errormessage": error
+            ? errorId
+            : childProps["aria-errormessage"],
         })
       : children;
 
@@ -43,13 +50,17 @@ const FormField = React.forwardRef(
           </Label>
         )}
         {input}
-        {hint && !error && (
-          <p id={hintId} className="text-xs text-text-secondary">
+        {hint && (
+          <p id={hintId} className="text-base leading-6 text-text-muted md:text-sm md:leading-5">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} role="alert" className="text-xs text-status-error">
+          <p
+            id={errorId}
+            role="alert"
+            className="text-base font-medium leading-6 text-status-error md:text-sm md:leading-5"
+          >
             {error}
           </p>
         )}

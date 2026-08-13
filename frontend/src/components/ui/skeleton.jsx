@@ -13,7 +13,7 @@ const skeletonVariants = cva(
         heading: "h-6 w-3/4",
         avatar: "rounded-full",
         card: "h-32 w-full rounded-panel",
-        button: "h-10 w-24",
+        button: "h-11 w-24",
       },
       size: {
         sm: "",
@@ -41,6 +41,7 @@ const Skeleton = React.forwardRef(
       <div
         ref={ref}
         aria-hidden="true"
+        data-state="loading"
         className={cn(skeletonVariants({ variant, size }), className)}
         {...props}
       />
@@ -66,6 +67,25 @@ function SkeletonText({ lines = 3, className }) {
   );
 }
 SkeletonText.displayName = "SkeletonText";
+
+/**
+ * SkeletonGroup - Announces the loading task while visual placeholders remain
+ * hidden from assistive technology. Shape the children like the final content.
+ */
+function SkeletonGroup({ label = "Memuat konten", className, children }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className={cn("relative", className)}
+    >
+      <span className="sr-only">{label}</span>
+      {children}
+    </div>
+  );
+}
+SkeletonGroup.displayName = "SkeletonGroup";
 
 /**
  * SkeletonTableRow - A skeleton row for tables
@@ -103,6 +123,7 @@ SkeletonCard.displayName = "SkeletonCard";
 
 export {
   Skeleton,
+  SkeletonGroup,
   SkeletonText,
   SkeletonTableRow,
   SkeletonCard,
