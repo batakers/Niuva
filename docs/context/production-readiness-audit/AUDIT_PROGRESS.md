@@ -4,7 +4,7 @@ Status: Context Only — Audit Evidence and Progress Tracker — Not Implementat
 
 Historical full-audit baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
 Current backend Layer 03–10 baseline SHA: `15b759a02b036330f1dd0913611043e0fd6134e2`
-Last updated: 2026-08-13 (UTC+07:00)
+Last updated: 2026-08-14 (UTC+07:00)
 
 ## Status semantics
 
@@ -40,7 +40,7 @@ that no other finding exists.
 | 03 Backend/API/Business Logic | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#41-layer-03-disposition) | `BE` | `complete` | 100% | 74% | 92% | 0 | 2 | `15b759a` | 2026-08-13 | Close remaining API/compatibility breadth and retain inactive Retail/external evidence gates |
 | 04 Database/Data Integrity | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#42-layer-04-disposition) | `DB` | `complete` | 100% | 58% | 88% | 0 | 9 | `15b759a` | 2026-08-13 | Audit migrations and representative-data/restore evidence in a separately controlled feature |
 | 05 Integration/Feature Parity | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#43-layer-05-disposition) | `INT` | `complete` | 100% | 68% | 90% | 0 | 3 | `15b759a` | 2026-08-13 | Preserve inactive Retail/provider scope; audit remaining Organization Portal, command parity, and external journeys |
-| 06 Security/Auth/Privacy | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#44-layer-06-disposition) | `SEC` | `complete` | 100% | 49% | 92% | 1 | 4 | `15b759a` | 2026-08-13 | Revalidate auth/security operational gates; NIV-001, MFA, and production topology remain open; merge the validated PR #244 dependency correction |
+| 06 Security/Auth/Privacy | [current-main auth/security revalidation](../../implementation/production-readiness/phases/AUTH-SECURITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `SEC` | `complete` | 100% | 49% | 96% | 1 | 4 | `15b759a` | 2026-08-14 | Preserve the exhaustive Admin-route negative RBAC gate; close NIV-001, DR-004 outage/proxy/retention operations, DR-005 MFA, key custody, migration, and deployed topology evidence separately |
 | 07 Testing/Quality Assurance | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#45-layer-07-disposition) | `QA` | `complete` | 100% | 72% | 91% | 0 | 2 | `15b759a` | 2026-08-13 | Add controlled external release evidence and decide whole-tree quality ownership/thresholds |
 | 08 DevOps/Deployment/Operations | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#46-layer-08-disposition) | `OPS` | `complete` | 100% | 48% | 91% | 0 | 9 | `15b759a` | 2026-08-13 | Obtain approved topology, artifact, migration, restore, rollback, network, provider, and ownership evidence |
 | 09 Reliability/Performance/Observability | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#47-layer-09-disposition) | `SRE` | `complete` | 100% | 66% | 88% | 0 | 1 | `15b759a` | 2026-08-13 | Prove production telemetry/SLO, timeout, query/load, capacity, and frontend-monitoring behavior |
@@ -162,6 +162,22 @@ environment or tooling blockers; these are not treated as passes.
   date.
 
 ## Changelog
+
+### 2026-08-14 — Current-main auth, authorization, and privacy revalidation
+
+- Revalidated Customer/Admin sessions, recovery and revocation, password and
+  Argon2 boundaries, bootstrap preservation, MongoDB-backed limiting,
+  authentication-event privacy/retention, granular RBAC, and customer-safe
+  projection against backend runtime `15b759a`.
+- Added an effective-route regression gate covering all `112` Admin routes and
+  every canonical role lacking each route's declared permission.
+- Verified `252 passed, 4 skipped` focused auth/security checks; `72 passed`
+  for the new RBAC/projection selection; and the full hermetic result of `1032
+  passed, 15` expected skips, and `14` subtests with zero unexpected skips.
+- Kept Layer 06 readiness at `49%` while raising confidence to `96%`; repository
+  evidence improved, but NIV-001, DR-004, DR-005, key/retention operations,
+  migration, external topology, independent verification, and go-live gates
+  remain open.
 
 ### 2026-08-13 — Current-main backend Layer 03–10 rebaseline
 

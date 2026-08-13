@@ -226,6 +226,20 @@ phases or satisfy their production gates.
 | [Feature 2.4 — File Authorization and Security](phases/FEATURE-2.4-file-security-remediation.md) | PR #93 merged as `57de1f3`; implementation lineage includes `6e6da02` | Bounded local/CI remediation strengthens upload size/signature checks, partial-write cleanup, database ownership/domain authorization, opaque-ID and compatibility downloads, active-state enforcement, safe media, query-token rejection, and metadata/storage compensation. Current-main file/readiness/migration-contract matrix passed `94` tests with two environment-gated skips; the full backend suite passed. | Production provider/scanner, retention/quota, backup/restore, owners, historical reconciliation, migration/deployment, production readiness, and go-live remain separately gated. |
 | [Feature 5.1 — CMS Publication Lifecycle](phases/FEATURE-5.1-cms-publication-remediation.md) | PR #99 merged as `735674b`; required CI passed | Versioned CMS mutations translate real contention to domain `409`; local and disposable-CI replica-set tests prove one-winner publish/rollback and audit-failure atomicity; timezone, permission, immutable snapshot, backend, and frontend regressions pass. | Migration 007, controlled browser/release environment, deployment, monitoring, production readiness, and go-live remain separately gated. |
 
+### Current-main auth, authorization, and privacy audit — 14 August 2026
+
+The [current-main auth/security packet](phases/AUTH-SECURITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md)
+revalidates Features 1.1–1.7 plus granular RBAC/customer projection at backend
+runtime `15b759a`. It adds an inventory-driven negative gate for all `112`
+effective Admin routes and confirms focused auth/security, bootstrap,
+event-redaction/retention, and customer-safe projection checks. Repository
+evidence passes; no runtime permission or role grant changed.
+
+NIV-001, DR-004 limiter outage/proxy/retention operations, DR-005 MFA,
+password/Argon2 activation, event key custody and cleanup/alert ownership,
+migrations, external topology, independent verification, deployment,
+production-readiness, and go-live remain explicitly open.
+
 Merged records prove that reviewed source and evidence entered `main`. None of
 these records
 completes a roadmap phase, resolves grouped MFA, abuse-control,
