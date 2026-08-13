@@ -111,6 +111,9 @@ def main() -> int:
         "unexpected_skips": skipped,
     }
     args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+    if result["tests"] == 0:
+        print("JUnit contains no executed tests", file=sys.stderr)
+        return 1
     if result["failures"] or result["errors"]:
         print("JUnit contains failures or errors", file=sys.stderr)
         return 1

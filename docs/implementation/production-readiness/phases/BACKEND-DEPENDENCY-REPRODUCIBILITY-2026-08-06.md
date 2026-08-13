@@ -58,10 +58,11 @@ name.
 - Python 3.14 is in the CPython bugfix support phase with an October 2030
   end-of-life target. Pinning the micro release makes rebuilds attributable;
   upgrading the micro version requires a lock refresh and regression run.
-- MongoDB officially deprecated Motor on 14 May 2026 and recommends migration
-  to the PyMongo Async API. The repository still pins `motor==3.3.1`; migrating
-  the database API is a separate source/transaction compatibility project and
-  is intentionally not attempted by this lock task.
+- MongoDB deprecated Motor on 14 May 2025. Its normal bug-fix support ended on
+  14 May 2026; only critical fixes remain through 14 May 2027. The repository
+  still pins `motor==3.3.1`; migration to the PyMongo Async API is therefore an
+  active lifecycle risk and a separate source/transaction compatibility
+  project, intentionally not attempted by this lock task.
 - `pymongo==4.6.3` has no CPython 3.14 wheel for the verified macOS target, so
   pip built the hash-verified source distribution. Linux CI must prove its own
   install. Production builders require a compiler until a separately reviewed
@@ -74,6 +75,23 @@ Official lifecycle references:
 
 - <https://devguide.python.org/versions/>
 - <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/migration/>
+
+## Current-main revalidation — 14 August 2026
+
+The human-reviewed direct input still contains 30 requirements: six exact pins
+and 24 bounded/minimum constraints. This does not create install drift because
+CI installs the 72-distribution generated lock with 1,044 SHA-256 hash entries
+and `--require-hashes`; changes to the direct input still require a reviewed
+lock regeneration.
+
+The supported Python 3.14.3 environment contains 71 applicable distributions.
+`uv pip check` reports all installed packages compatible. A fresh isolated
+`pip-audit==2.10.1` run audited 71 dependencies with zero known
+vulnerabilities, and `pip-licenses==5.5.5` recorded 71 distributions with zero
+missing/empty/unknown license metadata. These are point-in-time inventory
+results, not legal approval. Motor's post-EOL state remains the material
+deprecation finding; driver migration and runtime/dev dependency separation
+remain separately governed.
 
 ## Operational boundary and rollback
 
