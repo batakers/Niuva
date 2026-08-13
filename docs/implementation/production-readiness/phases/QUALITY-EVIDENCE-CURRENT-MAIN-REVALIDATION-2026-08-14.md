@@ -27,7 +27,7 @@ dependency versions, or static-quality thresholds.
 | Profile | Fail-closed contract | Current result and limit |
 | --- | --- | --- |
 | Hermetic | Required `quality-gates / backend` runs the complete `backend/tests` tree, emits JUnit, validates failures/errors and the exact expected-skip allowlist, then uploads JUnit plus JSON evidence with `if-no-files-found: error`. Empty JUnit now fails explicitly. | Local Python 3.14.3 exact-stack run: `1036 passed, 15 skipped, 14 subtests passed`; JUnit contains 1,051 cases, zero failures/errors, zero unexpected skips, SHA-256 `a17aa3571a1deb78e872ce7ff28cda198a4cd23872358c547b39a85a9500a8cf`. Exact PR-head CI remains required. |
-| Real transaction | PR workflow starts an isolated MongoDB replica set, sets the explicit opt-in, selects all 15 mandatory integration modules, rejects every skip, and requires JUnit plus JSON evidence. Pytest failure/no collection, evidence failure, or absent artifact fails the job. | A manually dispatched run exposed one real contention flake: 79 passed and Project duplicate concurrency leaked an exhausted Mongo write conflict. A same-head required rerun passed all 80. The executor now backs off 10/20 ms between its three bounded transient attempts; exact-head PR rerun remains required. Docker is unavailable locally. |
+| Real transaction | PR workflow starts an isolated MongoDB replica set, sets the explicit opt-in, selects all 15 mandatory integration modules, rejects every skip, and requires JUnit plus JSON evidence. Pytest failure/no collection, evidence failure, or absent artifact fails the job. | A manually dispatched run exposed one real contention flake: 79 passed and Project duplicate concurrency leaked an exhausted Mongo write conflict. The executor now backs off 10/20 ms between its three bounded transient attempts. PR run `31740271681` then passed all 80 with zero skips at the PR merge candidate; JUnit SHA-256 `05502680a1da44bbefcf1cf565128316cc87f458aebde7c15d58652119b7d274`. Docker remains unavailable locally. |
 | External public smoke | Manual staging-environment workflow validates an approved credential-free HTTPS origin, performs public smoke plus external pytest, rejects every skip/empty result, and requires smoke JSON, JUnit, and checksum-bearing evidence. | Correctly `environment_blocked`: no approved target was supplied. No external pass is claimed. |
 | External Admin browser | Manual staging workflow validates distinct HTTPS frontend/API origins, all five role credentials, API liveness/CORS, and four viewport projects. | No target or credentials were supplied. The workflow currently uploads browser artifacts with `if-no-files-found: ignore` and has no checksum manifest; this is not a required PR check and cannot be promoted to release evidence until artifact enforcement/provenance is approved and implemented. |
 
@@ -90,6 +90,11 @@ explicit reviewed dependency change.
 - `uv pip check --python backend/.venv/bin/python` — compatible.
 - Isolated pinned vulnerability and license commands — zero known
   vulnerabilities and zero invalid license metadata.
+- Exact-source quality run `31740275604` — backend, frontend, secret scan, all
+  evidence uploads, 1,051-case hermetic evidence, 409 frontend tests, and five
+  hermetic browser contracts passed at source SHA `0a3ab5e`.
+- PR transaction run `31740271681` — 80 passed with zero skips and validated
+  checksum-bearing evidence at the generated PR merge candidate.
 - `git diff --check` — passed before documentation finalization.
 
 ## Disposition and remaining gates
@@ -99,7 +104,8 @@ explicit reviewed dependency change.
   branch.
 - Hermetic, transaction, critical/scoped quality, lock, vulnerability, license
   metadata, and artifact-presence controls are `resolved_in_repository_gate`;
-  exact-head CI must still pass.
+  source-head quality and PR merge-candidate transaction CI passed after the
+  contention correction.
 - External public and Admin profiles remain `environment_blocked`; the Admin
   browser artifact/checksum contract is also `partial`.
 - Whole-tree threshold/ratchet ownership, exception expiry, legal license
