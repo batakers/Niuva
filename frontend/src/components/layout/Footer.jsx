@@ -1,10 +1,57 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { usePublicSettings } from "@/lib/publicSettings";
 
+const HOMEPAGE_TERMINAL_NAVIGATION = [
+  { label: "Layanan", to: "/capabilities" },
+  { label: "Projects", to: "/projects" },
+  { label: "Retail", to: "/retail" },
+  { label: "Kontak", to: "/contact" },
+  { label: "Privasi", to: "/privacy" },
+];
+
+function HomepageTerminalFooter({ currentYear }) {
+  return (
+    <footer
+      data-footer-variant="homepage-terminal"
+      className="bg-public-evidence text-text-inverse"
+    >
+      <div className="mx-auto grid max-w-[var(--container-wide)] grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-4 py-6 sm:px-6 md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-x-8 lg:px-8">
+        <Link
+          to="/"
+          aria-label="Niuva - Beranda"
+          className="inline-flex min-h-11 items-center rounded-control px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity-support focus-visible:ring-offset-2 focus-visible:ring-offset-public-evidence [&>span>span]:text-text-inverse"
+        >
+          <BrandIdentity />
+        </Link>
+
+        <nav
+          aria-label="Navigasi footer Homepage"
+          className="col-span-2 row-start-2 flex flex-wrap items-center gap-x-4 md:col-span-1 md:col-start-2 md:row-start-1 md:justify-center"
+        >
+          {HOMEPAGE_TERMINAL_NAVIGATION.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="inline-flex min-h-11 items-center rounded-control px-2 text-sm font-semibold text-text-inverse transition-colors duration-fast ease-standard hover:text-identity-support focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity-support focus-visible:ring-offset-2 focus-visible:ring-offset-public-evidence"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <p className="col-start-2 row-start-1 justify-self-end text-right text-xs font-semibold leading-6 text-identity-support md:col-start-3">
+          &copy; {currentYear} Niuva
+        </p>
+      </div>
+    </footer>
+  );
+}
+
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const { pathname } = useLocation();
   const { contact } = usePublicSettings();
   const navigation = [
     { label: "Home", to: "/" },
@@ -16,8 +63,15 @@ export function Footer() {
     { label: "Contact", to: "/contact" },
   ];
 
+  if (pathname === "/") {
+    return <HomepageTerminalFooter currentYear={currentYear} />;
+  }
+
   return (
-    <footer className="border-t border-border-default bg-surface-page">
+    <footer
+      data-footer-variant="legacy"
+      className="border-t border-border-default bg-surface-page"
+    >
       <div className="mx-auto max-w-[var(--container-wide)] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
         <div className="grid gap-10 xl:grid-cols-[1.15fr_0.85fr] xl:gap-12">
           <div>

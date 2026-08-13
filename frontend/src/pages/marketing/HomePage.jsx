@@ -1,450 +1,482 @@
 import React from "react";
+import { ArrowDownRight, ArrowUpRight, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 
-import {
-  BrandButton,
-  HOME_TRANSFORMATION_STAGES,
-  ProjectCaseStudyCard,
-  TransformationPath,
-  profileContent,
-} from "@/components/brand/CompanyProfileBlocks";
-import {
-  BrandPage,
-  CTASection,
-  MarketingSection,
-  PageContainer,
-  PageHero,
-  SectionHeader,
-} from "@/components/brand/BrandSystem";
+import { profileContent } from "@/components/brand/CompanyProfileBlocks";
 import { MarketingLayout } from "@/components/layout/Layout";
+import { Button } from "@/components/ui/button";
 import { usePublicSettings } from "@/lib/publicSettings";
+import {
+  HomeChapterIllustration,
+  HomeFdmContour,
+} from "@/pages/marketing/home/HomePageVisuals";
+import "@/pages/marketing/home/HomePageR4.css";
 
 // Homepage remains hardcoded. A Homepage CMS schema is a separate decision and
 // this presentation slice does not create or imply one.
 
-const primaryCapabilities = profileContent.services.filter(
-  (service) => service.priority === "primary"
-);
-const supportingCapabilities = profileContent.services.filter(
-  (service) => service.priority !== "primary"
-);
-const researchCapability = primaryCapabilities.find(
-  (service) => service.slug === "research-development"
-);
-const designCapability = primaryCapabilities.find(
-  (service) => service.slug === "design-prototyping"
-);
-const flagshipProject = profileContent.projects.find((project) =>
-  project.title.includes("Pindad")
-);
-const xeonProject = profileContent.projects.find((project) =>
-  project.title.includes("Xeon")
-);
-const bicycleProject = profileContent.projects.find((project) =>
-  project.title.includes("Bicycle Arcade")
-);
-const selectedProjects = [xeonProject, bicycleProject].filter(Boolean);
+const SERVICE_ORDER = [
+  "research-development",
+  "consultant-workshop",
+  "design-prototyping",
+  "apparel-merchandise",
+];
 
-const whyNiuva = [
+const services = SERVICE_ORDER.map((slug) =>
+  profileContent.services.find((service) => service.slug === slug),
+).filter(Boolean);
+
+const projects = [
+  profileContent.projects.find((project) => project.title.includes("Pindad")),
+  profileContent.projects.find((project) => project.title.includes("Xeon")),
+  profileContent.projects.find((project) =>
+    project.title.includes("Motorcycle Simulator"),
+  ),
+].filter(Boolean);
+
+const processStages = [
   {
-    title: "Riset sebagai dasar keputusan",
-    body: "Setiap pengembangan dimulai dari kebutuhan, konteks, peluang, dan batasan yang dipahami sejak awal.",
+    name: "Need",
+    body: "Kebutuhan, target, pengguna, dan batas dipahami sebagai titik mulai.",
   },
   {
-    title: "Cara pikir engineering",
-    body: "Rancangan dinilai dari kemungkinan implementasi, integrasi komponen, fungsi, dan kesiapan untuk diuji.",
+    name: "Research",
+    body: "Konteks, peluang, risiko, dan dasar keputusan dipetakan.",
   },
   {
-    title: "Prototyping untuk validasi",
-    body: "Ide dibawa ke bentuk yang dapat dievaluasi agar keputusan tidak berhenti di presentasi konsep.",
+    name: "Experiment",
+    body: "Asumsi, material, dan pendekatan diuji dalam skala yang tepat.",
   },
   {
-    title: "Eksekusi produk custom",
-    body: "Niuva dapat mendukung kebutuhan mobilitas, simulator, perangkat interaktif, apparel, dan merchandise sesuai konteks proyek.",
+    name: "Prototype",
+    body: "Konsep dibawa ke bentuk yang dapat dinilai dan diperbaiki.",
+  },
+  {
+    name: "Output",
+    body: "Bukti menjadi output atau arah realisasi berikutnya.",
   },
 ];
 
-function HomeHeroArtifact() {
-  if (!flagshipProject) return null;
+const chapters = [
+  {
+    key: "understand",
+    title: "Memahami",
+    body: "Kami memulai dari kebutuhan, konteks pengguna, risiko, dan bukti apa yang benar-benar perlu dibangun.",
+    points: [
+      "Brief dan ruang masalah",
+      "Pertanyaan riset dan batas keputusan",
+      "Rencana eksperimen yang proporsional",
+    ],
+    caption:
+      "Ilustrasi konseptual: kebutuhan dan batas keputusan dipusatkan menjadi satu pertanyaan uji.",
+  },
+  {
+    key: "shape",
+    title: "Membentuk",
+    body: "Keputusan mulai memiliki dimensi, material, sambungan, dan konsekuensi yang dapat diuji bersama.",
+    points: [
+      "Desain dan rekayasa",
+      "Iterasi bentuk dan material",
+      "Prototyping melalui fasilitas Niuva",
+    ],
+    caption:
+      "Ilustrasi konseptual: lapisan, bentuk, material, dan sambungan mulai menjadi keputusan fisik.",
+  },
+  {
+    key: "prove",
+    title: "Membuktikan",
+    body: "Prototype membantu tim melihat apa yang bekerja, apa yang perlu diubah, dan apakah gagasan siap bergerak lebih jauh.",
+    points: [
+      "Pengujian dan demonstrasi",
+      "Evaluasi keputusan",
+      "Realisasi satuan hingga kebutuhan skala lebih besar",
+    ],
+    caption:
+      "Ilustrasi konseptual: prototype diuji lalu mengembalikan bukti untuk keputusan berikutnya.",
+  },
+];
 
+const faqItems = [
+  {
+    question: "Apakah saya harus sudah mempunyai desain final?",
+    answer:
+      "Tidak. Untuk partnership, Niuva dapat mulai dari kebutuhan, masalah, referensi, atau batas yang Anda miliki. Retail Custom 3D Print membutuhkan file ketika masuk ke tahap konfigurasi.",
+  },
+  {
+    question: "Kapan pesanan Retail berubah menjadi inquiry?",
+    answer:
+      "Ketika jumlah, material, kapasitas, harga, ETA, atau fulfillment tidak dapat divalidasi otomatis. Konteks dibawa ke inquiry tanpa menciptakan Order, reservasi, atau pembayaran.",
+  },
+  {
+    question: "Apakah Niuva hanya mengerjakan 3D printing?",
+    answer:
+      "Tidak. 3D printing adalah salah satu cara realisasi. Niuva juga bekerja pada riset, konsultasi, workshop, desain, rekayasa, prototyping, dan realisasi produk.",
+  },
+];
+
+function PageLink({ to, children, variant = "default", className = "" }) {
   return (
-    <figure data-testid="home-hero-artifact">
-      <div className="overflow-hidden rounded-feature border border-border-default bg-surface-muted">
-        <img
-          src={flagshipProject.image}
-          alt={flagshipProject.imageAlt}
-          width={flagshipProject.imageWidth}
-          height={flagshipProject.imageHeight}
-          loading="eager"
-          fetchPriority="high"
-          decoding="async"
-          className="aspect-[4/3] h-full w-full object-contain"
-        />
+    <Button asChild size="lg" variant={variant} className={className}>
+      <Link to={to}>
+        {children}
+        <ArrowUpRight aria-hidden="true" />
+      </Link>
+    </Button>
+  );
+}
+
+function HeroSection() {
+  return (
+    <section className="home-r4-hero" aria-labelledby="home-r4-title">
+      <div className="home-r4-shell home-r4-hero-inner">
+        <p className="home-r4-context">Innovation &amp; product development partner</p>
+        <h1 id="home-r4-title" className="home-r4-display">
+          <span>Dari ide menuju</span>
+          <em className="nds-expression">produk yang dapat diuji.</em>
+        </h1>
+        <p className="home-r4-hero-copy">
+          Niuva mendampingi tim melalui riset, rekayasa, desain, prototyping,
+          dan realisasi produk.
+        </p>
+        <div className="home-r4-actions">
+          <PageLink to="/contact">Diskusikan project</PageLink>
+          <PageLink to="/retail" variant="link">
+            Jelajahi Retail
+          </PageLink>
+        </div>
       </div>
-      <figcaption className="mt-4 flex flex-col gap-1 border-b border-border-default pb-4 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-        <span className="font-heading text-sm font-semibold text-text-primary">
-          {flagshipProject.title}
-        </span>
-        <span className="text-xs leading-5 text-text-secondary">
-          Artefak pengembangan · {flagshipProject.category}
-        </span>
-      </figcaption>
-      <TransformationPath compact className="mt-6" />
-    </figure>
+      <HomeFdmContour variant="light" />
+    </section>
   );
 }
 
-function FlagshipProofSection() {
-  if (!flagshipProject) return null;
-
-  const evidence = [
-    { label: "Konteks", value: flagshipProject.body },
-    { label: "Tantangan", value: flagshipProject.challenge },
-    { label: "Metode", value: flagshipProject.solution },
-    { label: "Output", value: flagshipProject.output },
-    { label: "Kapabilitas", value: flagshipProject.capability },
-  ];
-
+function OrientationSection() {
   return (
-    <MarketingSection id="flagship-proof" tone="default" data-home-section="flagship-proof">
-      <PageContainer>
-        <div className="grid gap-9 lg:grid-cols-[minmax(0,1.14fr)_minmax(340px,0.86fr)] lg:items-center lg:gap-14">
-          <figure>
-            <div className="overflow-hidden rounded-feature border border-border-default bg-surface-muted">
-              <img
-                src={flagshipProject.image}
-                alt={flagshipProject.imageAlt}
-                width={flagshipProject.imageWidth}
-                height={flagshipProject.imageHeight}
-                loading="lazy"
-                decoding="async"
-                className="aspect-[4/3] h-full w-full object-contain"
-              />
-            </div>
-            <figcaption className="mt-3 text-sm leading-6 text-text-secondary">
-              Bukti project yang digunakan sesuai peran artefak yang telah disetujui.
-            </figcaption>
-          </figure>
-
-          <div className="border-t border-border-default pt-6">
-            <p className="type-label text-action-primary">Flagship project proof</p>
-            <h2 className="type-heading-section mt-4 text-text-primary">
-              Project nyata sebagai bukti cara kerja R&D dan engineering.
-            </h2>
-            <dl className="mt-7 border-b border-border-default">
-              {evidence.map((item) => (
-                <div
-                  key={item.label}
-                  className="grid gap-2 border-t border-border-default py-4 sm:grid-cols-[7rem_1fr] sm:gap-5"
-                >
-                  <dt className="text-sm font-semibold text-text-secondary">
-                    {item.label}
-                  </dt>
-                  <dd className="text-sm leading-7 text-text-primary">{item.value}</dd>
-                </div>
-              ))}
-            </dl>
-            <BrandButton to="/projects" variant="quiet" className="mt-5 px-0">
-              Lihat project lainnya
-            </BrandButton>
-          </div>
-        </div>
-      </PageContainer>
-    </MarketingSection>
-  );
-}
-
-function PrimaryCapabilitiesSection() {
-  if (!researchCapability || !designCapability || !xeonProject) return null;
-
-  return (
-    <MarketingSection id="capabilities" tone="page" data-home-section="primary-capabilities">
-      <PageContainer>
-        <SectionHeader
-          title="Dua cara utama untuk mengubah ketidakpastian menjadi keputusan produk."
-          body="R&D menjelaskan pertanyaan yang perlu dijawab. Design & Prototyping membuat artefak yang dapat dinilai. Keduanya saling terhubung, tetapi tidak dipresentasikan sebagai layanan yang identik."
-          align="stacked"
-        />
-
-        <div className="grid border-y border-border-default lg:grid-cols-2">
-          <article className="py-8 lg:pr-12 lg:py-12">
-            <p className="type-label text-action-primary">Pertanyaan yang perlu dijawab</p>
-            <h3 className="type-heading-subsection mt-4 text-text-primary">
-              Apa yang perlu dibuktikan sebelum pengembangan dimulai?
-            </h3>
-            <p className="mt-5 max-w-[54ch] text-base leading-8 text-text-secondary">
-              {researchCapability.body}
-            </p>
-            <p className="mt-5 max-w-[54ch] border-l-2 border-action-primary pl-4 text-sm font-semibold leading-7 text-text-primary">
-              {researchCapability.role}
-            </p>
-            <ul className="mt-7 border-b border-border-default">
-              {researchCapability.outcomes.map((outcome) => (
-                <li
-                  key={outcome}
-                  className="border-t border-border-default py-3 text-sm font-semibold text-text-primary"
-                >
-                  {outcome}
-                </li>
-              ))}
-            </ul>
-            <BrandButton to="/capabilities" variant="quiet" className="mt-5 px-0">
-              Pelajari Research & Development
-            </BrandButton>
-          </article>
-
-          <article className="border-t border-border-default py-8 lg:border-l lg:border-t-0 lg:py-12 lg:pl-12">
-            <figure className="overflow-hidden rounded-feature border border-border-default bg-surface-muted">
-              <img
-                src={xeonProject.image}
-                alt={xeonProject.imageAlt}
-                width={xeonProject.imageWidth}
-                height={xeonProject.imageHeight}
-                loading="lazy"
-                decoding="async"
-                className="aspect-[16/10] h-full w-full object-contain"
-              />
-            </figure>
-            <p className="type-label mt-6 text-action-primary">Artefak yang dapat dievaluasi</p>
-            <h3 className="type-heading-subsection mt-4 text-text-primary">
-              {designCapability.title}
-            </h3>
-            <p className="mt-4 max-w-[54ch] text-base leading-8 text-text-secondary">
-              {designCapability.body}
-            </p>
-            <p className="mt-4 text-sm font-semibold leading-7 text-text-primary">
-              Output: {designCapability.output}
-            </p>
-            <BrandButton to="/capabilities" variant="quiet" className="mt-5 px-0">
-              Pelajari Design & Prototyping
-            </BrandButton>
-          </article>
-        </div>
-      </PageContainer>
-    </MarketingSection>
-  );
-}
-
-function TransformationProcessSection() {
-  return (
-    <MarketingSection
-      id="transformation-process"
-      tone="default"
-      className="bg-action-primary"
-      data-home-section="transformation-process"
-    >
-      <PageContainer>
-        <header className="max-w-3xl">
-          <h2 className="type-heading-section text-text-inverse">
-            Satu alur transformasi dari kebutuhan menuju output.
+    <section className="home-r4-section home-r4-orientation" aria-labelledby="home-r4-orientation-title">
+      <div className="home-r4-shell home-r4-orientation-grid">
+        <div>
+          <h2 id="home-r4-orientation-title" className="home-r4-heading home-r4-heading-large">
+            Mulai dari pertanyaan yang belum selesai atau kebutuhan yang sudah siap dibuat.
           </h2>
-          <p className="mt-5 max-w-[62ch] text-base leading-8 text-text-inverse md:text-lg">
-            Setiap tahap memperjelas bukti, keputusan, dan bentuk evaluasi yang
-            dibutuhkan sebelum pekerjaan bergerak lebih jauh.
+        </div>
+        <div className="home-r4-orientation-paths">
+          <article>
+            <h3>Partnership &amp; pengembangan</h3>
+            <p>
+              Untuk kebutuhan yang masih perlu diteliti, dirancang, diuji, atau
+              direalisasikan bersama tim Niuva.
+            </p>
+            <Link to="/contact">Mulai partnership <ArrowDownRight aria-hidden="true" /></Link>
+          </article>
+          <article>
+            <h3>Retail</h3>
+            <p>
+              Untuk kebutuhan cetak, produk siap, atau akses perangkat dengan
+              jalur konfigurasi yang lebih terstruktur.
+            </p>
+            <Link to="/retail">Jelajahi Retail <ArrowDownRight aria-hidden="true" /></Link>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProcessSection() {
+  return (
+    <section className="home-r4-section home-r4-process" aria-labelledby="home-r4-process-title">
+      <div className="home-r4-shell">
+        <header className="home-r4-process-heading">
+          <h2 id="home-r4-process-title" className="home-r4-heading">
+            Lima tahap untuk mengurangi asumsi sebelum keputusan tumbuh lebih mahal.
+          </h2>
+          <p>
+            Tahapnya tetap ringkas. Kedalaman riset, eksperimen, dan prototype
+            mengikuti pertanyaan yang benar-benar perlu dijawab.
           </p>
         </header>
-        <TransformationPath
-          items={HOME_TRANSFORMATION_STAGES}
-          tone="dark"
-          className="mt-10 md:mt-12"
-        />
-      </PageContainer>
-    </MarketingSection>
+        <ol className="home-r4-process-rail" aria-label="Alur pengembangan Niuva">
+          {processStages.map((stage) => (
+            <li key={stage.name}>
+              <span className="home-r4-process-dot" aria-hidden="true" />
+              <h3>{stage.name}</h3>
+              <p>{stage.body}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
   );
 }
 
-function SupportingCapabilitiesSection() {
+function ChaptersSection() {
   return (
-    <MarketingSection tone="muted" spacing="compact" data-home-section="supporting-capabilities">
-      <PageContainer>
-        <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-14">
-          <div>
-            <h2 className="type-heading-subsection text-text-primary">
-              Kapabilitas pendukung untuk konteks kolaborasi yang lebih luas.
-            </h2>
-            <p className="mt-4 max-w-[42ch] text-sm leading-7 text-text-secondary">
-              Perannya tetap sekunder terhadap R&D dan Design & Prototyping.
-            </p>
-          </div>
-          <div className="border-b border-border-default">
-            {supportingCapabilities.map((service) => (
-              <article
-                key={service.title}
-                className="grid gap-3 border-t border-border-default py-5 sm:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] sm:gap-7"
-              >
-                <h3 className="font-heading text-lg font-semibold text-text-primary">
-                  {service.title}
-                </h3>
-                <div>
-                  <p className="text-sm leading-7 text-text-secondary">{service.body}</p>
-                  <BrandButton to="/capabilities" variant="quiet" className="mt-2 px-0">
-                    Lihat detail capability
-                  </BrandButton>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </PageContainer>
-    </MarketingSection>
-  );
-}
+    <section className="home-r4-section home-r4-chapters" aria-labelledby="home-r4-chapters-title">
+      <div className="home-r4-shell">
+        <header className="home-r4-section-intro">
+          <h2 id="home-r4-chapters-title" className="home-r4-heading">
+            Memahami. Membentuk. Membuktikan.
+          </h2>
+          <p>
+            Satu cara kerja untuk membaca kebutuhan, membangun bentuk, dan
+            mengembalikan bukti ke dalam keputusan.
+          </p>
+        </header>
 
-function SelectedProjectsSection() {
-  return (
-    <MarketingSection id="projects" tone="default" data-home-section="selected-projects">
-      <PageContainer>
-        <SectionHeader
-          label="Selected project evidence"
-          title="Bukti lintas mobilitas dan produk interaktif."
-          body="Project ditampilkan sebagai konteks, tantangan, metode, dan output—bukan sebagai galeri visual atau klaim tanpa bukti."
-          align="stacked"
-        />
-        <div className="grid gap-14 lg:gap-20">
-          {selectedProjects.map((project, index) => (
-            <ProjectCaseStudyCard
-              key={project.title}
-              project={project}
-              index={index}
-              to="/projects"
-              ctaLabel="Baca konteks project"
-              variant="editorial"
-            />
+        <div className="home-r4-chapter-list">
+          {chapters.map((chapter) => (
+            <article className="home-r4-chapter" key={chapter.key}>
+              <div className="home-r4-chapter-copy">
+                <h3>{chapter.title}</h3>
+                <p>{chapter.body}</p>
+                <ul>
+                  {chapter.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+              <figure className="home-r4-chapter-figure">
+                <HomeChapterIllustration type={chapter.key} />
+                <figcaption>{chapter.caption}</figcaption>
+              </figure>
+            </article>
           ))}
         </div>
-        <div className="mt-10 flex flex-col gap-4 border-t border-border-default pt-7 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-2xl text-base leading-7 text-text-secondary">
-            Project index mempertahankan seluruh nama dan fakta project yang telah disetujui.
+      </div>
+    </section>
+  );
+}
+
+function ProjectsSection() {
+  return (
+    <section className="home-r4-section home-r4-projects" aria-labelledby="home-r4-projects-title">
+      <div className="home-r4-shell">
+        <header className="home-r4-projects-heading">
+          <h2 id="home-r4-projects-title" className="home-r4-heading">
+            Bentuk akhir hanya berarti ketika keputusan di belakangnya tetap terbaca.
+          </h2>
+          <Link to="/projects">Lihat seluruh Projects <ArrowUpRight aria-hidden="true" /></Link>
+        </header>
+        <div className="home-r4-project-list">
+          {projects.map((project, index) => (
+            <article className="home-r4-project" key={project.title}>
+              <figure>
+                <img
+                  src={project.image}
+                  alt={project.imageAlt}
+                  width={project.imageWidth}
+                  height={project.imageHeight}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : "auto"}
+                  decoding="async"
+                />
+                <figcaption>
+                  Dokumentasi project sebagaimana tercantum dalam Company Profile Niuva.
+                </figcaption>
+              </figure>
+              <div className="home-r4-project-copy">
+                <p>{project.category}</p>
+                <h3>{project.title}</h3>
+                <p>{project.body}</p>
+                <dl>
+                  <div><dt>Tantangan</dt><dd>{project.challenge}</dd></div>
+                  <div><dt>Output</dt><dd>{project.output}</dd></div>
+                </dl>
+                <Link to="/projects">Baca project <ArrowUpRight aria-hidden="true" /></Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ServicesSection() {
+  return (
+    <section className="home-r4-section home-r4-services" aria-labelledby="home-r4-services-title">
+      <div className="home-r4-shell home-r4-services-grid">
+        <header>
+          <h2 id="home-r4-services-title" className="home-r4-heading home-r4-heading-large">
+            Kemampuan yang mengikuti pertanyaan, bukan paket yang dipaksakan sejak awal.
+          </h2>
+          <p>
+            Empat layanan utama Niuva memiliki hierarki yang setara. Titik
+            masuknya mengikuti kebutuhan project.
           </p>
-          <BrandButton to="/projects" variant="secondary" className="shrink-0">
-            Lihat semua Projects
-          </BrandButton>
+        </header>
+        <div className="home-r4-service-list">
+          {services.map((service) => (
+            <article key={service.slug} data-service-rank="primary">
+              <div>
+                <h3>{service.title}</h3>
+                <p>{service.body}</p>
+              </div>
+              <Link to="/capabilities" aria-label={`Lihat layanan ${service.title}`}>
+                Lihat layanan <ArrowUpRight aria-hidden="true" />
+              </Link>
+            </article>
+          ))}
         </div>
-      </PageContainer>
-    </MarketingSection>
+      </div>
+    </section>
   );
 }
 
-function RetailDiscoverySection() {
+function RetailSection() {
   return (
-    <MarketingSection
-      id="retail-discovery"
-      tone="page"
-      spacing="compact"
-      dividerTop
-      data-home-section="retail-discovery"
-    >
-      <PageContainer>
-        <div
-          className="grid gap-6 border-y border-border-default py-7 md:grid-cols-[1fr_auto] md:items-center md:py-9"
-          data-testid="home-retail-discovery"
-        >
+    <section className="home-r4-section home-r4-retail" aria-labelledby="home-r4-retail-title">
+      <div className="home-r4-shell">
+        <header className="home-r4-retail-heading">
+          <h2 id="home-r4-retail-title" className="home-r4-heading home-r4-heading-large">
+            Ketika kebutuhannya sudah cukup jelas, mulai dari jalur yang sesuai.
+          </h2>
+          <p>
+            Retail tetap bagian dari satu Niuva, tetapi memiliki alur
+            konfigurasi, transaksi, dan tracking yang terpisah dari partnership.
+          </p>
+        </header>
+        <div className="home-r4-retail-doors">
+          <article>
+            <p>Custom 3D Print</p>
+            <h3>Konfigurasikan kebutuhan cetak.</h3>
+            <p>
+              Pilih spesifikasi, unggah file, dan lanjutkan ke checkout ketika
+              kombinasi dapat dihitung serta divalidasi otomatis.
+            </p>
+            <Link to="/retail">Jelajahi Custom 3D Print <ArrowUpRight aria-hidden="true" /></Link>
+          </article>
+          <article className="home-r4-retail-ready">
+            <p>Ready Products</p>
+            <h3>Temukan produk yang siap dipesan.</h3>
+            <p>
+              Keychain, miniatur, pajangan, merchandise, dan kategori produk
+              Niuva yang akan terus berkembang.
+            </p>
+            <Link to="/retail">Lihat Ready Products <ArrowUpRight aria-hidden="true" /></Link>
+          </article>
+        </div>
+        <div className="home-r4-retail-support">
           <div>
-            <p className="type-label text-text-secondary">Jalur sekunder · Retail discovery</p>
-            <h2 className="mt-3 font-heading text-2xl font-bold text-text-primary md:text-3xl">
-              Jelajahi produk terpublikasi tanpa checkout.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-text-secondary md:text-base">
-              Katalog Retail menampilkan pilihan produk, harga yang disetujui, dan status ketersediaan aman. Transaksi dan pembayaran belum diaktifkan.
+            <h3>Sewa &amp; Self Service</h3>
+            <p>
+              Akses workstation, printer, atau membership melalui jalur
+              reservasi yang tetap terpisah dari katalog produk.
             </p>
           </div>
-          <BrandButton to="/retail" variant="secondary">
+          <Link to="/retail">Pelajari jalurnya <ArrowUpRight aria-hidden="true" /></Link>
+        </div>
+        <p className="home-r4-retail-boundary">
+          Jumlah besar, material khusus, kapasitas yang belum pasti, atau harga
+          yang tidak dapat divalidasi otomatis dialihkan ke inquiry tanpa
+          membuat Order, reservasi, atau pembayaran.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function ContactSection() {
+  const { status, contact } = usePublicSettings();
+
+  return (
+    <section className="home-r4-section home-r4-contact" aria-labelledby="home-r4-contact-title">
+      <div className="home-r4-shell home-r4-contact-grid">
+        <div>
+          <h2 id="home-r4-contact-title" className="home-r4-heading home-r4-heading-large">
+            Bawa kebutuhan, batas, atau pertanyaan yang sedang Anda hadapi.
+          </h2>
+          <p>
+            Form inquiry mencatat brief agar Niuva Operations dapat
+            meninjaunya. WhatsApp tersedia sebagai pilihan lanjutan setelah
+            inquiry dikirim.
+          </p>
+          <PageLink to="/contact" className="home-r4-contact-action">
+            Buka halaman Kontak
+          </PageLink>
+        </div>
+        <aside aria-labelledby="home-r4-contact-details-title">
+          <h3 id="home-r4-contact-details-title">Saat Anda membuka halaman Kontak</h3>
+          <dl>
+            <div><dt>Ditinjau oleh</dt><dd>Niuva Operations</dd></div>
+            <div><dt>Waktu respons</dt><dd>Maksimal 1 hari kerja, Senin sampai Jumat, 09.00 sampai 17.00 WIB, hari libur dikecualikan.</dd></div>
+            <div><dt>Alur lanjutan</dt><dd>Inquiry dicatat lebih dahulu. WhatsApp tersedia sebagai pilihan setelah form dikirim.</dd></div>
+            {contact.email && <div><dt>Email</dt><dd>{contact.email}</dd></div>}
+          </dl>
+          {status === "loading" && (
+            <p className="home-r4-settings-note" role="status">Memuat detail kontak publik.</p>
+          )}
+          {status === "error" && (
+            <p className="home-r4-settings-note home-r4-settings-error" role="alert">
+              Detail terbaru belum dapat dimuat. Form Kontak tetap menjadi jalur yang aman.
+            </p>
+          )}
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function FaqSection() {
+  return (
+    <section className="home-r4-section home-r4-faq" aria-labelledby="home-r4-faq-title">
+      <div className="home-r4-shell home-r4-faq-grid">
+        <h2 id="home-r4-faq-title" className="home-r4-heading">Pertanyaan sebelum memulai.</h2>
+        <div className="home-r4-faq-list">
+          {faqItems.map((item) => (
+            <details key={item.question}>
+              <summary>
+                <span>{item.question}</span>
+                <Plus aria-hidden="true" />
+              </summary>
+              <p>{item.answer}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ClosingSection() {
+  return (
+    <section className="home-r4-closing" aria-labelledby="home-r4-closing-title">
+      <HomeFdmContour variant="dark" />
+      <div className="home-r4-shell home-r4-closing-inner">
+        <h2 id="home-r4-closing-title" className="home-r4-display home-r4-closing-title">
+          <span>Ide yang baik membutuhkan</span>
+          <em className="nds-expression">bukti yang dapat disentuh.</em>
+        </h2>
+        <p>
+          Mulai percakapan dengan Niuva, atau masuk ke Retail ketika
+          kebutuhannya siap dikonfigurasi.
+        </p>
+        <div className="home-r4-actions">
+          <PageLink to="/contact" variant="outline">Diskusikan project</PageLink>
+          <PageLink to="/retail" variant="link" className="home-r4-closing-link">
             Jelajahi Retail
-          </BrandButton>
+          </PageLink>
         </div>
-      </PageContainer>
-    </MarketingSection>
-  );
-}
-
-function WhyNiuvaSection() {
-  return (
-    <MarketingSection
-      id="why-niuva"
-      tone="default"
-      className="bg-action-primary"
-      data-home-section="why-niuva"
-    >
-      <PageContainer>
-        <div className="grid gap-10 xl:grid-cols-[0.78fr_1.22fr] xl:gap-14">
-          <div>
-            <h2 className="type-heading-section text-text-inverse">
-              Cukup strategis untuk bisnis, cukup teknis untuk eksekusi.
-            </h2>
-            <p className="mt-5 max-w-[44ch] text-base leading-8 text-text-inverse">
-              Niuva membantu organisasi membahas ide, risiko, bentuk produk, dan
-              langkah realisasi dalam bahasa yang dapat dipahami tim bisnis dan teknis.
-            </p>
-          </div>
-          <div className="border-b border-decoration-inverse-line">
-            {whyNiuva.map((item) => (
-              <article
-                key={item.title}
-                className="grid gap-2 border-t border-decoration-inverse-line py-5 sm:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] sm:gap-7"
-              >
-                <h3 className="font-heading text-lg font-semibold text-text-inverse">
-                  {item.title}
-                </h3>
-                <p className="text-sm leading-7 text-text-inverse">{item.body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </PageContainer>
-    </MarketingSection>
+      </div>
+    </section>
   );
 }
 
 export default function HomePage() {
-  const { contact } = usePublicSettings();
-
   return (
     <MarketingLayout>
-      <BrandPage revealSections={false}>
-        <PageHero
-          label="PT Niuva Inovasi Utama"
-          title="Mitra R&D untuk Produk Inovatif dan Prototyping."
-          body="Niuva membantu perusahaan, institusi, dan tim industri mengubah ide menjadi produk tervalidasi melalui riset, desain, engineering, prototyping, testing, dan implementasi."
-          primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
-          secondaryAction={
-            <BrandButton to="/projects" variant="secondary">
-              Lihat Projects
-            </BrandButton>
-          }
-          proofPanel={<HomeHeroArtifact />}
-          variant="home"
-          className="bg-surface-page"
-        />
-
-        <FlagshipProofSection />
-        <PrimaryCapabilitiesSection />
-        <TransformationProcessSection />
-        <SupportingCapabilitiesSection />
-        <SelectedProjectsSection />
-        <RetailDiscoverySection />
-        <WhyNiuvaSection />
-
-        <CTASection
-          variant="open"
-          eyebrow={null}
-          title="Diskusikan kebutuhan riset, desain, atau prototyping bersama Niuva."
-          body="Sampaikan konteks proyek, target hasil, batasan teknis, dan bentuk output yang dibutuhkan. Tim Niuva akan membantu menentukan titik mulai yang paling relevan."
-          primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
-          secondaryAction={
-            contact.whatsappHref ? (
-              <BrandButton href={contact.whatsappHref} variant="secondary">
-                Hubungi Niuva
-              </BrandButton>
-            ) : (
-              <BrandButton to="/contact" variant="secondary">
-                Hubungi Niuva
-              </BrandButton>
-            )
-          }
-          contactEmphasis="Jalur cepat untuk kebutuhan proyek, proposal, atau kolaborasi teknis."
-          whatsappHref={contact.whatsappHref}
-          email={contact.email}
-        />
-      </BrandPage>
+      <div className="home-r4 nds-public-surface" data-home-version="r4-production-pilot">
+        <HeroSection />
+        <OrientationSection />
+        <ProcessSection />
+        <ChaptersSection />
+        <ProjectsSection />
+        <ServicesSection />
+        <RetailSection />
+        <ContactSection />
+        <FaqSection />
+        <ClosingSection />
+      </div>
     </MarketingLayout>
   );
 }
