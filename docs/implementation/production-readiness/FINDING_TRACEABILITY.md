@@ -26,7 +26,7 @@ groups for current repository claims:
 | Transaction guard and idempotency consistency | `BE-002` and `DB-003` are `resolved_in_source`; `INT-009` remains partial across all command families despite Quote, Project Conversion, Work Order, and Retail 3.4A hardening |
 | Retail payment and fulfilment capability enforcement | The legacy bypass is closed and Retail 3.4A is hardened, but transaction/payment/fulfilment runtime capability remains deliberately inactive; `BE-003`/`INT-003` must not be read as provider activation |
 | Package/runtime reproducibility | `OPS-001`, `GOV-001`, `GOV-002`, and `GOV-005` are resolved in the repository contract through npm, Python 3.14.3, and hashed backend lock enforcement |
-| Dependency vulnerability and lifecycle risk | Backend audit reports zero known vulnerabilities; `SEC-012`/`GOV-003` remain open because the point-in-time frontend policy now reports `nanoid 3.3.17` under `GHSA-2v37-7h3g-55p8` |
+| Dependency vulnerability and lifecycle risk | Backend audit reports zero known vulnerabilities; the audited baseline reports `nanoid 3.3.17` under `GHSA-2v37-7h3g-55p8`, while PR #244 validates the `3.3.18` lock correction; `SEC-012`/`GOV-003` remain open on `main` until merge |
 | QA and release gates | `QA-001`, `QA-004`, and `QA-005` are resolved in repository workflows; external release/browser evidence and whole-tree threshold ownership remain partial or environment-blocked |
 | Governance, compatibility, and evidence provenance | `GOV-015` and backend `GOV-017` freshness are resolved; compatibility disposition, release/version ownership, and broader governance remain partial |
 

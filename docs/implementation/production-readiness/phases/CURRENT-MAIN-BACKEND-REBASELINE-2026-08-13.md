@@ -37,9 +37,11 @@ workflows, and historical findings only as provenance.
 | External smoke | Workflow requires an approved non-production HTTPS origin | No target was supplied; correctly remains environment-blocked |
 | Frontend production dependency policy | Failed current point-in-time audit on `nanoid 3.3.17` / `GHSA-2v37-7h3g-55p8` | Exact-SHA CI passed earlier the same day; advisory freshness changed after that run |
 
-The frontend advisory is a current dependency finding, not evidence that the
-backend lock regressed. It remains routed through `SEC-012` / `GOV-003` and
-must be remediated in a separate dependency branch.
+The frontend advisory is a baseline dependency finding, not evidence that the
+backend lock regressed. PR #244 subsequently refreshed the transitive lock to
+`nanoid 3.3.18`; the production dependency policy, all 409 frontend tests, and
+the production build pass on that PR head. `SEC-012` / `GOV-003` remain open
+for the audited `main` baseline until the correction is merged.
 
 ## 3. Merged backend delivery reconciliation
 
@@ -166,9 +168,10 @@ monitoring remain absent.
 - `partial/open P2`: `GOV-006` through `GOV-013`, plus `GOV-016`.
 
 The npm package manager, Python runtime, and hashed backend lock are now one CI
-contract. Backend dependency audit is clean at this timestamp. The new
-`nanoid` advisory keeps vulnerability governance open, while framework
-lifecycle, dependency separation, legal license review, module debt,
+contract. Backend dependency audit is clean at this timestamp. PR #244 carries
+a validated `nanoid 3.3.18` lock refresh for the newly published advisory;
+vulnerability governance remains open on the audited baseline until merge.
+Framework lifecycle, dependency separation, legal license review, module debt,
 documentation breadth, ownership, and release policy remain incomplete.
 
 ## 5. Current hard gates and next feature branches
