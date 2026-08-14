@@ -39,7 +39,7 @@ that no other finding exists.
 | 02 UI/UX/Accessibility | [layers/02-ui-ux-accessibility.md](layers/02-ui-ux-accessibility.md) | `UX` | `complete` | 86% | 42% | 78% | 0 | 5 | `c28684d` | 2026-07-28 | Provision seeded non-production E2E credentials, then re-run Admin role/viewport/accessibility journeys and assistive-technology checks |
 | 03 Backend/API/Business Logic | [current-main API/compatibility revalidation](../../implementation/production-readiness/phases/API-CONTRACT-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `BE` | `complete` | 100% | 74% | 98% repository / 0% external consumers | 0 | 2 | `15b759a` | 2026-08-14 | Add bounded whole-family OpenAPI models/security/error coverage; retain compatibility and inactive Retail/external gates |
 | 04 Database/Data Integrity | [current-main migration/data-integrity revalidation](../../implementation/production-readiness/phases/MIGRATION-DATA-INTEGRITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `DB` | `complete` | 100% | 58% | 96% repository / 0% production data | 0 | 9 | `15b759a` | 2026-08-14 | Keep 001/004/005/007 blocked; authorize per-migration isolated targets and representative reconciliation separately |
-| 05 Integration/Feature Parity | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#43-layer-05-disposition) | `INT` | `complete` | 100% | 68% | 90% | 0 | 3 | `15b759a` | 2026-08-13 | Preserve inactive Retail/provider scope; audit remaining Organization Portal, command parity, and external journeys |
+| 05 Integration/Feature Parity | [current-main commerce revalidation](../../implementation/production-readiness/phases/COMMERCE-LIFECYCLE-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `INT` | `complete` | 100% | 68% | 97% repository / 0% production | 0 | 3 | `15b759a` | 2026-08-14 | Preserve inactive Retail/payment/fulfilment scope; decide Organization Portal separately; obtain representative-data, external, and production evidence |
 | 06 Security/Auth/Privacy | [current-main auth/security revalidation](../../implementation/production-readiness/phases/AUTH-SECURITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `SEC` | `complete` | 100% | 49% | 96% | 1 | 4 | `15b759a` | 2026-08-14 | Preserve the exhaustive Admin-route negative RBAC gate; close NIV-001, DR-004 outage/proxy/retention operations, DR-005 MFA, key custody, migration, and deployed topology evidence separately |
 | 07 Testing/Quality Assurance | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#45-layer-07-disposition) | `QA` | `complete` | 100% | 72% | 91% | 0 | 2 | `15b759a` | 2026-08-13 | Add controlled external release evidence and decide whole-tree quality ownership/thresholds |
 | 08 DevOps/Deployment/Operations | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#46-layer-08-disposition) | `OPS` | `complete` | 100% | 48% | 91% | 0 | 9 | `15b759a` | 2026-08-13 | Obtain approved topology, artifact, migration, restore, rollback, network, provider, and ownership evidence |
@@ -114,6 +114,15 @@ documented `409` responses across 20 operation-identity commands. The focused
 suite passed 155 tests without skips. No route behavior, consumer, external
 service, or retirement state changed.
 
+The Layer 05 commerce feature revalidation covers Inquiry, Quote, Project
+Conversion, Work Order, and the inactive Retail 3.4A contract at the same
+runtime baseline. The focused matrix passed 161 tests with one explicit local
+real-replica-set skip. It confirms exact Quote-line/price/quantity integrity,
+transaction/version/concurrency controls, Work Order allocation/QC/shortage
+recovery, and deterministic Retail/payment lockdown. Organization Portal,
+historical reconciliation, active Retail/payment/fulfilment, representative
+data, external topology, and production evidence remain open.
+
 ## Current bounded frontend overlay
 
 Layer 01 now has a post-merge evidence overlay for PR #137 at
@@ -179,6 +188,22 @@ environment or tooling blockers; these are not treated as passes.
   date.
 
 ## Changelog
+
+### 2026-08-14 — Current-main commerce lifecycle revalidation
+
+- Revalidated Inquiry, Quote, Project Conversion, Work Order, and inactive
+  Retail 3.4A contracts against backend runtime `15b759a`.
+- Verified `161 passed, 1 skipped` across the focused lifecycle matrix and
+  `1032 passed, 15 skipped, 14 subtests passed` for the full hermetic backend;
+  expected-skip enforcement found zero unexpected skips. The focused skip is
+  the explicit local real-replica-set Work Order allocation gate.
+- Confirmed exact Quote-line identity, cumulative quantity cap, immutable
+  price/catalog snapshots, Project/Work Order transaction and concurrency
+  controls, QC/rework/shortage recovery, Retail fingerprint/history rules, and
+  named inactive Retail/manual-transfer routes.
+- Kept Layer 05 readiness at 68% while raising bounded repository confidence
+  to 97%; Organization Portal, historical data, active Retail/payment/
+  fulfilment, external, deployment, and production gates remain open.
 
 ### 2026-08-14 — Current-main auth, authorization, and privacy revalidation
 
