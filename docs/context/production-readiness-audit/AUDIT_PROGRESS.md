@@ -38,7 +38,7 @@ that no other finding exists.
 | 01 Frontend Engineering | [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | `FE` | `requires_revalidation` | 100% historical | 55% historical | 85% historical | 0 historical | 4 historical | `c28684d` | 2026-08-05 | Re-run the full Layer 01 checklist at a selected current release candidate; retain the bounded PR #137 overlay and resolve FE-ENV-001 |
 | 02 UI/UX/Accessibility | [layers/02-ui-ux-accessibility.md](layers/02-ui-ux-accessibility.md) | `UX` | `complete` | 86% | 42% | 78% | 0 | 5 | `c28684d` | 2026-07-28 | Provision seeded non-production E2E credentials, then re-run Admin role/viewport/accessibility journeys and assistive-technology checks |
 | 03 Backend/API/Business Logic | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#41-layer-03-disposition) | `BE` | `complete` | 100% | 74% | 92% | 0 | 2 | `15b759a` | 2026-08-13 | Close remaining API/compatibility breadth and retain inactive Retail/external evidence gates |
-| 04 Database/Data Integrity | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#42-layer-04-disposition) | `DB` | `complete` | 100% | 58% | 88% | 0 | 9 | `15b759a` | 2026-08-13 | Audit migrations and representative-data/restore evidence in a separately controlled feature |
+| 04 Database/Data Integrity | [current-main migration/data-integrity revalidation](../../implementation/production-readiness/phases/MIGRATION-DATA-INTEGRITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `DB` | `complete` | 100% | 58% | 96% repository / 0% production data | 0 | 9 | `15b759a` | 2026-08-14 | Keep 001/004/005/007 blocked; authorize per-migration isolated targets and representative reconciliation separately |
 | 05 Integration/Feature Parity | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#43-layer-05-disposition) | `INT` | `complete` | 100% | 68% | 90% | 0 | 3 | `15b759a` | 2026-08-13 | Preserve inactive Retail/provider scope; audit remaining Organization Portal, command parity, and external journeys |
 | 06 Security/Auth/Privacy | [current-main auth/security revalidation](../../implementation/production-readiness/phases/AUTH-SECURITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `SEC` | `complete` | 100% | 49% | 96% | 1 | 4 | `15b759a` | 2026-08-14 | Preserve the exhaustive Admin-route negative RBAC gate; close NIV-001, DR-004 outage/proxy/retention operations, DR-005 MFA, key custody, migration, and deployed topology evidence separately |
 | 07 Testing/Quality Assurance | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#45-layer-07-disposition) | `QA` | `complete` | 100% | 72% | 91% | 0 | 2 | `15b759a` | 2026-08-13 | Add controlled external release evidence and decide whole-tree quality ownership/thresholds |
@@ -96,6 +96,15 @@ This current-main audit is bounded repository/CI evidence. It does not claim his
 data reconciliation, Migration 006 execution, provider activation,
 production-storage validation, deployment, or go-live readiness. Historical
 finding IDs remain preserved even where their current source cause is resolved.
+
+The Layer 04 feature revalidation now inventories Migration 001–010 and the
+Quote-line, legacy Order/file, and notification historical boundaries at the
+same `15b759a` runtime baseline. It confirms that Migration 001, 004, 005, and
+007 are not execution candidates in their current form; Migration 006 real-
+account execution and all representative-data reconciliation remain
+unauthorized. The focused repository suite passed 229 tests with five explicit
+real-replica-set skips. No database target or historical record was read or
+changed.
 
 ## Current bounded frontend overlay
 
