@@ -73,14 +73,14 @@ specific defect. Its historical-data gate belongs to later PHASE-02/PHASE-07/
 PHASE-10 execution and must not be represented as unfinished automatic
 backfill work.
 
-## Retail Order contract feature register — 10 August 2026
+## Retail Order contract feature register — updated 13 August 2026
 
 This register records the bounded 3.4A source slice. It does not activate a
 Retail transaction capability or complete the broader Retail Order lifecycle.
 
 | Feature | Branch / baseline | Completed source scope | Verification | Important notes and exact next step | State |
 | --- | --- | --- | --- | --- | --- |
-| 3.4A Retail Order contract hardening | `feat/backend-retail-order-contract-hardening`; PR #226; merged as `72018ce` | Strict authenticated cart intent, stable semantic request fingerprint, exact replay/conflict classification, published/active authoritative catalog snapshot, bounded quantity/currency/fulfilment rules, provider-neutral lifecycle commands, append-only audit history, and compare-and-swap concurrency precondition. | Focused Retail matrix `68 passed`; current-main full backend `1031 passed, 15 skipped, 14 subtests passed`; expected-skip enforcement found zero unexpected skips; focused MyPy, critical Flake8, changed-file Black/isort, and PR CI passed. | Keep create/transition routes and checkout/payment capabilities inactive. Atomic persistence, reservation, payment/provider, migration, deployment, readiness, and go-live require separate tasks and authority. | `merged_evidence`; 3.4A only, not runtime activation. |
+| 3.4A Retail Order contract hardening | `feat/backend-retail-order-contract-hardening`; PR #226; merged as `72018ce` | Strict authenticated cart intent, stable semantic request fingerprint, exact replay/conflict classification, published/active authoritative catalog snapshot, bounded quantity/currency/fulfilment rules, provider-neutral lifecycle commands, append-only audit history, and compare-and-swap concurrency precondition. | Focused Retail matrix `68 passed`; current-main revalidation at baseline `15b759a02b036330f1dd0913611043e0fd6134e2` on 13 August 2026: full backend `1031 passed, 15 skipped, 14 subtests passed`; expected-skip enforcement found zero unexpected skips; focused MyPy, critical Flake8, changed-file Black/isort, and PR CI passed. | Keep create/transition routes and checkout/payment capabilities inactive. Atomic persistence, reservation, payment/provider, migration, deployment, readiness, and go-live require separate tasks and authority. | `merged_evidence`; 3.4A only, not runtime activation. |
 
 ## B2B operational lifecycle feature register — updated 13 August 2026
 
