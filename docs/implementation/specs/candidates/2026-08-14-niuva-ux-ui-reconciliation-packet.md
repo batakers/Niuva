@@ -315,6 +315,12 @@ They require a one-hop HTTP `308` at the selected delivery boundary when that
 infrastructure is separately authorized. Application navigation alone does
 not prove the HTTP contract.
 
+At the recorded repository baseline, current application source and tests
+still encode `/services -> /capabilities` and `/portfolio -> /projects`. That
+is implementation drift against `DEC-UX-003`, not an approved intermediate
+redirect chain; reconciling it remains a separately authorized exact-file
+route task.
+
 The candidate project-detail prefixes `/proyek/:slug` and
 `/en/projects/:slug` remain reserved. A project card must not assume a detail
 route, sitemap entry, CMS URL, canonical tag, analytics identity, or active
@@ -466,6 +472,11 @@ state. Candidate timing follows the NDS grammar:
 | `motion-standard` | `180ms` | Disclosure, feedback, compact enter/exit |
 | `motion-deliberate` | `280ms` | Bounded panel/modal or page-state change |
 | `motion-ambient` | `12–18s` | FDM contour cycle only |
+
+The `12–18s` value is the allowed NDS ambient range from `DESIGN.md`, not an
+instruction to vary the runtime token. At the recorded repository baseline,
+the implementation token remains exactly `15s`, which is within that range.
+Any runtime change remains separately gated.
 
 CSS is the default. Bounded existing GSAP use may support a Public signature
 choreography only after exact-file review. Canvas/RAF remains progressive
