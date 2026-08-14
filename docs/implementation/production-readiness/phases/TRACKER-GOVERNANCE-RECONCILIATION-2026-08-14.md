@@ -2,9 +2,9 @@
 
 <!-- markdownlint-disable MD013 -->
 
-**Date:** 14 August 2026 (Asia/Jakarta)  
-**Branch:** `audit/backend-tracker-governance-reconciliation`  
-**Stack base:** PR #251 head `cd3e0f6`  
+**Date:** 14 August 2026 (Asia/Jakarta)
+**Branch:** `audit/backend-tracker-governance-reconciliation`
+**Stack base:** PR #251 head `c018b22` (merged as `d628676`)
 **Scored backend baseline:** `origin/main` at `15b759a`
 
 ## Objective
@@ -17,9 +17,10 @@ packet changes documentation only and does not recalculate a layer score.
 
 - PR #226 is confirmed `MERGED` as `72018ce`; both primary trackers retain
   that state and the inactive Retail runtime boundary.
-- PRs #244–#251 are confirmed open, clean, mergeable, and sequentially
-  stacked at the time of reconciliation. Their evidence is an overlay and is
-  not part of the scored `origin/main` baseline.
+- PRs #244–#251 were confirmed clean, mergeable, and sequentially stacked at
+  the time of the initial reconciliation. Their evidence is an overlay and is
+  not part of the scored `origin/main` baseline; the reviewed PRs have since
+  merged through #251 (`d628676`).
 - Evidence state is now recorded across four independent dimensions:
   `source_complete`, `verified_locally`, `environment_blocked`, and
   `production_ready`.
@@ -31,7 +32,9 @@ packet changes documentation only and does not recalculate a layer score.
 
 ## Verification
 
-- GitHub PR state inspected for #226 and #244–#251.
+- GitHub PR state was inspected for #226 and #244–#251 during the initial
+  reconciliation; the subsequent corrective heads and merge commits are
+  recorded in the current-main overlay.
 - Tracker links and status vocabulary checked against the current stack.
 - `git diff --check` and repository Markdown/link checks, where available,
   are the required verification for this documentation-only change.

@@ -113,18 +113,18 @@ Project Conversion, Work Order, and inactive Retail Order contracts.
 | 4.4 Work Order lifecycle | #220 / `56ae75a` | `source_complete` | `verified_locally` | `environment_blocked` for deployed worker/production evidence | `production_ready: no` |
 | 3.4A Retail Order contract hardening | #226 / `72018ce` (`MERGED`) | `source_complete` for the inactive provider-neutral contract | `verified_locally` | `environment_blocked` for persistence, reservation, payment, fulfilment, migration, and deployment | `production_ready: no` |
 
-### Open current-main audit overlay (not rescored)
+### Current-main audit overlay (merged, not rescored)
 
 | PR | Scope / head | Repository evidence | Environment | Production |
 | ---: | --- | --- | --- | --- |
-| #244 | Backend Layer 03–10 rebaseline / `ea964d8` | Open, clean audit candidate; scores explicitly bound to runtime `15b759a` | `environment_blocked` where recorded per layer | `production_ready: no` |
-| #245 | Auth/security / `f9c4921` | `source_complete` for the bounded audit gate; `verified_locally` | `environment_blocked` for MFA, migration, key/retention operations, topology, and independent verification | `production_ready: no` |
-| #246 | Migration/data integrity / `a51af37` | Repository audit `verified_locally`; execution candidates remain gated | `environment_blocked` for representative data, backup/restore, apply, and rollback rehearsal | `production_ready: no` |
-| #247 | API/compatibility / `747f3d6` | Inventory and focused contracts `verified_locally`; whole-API schemas remain partial | `environment_blocked` for deployed consumers and retirement evidence | `production_ready: no` |
-| #248 | Commerce lifecycle / `24b7221` | Inactive bounded contracts `verified_locally` | `environment_blocked` for historical data, active Retail/payment/fulfilment, and deployment | `production_ready: no` |
-| #249 | File/storage / `9073d36` | Active-development boundary `source_complete` and `verified_locally` | `environment_blocked` for provider, custody, backup/restore, and multi-instance evidence | `production_ready: no` |
-| #250 | Quality evidence / `c53f06d` | Hermetic/transaction gates `verified_locally` and in exact-head CI | `environment_blocked` for external/Admin and production-like evidence | `production_ready: no` |
-| #251 | Runtime reliability / `cd3e0f6` | Readiness/worker/observability contract `verified_locally` and in exact-head CI | `environment_blocked` for telemetry destination, SLO/on-call, capacity, topology, and controlled deployed drills | `production_ready: no` |
+| #244 | Backend Layer 03–10 rebaseline / `5bf8186` | Merged as `36bf16c`; scores explicitly bound to runtime `15b759a` | `environment_blocked` where recorded per layer | `production_ready: no` |
+| #245 | Auth/security / `f9c4921` | Merged as `6be11ae`; `source_complete` for the bounded audit gate; `verified_locally` | `environment_blocked` for MFA, migration, key/retention operations, topology, and independent verification | `production_ready: no` |
+| #246 | Migration/data integrity / `a51af37` | Merged as `0165591`; repository audit `verified_locally`; execution candidates remain gated | `environment_blocked` for representative data, backup/restore, apply, and rollback rehearsal | `production_ready: no` |
+| #247 | API/compatibility / `747f3d6` | Merged as `3df062a`; inventory and focused contracts `verified_locally`; whole-API schemas remain partial | `environment_blocked` for deployed consumers and retirement evidence | `production_ready: no` |
+| #248 | Commerce lifecycle / `80b668e` | Merged as `bcdcfd3`; inactive bounded contracts `verified_locally` | `environment_blocked` for historical data, active Retail/payment/fulfilment, and deployment | `production_ready: no` |
+| #249 | File/storage / `9073d36` | Merged as `59aa1a0`; active-development boundary `source_complete` and `verified_locally` | `environment_blocked` for provider, custody, backup/restore, and multi-instance evidence | `production_ready: no` |
+| #250 | Quality evidence / `0fe2b0d` | Merged as `7a21232`; hermetic/transaction gates `verified_locally` and in exact-head CI | `environment_blocked` for external/Admin and production-like evidence | `production_ready: no` |
+| #251 | Runtime reliability / `c018b22` | Merged as `d628676`; readiness/worker/observability contract `verified_locally` and in exact-head CI | `environment_blocked` for telemetry destination, SLO/on-call, capacity, topology, and controlled deployed drills | `production_ready: no` |
 
 This current-main audit is bounded repository/CI evidence. It does not claim historical
 data reconciliation, Migration 006 execution, provider activation,
