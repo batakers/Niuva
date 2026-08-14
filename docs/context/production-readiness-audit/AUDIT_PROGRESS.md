@@ -37,7 +37,7 @@ that no other finding exists.
 | ----- | -------- | -------------- | ------------ | ---------------: | --------------: | ---------: | -: | -: | ------------ | ------------ | --------- |
 | 01 Frontend Engineering | [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | `FE` | `requires_revalidation` | 100% historical | 55% historical | 85% historical | 0 historical | 4 historical | `c28684d` | 2026-08-05 | Re-run the full Layer 01 checklist at a selected current release candidate; retain the bounded PR #137 overlay and resolve FE-ENV-001 |
 | 02 UI/UX/Accessibility | [layers/02-ui-ux-accessibility.md](layers/02-ui-ux-accessibility.md) | `UX` | `complete` | 86% | 42% | 78% | 0 | 5 | `c28684d` | 2026-07-28 | Provision seeded non-production E2E credentials, then re-run Admin role/viewport/accessibility journeys and assistive-technology checks |
-| 03 Backend/API/Business Logic | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#41-layer-03-disposition) | `BE` | `complete` | 100% | 74% | 92% | 0 | 2 | `15b759a` | 2026-08-13 | Close remaining API/compatibility breadth and retain inactive Retail/external evidence gates |
+| 03 Backend/API/Business Logic | [current-main API/compatibility revalidation](../../implementation/production-readiness/phases/API-CONTRACT-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `BE` | `complete` | 100% | 74% | 98% repository / 0% external consumers | 0 | 2 | `15b759a` | 2026-08-14 | Add bounded whole-family OpenAPI models/security/error coverage; retain compatibility and inactive Retail/external gates |
 | 04 Database/Data Integrity | [current-main migration/data-integrity revalidation](../../implementation/production-readiness/phases/MIGRATION-DATA-INTEGRITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `DB` | `complete` | 100% | 58% | 96% repository / 0% production data | 0 | 9 | `15b759a` | 2026-08-14 | Keep 001/004/005/007 blocked; authorize per-migration isolated targets and representative reconciliation separately |
 | 05 Integration/Feature Parity | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#43-layer-05-disposition) | `INT` | `complete` | 100% | 68% | 90% | 0 | 3 | `15b759a` | 2026-08-13 | Preserve inactive Retail/provider scope; audit remaining Organization Portal, command parity, and external journeys |
 | 06 Security/Auth/Privacy | [current-main auth/security revalidation](../../implementation/production-readiness/phases/AUTH-SECURITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `SEC` | `complete` | 100% | 49% | 96% | 1 | 4 | `15b759a` | 2026-08-14 | Preserve the exhaustive Admin-route negative RBAC gate; close NIV-001, DR-004 outage/proxy/retention operations, DR-005 MFA, key custody, migration, and deployed topology evidence separately |
@@ -105,6 +105,14 @@ account execution and all representative-data reconciliation remain
 unauthorized. The focused repository suite passed 229 tests with five explicit
 real-replica-set skips. No database target or historical record was read or
 changed.
+
+The Layer 03 API feature revalidation now inventories all 133 paths/152
+operations and rechecks the 21 compatibility endpoints at the same `15b759a`
+runtime baseline. It records 23 success schemas, 26 operations with the shared
+error envelope, no generated security scheme/operation metadata, and only five
+documented `409` responses across 20 operation-identity commands. The focused
+suite passed 155 tests without skips. No route behavior, consumer, external
+service, or retirement state changed.
 
 ## Current bounded frontend overlay
 

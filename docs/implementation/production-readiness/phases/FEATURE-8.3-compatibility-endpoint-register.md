@@ -31,6 +31,25 @@ alias emits a runtime `Deprecation: true` header and a `Sunset` date of 15 July
 not evidence that consumer, communication, monitoring, rollback, or retirement
 requirements were completed, so the route must not be removed from this plan.
 
+### Current-main revalidation overlay — 14 August 2026
+
+The [current-main API contract audit](API-CONTRACT-CURRENT-MAIN-REVALIDATION-2026-08-14.md)
+revalidated all entries against runtime baseline `15b759a`. OpenAPI now exposes
+152 operations; all 21 compatibility operations remain registered and the
+original source-state inventory remains applicable.
+
+The audit's recommended primary governance grouping is 14 `retained`, zero
+`redirect`, two `deprecated`, and five `retirement_blocked` tombstones. It
+recommends deprecating, but not redirecting or removing, legacy Contact write;
+historical `GET /api/admin/contacts` should remain retained and read-only. Any
+runtime metadata or source change still requires its own task.
+
+Only four compatibility operations publish a success schema, seven publish
+the shared error envelope, none publishes OpenAPI security, and none sets
+OpenAPI `deprecated: true`. All five tombstones still advertise automatic
+`200`; only payment-proof additionally declares its actual `410`. These are
+current contract gaps, not retirement authority.
+
 ## Method and scope boundary
 
 The inventory was reconciled from:
