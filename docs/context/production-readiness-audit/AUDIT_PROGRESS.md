@@ -123,6 +123,16 @@ recovery, and deterministic Retail/payment lockdown. Organization Portal,
 historical reconciliation, active Retail/payment/fulfilment, representative
 data, external topology, and production evidence remain open.
 
+The cross-layer file/security/storage revalidation now covers object ID and
+logical-path authorization, ownership/domain permissions, signature/MIME,
+bounded size/streaming, inactive/publication denial, local metadata/object
+compensation, and historical payment-proof custody at the same runtime
+baseline. The focused matrix passed 101 tests and the full hermetic backend
+passed 1032 tests with 15 expected skips and 14 subtests. The source finding is
+resolved only for active development scope; provider, scanner, retention/quota,
+RPO/RTO, owners, backup/restore, multi-instance consistency, historical object
+reconciliation, deployment, and production activation remain at 0% evidence.
+
 ## Current bounded frontend overlay
 
 Layer 01 now has a post-merge evidence overlay for PR #137 at
@@ -188,6 +198,22 @@ environment or tooling blockers; these are not treated as passes.
   date.
 
 ## Changelog
+
+### 2026-08-14 — Current-main file security and storage revalidation
+
+- Revalidated opaque-object and compatibility-path authorization, exact owner
+  and domain permission, MIME/signature, bounded upload/download, inactive and
+  unpublished denial, and local metadata/object compensation against backend
+  runtime `15b759a`.
+- Verified `101 passed` in the focused file/storage/privacy selection and
+  `1032 passed, 15 skipped, 14 subtests passed` in the full hermetic backend;
+  expected-skip enforcement found zero unexpected skips.
+- Confirmed new payment-proof upload/verification remains disabled and legacy
+  projections withhold raw proof paths; historical proof/object inventory,
+  backup, reconciliation, retention, and operational custody remain open.
+- Preserved the development-only disposition. No layer readiness score was
+  raised because production provider/scanner/retention/quota/RPO-RTO/owner,
+  multi-instance, deployment, and production evidence remain absent.
 
 ### 2026-08-14 — Current-main commerce lifecycle revalidation
 
