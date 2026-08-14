@@ -45,9 +45,10 @@ tracker edits remain ordered behind PR #249. The audited runtime baseline is
 
 ## Rollback and handover
 
-The collector correction is reversible by normal commit revert. It changes
-only report input selection, not application runtime. Thresholds, broad cleanup,
-dependency migration, external execution, provider/deployment, and production
-decisions require separate authority.
+The collector correction and bounded transaction retry backoff are reversible
+by normal commit revert. The retry correction changes contention timing only;
+it does not authorize transaction lifecycle, dependency, migration, external
+execution, provider/deployment, or production decisions. Thresholds and broad
+cleanup remain separately gated.
 
 <!-- markdownlint-enable MD013 -->

@@ -19,8 +19,9 @@ or go-live evidence.
 | Supported runtime | CPython `3.14.3` from `.python-version` and all backend test workflows |
 | Source change | Quality collector now scans only tracked backend Python files and records input/output SHA-256 values; pytest evidence rejects a JUnit document containing zero test cases; retry-safe transactions use a bounded 10/20 ms backoff so a winning concurrent transaction can commit before the loser retries |
 
-The source change does not alter application runtime, tests selected by CI,
-dependency versions, or static-quality thresholds.
+The source change includes a bounded transaction retry backoff for the
+reproduced contention flake. It does not alter transaction lifecycle semantics,
+tests selected by CI, dependency versions, or static-quality thresholds.
 
 ## Test-profile audit
 
