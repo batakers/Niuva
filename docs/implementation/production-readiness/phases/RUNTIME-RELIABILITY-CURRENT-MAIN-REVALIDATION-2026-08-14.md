@@ -2,9 +2,9 @@
 
 <!-- markdownlint-disable MD013 -->
 
-**Audit date:** 14 August 2026 (Asia/Jakarta)  
-**Runtime baseline:** `origin/main` at `15b759a`  
-**Audit branch:** `audit/backend-runtime-reliability`, stacked behind PR #250  
+**Audit date:** 14 August 2026 (Asia/Jakarta)
+**Runtime baseline:** `origin/main` at `15b759a`
+**Audit branch:** `audit/backend-runtime-reliability`, stacked behind PR #250
 **Authority:** `DEC-READY-01`, `DEC-OBS-001`, `DEC-DATA-003`, `ADR-001`, `ADR-002`, and `ADR-005`
 
 ## Outcome
