@@ -152,9 +152,15 @@ def test_transient_callback_is_not_retried_by_default():
     assert session.starts == 1
 
 
-def test_explicit_retry_safe_callback_retries_transient_transaction():
+def test_explicit_retry_safe_callback_retries_transient_transaction(monkeypatch):
     session = FakeSession()
     calls = 0
+    delays = []
+
+    async def record_sleep(delay):
+        delays.append(delay)
+
+    monkeypatch.setattr("transaction_execution.asyncio.sleep", record_sleep)
 
     async def run():
         executor = TransactionExecutor(
@@ -178,6 +184,7 @@ def test_explicit_retry_safe_callback_retries_transient_transaction():
 
     assert asyncio.run(run()) == "retried-safely"
     assert calls == 2
+    assert delays == [0.01]
     assert session.starts == 2
     assert session.aborts == 1
     assert session.commits == 1

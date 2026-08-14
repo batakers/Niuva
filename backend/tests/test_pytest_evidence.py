@@ -61,3 +61,31 @@ def test_cli_writes_sha_and_runtime_evidence(tmp_path: Path):
     assert evidence["result"] == {"errors": 0, "failures": 0, "skipped": 0, "tests": 1}
     assert len(evidence["git_sha"]) == 40
     assert len(evidence["junit_sha256"]) == 64
+
+
+def test_cli_rejects_empty_junit_evidence(tmp_path: Path):
+    junit = tmp_path / "empty.xml"
+    output = tmp_path / "evidence.json"
+    ET.ElementTree(report()).write(junit)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/verify_pytest_evidence.py",
+            "--junit",
+            str(junit),
+            "--profile",
+            "hermetic",
+            "--command",
+            "python -m pytest -q backend/tests",
+            "--output",
+            str(output),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert "no executed tests" in result.stderr
+    assert json.loads(output.read_text())["result"]["tests"] == 0
