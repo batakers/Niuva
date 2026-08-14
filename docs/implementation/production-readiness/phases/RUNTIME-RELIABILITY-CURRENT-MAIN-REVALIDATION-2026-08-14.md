@@ -59,7 +59,7 @@ connection:
 ## Commands and results
 
 ```text
-/Users/macintoshhd/NIUVA/Niuva/backend/.venv/bin/python -m pytest -n 0 -q \
+python -m pytest -n 0 -q \
   backend/tests/test_health.py \
   backend/tests/test_readiness_health.py \
   backend/tests/test_schema_readiness.py \
