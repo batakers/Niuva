@@ -73,16 +73,16 @@ specific defect. Its historical-data gate belongs to later PHASE-02/PHASE-07/
 PHASE-10 execution and must not be represented as unfinished automatic
 backfill work.
 
-## Retail Order contract feature register — 10 August 2026
+## Retail Order contract feature register — updated 13 August 2026
 
 This register records the bounded 3.4A source slice. It does not activate a
 Retail transaction capability or complete the broader Retail Order lifecycle.
 
 | Feature | Branch / baseline | Completed source scope | Verification | Important notes and exact next step | State |
 | --- | --- | --- | --- | --- | --- |
-| 3.4A Retail Order contract hardening | `feat/backend-retail-order-contract-hardening`; PR #226; baseline `954837c` | Strict authenticated cart intent, stable semantic request fingerprint, exact replay/conflict classification, published/active authoritative catalog snapshot, bounded quantity/currency/fulfilment rules, provider-neutral lifecycle commands, append-only audit history, and compare-and-swap concurrency precondition. | Focused Retail matrix `68 passed`; full backend `1031 passed, 15 skipped, 14 subtests passed`; expected-skip enforcement found zero unexpected skips; focused MyPy, critical Flake8, changed-file Black/isort, and diff check passed. | Require PR CI/review. Keep create/transition routes and checkout/payment capabilities inactive. Atomic persistence, reservation, payment/provider, migration, deployment, readiness, and go-live require separate tasks and authority. | `source_candidate_pr_open`; 3.4A only. |
+| 3.4A Retail Order contract hardening | `feat/backend-retail-order-contract-hardening`; PR #226; merged as `72018ce` | Strict authenticated cart intent, stable semantic request fingerprint, exact replay/conflict classification, published/active authoritative catalog snapshot, bounded quantity/currency/fulfilment rules, provider-neutral lifecycle commands, append-only audit history, and compare-and-swap concurrency precondition. | Focused Retail matrix `68 passed`; current-main revalidation at baseline `15b759a02b036330f1dd0913611043e0fd6134e2` on 13 August 2026: full backend `1031 passed, 15 skipped, 14 subtests passed`; expected-skip enforcement found zero unexpected skips; focused MyPy, critical Flake8, changed-file Black/isort, and PR CI passed. | Keep create/transition routes and checkout/payment capabilities inactive. Atomic persistence, reservation, payment/provider, migration, deployment, readiness, and go-live require separate tasks and authority. | `merged_evidence`; 3.4A only, not runtime activation. |
 
-## B2B operational lifecycle feature register — 31 July 2026
+## B2B operational lifecycle feature register — updated 13 August 2026
 
 This register distinguishes bounded internal Admin lifecycle hardening from
 the still-open customer Organization Portal decision under DR-010.
@@ -90,6 +90,8 @@ the still-open customer Organization Portal decision under DR-010.
 | Feature | Branch / baseline | Completed source scope | Verification | Important notes and exact next step | State |
 | --- | --- | --- | --- | --- | --- |
 | 4.2 Quote lifecycle | `fix/backend-quote-lifecycle`; PR #100; implementation `571cdb9`; baseline `735674b` | Existing lifecycle, immutable revisions, exact sent/accepted version, acceptance evidence, permissions, and history revalidated. Quote transition, revision, and acceptance events now bind each `operation_id` to an exact canonical command fingerprint; materially different reuse fails `409 operation_id_conflict`. Quote routes declare the shared HTTP error envelope, including fail-closed `503` for revision creation. | Focused backend `66 passed, 1 skipped`; full backend `667 passed, 14 skipped, 14 subtests passed`; real local replica-set B2B integration `5 passed`; adjacent frontend `2` suites and `29` tests passed; critical lint and diff check passed. PR #100 backend/frontend/transaction-tests/secret-scan CI passed; CodeRabbit was rate-limited without substantive review. | Obtain independent review on PR #100. Quote-to-Project remains Feature 4.3; customer Quote access/self-acceptance remains blocked by DR-010; no historical migration, deployment, production-readiness, or go-live is implied. | `source_complete_review_pending`; bounded candidate only. |
+| 4.3 Project Conversion | `audit/backend-b2b-project-conversion`; PR #219; merged as `61d4e79` | Exact accepted Quote/version, customer/organization binding, command fingerprint, stale-write, transaction, and customer-safe conversion controls. | Focused Project lifecycle tests and required PR quality/transaction checks passed; current-main full backend passed `1031` tests with `15` expected skips and `14` subtests. | Organization Portal, historical reconciliation, migration, deployment, and production evidence remain separate. | `merged_evidence`; bounded source scope. |
+| 4.4 Work Order lifecycle | `feat/backend-work-order-lifecycle`; PR #220; merged as `56ae75a` | Allocation, production, QC, shortage recovery, completion, permission, exact Quote-line reference, and concurrency controls. | Focused Work Order/allocation tests and required PR quality/transaction checks passed; current-main full backend passed `1031` tests with `15` expected skips and `14` subtests. | External operational workflow, representative data, migration, deployment, and production evidence remain separate. | `merged_evidence`; bounded source scope. |
 
 ## Content publication lifecycle feature register — 1 August 2026
 

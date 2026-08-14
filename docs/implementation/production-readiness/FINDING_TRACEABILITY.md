@@ -8,6 +8,33 @@ Audit source baseline: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
 Normalization source: Layer 01-11 audit registers, especially
 `layers/11-production-readiness-summary.md`.
 
+## Current-main backend overlay — 13 August 2026
+
+Layers 03 through 10 were rebaselined at
+`15b759a02b036330f1dd0913611043e0fd6134e2`. The complete evidence,
+per-layer scores, current source-ID dispositions, verification, and limits are
+recorded in
+[`CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md`](phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md).
+
+This overlay supersedes the historical status of the following canonical
+groups for current repository claims:
+
+| Canonical group | Current-main disposition |
+| --- | --- |
+| Freshness and release-candidate baseline | Backend Layers 03–10 are current at `15b759a`; Layer 11 cross-layer synthesis and explicit release-candidate selection remain open |
+| Legacy order integrity and customer-note privacy | `BE-005` and `SEC-009` are `resolved_in_source` for the retained read-only compatibility scope; historical reconciliation and production evidence remain gated |
+| Transaction guard and idempotency consistency | `BE-002` and `DB-003` are `resolved_in_source`; `INT-009` remains partial across all command families despite Quote, Project Conversion, Work Order, and Retail 3.4A hardening |
+| Retail payment and fulfilment capability enforcement | The legacy bypass is closed and Retail 3.4A is hardened, but transaction/payment/fulfilment runtime capability remains deliberately inactive; `BE-003`/`INT-003` must not be read as provider activation |
+| Package/runtime reproducibility | `OPS-001`, `GOV-001`, `GOV-002`, and `GOV-005` are resolved in the repository contract through npm, Python 3.14.3, and hashed backend lock enforcement |
+| Dependency vulnerability and lifecycle risk | Backend audit reports zero known vulnerabilities; the audited baseline reports `nanoid 3.3.17` under `GHSA-2v37-7h3g-55p8`, while PR #244 validates the `3.3.18` lock correction; `SEC-012`/`GOV-003` remain open on `main` until merge |
+| QA and release gates | `QA-001`, `QA-004`, and `QA-005` are resolved in repository workflows; external release/browser evidence and whole-tree threshold ownership remain partial or environment-blocked |
+| Governance, compatibility, and evidence provenance | `GOV-015` and backend `GOV-017` freshness are resolved; compatibility disposition, release/version ownership, and broader governance remain partial |
+
+All other canonical rows below remain historical normalization and finding
+provenance unless this overlay or a later exact-SHA packet explicitly changes
+their disposition. No current source resolution is production or go-live
+acceptance.
+
 ## PHASE-00A selected-candidate revalidation map
 
 **Decision record:** Faiz selected
