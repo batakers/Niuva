@@ -111,7 +111,7 @@ rehearsal remain separate controlled-data tasks.
   `INT-011`, `INT-012`, `INT-013`.
 
 PRs #219 and #220 close important B2B conversion and Work Order seams. PR
-PR #226 hardens the provider-neutral Retail contract, but the complete Retail
+#226 hardens the provider-neutral Retail contract, but the complete Retail
 journey and B2B Organization Portal remain outside active capability.
 
 ### 4.4 Layer 06 disposition

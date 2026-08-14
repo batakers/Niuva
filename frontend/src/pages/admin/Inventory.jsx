@@ -58,6 +58,8 @@ const STOCK_STATUS_TONE = {
   habis: "destructive",
 };
 
+const ALL_SUBJECT_TYPES = "all";
+
 function StockStatusLabel({ status }) {
   const { t } = useI18n();
   if (!status) return null;
@@ -187,16 +189,19 @@ export default function Inventory() {
         <div className="grid gap-4 p-4 md:grid-cols-2">
           <FormField label={t("inventory.subjectType")}>
             <Select
-              value={filters.subject_type}
+              value={filters.subject_type || ALL_SUBJECT_TYPES}
               onValueChange={(value) =>
-                setFilters((current) => ({ ...current, subject_type: value }))
+                setFilters((current) => ({
+                  ...current,
+                  subject_type: value === ALL_SUBJECT_TYPES ? "" : value,
+                }))
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder={t("common.all")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{t("common.all")}</SelectItem>
+                <SelectItem value={ALL_SUBJECT_TYPES}>{t("common.all")}</SelectItem>
                 <SelectItem value="material">{t("inventory.subjectMaterial")}</SelectItem>
                 <SelectItem value="product_variant">{t("inventory.subjectProductVariant")}</SelectItem>
               </SelectContent>
