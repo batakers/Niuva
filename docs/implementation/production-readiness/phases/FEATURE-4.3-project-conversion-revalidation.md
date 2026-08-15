@@ -1,6 +1,6 @@
 # Feature 4.3 — Project conversion revalidation
 
-Status: source candidate on `audit/backend-b2b-project-conversion`.
+Status: source complete; PR #219 merged as `61d4e79`.
 
 ## Objective
 

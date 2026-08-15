@@ -1,6 +1,6 @@
 # Feature 4.4 — Work Order lifecycle
 
-Status: source candidate on `feat/backend-work-order-lifecycle`.
+Status: source complete; PR #220 merged as `56ae75a`.
 
 ## Objective
 

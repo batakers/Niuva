@@ -12,18 +12,20 @@ From the repository root, using the pinned CI Python runtime:
 python scripts/collect_backend_quality_baseline.py --output-dir backend-quality-baseline
 ```
 
-The collector records the exact commands, Python/platform metadata, Git SHA,
-raw tool output, exit codes, and finding counts in `summary.json`. It always
+The collector selects the deterministic set returned by `git ls-files` for
+tracked `backend/**/*.py` files. It records that manifest, its SHA-256, the
+exact commands, Python/platform metadata, Git SHA, raw tool output, output
+SHA-256 values, exit codes, and finding counts in `summary.json`. It always
 returns success after writing evidence: this is intentional while the legacy
 baseline is being triaged, and must not be confused with a passed quality gate.
 
 The report-only commands are:
 
 ```text
-python -m flake8 backend --exclude backend/.venv,__pycache__
-python -m mypy backend --explicit-package-bases --ignore-missing-imports --check-untyped-defs --show-error-codes
-python -m black --check backend
-python -m isort --profile black --check-only backend
+python -m flake8 <tracked backend Python manifest>
+python -m mypy --explicit-package-bases --ignore-missing-imports --check-untyped-defs --show-error-codes <tracked backend Python manifest>
+python -m black --check <tracked backend Python manifest>
+python -m isort --profile black --check-only <tracked backend Python manifest>
 ```
 
 The current CI-required policy remains the critical Flake8 codes `E9,F63,F7,F82`,
@@ -59,3 +61,18 @@ Legacy findings stay visible in artifacts and are triaged by directory and
 owner. A future change may ratchet only after owners record a threshold,
 baseline refresh date, and an explicit exception/expiry process in this phase
 document and the main tracker.
+
+## Current-main collector correction — 14 August 2026
+
+The original recursive `backend` arguments allowed an untracked local backup
+virtual environment to enter the Flake8 walk. The reproduced local directory
+contained 5,015 Python files and occupied 322 MB. The corrected tracked-file
+manifest contains 169 Python files, excludes every untracked/generated tree by
+construction, and completed all four tools in 3.68 seconds. Its Flake8 output
+was 168 KiB rather than the reported approximately 13 MiB polluted output.
+
+At stacked audit base `9073d36`, the corrected report recorded Flake8 `2,046`,
+Mypy `288`, Black `47`, and isort `51` findings. These remain report-only debt;
+the required critical/scoped CI checks remain blocking. See the
+[current-main quality evidence packet](QUALITY-EVIDENCE-CURRENT-MAIN-REVALIDATION-2026-08-14.md)
+for checksums, profile results, and limitations.

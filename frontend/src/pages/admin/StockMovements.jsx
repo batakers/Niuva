@@ -43,6 +43,8 @@ const FILTER_KEYS = [
   "date",
 ];
 
+const ALL_SUBJECT_TYPES = "all";
+
 export default function StockMovements() {
   const { t } = useI18n();
   const [rows, setRows] = useState([]);
@@ -147,14 +149,18 @@ export default function StockMovements() {
           {/* Subject Type */}
           <FormField label={t("inventory.subjectType")}>
             <Select
-              value={filters.subject_type}
-              onValueChange={updateFilter("subject_type")}
+              value={filters.subject_type || ALL_SUBJECT_TYPES}
+              onValueChange={(value) =>
+                updateFilter("subject_type")(
+                  value === ALL_SUBJECT_TYPES ? "" : value
+                )
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder={t("common.all")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{t("common.all")}</SelectItem>
+                <SelectItem value={ALL_SUBJECT_TYPES}>{t("common.all")}</SelectItem>
                 <SelectItem value="material">{t("inventory.subjectMaterial")}</SelectItem>
                 <SelectItem value="product_variant">{t("inventory.subjectProductVariant")}</SelectItem>
               </SelectContent>

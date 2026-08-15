@@ -2,8 +2,9 @@
 
 Status: Context Only — Audit Evidence and Progress Tracker — Not Implementation Authority
 
-Baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
-Last updated: 2026-08-07 (UTC+07:00)
+Historical full-audit baseline SHA: `c28684d34c03505ea2f862f32c6edc24b1d7bfba`
+Current backend Layer 03–10 baseline SHA: `15b759a02b036330f1dd0913611043e0fd6134e2`
+Last updated: 2026-08-14 (UTC+07:00)
 
 ## Status semantics
 
@@ -25,25 +26,47 @@ Status values:
 - `complete`
 - `requires_revalidation`
 
+Evidence maturity is tracked independently from audit completion and layer
+scores:
+
+- `source_complete`: the bounded source contract exists at the named SHA.
+- `verified_locally`: named local or isolated-CI checks passed at the recorded
+  SHA; this is not deployed evidence.
+- `environment_blocked`: required shared, staging, provider, topology,
+  representative-data, or operational evidence is unavailable or
+  unauthorized.
+- `production_ready`: an explicit production-candidate decision backed by all
+  required environment, migration, recovery, security, and ownership evidence.
+
+These dimensions are not a progression shortcut. In particular,
+`source_complete` plus `verified_locally` can coexist with
+`environment_blocked` and `production_ready: no`.
+
 Readiness remains `—` until a layer has enough reviewed evidence to support a
-score. P0 and P1 values count recorded findings, not proof that no other
-finding exists.
+score. P0 and P1 values count current unresolved source IDs at the row's
+baseline; rows labelled historical retain historical counts. Neither is proof
+that no other finding exists.
 
 ## Layer tracker
 
 | Layer | Document | Finding Prefix | Audit Status | Audit Completion | Readiness Score | Confidence | P0 | P1 | Baseline SHA | Last Updated | Next Step |
 | ----- | -------- | -------------- | ------------ | ---------------: | --------------: | ---------: | -: | -: | ------------ | ------------ | --------- |
-| 01 Frontend Engineering | [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | `FE` | `requires_revalidation` | 100% historical | 55% historical | 85% historical | 0 | 4 historical | `c28684d` | 2026-08-05 | Re-run the full Layer 01 checklist at a selected current release candidate; retain the bounded PR #137 overlay and resolve FE-ENV-001 |
+| 01 Frontend Engineering | [layers/01-frontend-engineering.md](layers/01-frontend-engineering.md) | `FE` | `requires_revalidation` | 100% historical | 55% historical | 85% historical | 0 historical | 4 historical | `c28684d` | 2026-08-05 | Re-run the full Layer 01 checklist at a selected current release candidate; retain the bounded PR #137 overlay and resolve FE-ENV-001 |
 | 02 UI/UX/Accessibility | [layers/02-ui-ux-accessibility.md](layers/02-ui-ux-accessibility.md) | `UX` | `complete` | 86% | 42% | 78% | 0 | 5 | `c28684d` | 2026-07-28 | Provision seeded non-production E2E credentials, then re-run Admin role/viewport/accessibility journeys and assistive-technology checks |
-| 03 Backend/API/Business Logic | [layers/03-backend-api-business-logic.md](layers/03-backend-api-business-logic.md) | `BE` | `requires_revalidation` | 100% historical | 32% historical | 84% historical | 0 | 9 historical | `c28684d` | 2026-08-07 | Rebaseline after PRs #211, #212, #215 and #216; historical-data and production evidence remain gated |
-| 04 Database/Data Integrity | [layers/04-database-data-integrity.md](layers/04-database-data-integrity.md) | `DB` | `requires_revalidation` | 94% historical | 44% historical | 78% historical | 0 | 13 historical | `c28684d` | 2026-08-07 | Revalidate Quote-line and transaction findings at `f21373a`; retain isolated-data, restore and migration gates |
-| 05 Integration/Feature Parity | [layers/05-integration-feature-parity.md](layers/05-integration-feature-parity.md) | `INT` | `requires_revalidation` | 92% historical | 38% historical | 82% historical | 0 | 10 historical | `c28684d` | 2026-08-07 | Revalidate B2B/customer-safe route coverage after PRs #211–#212 and #216; authenticated E2E remains open |
-| 06 Security/Auth/Privacy | [layers/06-security-auth-privacy.md](layers/06-security-auth-privacy.md) | `SEC` | `requires_revalidation` | 92% historical | 25% historical | 86% historical | 1 historical | 10 historical | `c28684d` | 2026-08-07 | Revalidate RBAC/file/customer projection evidence after PRs #211–#214; Migration 006 and production evidence remain gated |
-| 07 Testing/Quality Assurance | [layers/07-testing-quality-assurance.md](layers/07-testing-quality-assurance.md) | `QA` | `requires_revalidation` | 95% historical | 48% historical | 68% historical | 0 | 3 historical | `c28684d` | 2026-08-07 | Rebaseline test counts and quality signals from merged PRs #208 and #210; external production-like evidence remains open |
-| 08 DevOps/Deployment/Operations | [layers/08-devops-deployment-operations.md](layers/08-devops-deployment-operations.md) | `OPS` | `complete` | 92% | 29% | 86% | 0 | 10 | `c28684d` | 2026-07-28 | Obtain approved non-production staging-like artifact/backup/restore/smoke/rollback evidence; resolve OPS-001 through OPS-012 |
-| 09 Reliability/Performance/Observability | [layers/09-reliability-performance-observability.md](layers/09-reliability-performance-observability.md) | `SRE` | `complete` | 100% | 43% | 71% | 0 | 4 | `c28684d` | 2026-07-28 | Obtain owner decisions and production-like evidence, then remediate SRE-001 through SRE-010 in bounded phases |
-| 10 Dependencies/Maintainability/Governance | [layers/10-dependencies-maintainability-governance.md](layers/10-dependencies-maintainability-governance.md) | `GOV` | `requires_revalidation` | 100% historical | 38% historical | 81% historical | 0 | 6 historical | `c28684d` | 2026-08-07 | Revalidate GOV findings against the merged dependency lock and report-only full quality baseline from PRs #209–#210 |
+| 03 Backend/API/Business Logic | [current-main API/compatibility revalidation](../../implementation/production-readiness/phases/API-CONTRACT-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `BE` | `complete` | 100% | 74% | 98% repository / 0% external consumers | 0 | 2 | `15b759a` | 2026-08-14 | Add bounded whole-family OpenAPI models/security/error coverage; retain compatibility and inactive Retail/external gates |
+| 04 Database/Data Integrity | [current-main migration/data-integrity revalidation](../../implementation/production-readiness/phases/MIGRATION-DATA-INTEGRITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `DB` | `complete` | 100% | 58% | 96% repository / 0% production data | 0 | 9 | `15b759a` | 2026-08-14 | Keep 001/004/005/007 blocked; authorize per-migration isolated targets and representative reconciliation separately |
+| 05 Integration/Feature Parity | [current-main commerce revalidation](../../implementation/production-readiness/phases/COMMERCE-LIFECYCLE-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `INT` | `complete` | 100% | 68% | 97% repository / 0% production | 0 | 3 | `15b759a` | 2026-08-14 | Preserve inactive Retail/payment/fulfilment scope; decide Organization Portal separately; obtain representative-data, external, and production evidence |
+| 06 Security/Auth/Privacy | [current-main auth/security revalidation](../../implementation/production-readiness/phases/AUTH-SECURITY-CURRENT-MAIN-REVALIDATION-2026-08-14.md) | `SEC` | `complete` | 100% | 49% | 96% | 1 | 4 | `15b759a` | 2026-08-14 | Preserve the exhaustive Admin-route negative RBAC gate; close NIV-001, DR-004 outage/proxy/retention operations, DR-005 MFA, key custody, migration, and deployed topology evidence separately |
+| 07 Testing/Quality Assurance | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#45-layer-07-disposition) | `QA` | `complete` | 100% | 72% | 91% | 0 | 2 | `15b759a` | 2026-08-13 | Add controlled external release evidence and decide whole-tree quality ownership/thresholds |
+| 08 DevOps/Deployment/Operations | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#46-layer-08-disposition) | `OPS` | `complete` | 100% | 48% | 91% | 0 | 9 | `15b759a` | 2026-08-13 | Obtain approved topology, artifact, migration, restore, rollback, network, provider, and ownership evidence |
+| 09 Reliability/Performance/Observability | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#47-layer-09-disposition) | `SRE` | `complete` | 100% | 66% | 88% | 0 | 1 | `15b759a` | 2026-08-13 | Prove production telemetry/SLO, timeout, query/load, capacity, and frontend-monitoring behavior |
+| 10 Dependencies/Maintainability/Governance | [current-main rebaseline](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md#48-layer-10-disposition) | `GOV` | `complete` | 100% | 62% | 92% | 0 | 3 | `15b759a` | 2026-08-13 | Merge the validated PR #244 `nanoid` correction and assign lifecycle, quality-debt, and release governance ownership |
 | 11 Production-Readiness Summary | [layers/11-production-readiness-summary.md](layers/11-production-readiness-summary.md) | `SUM` | `requires_revalidation` | 100% historical | 38% historical | 67% historical | 1 historical | 74 historical | `c28684d` | 2026-08-07 | Select `f21373a` or a later approved release candidate and perform a new cross-layer synthesis |
+
+Every numeric Layer 03–10 score above applies only to `15b759a`. The open
+audit stack #244–#251 is recorded below as a non-scoring overlay. No score,
+finding count, completion percentage, or production-readiness conclusion is
+carried to a later SHA without a new layer revalidation and synthesis.
 
 Layer 11 reports Production Environment / Go-Live Readiness separately at
 15%. Its verdict is `NOT PRODUCTION READY` and its strict final label is
@@ -63,29 +86,86 @@ recorded above.
 
 ## Current backend delivery reconciliation
 
-`origin/main` at `f21373a3b5aa3b8ed22b7b178b4800b9d16ce381` contains the
-nine independently reviewed backend deliveries from PRs #208 through #216.
-PRs #208–#210 were integrated sequentially; PRs #211–#216 were then rebased on
-that merged test/dependency/quality baseline. Every PR was merged only after
-backend, frontend, secret-scan and applicable real transaction checks passed.
+The complete current-main Layer 03–10 rebaseline is recorded in
+[`CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md`](../../implementation/production-readiness/phases/CURRENT-MAIN-BACKEND-REBASELINE-2026-08-13.md).
+It supersedes the historical scores for those layers without deleting their
+finding provenance. Layers 01, 02, and 11 were not rescored by that backend
+feature, so no new overall production-readiness percentage is inferred.
 
-| Scope | PR | Merge SHA | Current result |
-| --- | ---: | --- | --- |
-| 10.1 Backend test completeness | #208 | `d0f39ff` | Hermetic, expected-skip, transaction and external evidence gates merged |
-| 10.2 Dependency reproducibility | #209 | `11cb7bd` | Hashed lock, Python 3.14.3 runtime, audit and license evidence merged |
-| 10.3 Lint/type-check baseline | #210 | `e7d57db` | Required scoped gates plus report-only full-tree artifact merged |
-| 2.2 Customer-safe B2B projection | #211 | `ab5b108` | Allowlist regression coverage merged |
-| 2.3 Legacy order compatibility | #212 | `cd425e8` | Read-only customer/internal projection coverage merged |
-| 2.4 File authorization/security | #213 | `9c851f6` | Fail-closed scope and safe media coverage merged |
-| 2.1 Granular RBAC | #214 | `d3cea50` | Permission governance revalidated; Migration 006 remains gated |
-| 3.1 Shared transaction executor | #215 | `ca862e4` | Startup rejection telemetry and retry behavior revalidated |
-| 3.2 Quote-line identity | #216 | `f21373a` | Immutable quantity/price/line-total invariants revalidated |
+Current `origin/main` at `15b759a02b036330f1dd0913611043e0fd6134e2`
+contains the twelve reconciled backend deliveries listed below. PRs #208–#210
+established the test/dependency/quality baseline; PRs #211–#216 revalidated
+security and integrity boundaries; PRs #219, #220, and #226 added the bounded
+Project Conversion, Work Order, and inactive Retail Order contracts.
 
-This overlay is bounded repository/CI evidence. It does not claim historical
+| Scope | PR / merge SHA | Source | Local/isolated verification | Environment | Production |
+| --- | --- | --- | --- | --- | --- |
+| 10.1 Backend test completeness | #208 / `d0f39ff` | `source_complete` | `verified_locally` and in required CI | `environment_blocked` for approved external/Admin and production-like evidence | `production_ready: no` |
+| 10.2 Dependency reproducibility | #209 / `11cb7bd` | `source_complete` | `verified_locally` and in required CI | `environment_blocked` for release artifact/legal lifecycle disposition | `production_ready: no` |
+| 10.3 Lint/type-check baseline | #210 / `e7d57db` | `source_complete` for scoped gates; full-tree policy remains report-only | `verified_locally` and in required CI | `environment_blocked` for final threshold/waiver ownership | `production_ready: no` |
+| 2.2 Customer-safe B2B projection | #211 / `ab5b108` | `source_complete` | `verified_locally` | `environment_blocked` for deployed consumer evidence | `production_ready: no` |
+| 2.3 Legacy order compatibility | #212 / `cd425e8` | `source_complete` | `verified_locally` | `environment_blocked` for historical reconciliation/custody | `production_ready: no` |
+| 2.4 File authorization/security | #213 / `9c851f6` | `source_complete` for active development scope | `verified_locally` | `environment_blocked` for provider/scanner/storage operations | `production_ready: no` |
+| 2.1 Granular RBAC | #214 / `d3cea50` | `source_complete` | `verified_locally` | `environment_blocked` for Migration 006 real-account application | `production_ready: no` |
+| 3.1 Shared transaction executor | #215 / `ca862e4` | `source_complete` | `verified_locally` and on isolated replica-set CI | `environment_blocked` for production topology | `production_ready: no` |
+| 3.2 Quote-line identity | #216 / `f21373a` | `source_complete` | `verified_locally` | `environment_blocked` for historical reconciliation | `production_ready: no` |
+| 4.3 Project Conversion | #219 / `61d4e79` | `source_complete` | `verified_locally` | `environment_blocked` for deployed Organization Portal/production evidence | `production_ready: no` |
+| 4.4 Work Order lifecycle | #220 / `56ae75a` | `source_complete` | `verified_locally` | `environment_blocked` for deployed worker/production evidence | `production_ready: no` |
+| 3.4A Retail Order contract hardening | #226 / `72018ce` (`MERGED`) | `source_complete` for the inactive provider-neutral contract | `verified_locally` | `environment_blocked` for persistence, reservation, payment, fulfilment, migration, and deployment | `production_ready: no` |
+
+### Current-main audit overlay (merged, not rescored)
+
+| PR | Scope / head | Repository evidence | Environment | Production |
+| ---: | --- | --- | --- | --- |
+| #244 | Backend Layer 03–10 rebaseline / `5bf8186` | Merged as `36bf16c`; scores explicitly bound to runtime `15b759a` | `environment_blocked` where recorded per layer | `production_ready: no` |
+| #245 | Auth/security / `f9c4921` | Merged as `6be11ae`; `source_complete` for the bounded audit gate; `verified_locally` | `environment_blocked` for MFA, migration, key/retention operations, topology, and independent verification | `production_ready: no` |
+| #246 | Migration/data integrity / `a51af37` | Merged as `0165591`; repository audit `verified_locally`; execution candidates remain gated | `environment_blocked` for representative data, backup/restore, apply, and rollback rehearsal | `production_ready: no` |
+| #247 | API/compatibility / `747f3d6` | Merged as `3df062a`; inventory and focused contracts `verified_locally`; whole-API schemas remain partial | `environment_blocked` for deployed consumers and retirement evidence | `production_ready: no` |
+| #248 | Commerce lifecycle / `80b668e` | Merged as `bcdcfd3`; inactive bounded contracts `verified_locally` | `environment_blocked` for historical data, active Retail/payment/fulfilment, and deployment | `production_ready: no` |
+| #249 | File/storage / `9073d36` | Merged as `59aa1a0`; active-development boundary `source_complete` and `verified_locally` | `environment_blocked` for provider, custody, backup/restore, and multi-instance evidence | `production_ready: no` |
+| #250 | Quality evidence / `0fe2b0d` | Merged as `7a21232`; hermetic/transaction gates `verified_locally` and in exact-head CI | `environment_blocked` for external/Admin and production-like evidence | `production_ready: no` |
+| #251 | Runtime reliability / `c018b22` | Merged as `d628676`; readiness/worker/observability contract `verified_locally` and in exact-head CI | `environment_blocked` for telemetry destination, SLO/on-call, capacity, topology, and controlled deployed drills | `production_ready: no` |
+
+This current-main audit is bounded repository/CI evidence. It does not claim historical
 data reconciliation, Migration 006 execution, provider activation,
 production-storage validation, deployment, or go-live readiness. Historical
-layer scores and finding counts remain unchanged until a full re-audit is
-performed on a selected release candidate.
+finding IDs remain preserved even where their current source cause is resolved.
+
+The Layer 04 feature revalidation now inventories Migration 001–010 and the
+Quote-line, legacy Order/file, and notification historical boundaries at the
+same `15b759a` runtime baseline. It confirms that Migration 001, 004, 005, and
+007 are not execution candidates in their current form; Migration 006 real-
+account execution and all representative-data reconciliation remain
+unauthorized. The focused repository suite passed 229 tests with five explicit
+real-replica-set skips. No database target or historical record was read or
+changed.
+
+The Layer 03 API feature revalidation now inventories all 133 paths/152
+operations and rechecks the 21 compatibility endpoints at the same `15b759a`
+runtime baseline. It records 23 success schemas, 26 operations with the shared
+error envelope, no generated security scheme/operation metadata, and only five
+documented `409` responses across 20 operation-identity commands. The focused
+suite passed 155 tests without skips. No route behavior, consumer, external
+service, or retirement state changed.
+
+The Layer 05 commerce feature revalidation covers Inquiry, Quote, Project
+Conversion, Work Order, and the inactive Retail 3.4A contract at the same
+runtime baseline. The focused matrix passed 161 tests with one explicit local
+real-replica-set skip. It confirms exact Quote-line/price/quantity integrity,
+transaction/version/concurrency controls, Work Order allocation/QC/shortage
+recovery, and deterministic Retail/payment lockdown. Organization Portal,
+historical reconciliation, active Retail/payment/fulfilment, representative
+data, external topology, and production evidence remain open.
+
+The cross-layer file/security/storage revalidation now covers object ID and
+logical-path authorization, ownership/domain permissions, signature/MIME,
+bounded size/streaming, inactive/publication denial, local metadata/object
+compensation, and historical payment-proof custody at the same runtime
+baseline. The focused matrix passed 101 tests and the full hermetic backend
+passed 1032 tests with 15 expected skips and 14 subtests. The source finding is
+resolved only for active development scope; provider, scanner, retention/quota,
+RPO/RTO, owners, backup/restore, multi-instance consistency, historical object
+reconciliation, deployment, and production activation remain at 0% evidence.
 
 ## Current bounded frontend overlay
 
@@ -152,6 +232,84 @@ environment or tooling blockers; these are not treated as passes.
   date.
 
 ## Changelog
+
+### 2026-08-14 — Tracker and governance evidence-state reconciliation
+
+- Confirmed PR #226 is merged as `72018ce` and retained the inactive Retail
+  runtime boundary.
+- Confirmed the open #244–#251 audit chain is clean and sequentially stacked;
+  recorded it as an overlay rather than changing the `15b759a` layer scores.
+- Split repository source completion, local/isolated verification,
+  environment blockers, and production readiness into independent states.
+- Changed documentation only; no backend suite rerun, source mutation,
+  environment action, deployment, or production-readiness decision occurred.
+
+### 2026-08-14 — Current-main file security and storage revalidation
+
+- Revalidated opaque-object and compatibility-path authorization, exact owner
+  and domain permission, MIME/signature, bounded upload/download, inactive and
+  unpublished denial, and local metadata/object compensation against backend
+  runtime `15b759a`.
+- Verified `101 passed` in the focused file/storage/privacy selection and
+  `1032 passed, 15 skipped, 14 subtests passed` in the full hermetic backend;
+  expected-skip enforcement found zero unexpected skips.
+- Confirmed new payment-proof upload/verification remains disabled and legacy
+  projections withhold raw proof paths; historical proof/object inventory,
+  backup, reconciliation, retention, and operational custody remain open.
+- Preserved the development-only disposition. No layer readiness score was
+  raised because production provider/scanner/retention/quota/RPO-RTO/owner,
+  multi-instance, deployment, and production evidence remain absent.
+
+### 2026-08-14 — Current-main commerce lifecycle revalidation
+
+- Revalidated Inquiry, Quote, Project Conversion, Work Order, and inactive
+  Retail 3.4A contracts against backend runtime `15b759a`.
+- Verified `161 passed, 1 skipped` across the focused lifecycle matrix and
+  `1032 passed, 15 skipped, 14 subtests passed` for the full hermetic backend;
+  expected-skip enforcement found zero unexpected skips. The focused skip is
+  the explicit local real-replica-set Work Order allocation gate.
+- Confirmed exact Quote-line identity, cumulative quantity cap, immutable
+  price/catalog snapshots, Project/Work Order transaction and concurrency
+  controls, QC/rework/shortage recovery, Retail fingerprint/history rules, and
+  named inactive Retail/manual-transfer routes.
+- Kept Layer 05 readiness at 68% while raising bounded repository confidence
+  to 97%; Organization Portal, historical data, active Retail/payment/
+  fulfilment, external, deployment, and production gates remain open.
+
+### 2026-08-14 — Current-main auth, authorization, and privacy revalidation
+
+- Revalidated Customer/Admin sessions, recovery and revocation, password and
+  Argon2 boundaries, bootstrap preservation, MongoDB-backed limiting,
+  authentication-event privacy/retention, granular RBAC, and customer-safe
+  projection against backend runtime `15b759a`.
+- Added an effective-route regression gate covering all `112` Admin routes and
+  every canonical role lacking each route's declared permission.
+- Verified `252 passed, 4 skipped` focused auth/security checks; `72 passed`
+  for the new RBAC/projection selection; and the full hermetic result of `1032
+  passed, 15` expected skips, and `14` subtests with zero unexpected skips.
+- Kept Layer 06 readiness at `49%` while raising confidence to `96%`; repository
+  evidence improved, but NIV-001, DR-004, DR-005, key/retention operations,
+  migration, external topology, independent verification, and go-live gates
+  remain open.
+
+### 2026-08-13 — Current-main backend Layer 03–10 rebaseline
+
+- Revalidated Layers 03–10 against fetched `origin/main` at `15b759a` and
+  recorded current per-layer completion, readiness, confidence, and P0/P1
+  counts.
+- Verified `1031 passed`, `15` expected skips, `14` subtests, zero unexpected
+  skips, clean backend dependency audit, complete backend license metadata,
+  dependency compatibility, compile, critical Flake8, and scoped MyPy.
+- Reconciled PR #219 Project Conversion, PR #220 Work Order lifecycle, and PR
+  #226 Retail Order contract hardening as merged evidence.
+- Recorded the point-in-time `nanoid 3.3.17` advisory as an open
+  `SEC-012`/`GOV-003` dependency finding after exact-SHA CI had passed earlier
+  in the day.
+- Refreshed the PR #244 transitive lock to `nanoid 3.3.18`; the production
+  dependency policy, all 409 frontend tests, and the production build pass on
+  the corrected branch head while the audited `main` baseline remains unchanged.
+- Preserved migration, historical-data, MFA, NIV-001, provider, staging,
+  deployment, production-readiness, and go-live gates.
 
 ### 2026-08-07 — Backend PR #208–#216 post-merge reconciliation
 

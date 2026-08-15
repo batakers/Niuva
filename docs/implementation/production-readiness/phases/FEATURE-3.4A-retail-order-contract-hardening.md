@@ -1,6 +1,6 @@
 # Feature 3.4A — Retail Order Contract Hardening
 
-Status: **bounded source candidate; PR #226 open**
+Status: **bounded source complete; PR #226 merged as `72018ce`**
 
 Branch: `feat/backend-retail-order-contract-hardening`
 
@@ -58,7 +58,7 @@ contracts and retains inactive persistence/runtime boundaries.
 
 ## Remaining gates
 
-- Pull-request CI and review on PR #226 must pass before merge.
+- Pull-request CI and review passed before PR #226 was merged.
 - Atomic operation-key persistence, active order creation, reservation,
   payment attempt, webhook, refund, reconciliation, provider integration,
   migrations, deployment, readiness, and go-live remain separately gated.
