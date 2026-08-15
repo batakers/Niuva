@@ -36,7 +36,7 @@ jest.mock("sonner", () => ({
 
 const { toast } = require("sonner");
 
-function fillBrief({ message } = {}) {
+function fillBrief({ message, consent = true } = {}) {
   fireEvent.change(screen.getByTestId("contact-name"), {
     target: { value: "Ayu Pratiwi" },
   });
@@ -60,6 +60,9 @@ function fillBrief({ message } = {}) {
       value: message ?? "  Membutuhkan validasi desain dan prototype fungsional.  ",
     },
   });
+  if (consent) {
+    fireEvent.click(screen.getByTestId("contact-consent"));
+  }
 }
 
 function submitForm() {
@@ -105,6 +108,7 @@ describe("Public project intake", () => {
       need: "Design & Prototyping",
       timeline: "1-3 bulan",
       brief: "Membutuhkan validasi desain dan prototype fungsional.",
+      consent: true,
     });
   });
 
@@ -157,7 +161,26 @@ describe("Public project intake", () => {
     expect(api.post).not.toHaveBeenCalled();
   });
 
-  test("surfaces a throttled submission to the visitor", async () => {
+  test("holds an unconsented brief at the checkbox instead of sending it", async () => {
+    renderPage();
+    fillBrief({ consent: false });
+    submitForm();
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test("sends the granted consent with the inquiry", async () => {
+    renderPage();
+    fillBrief();
+    submitForm();
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    const [, payload] = api.post.mock.calls[0];
+    expect(payload.consent).toBe(true);
+  });
+
+  test("keeps a dependency failure on screen instead of in a toast", async () => {
     api.post.mockRejectedValue({
       response: { status: 429, data: { detail: "Terlalu banyak permintaan." } },
     });
@@ -166,8 +189,45 @@ describe("Public project intake", () => {
     fillBrief();
     submitForm();
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Terlalu banyak permintaan.")
+    const failure = await screen.findByTestId("contact-dependency-error");
+    expect(failure).toHaveTextContent("Terlalu banyak permintaan.");
+    // The brief is intact, so the form must not be cleared or blamed.
+    expect(screen.getByTestId("contact-message")).toHaveValue(
+      "  Membutuhkan validasi desain dan prototype fungsional.  "
     );
+    expect(screen.queryByTestId("contact-success")).not.toBeInTheDocument();
+  });
+
+  test("moves focus to the dependency failure so it cannot be missed", async () => {
+    api.post.mockRejectedValue({
+      response: { status: 500, data: { detail: "Layanan sedang bermasalah." } },
+    });
+
+    renderPage();
+    fillBrief();
+    submitForm();
+
+    const failure = await screen.findByTestId("contact-dependency-error");
+    await waitFor(() => expect(failure).toHaveFocus());
+  });
+
+  test("offers the WhatsApp continuation only after the brief is stored", async () => {
+    // Published settings own the WhatsApp destination, so the continuation can
+    // only be asserted when one is actually configured.
+    api.get.mockImplementation((url) =>
+      url === "/settings"
+        ? Promise.resolve({ data: { whatsapp: "0851-1767-8901" } })
+        : Promise.resolve({ data: [] })
+    );
+
+    renderPage();
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    expect(screen.queryByTestId("contact-success-whatsapp")).not.toBeInTheDocument();
+
+    fillBrief();
+    submitForm();
+
+    await screen.findByTestId("contact-success");
+    expect(screen.getByTestId("contact-success-whatsapp")).toBeInTheDocument();
   });
 });
