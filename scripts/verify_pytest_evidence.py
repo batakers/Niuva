@@ -20,6 +20,7 @@ EXPECTED_HERMETIC_SKIP_MODULES = {
     "tests.test_inventory_transactions",
     "tests.test_migration_backup_restore",
     "tests.test_portfolio_transaction_integration",
+    "tests.test_rate_limiter_multiworker",
     "tests.test_transaction_integration",
     "tests.test_work_order_allocation_integration",
 }
