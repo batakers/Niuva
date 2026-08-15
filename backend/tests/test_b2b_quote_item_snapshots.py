@@ -9,13 +9,13 @@ customer already received.
 import asyncio
 
 import pytest
-
 from b2b_domain import (
     B2BDomainError,
     build_quote_item_snapshot,
     validate_quote_readiness,
 )
 from b2b_service import B2BService
+
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeDatabase
 from tests.test_b2b_quote_lifecycle import converted_quote
 

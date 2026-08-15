@@ -55,4 +55,3 @@ def test_internal_projection_requires_explicit_flags_for_sensitive_history():
     assert "notes" not in result
     assert "note" not in result["status_history"][0]
     assert result["file"]["historical_file_recorded"] is True
-

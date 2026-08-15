@@ -3,16 +3,15 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field
-
 from audit import append_identity_governance_event
+from fastapi import APIRouter, Depends, HTTPException
 from permissions import (
     CUSTOMER_ROLES,
     INTERNAL_ROLES,
     ROLE_POLICY_VERSION,
     validate_roles,
 )
+from pydantic import BaseModel, EmailStr, Field
 
 
 def now_iso() -> str:
@@ -123,7 +122,9 @@ def build_identity_router(
             "token_hash": token_hash(raw_token),
             "status": "pending",
             "version": 1,
-            "expires_at": (timestamp + timedelta(hours=payload.expires_in_hours)).isoformat(),
+            "expires_at": (
+                timestamp + timedelta(hours=payload.expires_in_hours)
+            ).isoformat(),
             "created_by": actor["id"],
             "created_at": timestamp.isoformat(),
             "updated_at": timestamp.isoformat(),
@@ -136,7 +137,9 @@ def build_identity_router(
                 {"email": email, "status": "pending"}, session=session
             )
             if pending:
-                raise HTTPException(status_code=409, detail={"code": "invitation_pending"})
+                raise HTTPException(
+                    status_code=409, detail={"code": "invitation_pending"}
+                )
             await database.staff_invitations.insert_one(invitation, session=session)
             await append_identity_governance_event(
                 database,
@@ -165,11 +168,17 @@ def build_identity_router(
                 {"token_hash": digest}, session=session
             )
             if not invitation or invitation.get("status") != "pending":
-                raise HTTPException(status_code=410, detail={"code": "invitation_unavailable"})
+                raise HTTPException(
+                    status_code=410, detail={"code": "invitation_unavailable"}
+                )
             expires_at = datetime.fromisoformat(invitation["expires_at"])
             if expires_at <= datetime.now(timezone.utc):
-                raise HTTPException(status_code=410, detail={"code": "invitation_expired"})
-            if await database.users.find_one({"email": invitation["email"]}, session=session):
+                raise HTTPException(
+                    status_code=410, detail={"code": "invitation_expired"}
+                )
+            if await database.users.find_one(
+                {"email": invitation["email"]}, session=session
+            ):
                 raise HTTPException(status_code=409, detail={"code": "email_in_use"})
             user = {
                 "id": str(uuid.uuid4()),
@@ -191,7 +200,13 @@ def build_identity_router(
             await database.users.insert_one(user, session=session)
             await database.staff_invitations.update_one(
                 {"id": invitation["id"], "status": "pending"},
-                {"$set": {"status": "accepted", "accepted_at": now_iso(), "updated_at": now_iso()}},
+                {
+                    "$set": {
+                        "status": "accepted",
+                        "accepted_at": now_iso(),
+                        "updated_at": now_iso(),
+                    }
+                },
                 session=session,
             )
             system_actor = {"id": user["id"], "email": user["email"]}
@@ -237,7 +252,9 @@ def build_identity_router(
             if current.get("version", 1) != expected_version:
                 _conflict(current)
             if actor.get("id") == user_id:
-                raise HTTPException(status_code=409, detail={"code": "self_access_change_forbidden"})
+                raise HTTPException(
+                    status_code=409, detail={"code": "self_access_change_forbidden"}
+                )
             next_record = {
                 **current,
                 **changes,
@@ -250,7 +267,8 @@ def build_identity_router(
                 {
                     "$set": {
                         key: next_record[key]
-                        for key in changes.keys() | {"version", "token_version", "updated_at"}
+                        for key in changes.keys()
+                        | {"version", "token_version", "updated_at"}
                     },
                     "$unset": {"role": ""},
                 },

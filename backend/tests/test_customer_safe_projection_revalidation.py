@@ -4,7 +4,6 @@ from b2b_domain import (
     project_customer_quote,
 )
 
-
 PRIVATE_FIELDS = {
     "cost_minor",
     "margin_minor",

@@ -4,15 +4,13 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
 from audit import append_audit_event
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from material_pricing import (
     resolve_effective_price,
     resolve_next_scheduled_price,
 )
-
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 BaseUnit = Literal["pcs", "g", "kg", "mm", "cm", "m", "ml", "l", "sheet", "roll"]
 
@@ -65,8 +63,10 @@ class MaterialUpdatePayload(MaterialPayload):
 
     name: str | None = Field(default=None, min_length=2, max_length=200)
 
+
 class SupplierReferencePayload(BaseModel):
     supplier_reference: str = Field(default="", max_length=200)
+
 
 class PriceVersionPayload(BaseModel):
     amount: int = Field(ge=0)
@@ -118,7 +118,9 @@ class MaterialService:
             await self.db.materials.find_one({"id": material_id}, {"_id": 0})
         )
         if not material:
-            raise MaterialError(404, "material_not_found", "Bahan baku tidak ditemukan.")
+            raise MaterialError(
+                404, "material_not_found", "Bahan baku tidak ditemukan."
+            )
         return material
 
     async def _ensure_unique_sku(self, sku: str, material_id: str | None = None):
@@ -131,12 +133,13 @@ class MaterialService:
     @staticmethod
     def _normalize_state(value: dict, *, material_id: str, legacy: bool) -> dict:
         normalized = dict(value)
-        normalized["sku"] = (
-            normalized.get("sku", "").strip().upper()
-            or generated_material_sku(material_id, legacy=legacy)
-        )
+        normalized["sku"] = normalized.get(
+            "sku", ""
+        ).strip().upper() or generated_material_sku(material_id, legacy=legacy)
         if "status" not in normalized:
-            normalized["status"] = "active" if normalized.get("active", True) else "archived"
+            normalized["status"] = (
+                "active" if normalized.get("active", True) else "archived"
+            )
         normalized["active"] = normalized["status"] == "active"
         normalized.setdefault("setup_status", "needs_review")
         normalized.setdefault("base_unit", None)
@@ -145,7 +148,10 @@ class MaterialService:
         normalized.setdefault("reorder_point", "0")
         normalized.setdefault("lead_time_days", 0)
         normalized.setdefault("inventory_tracking_enabled", False)
-        if normalized["setup_status"] == "ready" and normalized.get("base_unit") is None:
+        if (
+            normalized["setup_status"] == "ready"
+            and normalized.get("base_unit") is None
+        ):
             raise MaterialError(
                 400,
                 "material_setup_invalid",
@@ -154,12 +160,22 @@ class MaterialService:
         return normalized
 
     async def list_materials_internal(self) -> list[dict]:
-        return await self.db.materials.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+        return (
+            await self.db.materials.find({}, {"_id": 0})
+            .sort("created_at", -1)
+            .to_list(500)
+        )
 
     async def list_materials_public(self) -> list[dict]:
-        materials = await self.db.materials.find({"active": True}, {"_id": 0}).sort("name", 1).to_list(500)
+        materials = (
+            await self.db.materials.find({"active": True}, {"_id": 0})
+            .sort("name", 1)
+            .to_list(500)
+        )
         allowed = ("id", "name", "description", "color", "active")
-        return [{key: item.get(key) for key in allowed if key in item} for item in materials]
+        return [
+            {key: item.get(key) for key in allowed if key in item} for item in materials
+        ]
 
     async def create_material(self, payload: dict, actor: dict) -> dict:
         material_id = str(uuid.uuid4())
@@ -177,9 +193,7 @@ class MaterialService:
         await self._ensure_unique_sku(material["sku"])
 
         async def mutation(session):
-            await self.db.materials.insert_one(
-                material, **_write_options(session)
-            )
+            await self.db.materials.insert_one(material, **_write_options(session))
             await append_audit_event(
                 self.db,
                 actor=actor,
@@ -193,7 +207,9 @@ class MaterialService:
         await self.guard.run(mutation, operation_name="material.create")
         return clean_document(material)
 
-    async def update_material(self, material_id: str, payload: dict, actor: dict) -> dict:
+    async def update_material(
+        self, material_id: str, payload: dict, actor: dict
+    ) -> dict:
         before = await self._get_material(material_id)
         merged = {**before, **payload}
         if "active" in payload and "status" not in payload:
@@ -230,7 +246,9 @@ class MaterialService:
         await self.guard.run(mutation, operation_name="material.update")
         return after
 
-    async def archive_material(self, material_id: str, actor: dict, reason: str) -> dict:
+    async def archive_material(
+        self, material_id: str, actor: dict, reason: str
+    ) -> dict:
         before = await self._get_material(material_id)
         changes = {
             "status": "archived",
@@ -263,11 +281,17 @@ class MaterialService:
 
     async def list_price_versions(self, material_id: str) -> list[dict]:
         await self._get_material(material_id)
-        return await self.db.material_price_versions.find(
-            {"material_id": material_id}, {"_id": 0}
-        ).sort("effective_from", -1).to_list(500)
+        return (
+            await self.db.material_price_versions.find(
+                {"material_id": material_id}, {"_id": 0}
+            )
+            .sort("effective_from", -1)
+            .to_list(500)
+        )
 
-    async def create_price_version(self, material_id: str, payload: dict, actor: dict) -> dict:
+    async def create_price_version(
+        self, material_id: str, payload: dict, actor: dict
+    ) -> dict:
         material = await self._get_material(material_id)
         if material.get("setup_status") != "ready" or not material.get("base_unit"):
             raise MaterialError(
@@ -338,11 +362,17 @@ def build_material_router(
         return value
 
     def reject_supplier_reference_write(actor: dict, fields: set[str]):
-        if "supplier_reference" in fields and not has_permission(actor, "supplier_reference.write"):
-            raise HTTPException(status_code=403, detail={
-                "code": "material_field_forbidden", "field": "supplier_reference",
-                "message": "Permission required: supplier_reference.write",
-            })
+        if "supplier_reference" in fields and not has_permission(
+            actor, "supplier_reference.write"
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "material_field_forbidden",
+                    "field": "supplier_reference",
+                    "message": "Permission required: supplier_reference.write",
+                },
+            )
 
     def service() -> MaterialService:
         return MaterialService(get_db(), get_guard())
@@ -351,7 +381,9 @@ def build_material_router(
         try:
             return await awaitable
         except MaterialError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.payload()) from exc
+            raise HTTPException(
+                status_code=exc.status_code, detail=exc.payload()
+            ) from exc
 
     @router.get("/materials")
     async def public_materials():
@@ -361,7 +393,10 @@ def build_material_router(
     async def internal_materials(
         actor: dict = Depends(require_permission("materials.read")),
     ):
-        return [serialize_material_for(actor, item) for item in await invoke(service().list_materials_internal())]
+        return [
+            serialize_material_for(actor, item)
+            for item in await invoke(service().list_materials_internal())
+        ]
 
     @router.post("/admin/materials")
     async def create_material(
@@ -370,9 +405,14 @@ def build_material_router(
     ):
         reject_supplier_reference_write(actor, payload.model_fields_set)
         value = payload.model_dump(mode="json")
-        if "active" in payload.model_fields_set and "status" not in payload.model_fields_set:
+        if (
+            "active" in payload.model_fields_set
+            and "status" not in payload.model_fields_set
+        ):
             value["status"] = "active" if payload.active else "archived"
-        return serialize_material_for(actor, await invoke(service().create_material(value, actor)))
+        return serialize_material_for(
+            actor, await invoke(service().create_material(value, actor))
+        )
 
     @router.put("/admin/materials/{material_id}")
     async def update_material(
@@ -382,9 +422,14 @@ def build_material_router(
     ):
         reject_supplier_reference_write(actor, payload.model_fields_set)
         value = payload.model_dump(mode="json", exclude_unset=True)
-        if "active" in payload.model_fields_set and "status" not in payload.model_fields_set:
+        if (
+            "active" in payload.model_fields_set
+            and "status" not in payload.model_fields_set
+        ):
             value["status"] = "active" if payload.active else "archived"
-        return serialize_material_for(actor, await invoke(service().update_material(material_id, value, actor)))
+        return serialize_material_for(
+            actor, await invoke(service().update_material(material_id, value, actor))
+        )
 
     @router.post("/admin/materials/{material_id}/archive")
     async def archive_material(
@@ -392,7 +437,12 @@ def build_material_router(
         payload: ReasonPayload,
         actor: dict = Depends(require_permission("materials.archive")),
     ):
-        return serialize_material_for(actor, await invoke(service().archive_material(material_id, actor, payload.reason)))
+        return serialize_material_for(
+            actor,
+            await invoke(
+                service().archive_material(material_id, actor, payload.reason)
+            ),
+        )
 
     @router.delete("/admin/materials/{material_id}")
     async def deprecated_archive_material(
@@ -401,13 +451,16 @@ def build_material_router(
         actor: dict = Depends(require_permission("materials.archive")),
     ):
         response.headers["Deprecation"] = "true"
-        return serialize_material_for(actor, await invoke(
-            service().archive_material(
-                material_id,
-                actor,
-                "Deprecated DELETE compatibility alias",
-            )
-        ))
+        return serialize_material_for(
+            actor,
+            await invoke(
+                service().archive_material(
+                    material_id,
+                    actor,
+                    "Deprecated DELETE compatibility alias",
+                )
+            ),
+        )
 
     @router.get("/admin/materials/{material_id}/supplier-reference")
     async def get_supplier_reference(
@@ -415,7 +468,10 @@ def build_material_router(
         actor: dict = Depends(require_permission("supplier_reference.read")),
     ):
         material = await invoke(service()._get_material(material_id))
-        return {"id": material["id"], "supplier_reference": material.get("supplier_reference", "")}
+        return {
+            "id": material["id"],
+            "supplier_reference": material.get("supplier_reference", ""),
+        }
 
     @router.put("/admin/materials/{material_id}/supplier-reference")
     async def update_supplier_reference(
@@ -423,8 +479,16 @@ def build_material_router(
         payload: SupplierReferencePayload,
         actor: dict = Depends(require_permission("supplier_reference.write")),
     ):
-        material = await invoke(service().update_material(material_id, payload.model_dump(mode="json", exclude_unset=True), actor))
-        return {"id": material["id"], "supplier_reference": material.get("supplier_reference", "")}
+        material = await invoke(
+            service().update_material(
+                material_id, payload.model_dump(mode="json", exclude_unset=True), actor
+            )
+        )
+        return {
+            "id": material["id"],
+            "supplier_reference": material.get("supplier_reference", ""),
+        }
+
     @router.get("/admin/materials/{material_id}/price-versions")
     async def list_price_versions(
         material_id: str,
