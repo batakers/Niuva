@@ -251,7 +251,7 @@ def permissions_for(user: dict) -> frozenset[str]:
     roles = canonical_roles(user)
     if not roles:
         return frozenset()
-    effective = set()
+    effective: set[str] = set()
     for role in roles:
         effective.update(ROLE_PERMISSIONS[role])
     return frozenset(effective)

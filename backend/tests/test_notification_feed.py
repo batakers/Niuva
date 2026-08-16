@@ -7,6 +7,7 @@ an allowlisted reference, never stored by whoever wrote the notification.
 import asyncio
 import types
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import emailer
 import pytest
@@ -555,7 +556,7 @@ def test_expired_and_unknown_records_are_absent_from_reader_operations():
             id="expired",
             expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
         )
-        unknown = {
+        unknown: dict[str, Any] = {
             "id": "unknown",
             "user_id": "user-1",
             "read_at": None,
@@ -904,9 +905,10 @@ def test_worker_claims_only_one_item_per_execution_slot():
         result = await worker.run_once(limit=50)
 
         assert result == {"claimed": 1, "delivered": 1, "failed": 0}
-        assert sum(
-            item["status"] == "pending" for item in db.notification_outbox.items
-        ) == 1
+        assert (
+            sum(item["status"] == "pending" for item in db.notification_outbox.items)
+            == 1
+        )
 
     asyncio.run(scenario())
 
@@ -1141,9 +1143,7 @@ def test_delivery_result_normalizes_mongo_naive_lease_timestamp():
 
         original_find_one = db.notification_outbox.find_one
 
-        async def find_one_with_naive_timestamp(
-            query, projection=None, **options
-        ):
+        async def find_one_with_naive_timestamp(query, projection=None, **options):
             result = await original_find_one(query, projection, **options)
             lease_until = result.get("lease_until") if result else None
             if isinstance(lease_until, datetime):

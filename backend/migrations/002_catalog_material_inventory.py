@@ -5,8 +5,10 @@ import json
 import os
 import uuid
 
-from catalog_inventory_indexes import INDEX_DECLARATIONS, ensure_catalog_inventory_indexes
-
+from catalog_inventory_indexes import (
+    INDEX_DECLARATIONS,
+    ensure_catalog_inventory_indexes,
+)
 
 REQUIRED_UNIQUE_FIELDS = {
     "uq_product_variant_id",
@@ -93,10 +95,12 @@ async def preflight_unique_indexes(db) -> list[dict]:
                     }
                 )
             continue
-        documents = await getattr(db, declaration["collection"]).find(
-            {}, {"_id": 0}
-        ).to_list(100000)
-        owners = {}
+        documents = (
+            await getattr(db, declaration["collection"])
+            .find({}, {"_id": 0})
+            .to_list(100000)
+        )
+        owners: dict[tuple, int] = {}
         duplicate_groups = 0
         missing_documents = 0
         for document in documents:
@@ -159,7 +163,7 @@ async def migrate(db, *, dry_run: bool = True) -> dict:
     candidates = [material for material in materials if not is_migrated(material)]
     already_migrated = len(materials) - len(candidates)
 
-    sku_owners = {}
+    sku_owners: dict[str, set[str]] = {}
     for material in materials:
         if material.get("sku"):
             sku_owners.setdefault(material["sku"].upper(), set()).add(material["id"])

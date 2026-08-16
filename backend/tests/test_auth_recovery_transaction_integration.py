@@ -24,7 +24,7 @@ if (
 
 from auth_password import build_password_module  # noqa: E402
 from auth_recovery import MongoRecoveryStore  # noqa: E402
-from auth_recovery import (
+from auth_recovery import (  # noqa: E402
     PasswordResetCompletion,
     PublicSiteOrigin,
     build_recovery_module,

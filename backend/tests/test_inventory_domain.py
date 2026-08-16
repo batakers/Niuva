@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 import pytest
-
 from inventory_domain import (
     InventoryConflict,
     apply_deltas,
@@ -9,7 +8,6 @@ from inventory_domain import (
     operation_fingerprint,
     validate_subject_movement,
 )
-
 
 BASE = {
     "on_hand": Decimal("10"),
@@ -36,14 +34,19 @@ BASE = {
     ],
 )
 def test_inventory_delta_rules(movement_type, field, expected):
-    quantity = Decimal("2") if movement_type in {
-        "release",
-        "consume",
-        "ship",
-        "damage",
-        "cancel_incoming",
-        "cancel_demand",
-    } else Decimal("5")
+    quantity = (
+        Decimal("2")
+        if movement_type
+        in {
+            "release",
+            "consume",
+            "ship",
+            "damage",
+            "cancel_incoming",
+            "cancel_demand",
+        }
+        else Decimal("5")
+    )
     result = apply_deltas(BASE, compute_deltas(movement_type, quantity))
     assert result[field] == expected
 

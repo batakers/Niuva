@@ -6,7 +6,6 @@ never publishing.
 """
 
 import pytest
-
 from content_domain import (
     CONTENT_STATUSES,
     CONTENT_TRANSITIONS,

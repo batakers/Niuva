@@ -5,7 +5,29 @@ const path = require("path");
 const dotenv = require("dotenv");
 
 const defaultBuildDirectory = path.resolve(__dirname, "..", "build");
-const publicRoutes = ["/", "/about", "/capabilities", "/projects", "/contact"];
+
+// Mirrors src/lib/publicRoutes.js's PUBLIC_ROUTE_REGISTRY. Not imported
+// directly: that module uses ESM `export` for the webpack/React build, while
+// this script runs as plain CommonJS Node outside that pipeline. Keep this
+// list in sync by hand when routes in the registry change.
+//
+// Indonesian is the canonical path for every route. The English path is
+// listed only where the registry marks `translationReady: true` — the rest
+// serve an Indonesian-content fallback under an /en/* path tagged
+// `noindex, follow`, and a noindex page has no business in a sitemap.
+const publicRoutes = [
+  "/", // home, translationReady
+  "/en",
+  "/tentang", // about — not translation-ready, /en/about excluded
+  "/layanan", // services — not translation-ready, /en/services excluded
+  "/proyek", // projects — not translation-ready, /en/projects excluded
+  "/kontak", // contact, translationReady
+  "/en/contact",
+  "/retail", // — not translation-ready, /en/retail excluded
+  "/faq", // — not translation-ready, /en/faq excluded
+  "/privasi", // privacy, translationReady
+  "/en/privacy",
+];
 
 function resolvePublicSiteUrl(value) {
   const normalized = String(value || "").trim();

@@ -149,8 +149,8 @@ class CapturingDelivery:
     def __init__(self, *, fail_reset: bool = False, fail_changed: bool = False):
         self.fail_reset = fail_reset
         self.fail_changed = fail_changed
-        self.reset_messages = []
-        self.changed_messages = []
+        self.reset_messages: list[dict] = []
+        self.changed_messages: list[dict] = []
 
     async def send_password_reset(self, *, email, reset_url, expires_at):
         if self.fail_reset:
@@ -349,9 +349,7 @@ def test_completion_event_writer_shares_transaction_and_failure_rolls_back(tmp_p
     users_before = copy.deepcopy(store.users)
     tokens_before = copy.deepcopy(store.tokens)
     with pytest.raises(RuntimeError, match="event persistence unavailable"):
-        asyncio.run(
-            recovery.complete_password_reset(token, "a fresh unique password")
-        )
+        asyncio.run(recovery.complete_password_reset(token, "a fresh unique password"))
     assert store.users == users_before
     assert store.tokens == tokens_before
 
