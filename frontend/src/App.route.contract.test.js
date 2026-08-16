@@ -13,6 +13,7 @@ import path from "path";
 jest.mock("@/pages/marketing/HomePage", () => () => null);
 
 import { PublicAliasRedirect } from "./App";
+import { PUBLIC_ROUTE_ALIASES } from "@/lib/publicRoutes";
 
 const appSource = fs.readFileSync(path.resolve(__dirname, "App.js"), "utf8");
 
@@ -38,14 +39,13 @@ function renderAlias(pathname) {
   return render(
     <MemoryRouter initialEntries={["/origin", pathname]} initialIndex={1}>
       <Routes>
-        <Route
-          path="/services"
-          element={<PublicAliasRedirect to="/capabilities" />}
-        />
-        <Route
-          path="/portfolio"
-          element={<PublicAliasRedirect to="/projects" />}
-        />
+        {Object.entries(PUBLIC_ROUTE_ALIASES).map(([from, to]) => (
+          <Route
+            key={from}
+            path={from}
+            element={<PublicAliasRedirect to={to} />}
+          />
+        ))}
         <Route path="*" element={<LocationProbe />} />
       </Routes>
     </MemoryRouter>,
@@ -54,8 +54,11 @@ function renderAlias(pathname) {
 
 describe("public compatibility route redirects", () => {
   test.each([
-    ["/services?utm_source=legacy#capability", "/capabilities?utm_source=legacy#capability"],
-    ["/portfolio?utm_source=legacy#project", "/projects?utm_source=legacy#project"],
+    ["/about?utm_source=legacy#company", "/tentang?utm_source=legacy#company"],
+    ["/services?utm_source=legacy#capability", "/layanan?utm_source=legacy#capability"],
+    ["/portfolio?utm_source=legacy#project", "/proyek?utm_source=legacy#project"],
+    ["/contact?utm_source=legacy#brief", "/kontak?utm_source=legacy#brief"],
+    ["/en/capabilities?utm_source=legacy#service", "/en/services?utm_source=legacy#service"],
   ])("redirects %s to %s while preserving URL context", async (from, expected) => {
     renderAlias(from);
 
@@ -70,12 +73,10 @@ describe("public compatibility route redirects", () => {
     });
   });
 
-  test("registers both aliases as redirects to their canonical routes", () => {
-    expect(appSource).toMatch(
-      /<Route\s+path="\/services"\s+element=\{<PublicAliasRedirect to="\/capabilities" \/>\}\s*\/>/,
+  test("registers the centralized compatibility map instead of duplicating aliases", () => {
+    expect(appSource).toContain(
+      "Object.entries(PUBLIC_ROUTE_ALIASES).map(([from, to]) => (",
     );
-    expect(appSource).toMatch(
-      /<Route\s+path="\/portfolio"\s+element=\{<PublicAliasRedirect to="\/projects" \/>\}\s*\/>/,
-    );
+    expect(appSource).not.toMatch(/path="\/(?:about|capabilities|services|projects|portfolio|contact|privacy)"/);
   });
 });

@@ -246,7 +246,7 @@ def build_catalog_router(
                 detail=exc.payload(),
             ) from exc
 
-    @router.get("/admin/categories")
+    @router.get("/admin/categories", responses=error_responses(401, 403, 500))
     async def list_categories(
         _actor: dict = Depends(require_permission("catalog.read")),
     ):
@@ -305,7 +305,7 @@ def build_catalog_router(
             service().archive_category(category_id, actor, payload.reason)
         )
 
-    @router.get("/admin/products")
+    @router.get("/admin/products", responses=error_responses(401, 403, 500))
     async def list_products(
         _actor: dict = Depends(require_permission("catalog.read")),
     ):
@@ -321,7 +321,10 @@ def build_catalog_router(
             service().create_product(payload.model_dump(mode="json"), actor)
         )
 
-    @router.get("/admin/catalog/quotable-variants")
+    @router.get(
+        "/admin/catalog/quotable-variants",
+        responses=error_responses(401, 403, 500),
+    )
     async def list_quotable_variants(
         _actor: dict = Depends(require_permission("catalog.read")),
     ):

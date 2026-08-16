@@ -9,7 +9,6 @@ and that the canonical lifecycle is walked one stage at a time.
 import asyncio
 
 import pytest
-
 from retail_domain import (
     RETAIL_STATUSES,
     RetailDomainError,
@@ -17,6 +16,7 @@ from retail_domain import (
     validate_retail_transition,
 )
 from retail_service import RetailOrderService
+
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeCollection, FakeDatabase
 
 ACTOR = {"id": "order-admin", "email": "orders@niuva.test"}
