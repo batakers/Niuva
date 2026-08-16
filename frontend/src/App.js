@@ -7,6 +7,7 @@ import {
   Route,
   useLocation,
 } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider, useI18n } from "@/i18n";
 import { AuthProvider } from "@/context/AuthContext";
@@ -95,13 +96,20 @@ const ExperimentalHomepagePrototype = brandLabEnabled
   ? lazy(() => import("@/pages/brand-lab/ExperimentalHomepagePrototype"))
   : null;
 
-function RouteFallback() {
+// A route chunk download is usually brief, but a background-color div with
+// only an sr-only label leaves sighted users staring at nothing. The spinner
+// mirrors the h-6/w-6 Loader2 pattern already used by EmptyState/Button, so
+// this reads as the same "loading" language instead of a new one.
+export function RouteFallback() {
   const { lang } = useI18n();
   return (
-    <div className="min-h-screen bg-surface-page" role="status" aria-live="polite">
-      <span className="sr-only">
-        {lang === "en" ? "Loading page" : "Memuat halaman"}
-      </span>
+    <div
+      className="flex min-h-screen items-center justify-center bg-surface-page"
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2 className="h-6 w-6 text-text-secondary motion-safe:animate-spin" aria-hidden="true" />
+      <span className="sr-only">{lang === "en" ? "Loading page" : "Memuat halaman"}</span>
     </div>
   );
 }
@@ -134,7 +142,7 @@ export function PublicAliasRedirect({ to }) {
   );
 }
 
-class AppErrorBoundary extends Component {
+export class AppErrorBoundary extends Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false };
@@ -150,26 +158,38 @@ class AppErrorBoundary extends Component {
 
   render() {
     if (this.state.hasError) {
+      // `componentDidCatch` only fires for a render-phase exception in this
+      // tree, never for a fetch/network failure — those are handled inline by
+      // the page that made the request (see ContactPage's dependency-error
+      // state). Calling this "KONEKSI TERPUTUS" claimed a cause the boundary
+      // cannot actually observe, so the copy below describes what did happen
+      // (the page failed to render) instead of guessing why.
       const english = document.documentElement.lang === "en";
       return (
-        <main className="flex min-h-screen items-center justify-center bg-surface-page px-6 text-center">
+        <main
+          role="alert"
+          className="flex min-h-screen items-center justify-center bg-surface-page px-6 text-center"
+        >
           <div className="max-w-lg">
-            <p className="text-sm font-semibold text-action-primary">
-              {english ? "CONNECTION INTERRUPTED" : "KONEKSI TERPUTUS"}
+            <p className="font-mono-tech text-sm font-semibold text-status-error">
+              {english ? "AN ERROR OCCURRED" : "TERJADI KESALAHAN"}
             </p>
             <h1 className="mt-4 text-3xl font-extrabold text-text-primary">
-              {english
-                ? "The page could not be loaded."
-                : "Halaman belum berhasil dimuat."}
+              {english ? "The page failed to load." : "Halaman belum berhasil dimuat."}
             </h1>
             <p className="mt-4 leading-7 text-text-secondary">
               {english
-                ? "Check your connection and reload the page. If the problem continues, contact Niuva through an official channel."
-                : "Periksa koneksi Anda, lalu muat ulang halaman. Jika masalah berlanjut, hubungi tim Niuva melalui kanal resmi."}
+                ? "Something went wrong while displaying this page. Reload to try again. If the problem continues, contact Niuva through an official channel."
+                : "Terjadi masalah saat menampilkan halaman ini. Muat ulang untuk mencoba lagi. Jika masalah berlanjut, hubungi tim Niuva melalui kanal resmi."}
             </p>
-            <button type="button" onClick={() => window.location.reload()} className="mt-7 inline-flex min-h-11 items-center justify-center rounded-control bg-action-primary px-5 py-3 text-sm font-semibold text-text-inverse hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2">
-              {english ? "Reload page" : "Muat ulang halaman"}
-            </button>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-11 items-center justify-center rounded-control bg-action-primary px-5 py-3 text-sm font-semibold text-text-inverse hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2">
+                {english ? "Reload page" : "Muat ulang halaman"}
+              </button>
+              <a href="/" className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-default px-5 py-3 text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2">
+                {english ? "Back to homepage" : "Kembali ke Beranda"}
+              </a>
+            </div>
           </div>
         </main>
       );
