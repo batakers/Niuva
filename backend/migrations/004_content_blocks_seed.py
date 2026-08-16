@@ -6,6 +6,7 @@ Usage:
     python migrations/004_content_blocks_seed.py            # dry-run (default)
     python migrations/004_content_blocks_seed.py --apply     # write
 """
+
 import argparse
 import asyncio
 import json
@@ -36,10 +37,26 @@ ABOUT_FIELDS = {
         },
     ],
     "approachSteps": [
-        {"label": "Discover", "title": "Memahami konteks", "body": "Menggali tujuan, pengguna, batasan teknis, peluang pasar, dan kebutuhan pemangku kepentingan."},
-        {"label": "Define", "title": "Merumuskan arah", "body": "Menyusun prioritas pengembangan, ruang lingkup, dan bentuk output yang paling relevan."},
-        {"label": "Develop", "title": "Membangun solusi", "body": "Mengembangkan desain, teknologi, prototipe, materi workshop, atau produk kreatif sesuai brief."},
-        {"label": "Validate", "title": "Menguji keputusan", "body": "Mengevaluasi hasil bersama mitra sebelum masuk ke iterasi, produksi, atau implementasi lanjutan."},
+        {
+            "label": "Discover",
+            "title": "Memahami konteks",
+            "body": "Menggali tujuan, pengguna, batasan teknis, peluang pasar, dan kebutuhan pemangku kepentingan.",
+        },
+        {
+            "label": "Define",
+            "title": "Merumuskan arah",
+            "body": "Menyusun prioritas pengembangan, ruang lingkup, dan bentuk output yang paling relevan.",
+        },
+        {
+            "label": "Develop",
+            "title": "Membangun solusi",
+            "body": "Mengembangkan desain, teknologi, prototipe, materi workshop, atau produk kreatif sesuai brief.",
+        },
+        {
+            "label": "Validate",
+            "title": "Menguji keputusan",
+            "body": "Mengevaluasi hasil bersama mitra sebelum masuk ke iterasi, produksi, atau implementasi lanjutan.",
+        },
     ],
     "values": [
         "Berbasis riset dan konteks nyata.",
@@ -54,7 +71,8 @@ CAPABILITY_SEEDS = [
     {
         "slug": "research-development",
         "fields": {
-            "title": "Research & Development", "priority": "primary",
+            "title": "Research & Development",
+            "priority": "primary",
             "body": "Riset untuk memetakan kebutuhan, peluang pasar, arah teknologi, dan kelayakan konsep sebelum masuk ke tahap pengembangan.",
             "output": "Peta kebutuhan, validasi konsep, rekomendasi pengembangan.",
             "targetUsers": "Perusahaan, instansi, tim inovasi, kampus, dan lembaga riset.",
@@ -64,7 +82,8 @@ CAPABILITY_SEEDS = [
     {
         "slug": "design-prototyping",
         "fields": {
-            "title": "Design & Prototyping", "priority": "primary",
+            "title": "Design & Prototyping",
+            "priority": "primary",
             "body": "Perancangan produk, visual, model 3D, dan prototipe agar ide dapat diuji dari sisi bentuk, fungsi, dan arah implementasi.",
             "output": "Konsep desain, model 3D, mockup, dan prototipe sesuai kebutuhan proyek.",
             "targetUsers": "Industri, startup hardware, tim produk, komunitas maker, dan institusi pelatihan.",
@@ -74,7 +93,8 @@ CAPABILITY_SEEDS = [
     {
         "slug": "consultant-workshop",
         "fields": {
-            "title": "Consultant & Workshop", "priority": "supporting",
+            "title": "Consultant & Workshop",
+            "priority": "supporting",
             "body": "Konsultasi ahli dan workshop praktis untuk membantu tim merumuskan strategi, mengambil keputusan, dan membangun kemampuan internal.",
             "output": "Sesi konsultasi, modul workshop, rangkuman arahan, dan rencana tindak lanjut.",
             "targetUsers": "Kampus, komunitas inovasi, training organization, startup, dan corporate innovation team.",
@@ -84,7 +104,8 @@ CAPABILITY_SEEDS = [
     {
         "slug": "apparel-merchandise",
         "fields": {
-            "title": "Apparel & Merchandise", "priority": "supporting",
+            "title": "Apparel & Merchandise",
+            "priority": "supporting",
             "body": "Pengembangan apparel dan merchandise untuk kebutuhan brand, komunitas, event, dan program yang membutuhkan identitas visual konsisten.",
             "output": "Arah visual, desain apparel, desain merchandise, dan panduan produksi awal.",
             "targetUsers": "Brand, komunitas, event organizer, kampus, dan tim marketing perusahaan.",
@@ -109,40 +130,97 @@ CONTACT_FIELDS = {
 }
 
 
-async def _seed_one(service: ContentService, *, content_type: str, slug: str, fields: dict, dry_run: bool) -> dict:
-    existing = await service.db.content_blocks.find_one({"content_type": content_type, "slug": slug}, {"_id": 0})
+async def _seed_one(
+    service: ContentService,
+    *,
+    content_type: str,
+    slug: str,
+    fields: dict,
+    dry_run: bool
+) -> dict:
+    existing = await service.db.content_blocks.find_one(
+        {"content_type": content_type, "slug": slug}, {"_id": 0}
+    )
     if existing:
-        return {"content_type": content_type, "slug": slug, "action": "skipped_existing"}
+        return {
+            "content_type": content_type,
+            "slug": slug,
+            "action": "skipped_existing",
+        }
     if dry_run:
-        return {"content_type": content_type, "slug": slug, "action": "would_create_and_publish"}
-    block = await service.create_block(content_type=content_type, slug=slug, fields=fields, actor=SYSTEM_ACTOR)
+        return {
+            "content_type": content_type,
+            "slug": slug,
+            "action": "would_create_and_publish",
+        }
+    block = await service.create_block(
+        content_type=content_type, slug=slug, fields=fields, actor=SYSTEM_ACTOR
+    )
     await service.publish_block(block["id"], actor=SYSTEM_ACTOR, reason=SEED_REASON)
-    return {"content_type": content_type, "slug": slug, "action": "created_and_published", "id": block["id"]}
+    return {
+        "content_type": content_type,
+        "slug": slug,
+        "action": "created_and_published",
+        "id": block["id"],
+    }
 
 
 async def seed(db, client, capabilities, *, dry_run: bool) -> dict:
     service = ContentService(db, client, capabilities)
     results = []
-    results.append(await _seed_one(service, content_type="about", slug="company-profile", fields=ABOUT_FIELDS, dry_run=dry_run))
+    results.append(
+        await _seed_one(
+            service,
+            content_type="about",
+            slug="company-profile",
+            fields=ABOUT_FIELDS,
+            dry_run=dry_run,
+        )
+    )
     for item in CAPABILITY_SEEDS:
-        results.append(await _seed_one(service, content_type="capability", slug=item["slug"], fields=item["fields"], dry_run=dry_run))
-    results.append(await _seed_one(service, content_type="cta", slug="default", fields=CTA_FIELDS, dry_run=dry_run))
-    results.append(await _seed_one(service, content_type="contact", slug="primary", fields=CONTACT_FIELDS, dry_run=dry_run))
+        results.append(
+            await _seed_one(
+                service,
+                content_type="capability",
+                slug=item["slug"],
+                fields=item["fields"],
+                dry_run=dry_run,
+            )
+        )
+    results.append(
+        await _seed_one(
+            service,
+            content_type="cta",
+            slug="default",
+            fields=CTA_FIELDS,
+            dry_run=dry_run,
+        )
+    )
+    results.append(
+        await _seed_one(
+            service,
+            content_type="contact",
+            slug="primary",
+            fields=CONTACT_FIELDS,
+            dry_run=dry_run,
+        )
+    )
     return {"dry_run": dry_run, "results": results}
 
 
 async def _run_cli(apply: bool) -> int:
+    from database_capabilities import probe_database_capabilities
     from dotenv import load_dotenv
     from motor.motor_asyncio import AsyncIOMotorClient
-
-    from database_capabilities import probe_database_capabilities
 
     load_dotenv()
     database_name = os.environ["DB_NAME"]
     client = AsyncIOMotorClient(os.environ["MONGO_URL"])
     try:
         capabilities = await probe_database_capabilities(client, database_name)
-        report = await seed(client[database_name], client, capabilities, dry_run=not apply)
+        report = await seed(
+            client[database_name], client, capabilities, dry_run=not apply
+        )
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0
     finally:
@@ -150,8 +228,14 @@ async def _run_cli(apply: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Seed CMS content_blocks from hardcoded profileContent.")
-    parser.add_argument("--apply", action="store_true", help="Apply writes. Without this flag the migration is dry-run only.")
+    parser = argparse.ArgumentParser(
+        description="Seed CMS content_blocks from hardcoded profileContent."
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply writes. Without this flag the migration is dry-run only.",
+    )
     args = parser.parse_args()
     return asyncio.run(_run_cli(args.apply))
 

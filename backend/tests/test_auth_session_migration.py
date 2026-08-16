@@ -14,7 +14,9 @@ MIGRATION_PATH = ROOT / "backend" / "migrations" / "009_admin_session_safety.py"
 
 
 def load_migration():
-    spec = importlib.util.spec_from_file_location("auth_session_migration", MIGRATION_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "auth_session_migration", MIGRATION_PATH
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -69,7 +71,9 @@ class Collection:
         self.indexes.pop(name)
 
     async def find_one(self, query):
-        return next((copy.deepcopy(item) for item in self.items if matches(item, query)), None)
+        return next(
+            (copy.deepcopy(item) for item in self.items if matches(item, query)), None
+        )
 
     async def insert_one(self, document, **_options):
         if any(item.get("_id") == document["_id"] for item in self.items):
@@ -92,11 +96,13 @@ class Collection:
         for item in self.items:
             if not matches(item, query):
                 continue
-            selected.append({
-                field: item[field]
-                for field, included in projection.items()
-                if included and field in item
-            })
+            selected.append(
+                {
+                    field: item[field]
+                    for field, included in projection.items()
+                    if included and field in item
+                }
+            )
         return Cursor(selected)
 
     async def delete_many(self, query, **_options):
@@ -141,30 +147,41 @@ def test_apply_requires_confirmed_unused_backup_is_idempotent_and_rolls_back(tmp
     database = Database()
     backup = tmp_path / "session-index-backup.json"
     with pytest.raises(ValueError, match="encrypted backup"):
-        asyncio.run(migration.run(database, apply=True, backup_path=backup, guard=Guard()))
+        asyncio.run(
+            migration.run(database, apply=True, backup_path=backup, guard=Guard())
+        )
 
-    applied = asyncio.run(migration.run(
-        database,
-        apply=True,
-        backup_path=backup,
-        encrypted_backup_confirmed=True,
-        guard=Guard(),
-    ))
+    applied = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            backup_path=backup,
+            encrypted_backup_confirmed=True,
+            guard=Guard(),
+        )
+    )
     assert applied["owned_indexes"] == 7
     assert set(migration.OWNED_INDEXES) <= set(database.admin_sessions.indexes)
-    assert all("expireAfterSeconds" not in value for value in database.admin_sessions.indexes.values())
+    assert all(
+        "expireAfterSeconds" not in value
+        for value in database.admin_sessions.indexes.values()
+    )
     assert "secret" not in backup.read_text(encoding="utf-8").lower()
 
-    second = asyncio.run(migration.run(
-        database,
-        apply=True,
-        backup_path=backup,
-        encrypted_backup_confirmed=True,
-        guard=Guard(),
-    ))
+    second = asyncio.run(
+        migration.run(
+            database,
+            apply=True,
+            backup_path=backup,
+            encrypted_backup_confirmed=True,
+            guard=Guard(),
+        )
+    )
     assert second["second_run_noop"] is True
 
-    rolled_back = asyncio.run(migration.run(database, rollback=True, backup_path=backup, guard=Guard()))
+    rolled_back = asyncio.run(
+        migration.run(database, rollback=True, backup_path=backup, guard=Guard())
+    )
     assert rolled_back["applied"] is False
     assert set(migration.OWNED_INDEXES).isdisjoint(database.admin_sessions.indexes)
     assert database.migration_state.items == []
@@ -174,21 +191,25 @@ def test_partial_ambiguous_or_ttl_state_is_rejected(tmp_path):
     migration = load_migration()
     database = Database()
     database.admin_sessions.indexes[migration.OWNED_INDEXES[0]] = {
-        "key": [("access_hash", 1)], "unique": True
+        "key": [("access_hash", 1)],
+        "unique": True,
     }
     with pytest.raises(ValueError, match="partially applied"):
         asyncio.run(migration.run(database))
 
     database = Database()
     database.admin_sessions.indexes["unsafe_ttl"] = {
-        "key": [("absolute_expires_at", 1)], "expireAfterSeconds": 0
+        "key": [("absolute_expires_at", 1)],
+        "expireAfterSeconds": 0,
     }
     with pytest.raises(ValueError, match="TTL"):
         asyncio.run(migration.run(database))
 
     now = datetime(2026, 7, 28, tzinfo=timezone.utc)
     duplicate = session("duplicate", now)
-    database = Database([duplicate, {**session("other", now), "access_hash": duplicate["access_hash"]}])
+    database = Database(
+        [duplicate, {**session("other", now), "access_hash": duplicate["access_hash"]}]
+    )
     with pytest.raises(ValueError, match="duplicate access_hash"):
         asyncio.run(migration.run(database))
 
@@ -227,26 +248,38 @@ def test_cleanup_dry_run_is_bounded_aggregate_only_and_never_deletes_active():
 def test_cleanup_apply_requires_two_confirmations_and_deletes_one_bounded_batch():
     migration = load_migration()
     now = datetime(2026, 7, 28, tzinfo=timezone.utc)
-    database = Database([
-        session("active", now),
-        session("old-1", now, idle_days=-91),
-        session("old-2", now, revoked=now - timedelta(days=91)),
-    ])
+    database = Database(
+        [
+            session("active", now),
+            session("old-1", now, idle_days=-91),
+            session("old-2", now, revoked=now - timedelta(days=91)),
+        ]
+    )
     with pytest.raises(ValueError, match="cleanup confirmation"):
-        asyncio.run(migration.cleanup(database, apply=True, current_time=now, guard=Guard()))
+        asyncio.run(
+            migration.cleanup(database, apply=True, current_time=now, guard=Guard())
+        )
     with pytest.raises(ValueError, match="restore-tested backup"):
-        asyncio.run(migration.cleanup(
-            database, apply=True, cleanup_confirmed=True, current_time=now, guard=Guard()
-        ))
-    report = asyncio.run(migration.cleanup(
-        database,
-        apply=True,
-        cleanup_confirmed=True,
-        encrypted_restore_backup_confirmed=True,
-        batch_size=1,
-        current_time=now,
-        guard=Guard(),
-    ))
+        asyncio.run(
+            migration.cleanup(
+                database,
+                apply=True,
+                cleanup_confirmed=True,
+                current_time=now,
+                guard=Guard(),
+            )
+        )
+    report = asyncio.run(
+        migration.cleanup(
+            database,
+            apply=True,
+            cleanup_confirmed=True,
+            encrypted_restore_backup_confirmed=True,
+            batch_size=1,
+            current_time=now,
+            guard=Guard(),
+        )
+    )
     assert report["deleted"] == 1
     assert len(database.admin_sessions.items) == 2
     assert any(item["_id"] == "active" for item in database.admin_sessions.items)
@@ -257,14 +290,15 @@ def test_cleanup_apply_requires_two_confirmations_and_deletes_one_bounded_batch(
     or not os.environ.get("MONGO_TRANSACTION_TEST_URL"),
     reason="Explicit real transaction opt-in and URL are required",
 )
-def test_real_replica_set_apply_cleanup_and_rollback(tmp_path, transaction_database_name):
+def test_real_replica_set_apply_cleanup_and_rollback(
+    tmp_path, transaction_database_name
+):
     loaded_motor = sys.modules.get("motor.motor_asyncio")
     if loaded_motor is not None and getattr(loaded_motor, "__file__", None) is None:
         sys.modules.pop("motor.motor_asyncio", None)
         sys.modules.pop("motor", None)
-    from motor.motor_asyncio import AsyncIOMotorClient
-
     from database_capabilities import DatabaseCapabilities
+    from motor.motor_asyncio import AsyncIOMotorClient
     from transaction_execution import TransactionExecutor
     from transaction_guard import TransactionMutationGuard
 
@@ -287,10 +321,12 @@ def test_real_replica_set_apply_cleanup_and_rollback(tmp_path, transaction_datab
                 guard=guard,
             )
             now = datetime(2026, 7, 28, tzinfo=timezone.utc)
-            await database.admin_sessions.insert_many([
-                session("active", now),
-                session("expired", now, idle_days=-91),
-            ])
+            await database.admin_sessions.insert_many(
+                [
+                    session("active", now),
+                    session("expired", now, idle_days=-91),
+                ]
+            )
             cleaned = await migration.cleanup(
                 database,
                 apply=True,
@@ -301,10 +337,17 @@ def test_real_replica_set_apply_cleanup_and_rollback(tmp_path, transaction_datab
             )
             assert cleaned["deleted"] == 1
             assert await database.admin_sessions.count_documents({"_id": "active"}) == 1
-            await migration.run(database, rollback=True, backup_path=backup, guard=guard)
+            await migration.run(
+                database, rollback=True, backup_path=backup, guard=guard
+            )
             indexes = await database.admin_sessions.index_information()
             assert set(migration.OWNED_INDEXES).isdisjoint(indexes)
-            assert await database.migration_state.count_documents({"_id": migration.MARKER_ID}) == 0
+            assert (
+                await database.migration_state.count_documents(
+                    {"_id": migration.MARKER_ID}
+                )
+                == 0
+            )
         finally:
             await client.drop_database(transaction_database_name)
             client.close()

@@ -10,10 +10,10 @@ test_work_order_allocation_integration, not something a fake can prove.
 import asyncio
 
 import pytest
-
 from b2b_domain import B2BDomainError
 from b2b_service import B2BService
 from inventory_service import InventoryError
+
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeDatabase
 from tests.test_b2b_work_orders import active_project
 

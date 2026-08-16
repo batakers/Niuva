@@ -18,7 +18,38 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
     expect(homeSource).not.toContain("flagshipProject");
     expect(homeSource.match(/<HomeFdmContour\b/g)).toHaveLength(2);
     expect(visualSource).toContain('data-motion-active="false"');
+    expect(visualSource.match(/"M-90 /g)).toHaveLength(11);
+    expect(styleSource).toContain("width: max(124vw, 108.75rem)");
+    expect(styleSource).toContain("mask-image: linear-gradient");
+    expect(styleSource).toContain("@keyframes home-r4-contour-breathe");
+    expect(styleSource).toContain("@keyframes home-r4-contour-layer-shift");
     expect(styleSource).toContain("@media (prefers-reduced-motion: reduce)");
+  });
+
+  test("restores the accepted R4 measure and section hierarchy", () => {
+    for (const label of [
+      "Satu partner, dua cara memulai",
+      "Cara kerja",
+      "Layanan Niuva",
+    ]) {
+      expect(homeSource).toContain(label);
+    }
+    expect(styleSource).toContain("73.75rem");
+    expect(homeSource.match(/home-r4-editorial-intro/g)).toHaveLength(4);
+    expect(styleSource).toContain(".home-r4-editorial-intro");
+    expect(styleSource).not.toContain("minmax(0, 0.9fr) minmax(0, 1.35fr)");
+    expect(styleSource).not.toContain("minmax(0, 0.55fr) minmax(0, 1.45fr)");
+    expect(styleSource).not.toContain("minmax(0, 1.35fr) minmax(17.5rem, 0.65fr)");
+    expect(styleSource).not.toContain("processBody");
+  });
+
+  test("joins the Hero transition and Closing Footer without duplicate contours", () => {
+    expect(styleSource).toContain("background: transparent");
+    expect(styleSource).toContain("--home-r4-terminal-footer-height");
+    expect(styleSource).toContain("margin-top: calc(-1 * var(--home-r4-terminal-footer-height))");
+    expect(styleSource).toContain(".home-r4-terminal-footer-inner");
+    expect(styleSource).toContain("padding-bottom: calc(var(--home-r4-terminal-footer-height) + var(--space-20))");
+    expect(styleSource).not.toContain(".home-r4-terminal-footer::before");
   });
 
   test("renders the canonical process once and stops the connector at Output", () => {
@@ -42,7 +73,8 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
     expect(positions.every((position) => position >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
     expect(homeSource).toContain('data-service-rank="primary"');
-    expect(homeSource).toContain('to="/capabilities"');
+    expect(homeSource).toContain('getPublicPath("services", locale)');
+    expect(homeSource).toContain("hash: service.slug");
     expect(homeSource).not.toContain("service.priority");
     expect(homeSource).not.toContain("supportingCapabilities");
   });
@@ -65,9 +97,9 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
   });
 
   test("preserves B2B, Retail, Contact, and fail-closed route boundaries", () => {
-    expect(homeSource).toContain('to="/contact"');
-    expect(homeSource).toContain('to="/retail"');
-    expect(homeSource).toContain('to="/projects"');
+    expect(homeSource).toContain('getPublicPath("contact", locale)');
+    expect(homeSource).toContain('getPublicPath("retail", locale)');
+    expect(homeSource).toContain('getPublicPath("projects", locale)');
     expect(normalizeWhitespace(homeSource)).toContain(
       "tanpa membuat Order, reservasi, atau pembayaran",
     );
@@ -81,7 +113,8 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
     expect(homeSource).toContain('from "@/components/ui/button"');
     expect(styleSource).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(styleSource).not.toContain("transition: all");
-    expect(styleSource).not.toContain("linear-gradient");
+    expect(styleSource.match(/linear-gradient/g)).toHaveLength(2);
+    expect(styleSource).not.toContain("background: linear-gradient");
     expect(styleSource).not.toContain("backdrop-filter");
     expect(normalizeWhitespace(styleSource)).toContain(
       ".home-r4-retail-boundary { max-width: 78ch; margin: var(--space-8) 0 0; color: var(--home-r4-muted); font-size: 1rem; }",

@@ -1,8 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
 
-from pymongo.errors import ServerSelectionTimeoutError
-
 from database_capabilities import (
     DatabaseCapabilities,
     TransactionCapabilityReason,
@@ -10,6 +8,7 @@ from database_capabilities import (
     probe_transaction_capability,
     supports_transactions,
 )
+from pymongo.errors import ServerSelectionTimeoutError
 
 FIXED_TIME = datetime(2026, 7, 17, 9, 0, tzinfo=timezone.utc)
 

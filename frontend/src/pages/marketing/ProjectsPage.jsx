@@ -19,6 +19,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePublicSettings } from "../../lib/publicSettings";
+import { useI18n } from "@/i18n";
+import { getPublicPath } from "@/lib/publicRoutes";
 
 // Second case rather than the first, so the hero is not immediately repeated by
 // the card directly beneath it. Left eager: it is the LCP element here.
@@ -46,6 +48,9 @@ export function parsePortfolioResponse(data) {
 }
 
 export default function ProjectsPage() {
+  const { lang, t } = useI18n();
+  const contactPath = getPublicPath("contact", lang);
+  const servicesPath = getPublicPath("services", lang);
   const { contact } = usePublicSettings();
   const [portfolioState, setPortfolioState] = useState({
     status: HAS_CONFIGURED_BACKEND ? "loading" : "disabled",
@@ -97,8 +102,8 @@ export default function ProjectsPage() {
           title="Bukti produk, mobilitas, dan simulator Niuva."
           body="Halaman ini menampilkan proyek sebagai mini case study, bukan galeri visual. Setiap case menjelaskan konteks, tantangan, solusi, output, dan kapabilitas yang digunakan Niuva."
           variant="showcase"
-          primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
+          primaryAction={<BrandButton to={contactPath}>{t("nav.discussProject")}</BrandButton>}
+          secondaryAction={<BrandButton to={servicesPath} variant="secondary">{lang === "en" ? "View Services" : "Lihat Layanan"}</BrandButton>}
           visual={
             <div className="overflow-hidden rounded-card bg-surface-muted">
               <img
@@ -154,7 +159,7 @@ export default function ProjectsPage() {
                   key={project.id || project.title}
                   project={project}
                   index={index}
-                  to="/contact"
+                  to={contactPath}
                   ctaLabel="Diskusikan Project Serupa"
                 />
               ))}
@@ -167,8 +172,8 @@ export default function ProjectsPage() {
           eyebrow={null}
           title="Diskusikan kebutuhan produk, EV, simulator, atau prototipe."
           body="Mulai dari konteks masalah, target pengguna, dan output yang dibutuhkan. Tim Niuva akan membantu membaca ruang lingkup riset, desain, teknologi, dan prototyping."
-          primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
+          primaryAction={<BrandButton to={contactPath} variant="inverse">{t("nav.discussProject")}</BrandButton>}
+          secondaryAction={<BrandButton to={servicesPath} variant="secondary">{lang === "en" ? "View Services" : "Lihat Layanan"}</BrandButton>}
           contactEmphasis="Pembahasan dimulai dari kebutuhan nyata, ruang lingkup teknis, dan bukti pekerjaan yang relevan."
           whatsappHref={contact.whatsappHref}
           email={contact.email}
