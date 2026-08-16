@@ -382,8 +382,8 @@ class NotificationService:
 
     async def mark_all_read(self, user_id: str) -> dict:
         timestamp = now_utc()
-        datetime_ids = []
-        string_ids = []
+        datetime_ids: list[str] = []
+        string_ids: list[str] = []
         cursor = self.db.notifications.find(
             {"user_id": user_id, "read_at": None}, {"_id": 0}
         )
@@ -555,10 +555,15 @@ class NotificationService:
             "lease_until": {"$lte": moment},
         }
         exhausted_query = {"status": "exhausted"}
-        oldest_due = await self.db.notification_outbox.find(
-            pending_due_query,
-            {"_id": 0, "next_attempt_at": 1},
-        ).sort("next_attempt_at", 1).limit(1).to_list(1)
+        oldest_due = (
+            await self.db.notification_outbox.find(
+                pending_due_query,
+                {"_id": 0, "next_attempt_at": 1},
+            )
+            .sort("next_attempt_at", 1)
+            .limit(1)
+            .to_list(1)
+        )
         oldest_due_age_seconds = 0
         if oldest_due:
             due_at = as_utc_datetime(oldest_due[0].get("next_attempt_at"))
@@ -647,9 +652,7 @@ class NotificationService:
                 "outbox_lease_lost",
                 "Lease outbox tidak lagi dimiliki worker ini.",
             )
-        entry = await self.db.notification_outbox.find_one(
-            {"id": entry_id}, {"_id": 0}
-        )
+        entry = await self.db.notification_outbox.find_one({"id": entry_id}, {"_id": 0})
         if not entry:
             raise NotificationError(
                 404, "outbox_entry_not_found", "Entri outbox tidak ditemukan."
@@ -689,9 +692,7 @@ class NotificationService:
                 "outbox_lease_lost",
                 "Lease outbox tidak lagi dimiliki worker ini.",
             )
-        entry = await self.db.notification_outbox.find_one(
-            {"id": entry_id}, {"_id": 0}
-        )
+        entry = await self.db.notification_outbox.find_one({"id": entry_id}, {"_id": 0})
         if not entry:
             raise NotificationError(
                 404, "outbox_entry_not_found", "Entri outbox tidak ditemukan."

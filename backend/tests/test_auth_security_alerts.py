@@ -2,18 +2,17 @@ import asyncio
 from datetime import datetime, timezone
 
 import pytest
-from pymongo.errors import DuplicateKeyError
-
 from auth_security_alerts import (
     ALERT_RETRY_SECONDS,
     AlertDecision,
     AuthenticationAlertPolicy,
     AuthSecurityCleanupWorker,
     AuthSecurityOperationError,
-    MongoCleanupLease,
     MongoAlertOutboxStore,
+    MongoCleanupLease,
     build_alert_document,
 )
+from pymongo.errors import DuplicateKeyError
 
 NOW = datetime(2026, 7, 29, 12, 0, tzinfo=timezone.utc)
 

@@ -1,0 +1,10 @@
+[flake8]
+# Matches black's line-length default (backend/scripts/collect_backend_quality_baseline.py
+# and quality-gates.yml both run black with no --line-length override, so 88
+# is the project's actual line-length standard). Without this file, flake8
+# falls back to its own default of 79, which flagged 1948 of the 2046
+# backend flake8 findings recorded in the 2026-08-14 audit baseline as
+# "line too long" purely from that mismatch -- every one of those lines was
+# already within black's own limit.
+max-line-length = 88
+exclude = .venv,.venv-python312-backup,__pycache__,migrations/__pycache__

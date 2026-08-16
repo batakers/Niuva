@@ -3,12 +3,11 @@ import types
 
 import httpx
 import pytest
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
-from pymongo.errors import DuplicateKeyError, PyMongoError
-
 from catalog_routes import build_catalog_router
 from catalog_service import CatalogError, CatalogService
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 from permissions import ROLE_POLICY_VERSION, has_permission
+from pymongo.errors import DuplicateKeyError, PyMongoError
 from transaction_api import transaction_unavailable_handler
 from transaction_execution import TransactionExecutor, TransactionUnavailableError
 from transaction_guard import TransactionMutationGuard
@@ -220,9 +219,7 @@ def build_catalog_service():
     db = FakeDatabase()
     client = FakeClient()
     capabilities = types.SimpleNamespace(transactions=True)
-    guard = TransactionMutationGuard(
-        TransactionExecutor(client, lambda: capabilities)
-    )
+    guard = TransactionMutationGuard(TransactionExecutor(client, lambda: capabilities))
     return CatalogService(db, client, capabilities, guard), db
 
 
@@ -251,9 +248,7 @@ async def create_publishable_product(api):
             "slug": "desk-sign",
             "short_description": "Custom sign",
             "description": "Printed sign",
-            "media": [
-                {"storage_path": "catalog/sign.webp", "alt": "Desk sign"}
-            ],
+            "media": [{"storage_path": "catalog/sign.webp", "alt": "Desk sign"}],
             "pricing_mode": "fixed",
             "price_from": 50000,
             "currency": "IDR",
@@ -675,36 +670,80 @@ def test_catalog_draft_isolation_and_rollback_as_new_revision():
 async def run_variant_and_option_identity_are_stable():
     app, _db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         _category, product = await create_publishable_product(api)
-        aggregate = await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        aggregate = await api.get(
+            f"/api/admin/products/{product['id']}", headers=headers()
+        )
         variant = aggregate.json()["variants"][0]
         renamed_variant = await api.put(
             f"/api/admin/products/{product['id']}/variants",
-            json={"variants": [{**variant, "id": variant["id"], "sku": "SIGN-AZURE", "name": "Azure"}]},
+            json={
+                "variants": [
+                    {
+                        **variant,
+                        "id": variant["id"],
+                        "sku": "SIGN-AZURE",
+                        "name": "Azure",
+                    }
+                ]
+            },
             headers=headers(),
         )
         assert renamed_variant.status_code == 200
-        after_variant = await api.get(f"/api/admin/products/{product['id']}", headers=headers())
-        matching_variants = [item for item in after_variant.json()["variants"] if item["id"] == variant["id"]]
+        after_variant = await api.get(
+            f"/api/admin/products/{product['id']}", headers=headers()
+        )
+        matching_variants = [
+            item
+            for item in after_variant.json()["variants"]
+            if item["id"] == variant["id"]
+        ]
         assert len(matching_variants) == 1
         assert matching_variants[0]["sku"] == "SIGN-AZURE"
 
         created_options = await api.put(
             f"/api/admin/products/{product['id']}/options",
-            json={"options": [{"code": "finish", "label": "Finish", "type": "select", "allowed_values": ["matte", "glossy"], "required": True}]},
+            json={
+                "options": [
+                    {
+                        "code": "finish",
+                        "label": "Finish",
+                        "type": "select",
+                        "allowed_values": ["matte", "glossy"],
+                        "required": True,
+                    }
+                ]
+            },
             headers=headers(),
         )
         assert created_options.status_code == 200
         option = created_options.json()[0]
         renamed_option = await api.put(
             f"/api/admin/products/{product['id']}/options",
-            json={"options": [{**option, "id": option["id"], "code": "surface_finish", "label": "Surface finish"}]},
+            json={
+                "options": [
+                    {
+                        **option,
+                        "id": option["id"],
+                        "code": "surface_finish",
+                        "label": "Surface finish",
+                    }
+                ]
+            },
             headers=headers(),
         )
         assert renamed_option.status_code == 200
-        after_option = await api.get(f"/api/admin/products/{product['id']}", headers=headers())
-        matching_options = [item for item in after_option.json()["options"] if item["id"] == option["id"]]
+        after_option = await api.get(
+            f"/api/admin/products/{product['id']}", headers=headers()
+        )
+        matching_options = [
+            item
+            for item in after_option.json()["options"]
+            if item["id"] == option["id"]
+        ]
         assert len(matching_options) == 1
         assert matching_options[0]["code"] == "surface_finish"
 
@@ -716,44 +755,75 @@ def test_variant_and_option_renames_preserve_child_identity():
 async def run_variant_conflicts_are_preflighted_before_writes():
     app, _db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         category, product = await create_publishable_product(api)
-        original = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()["variants"][0]
+        original = (
+            await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        ).json()["variants"][0]
         other_product = await api.post(
             "/api/admin/products",
             json={
-                "category_id": category["id"], "name": "Other Sign", "slug": "other-sign",
-                "short_description": "Other custom sign", "description": "Other printed sign",
+                "category_id": category["id"],
+                "name": "Other Sign",
+                "slug": "other-sign",
+                "short_description": "Other custom sign",
+                "description": "Other printed sign",
                 "media": [{"storage_path": "catalog/other.webp", "alt": "Other sign"}],
-                "pricing_mode": "fixed", "price_from": 60000, "currency": "IDR",
-                "pricing_rule_reference": None, "retail_cta_enabled": True,
-                "b2b_cta_enabled": True, "stock_visibility": "status_only",
+                "pricing_mode": "fixed",
+                "price_from": 60000,
+                "currency": "IDR",
+                "pricing_rule_reference": None,
+                "retail_cta_enabled": True,
+                "b2b_cta_enabled": True,
+                "stock_visibility": "status_only",
             },
             headers=headers(),
         )
         assert other_product.status_code == 201
         other_variant = await api.put(
             f"/api/admin/products/{other_product.json()['id']}/variants",
-            json={"variants": [{
-                "sku": "OTHER-BLACK", "name": "Black", "fixed_price": 60000,
-                "currency": "IDR", "production_type": "ready_stock",
-                "inventory_tracking_enabled": True, "reorder_point": "1", "status": "active",
-            }]},
+            json={
+                "variants": [
+                    {
+                        "sku": "OTHER-BLACK",
+                        "name": "Black",
+                        "fixed_price": 60000,
+                        "currency": "IDR",
+                        "production_type": "ready_stock",
+                        "inventory_tracking_enabled": True,
+                        "reorder_point": "1",
+                        "status": "active",
+                    }
+                ]
+            },
             headers=headers(),
         )
         assert other_variant.status_code == 200
         conflicted = await api.put(
             f"/api/admin/products/{product['id']}/variants",
-            json={"variants": [
-                {**original, "id": original["id"], "sku": "SIGN-RENAMED"},
-                {"sku": "OTHER-BLACK", "name": "Conflicting", "fixed_price": 60000,
-                 "currency": "IDR", "production_type": "ready_stock",
-                 "inventory_tracking_enabled": True, "reorder_point": "1", "status": "active"},
-            ]},
+            json={
+                "variants": [
+                    {**original, "id": original["id"], "sku": "SIGN-RENAMED"},
+                    {
+                        "sku": "OTHER-BLACK",
+                        "name": "Conflicting",
+                        "fixed_price": 60000,
+                        "currency": "IDR",
+                        "production_type": "ready_stock",
+                        "inventory_tracking_enabled": True,
+                        "reorder_point": "1",
+                        "status": "active",
+                    },
+                ]
+            },
             headers=headers(),
         )
         assert conflicted.status_code == 409
-        own_variants = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()["variants"]
+        own_variants = (
+            await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        ).json()["variants"]
         matching = [item for item in own_variants if item["id"] == original["id"]]
         assert len(matching) == 1
         assert matching[0]["sku"] == "SIGN-BLUE"
@@ -766,47 +836,82 @@ def test_variant_conflicts_do_not_partially_replace_children():
 async def run_resolved_child_ids_must_remain_unique():
     app, _db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         _category, product = await create_publishable_product(api)
-        aggregate = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()
+        aggregate = (
+            await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        ).json()
         variant = aggregate["variants"][0]
         variant_conflict = await api.put(
             f"/api/admin/products/{product['id']}/variants",
-            json={"variants": [
-                {**variant, "id": variant["id"], "sku": "SIGN-RENAMED"},
-                {"sku": "SIGN-BLUE", "name": "Reused old SKU", "fixed_price": 50000,
-                 "currency": "IDR", "production_type": "ready_stock",
-                 "inventory_tracking_enabled": True, "reorder_point": "2", "status": "active"},
-            ]},
+            json={
+                "variants": [
+                    {**variant, "id": variant["id"], "sku": "SIGN-RENAMED"},
+                    {
+                        "sku": "SIGN-BLUE",
+                        "name": "Reused old SKU",
+                        "fixed_price": 50000,
+                        "currency": "IDR",
+                        "production_type": "ready_stock",
+                        "inventory_tracking_enabled": True,
+                        "reorder_point": "2",
+                        "status": "active",
+                    },
+                ]
+            },
             headers=headers(),
         )
         assert variant_conflict.status_code == 409
         assert variant_conflict.json()["detail"]["code"] == "child_identity_conflict"
-        unchanged_variants = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()["variants"]
-        assert [(item["id"], item["sku"]) for item in unchanged_variants] == [(variant["id"], "SIGN-BLUE")]
+        unchanged_variants = (
+            await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        ).json()["variants"]
+        assert [(item["id"], item["sku"]) for item in unchanged_variants] == [
+            (variant["id"], "SIGN-BLUE")
+        ]
 
         created_options = await api.put(
             f"/api/admin/products/{product['id']}/options",
-            json={"options": [{
-                "code": "finish", "label": "Finish", "type": "select",
-                "allowed_values": ["matte", "glossy"], "required": True,
-            }]},
+            json={
+                "options": [
+                    {
+                        "code": "finish",
+                        "label": "Finish",
+                        "type": "select",
+                        "allowed_values": ["matte", "glossy"],
+                        "required": True,
+                    }
+                ]
+            },
             headers=headers(),
         )
         assert created_options.status_code == 200
         option = created_options.json()[0]
         option_conflict = await api.put(
             f"/api/admin/products/{product['id']}/options",
-            json={"options": [
-                {**option, "id": option["id"], "code": "surface_finish"},
-                {"code": "finish", "label": "Reused old code", "type": "text", "required": False},
-            ]},
+            json={
+                "options": [
+                    {**option, "id": option["id"], "code": "surface_finish"},
+                    {
+                        "code": "finish",
+                        "label": "Reused old code",
+                        "type": "text",
+                        "required": False,
+                    },
+                ]
+            },
             headers=headers(),
         )
         assert option_conflict.status_code == 409
         assert option_conflict.json()["detail"]["code"] == "child_identity_conflict"
-        unchanged_options = (await api.get(f"/api/admin/products/{product['id']}", headers=headers())).json()["options"]
-        assert [(item["id"], item["code"]) for item in unchanged_options] == [(option["id"], "finish")]
+        unchanged_options = (
+            await api.get(f"/api/admin/products/{product['id']}", headers=headers())
+        ).json()["options"]
+        assert [(item["id"], item["code"]) for item in unchanged_options] == [
+            (option["id"], "finish")
+        ]
 
 
 def test_resolved_variant_and_option_ids_cannot_be_reused_in_one_replacement():
@@ -816,21 +921,86 @@ def test_resolved_variant_and_option_ids_cannot_be_reused_in_one_replacement():
 async def run_operations_catalog_field_boundary():
     app, _db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
-        category = await api.post("/api/admin/categories", json={"name": "Operations Drafts", "slug": "operations-drafts"}, headers=headers("catalog_manager"))
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
+        category = await api.post(
+            "/api/admin/categories",
+            json={"name": "Operations Drafts", "slug": "operations-drafts"},
+            headers=headers("catalog_manager"),
+        )
         assert category.status_code == 201
-        priced_draft = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Operations Product", "short_description": "Draft copy", "description": "Draft description", "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}], "pricing_mode": "fixed", "price_from": 50000, "currency": "IDR", "pricing_rule_reference": "rule-private"}, headers=headers("catalog_manager"))
+        priced_draft = await api.post(
+            "/api/admin/products",
+            json={
+                "category_id": category.json()["id"],
+                "name": "Operations Product",
+                "short_description": "Draft copy",
+                "description": "Draft description",
+                "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}],
+                "pricing_mode": "fixed",
+                "price_from": 50000,
+                "currency": "IDR",
+                "pricing_rule_reference": "rule-private",
+            },
+            headers=headers("catalog_manager"),
+        )
         assert priced_draft.status_code == 201
         assert priced_draft.json()["price_from"] == 50000
-        draft = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Operations Draft", "short_description": "Draft copy", "description": "Draft description", "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}]}, headers=headers("catalog_manager"))
+        draft = await api.post(
+            "/api/admin/products",
+            json={
+                "category_id": category.json()["id"],
+                "name": "Operations Draft",
+                "short_description": "Draft copy",
+                "description": "Draft description",
+                "media": [{"storage_path": "catalog/draft.webp", "alt": "Draft"}],
+            },
+            headers=headers("catalog_manager"),
+        )
         assert draft.status_code == 201, draft.text
-        priced = await api.post("/api/admin/products", json={"category_id": category.json()["id"], "name": "Owner Priced Product", "short_description": "Original", "description": "Original description", "pricing_mode": "fixed", "price_from": 75000, "currency": "IDR"}, headers=headers("super_admin"))
+        priced = await api.post(
+            "/api/admin/products",
+            json={
+                "category_id": category.json()["id"],
+                "name": "Owner Priced Product",
+                "short_description": "Original",
+                "description": "Original description",
+                "pricing_mode": "fixed",
+                "price_from": 75000,
+                "currency": "IDR",
+            },
+            headers=headers("super_admin"),
+        )
         assert priced.status_code == 201
-        operations_update = await api.put(f"/api/admin/products/{priced.json()['id']}", json={"category_id": category.json()["id"], "name": "Owner Priced Product", "short_description": "Operations edit", "description": "Updated description"}, headers=headers("catalog_manager"))
+        operations_update = await api.put(
+            f"/api/admin/products/{priced.json()['id']}",
+            json={
+                "category_id": category.json()["id"],
+                "name": "Owner Priced Product",
+                "short_description": "Operations edit",
+                "description": "Updated description",
+            },
+            headers=headers("catalog_manager"),
+        )
         assert operations_update.status_code == 200, operations_update.text
         assert operations_update.json()["pricing_mode"] == "fixed"
         assert operations_update.json()["price_from"] == 75000
-        priced_variant = await api.put(f"/api/admin/products/{draft.json()['id']}/variants", json={"variants": [{"sku": "OPS-DRAFT", "name": "Draft", "fixed_price": 50000, "currency": "IDR", "production_type": "made_to_order"}]}, headers=headers("catalog_manager"))
+        priced_variant = await api.put(
+            f"/api/admin/products/{draft.json()['id']}/variants",
+            json={
+                "variants": [
+                    {
+                        "sku": "OPS-DRAFT",
+                        "name": "Draft",
+                        "fixed_price": 50000,
+                        "currency": "IDR",
+                        "production_type": "made_to_order",
+                    }
+                ]
+            },
+            headers=headers("catalog_manager"),
+        )
         assert priced_variant.status_code == 200
         assert priced_variant.json()[0]["fixed_price"] == 50000
         candidate = await api.post(
@@ -840,14 +1010,26 @@ async def run_operations_catalog_field_boundary():
         )
         assert candidate.status_code == 200
         assert candidate.json()["workflow_status"] == "validated"
-        assert (await api.post(f"/api/admin/products/{draft.json()['id']}/publish", json={"reason": "Operations cannot publish"}, headers=headers("catalog_manager"))).status_code == 403
+        assert (
+            await api.post(
+                f"/api/admin/products/{draft.json()['id']}/publish",
+                json={"reason": "Operations cannot publish"},
+                headers=headers("catalog_manager"),
+            )
+        ).status_code == 403
         approved = await api.post(
             f"/api/admin/products/{draft.json()['id']}/publish",
             json={"reason": "Manager approves catalog candidate"},
             headers=headers("manager_approver"),
         )
         assert approved.status_code == 200
-        assert (await api.post(f"/api/admin/products/{draft.json()['id']}/archive", json={"reason": "Operations cannot archive"}, headers=headers("catalog_manager"))).status_code == 403
+        assert (
+            await api.post(
+                f"/api/admin/products/{draft.json()['id']}/archive",
+                json={"reason": "Operations cannot archive"},
+                headers=headers("catalog_manager"),
+            )
+        ).status_code == 403
 
 
 def test_catalog_manager_can_edit_draft_pricing_but_cannot_publish():
@@ -857,44 +1039,146 @@ def test_catalog_manager_can_edit_draft_pricing_but_cannot_publish():
 async def run_operations_catalog_lifecycle_and_variant_boundaries():
     app, _db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         owner = headers("super_admin")
         operations = headers("catalog_manager")
-        archived_create = await api.post("/api/admin/categories", json={"name": "Archived attempt", "status": "archived"}, headers=operations)
+        archived_create = await api.post(
+            "/api/admin/categories",
+            json={"name": "Archived attempt", "status": "archived"},
+            headers=operations,
+        )
         assert archived_create.status_code == 403
-        category = await api.post("/api/admin/categories", json={"name": "Lifecycle Category"}, headers=owner)
+        category = await api.post(
+            "/api/admin/categories", json={"name": "Lifecycle Category"}, headers=owner
+        )
         assert category.status_code == 201
         category_id = category.json()["id"]
-        status_change = await api.put(f"/api/admin/categories/{category_id}", json={"name": "Lifecycle Category", "status": "archived"}, headers=operations)
+        status_change = await api.put(
+            f"/api/admin/categories/{category_id}",
+            json={"name": "Lifecycle Category", "status": "archived"},
+            headers=operations,
+        )
         assert status_change.status_code == 403
-        descriptive = await api.put(f"/api/admin/categories/{category_id}", json={"name": "Lifecycle Category Edited", "description": "Operations description"}, headers=operations)
+        descriptive = await api.put(
+            f"/api/admin/categories/{category_id}",
+            json={
+                "name": "Lifecycle Category Edited",
+                "description": "Operations description",
+            },
+            headers=operations,
+        )
         assert descriptive.status_code == 200
         assert descriptive.json()["status"] == "active"
-        archived = await api.post(f"/api/admin/categories/{category_id}/archive", json={"reason": "Owner archive"}, headers=owner)
+        archived = await api.post(
+            f"/api/admin/categories/{category_id}/archive",
+            json={"reason": "Owner archive"},
+            headers=owner,
+        )
         assert archived.status_code == 200
-        blocked_archived_update = await api.put(f"/api/admin/categories/{category_id}", json={"name": "Must not edit archived"}, headers=operations)
+        blocked_archived_update = await api.put(
+            f"/api/admin/categories/{category_id}",
+            json={"name": "Must not edit archived"},
+            headers=operations,
+        )
         assert blocked_archived_update.status_code == 403
-        product = await api.post("/api/admin/products", json={"category_id": category_id, "name": "Archived Workflow Product", "pricing_mode": "fixed", "price_from": 50000, "currency": "IDR"}, headers=owner)
+        product = await api.post(
+            "/api/admin/products",
+            json={
+                "category_id": category_id,
+                "name": "Archived Workflow Product",
+                "pricing_mode": "fixed",
+                "price_from": 50000,
+                "currency": "IDR",
+            },
+            headers=owner,
+        )
         assert product.status_code == 201
         product_id = product.json()["id"]
-        variant = await api.put(f"/api/admin/products/{product_id}/variants", json={"variants": [{"sku": "ARCHIVED-VARIANT", "name": "Original", "fixed_price": 50000, "currency": "IDR", "production_type": "made_to_order"}]}, headers=owner)
+        variant = await api.put(
+            f"/api/admin/products/{product_id}/variants",
+            json={
+                "variants": [
+                    {
+                        "sku": "ARCHIVED-VARIANT",
+                        "name": "Original",
+                        "fixed_price": 50000,
+                        "currency": "IDR",
+                        "production_type": "made_to_order",
+                    }
+                ]
+            },
+            headers=owner,
+        )
         assert variant.status_code == 200
-        variant_update = await api.put(f"/api/admin/products/{product_id}/variants", json={"variants": [{"id": variant.json()[0]["id"], "sku": "ARCHIVED-VARIANT", "name": "Operations rename", "production_type": "made_to_order"}]}, headers=operations)
+        variant_update = await api.put(
+            f"/api/admin/products/{product_id}/variants",
+            json={
+                "variants": [
+                    {
+                        "id": variant.json()[0]["id"],
+                        "sku": "ARCHIVED-VARIANT",
+                        "name": "Operations rename",
+                        "production_type": "made_to_order",
+                    }
+                ]
+            },
+            headers=operations,
+        )
         assert variant_update.status_code == 200
         assert variant_update.json()[0]["fixed_price"] == 50000
         assert variant_update.json()[0]["currency"] == "IDR"
-        sku_resolved = await api.put(f"/api/admin/products/{product_id}/variants", json={"variants": [{"sku": "ARCHIVED-VARIANT", "name": "SKU resolved edit", "production_type": "made_to_order"}]}, headers=operations)
+        sku_resolved = await api.put(
+            f"/api/admin/products/{product_id}/variants",
+            json={
+                "variants": [
+                    {
+                        "sku": "ARCHIVED-VARIANT",
+                        "name": "SKU resolved edit",
+                        "production_type": "made_to_order",
+                    }
+                ]
+            },
+            headers=operations,
+        )
         assert sku_resolved.status_code == 200
         assert sku_resolved.json()[0]["fixed_price"] == 50000
         assert sku_resolved.json()[0]["currency"] == "IDR"
         assert sku_resolved.json()[0]["status"] == "active"
-        operations_created = await api.put(f"/api/admin/products/{product_id}/variants", json={"variants": [{"sku": "OPS-NEW-VARIANT", "name": "Operations created", "production_type": "made_to_order"}]}, headers=operations)
+        operations_created = await api.put(
+            f"/api/admin/products/{product_id}/variants",
+            json={
+                "variants": [
+                    {
+                        "sku": "OPS-NEW-VARIANT",
+                        "name": "Operations created",
+                        "production_type": "made_to_order",
+                    }
+                ]
+            },
+            headers=operations,
+        )
         assert operations_created.status_code == 200
         new_variant = operations_created.json()[0]
         assert new_variant["status"] == "active"
         assert new_variant["currency"] == "IDR"
         assert new_variant["fixed_price"] is None
-        operations_option = await api.put(f"/api/admin/products/{product_id}/options", json={"options": [{"code": "ops_finish", "label": "Operations finish", "type": "select", "allowed_values": ["matte"], "required": True}]}, headers=operations)
+        operations_option = await api.put(
+            f"/api/admin/products/{product_id}/options",
+            json={
+                "options": [
+                    {
+                        "code": "ops_finish",
+                        "label": "Operations finish",
+                        "type": "select",
+                        "allowed_values": ["matte"],
+                        "required": True,
+                    }
+                ]
+            },
+            headers=operations,
+        )
         assert operations_option.status_code == 200
         new_option = operations_option.json()[0]
         assert not {"fixed_price", "currency", "status"}.intersection(new_option)
@@ -902,10 +1186,14 @@ async def run_operations_catalog_lifecycle_and_variant_boundaries():
 
 def test_operations_catalog_lifecycle_and_variant_boundaries():
     asyncio.run(run_operations_catalog_lifecycle_and_variant_boundaries())
+
+
 async def run_operations_cannot_change_archived_products_or_variants():
     app, db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         category, product = await create_publishable_product(api)
         owner = headers("super_admin")
         operations = headers("catalog_manager")
@@ -930,13 +1218,31 @@ async def run_operations_cannot_change_archived_products_or_variants():
 
         owner_variant = await api.put(
             f"/api/admin/products/{product['id']}/variants",
-            json={"variants": [{"sku": "ARCHIVED-OWNER", "name": "Owner variant", "production_type": "made_to_order", "status": "active"}]},
+            json={
+                "variants": [
+                    {
+                        "sku": "ARCHIVED-OWNER",
+                        "name": "Owner variant",
+                        "production_type": "made_to_order",
+                        "status": "active",
+                    }
+                ]
+            },
             headers=owner,
         )
         assert owner_variant.status_code == 200
         blocked_variant = await api.put(
             f"/api/admin/products/{product['id']}/variants",
-            json={"variants": [{"id": owner_variant.json()[0]["id"], "sku": "ARCHIVED-OWNER", "name": "Operations rename", "production_type": "made_to_order"}]},
+            json={
+                "variants": [
+                    {
+                        "id": owner_variant.json()[0]["id"],
+                        "sku": "ARCHIVED-OWNER",
+                        "name": "Operations rename",
+                        "production_type": "made_to_order",
+                    }
+                ]
+            },
             headers=operations,
         )
         assert blocked_variant.status_code == 403
@@ -950,7 +1256,9 @@ def test_operations_cannot_change_archived_products_or_variants():
 async def run_operations_cannot_set_variant_status_without_publish_permission():
     app, _db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         _category, product = await create_publishable_product(api)
         variant_payload = {
             "sku": "OPS-STATUS",
@@ -986,7 +1294,9 @@ def test_variant_status_requires_catalog_publish_permission():
 async def run_bulk_archive_reports_per_item_results():
     app, _db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         _category, product = await create_publishable_product(api)
 
         forbidden = await api.post(
@@ -998,7 +1308,10 @@ async def run_bulk_archive_reports_per_item_results():
 
         result = await api.post(
             "/api/admin/products/bulk-archive",
-            json={"product_ids": [product["id"], "missing-product"], "reason": "Bulk archive cleanup"},
+            json={
+                "product_ids": [product["id"], "missing-product"],
+                "reason": "Bulk archive cleanup",
+            },
             headers=headers(),
         )
         assert result.status_code == 200

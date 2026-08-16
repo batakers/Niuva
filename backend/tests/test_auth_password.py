@@ -153,7 +153,7 @@ def run_redacted_mixed_hash_timing(*, samples: int = 5, warmups: int = 1) -> dic
         assert not passwords.verify_password(invalid_fixture, argon_hash).valid
         assert not passwords.verify_password(invalid_fixture, bcrypt_hash).valid
 
-    durations = {"argon2id": [], "bcrypt": []}
+    durations: dict[str, list[float]] = {"argon2id": [], "bcrypt": []}
     for _ in range(samples):
         for algorithm, encoded in (
             ("argon2id", argon_hash),

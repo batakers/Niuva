@@ -11,10 +11,10 @@ import asyncio
 import httpx
 import pytest
 from fastapi import APIRouter, FastAPI, Header, HTTPException
-
 from permissions import ROLE_POLICY_VERSION, has_permission
 from retail_routes import build_retail_router
 from retail_service import RetailOrderService
+
 from tests.test_b2b_quote_conversion import EnabledGuard
 from tests.test_retail_order_aggregate import (
     CUSTOMER,

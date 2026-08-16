@@ -1,5 +1,4 @@
 import pytest
-
 from b2b_domain import (
     B2BDomainError,
     inquiry_next_actions,

@@ -47,9 +47,7 @@ def test_real_replica_set_rotates_once_and_revokes_replayed_family(
             )
 
             async def current_version(user_id, session):
-                user = await database.users.find_one(
-                    {"id": user_id}, session=session
-                )
+                user = await database.users.find_one({"id": user_id}, session=session)
                 return user.get("token_version", 0) if user else None
 
             module = AdminSessionModule(

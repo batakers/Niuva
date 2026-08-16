@@ -18,7 +18,7 @@ os.environ["AUTH_COOKIE_DOMAIN"] = ""
 # replica-set tests. Importing the real driver here — before any test module is
 # collected — keeps those setdefault calls as no-ops and leaves the stubs
 # scoped to the suites that build them.
-import motor.motor_asyncio  # noqa: F401
+import motor.motor_asyncio  # noqa: F401, E402
 
 
 @pytest.fixture

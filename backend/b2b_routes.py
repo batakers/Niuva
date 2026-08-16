@@ -9,10 +9,14 @@ from b2b_domain import B2BDomainError, project_customer_inquiry
 from b2b_pagination import PageRequest, build_page_request
 from b2b_service import B2BService
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from transaction_execution import TransactionUnavailableError
 
 logger = logging.getLogger(__name__)
+
+# Mirrors the public form's floor. Operations follow up by phone, so an
+# unreachable submitter is a dead lead rather than a stored one.
+MIN_PIC_PHONE_DIGITS = 8
 
 
 class InquiryPayload(BaseModel):
@@ -21,10 +25,30 @@ class InquiryPayload(BaseModel):
     company: str = Field(min_length=2, max_length=200)
     pic_name: str = Field(min_length=2, max_length=120)
     pic_email: EmailStr
-    pic_phone: str = Field(default="", max_length=50)
+    pic_phone: str = Field(min_length=1, max_length=50)
     need: str = Field(min_length=3, max_length=500)
     timeline: str = Field(default="", max_length=200)
     brief: str = Field(min_length=10, max_length=5000)
+    # DEC-UX-003 makes the privacy checkbox part of the intake contract, so the
+    # boundary refuses a submission the visitor never consented to. The flag is
+    # a gate only: `create_inquiry` builds its document from an explicit field
+    # list, so consent is deliberately not persisted here. Storing consent
+    # evidence needs its own schema/migration decision.
+    consent: bool
+
+    @field_validator("pic_phone")
+    @classmethod
+    def _phone_must_be_reachable(cls, value: str) -> str:
+        if sum(character.isdigit() for character in value) < MIN_PIC_PHONE_DIGITS:
+            raise ValueError(f"pic_phone needs at least {MIN_PIC_PHONE_DIGITS} digits")
+        return value
+
+    @field_validator("consent")
+    @classmethod
+    def _consent_must_be_granted(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("consent is required before an inquiry is stored")
+        return value
 
 
 class InquiryTransitionPayload(BaseModel):

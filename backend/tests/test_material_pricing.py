@@ -5,8 +5,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
-
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 from material_pricing import resolve_effective_price
 from material_routes import MaterialService, build_material_router
 from permissions import ROLE_POLICY_VERSION, has_permission
@@ -112,8 +111,15 @@ def require_permission(permission):
     ):
         permissions = {value.strip() for value in x_permissions.split(",") if value}
         if permission not in permissions:
-            raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
-        return {"id": x_actor_id, "email": "staff@niuva.test", "roles": ["staff"], "permissions": permissions}
+            raise HTTPException(
+                status_code=403, detail=f"Permission required: {permission}"
+            )
+        return {
+            "id": x_actor_id,
+            "email": "staff@niuva.test",
+            "roles": ["staff"],
+            "permissions": permissions,
+        }
 
     return dependency
 
@@ -128,7 +134,8 @@ def build_test_context():
             get_db=lambda: db,
             get_guard=lambda: guard,
             require_permission=require_permission,
-            has_permission=lambda actor, permission: permission in actor.get("permissions", set()),
+            has_permission=lambda actor, permission: permission
+            in actor.get("permissions", set()),
         )
     )
     app.include_router(api)
@@ -159,10 +166,17 @@ def test_effective_price_is_none_before_first_version():
 async def run_material_compatibility_and_pricing_flow():
     app, db = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         created = await api.post(
             "/api/admin/materials",
-            json={"name": "PLA Legacy", "description": "Existing flow", "color": "White", "active": True},
+            json={
+                "name": "PLA Legacy",
+                "description": "Existing flow",
+                "color": "White",
+                "active": True,
+            },
             headers=headers("materials.write"),
         )
         assert created.status_code == 200, created.text
@@ -248,7 +262,9 @@ async def run_material_compatibility_and_pricing_flow():
 
         public = await api.get("/api/materials")
         assert public.status_code == 200
-        public_material = next(item for item in public.json() if item["id"] == material_id)
+        public_material = next(
+            item for item in public.json() if item["id"] == material_id
+        )
         assert public_material["active"] is True
         assert "supplier_reference" not in public_material
         assert "price" not in public_material
@@ -262,7 +278,10 @@ async def run_material_compatibility_and_pricing_flow():
         assert archived.json()["id"] == material_id
         assert archived.json()["status"] == "archived"
         assert archived.json()["active"] is False
-        assert all(item["id"] != material_id for item in (await api.get("/api/materials")).json())
+        assert all(
+            item["id"] != material_id
+            for item in (await api.get("/api/materials")).json()
+        )
 
         assert {event["action"] for event in db.audit_events.items} >= {
             "material.created",
@@ -279,7 +298,9 @@ def test_material_compatibility_and_immutable_pricing_routes():
 async def run_validation_and_compatibility_aliases():
     app, _db = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         invalid_ready = await api.post(
             "/api/admin/materials",
             json={"sku": "ABS-1", "name": "ABS", "setup_status": "ready"},
@@ -343,18 +364,33 @@ def test_material_validation_and_delete_archive_alias():
 async def run_supplier_reference_boundary():
     app, db = build_test_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
-        material = await api.post("/api/admin/materials", json={"name": "Private Supplier Material", "supplier_reference": "SUP-001"}, headers=headers("materials.write", "supplier_reference.write"))
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
+        material = await api.post(
+            "/api/admin/materials",
+            json={"name": "Private Supplier Material", "supplier_reference": "SUP-001"},
+            headers=headers("materials.write", "supplier_reference.write"),
+        )
         assert material.status_code == 200
         material_id = material.json()["id"]
-        operations_list = await api.get("/api/admin/materials", headers=headers("materials.read"))
+        operations_list = await api.get(
+            "/api/admin/materials", headers=headers("materials.read")
+        )
         assert operations_list.status_code == 200
         assert "supplier_reference" not in operations_list.json()[0]
-        forbidden = await api.put(f"/api/admin/materials/{material_id}", json={"supplier_reference": "LEAK"}, headers=headers("materials.write"))
+        forbidden = await api.put(
+            f"/api/admin/materials/{material_id}",
+            json={"supplier_reference": "LEAK"},
+            headers=headers("materials.write"),
+        )
         assert forbidden.status_code == 403
         assert forbidden.json()["detail"]["code"] == "material_field_forbidden"
         assert db.materials.items[0]["supplier_reference"] == "SUP-001"
-        commercial_list = await api.get("/api/admin/materials", headers=headers("materials.read", "supplier_reference.read"))
+        commercial_list = await api.get(
+            "/api/admin/materials",
+            headers=headers("materials.read", "supplier_reference.read"),
+        )
         assert commercial_list.status_code == 200
         assert commercial_list.json()[0]["supplier_reference"] == "SUP-001"
 
@@ -374,8 +410,11 @@ def role_require_permission(permission):
             "role_policy_version": ROLE_POLICY_VERSION,
         }
         if not has_permission(actor, permission):
-            raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
+            raise HTTPException(
+                status_code=403, detail=f"Permission required: {permission}"
+            )
         return actor
+
     return dependency
 
 
@@ -398,45 +437,125 @@ def build_role_test_context():
 
 async def run_real_role_supplier_reference_boundaries():
     app, db = build_role_test_context()
-    db.materials.items.append({"id": "material-private", "name": "Private Material", "description": "Original", "supplier_reference": "SUP-001", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
-    db.materials.items.append({"id": "material-delete", "name": "Delete Material", "description": "Original", "supplier_reference": "SUP-DELETE", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
+    db.materials.items.append(
+        {
+            "id": "material-private",
+            "name": "Private Material",
+            "description": "Original",
+            "supplier_reference": "SUP-001",
+            "status": "active",
+            "active": True,
+            "setup_status": "needs_review",
+            "base_unit": None,
+        }
+    )
+    db.materials.items.append(
+        {
+            "id": "material-delete",
+            "name": "Delete Material",
+            "description": "Original",
+            "supplier_reference": "SUP-DELETE",
+            "status": "active",
+            "active": True,
+            "setup_status": "needs_review",
+            "base_unit": None,
+        }
+    )
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         operations = {"X-Role": "warehouse"}
         commercial = {"X-Role": "catalog_manager"}
-        created = await api.post("/api/admin/materials", json={"name": "Operations Material"}, headers=operations)
+        created = await api.post(
+            "/api/admin/materials",
+            json={"name": "Operations Material"},
+            headers=operations,
+        )
         assert created.status_code == 200
         assert "supplier_reference" not in created.json()
         operations_list = await api.get("/api/admin/materials", headers=operations)
         assert operations_list.status_code == 200
-        assert all("supplier_reference" not in material for material in operations_list.json())
-        updated = await api.put("/api/admin/materials/material-private", json={"description": "Operations update"}, headers=operations)
+        assert all(
+            "supplier_reference" not in material for material in operations_list.json()
+        )
+        updated = await api.put(
+            "/api/admin/materials/material-private",
+            json={"description": "Operations update"},
+            headers=operations,
+        )
         assert updated.status_code == 200
         assert "supplier_reference" not in updated.json()
-        archived = await api.post("/api/admin/materials/material-private/archive", json={"reason": "Archive this material"}, headers=operations)
+        archived = await api.post(
+            "/api/admin/materials/material-private/archive",
+            json={"reason": "Archive this material"},
+            headers=operations,
+        )
         assert archived.status_code == 200
         assert "supplier_reference" not in archived.json()
-        deprecated = await api.delete("/api/admin/materials/material-delete", headers=operations)
+        deprecated = await api.delete(
+            "/api/admin/materials/material-delete", headers=operations
+        )
         assert deprecated.status_code == 200
         assert "supplier_reference" not in deprecated.json()
-        assert (await api.get("/api/admin/materials", headers=commercial)).status_code == 403
-        supplier = await api.get("/api/admin/materials/material-private/supplier-reference", headers=commercial)
+        assert (
+            await api.get("/api/admin/materials", headers=commercial)
+        ).status_code == 403
+        supplier = await api.get(
+            "/api/admin/materials/material-private/supplier-reference",
+            headers=commercial,
+        )
         assert supplier.status_code == 200
-        assert supplier.json() == {"id": "material-private", "supplier_reference": "SUP-001"}
-        changed = await api.put("/api/admin/materials/material-private/supplier-reference", json={"supplier_reference": "SUP-002"}, headers=commercial)
+        assert supplier.json() == {
+            "id": "material-private",
+            "supplier_reference": "SUP-001",
+        }
+        changed = await api.put(
+            "/api/admin/materials/material-private/supplier-reference",
+            json={"supplier_reference": "SUP-002"},
+            headers=commercial,
+        )
         assert changed.status_code == 200
-        assert changed.json() == {"id": "material-private", "supplier_reference": "SUP-002"}
-        assert (await api.get("/api/admin/materials/material-private/supplier-reference", headers=operations)).status_code == 403
-        assert (await api.put("/api/admin/materials/material-private/supplier-reference", json={"supplier_reference": "SUP-LEAK"}, headers=operations)).status_code == 403
+        assert changed.json() == {
+            "id": "material-private",
+            "supplier_reference": "SUP-002",
+        }
+        assert (
+            await api.get(
+                "/api/admin/materials/material-private/supplier-reference",
+                headers=operations,
+            )
+        ).status_code == 403
+        assert (
+            await api.put(
+                "/api/admin/materials/material-private/supplier-reference",
+                json={"supplier_reference": "SUP-LEAK"},
+                headers=operations,
+            )
+        ).status_code == 403
 
 
 def test_real_roles_keep_supplier_references_off_generic_material_responses():
     asyncio.run(run_real_role_supplier_reference_boundaries())
+
+
 async def run_supplier_reference_omission_preserves_stored_value():
     app, db = build_role_test_context()
-    db.materials.items.append({"id": "material-omission", "name": "Omission Material", "supplier_reference": "SUP-ORIGINAL", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})
+    db.materials.items.append(
+        {
+            "id": "material-omission",
+            "name": "Omission Material",
+            "supplier_reference": "SUP-ORIGINAL",
+            "status": "active",
+            "active": True,
+            "setup_status": "needs_review",
+            "base_unit": None,
+        }
+    )
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         commercial = {"X-Role": "catalog_manager"}
         omitted = await api.put(
             "/api/admin/materials/material-omission/supplier-reference",
@@ -444,7 +563,10 @@ async def run_supplier_reference_omission_preserves_stored_value():
             headers=commercial,
         )
         assert omitted.status_code == 200
-        assert omitted.json() == {"id": "material-omission", "supplier_reference": "SUP-ORIGINAL"}
+        assert omitted.json() == {
+            "id": "material-omission",
+            "supplier_reference": "SUP-ORIGINAL",
+        }
         assert db.materials.items[0]["supplier_reference"] == "SUP-ORIGINAL"
 
         cleared = await api.put(

@@ -39,13 +39,16 @@ test("joins the Homepage closing canvas with a minimal terminal Footer", () => {
   });
 
   expect(footer).toHaveAttribute("data-footer-variant", "homepage-terminal");
+  expect(footer).toHaveClass("home-r4-terminal-footer", "bg-transparent");
+  expect(footer).not.toHaveClass("bg-public-evidence");
+  expect(footer.firstElementChild).toHaveClass("home-r4-terminal-footer-inner");
   expect(within(footer).getByRole("link", { name: "Niuva - Beranda" })).toHaveAttribute(
     "href",
     "/",
   );
   expect(within(navigation).getByRole("link", { name: "Layanan" })).toHaveAttribute(
     "href",
-    "/capabilities",
+    "/layanan",
   );
   expect(within(navigation).getByRole("link", { name: "Retail" })).toHaveAttribute(
     "href",
@@ -62,7 +65,7 @@ test("joins the Homepage closing canvas with a minimal terminal Footer", () => {
 });
 
 test("preserves the existing Footer composition outside the Homepage", () => {
-  renderFooter("/about");
+  renderFooter("/tentang");
 
   const footer = screen.getByRole("contentinfo");
 

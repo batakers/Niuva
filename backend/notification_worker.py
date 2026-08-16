@@ -151,8 +151,7 @@ class NotificationDeliveryWorker:
                         error = "delivery_timeout"
                     except asyncio.CancelledError:
                         raise
-                    except Exception as exc:
-                        del exc
+                    except Exception:
                         error = "delivery_error"
                         logger.warning("notification_delivery_failed")
             except asyncio.CancelledError:

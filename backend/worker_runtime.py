@@ -227,7 +227,11 @@ def _safe_job_result(value: object) -> dict[str, int]:
     result: dict[str, int] = {}
     for key in ("claimed", "delivered", "failed", "expired", "skipped"):
         candidate = value.get(key)
-        if isinstance(candidate, int) and not isinstance(candidate, bool) and candidate >= 0:
+        if (
+            isinstance(candidate, int)
+            and not isinstance(candidate, bool)
+            and candidate >= 0
+        ):
             result[key] = min(candidate, 1_000_000)
     return result
 
@@ -328,8 +332,7 @@ class NamedJobLease:
             {
                 "$set": {
                     "heartbeat_at": timestamp,
-                    "lease_until": timestamp
-                    + timedelta(seconds=self.lease_seconds),
+                    "lease_until": timestamp + timedelta(seconds=self.lease_seconds),
                     "updated_at": timestamp,
                 }
             },

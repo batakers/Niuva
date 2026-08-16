@@ -11,8 +11,6 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 import pytest
-from pydantic import ValidationError
-
 from b2b_domain import (
     B2BDomainError,
     build_material_requirements,
@@ -25,6 +23,8 @@ from b2b_routes import (
     WorkOrderTransitionPayload,
 )
 from b2b_service import B2BService
+from pydantic import ValidationError
+
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeDatabase
 from tests.test_b2b_quote_lifecycle import converted_quote
 
@@ -57,9 +57,7 @@ def test_work_order_command_requires_exact_quote_line_identity():
         "quantity": 1,
     }
     with pytest.raises(ValidationError):
-        WorkOrderCreatePayload.model_validate(
-            {**command, "variant_id": "var-1"}
-        )
+        WorkOrderCreatePayload.model_validate({**command, "variant_id": "var-1"})
 
     parsed = WorkOrderCreatePayload.model_validate(
         {**command, "quote_line_id": "line-1"}
@@ -159,7 +157,8 @@ async def active_project(db, service, *, quote_items=None):
         operation_id="op-revision",
         reason="Menambahkan item katalog",
         scope_snapshot=quote["current_version"]["scope_snapshot"],
-        items=quote_items or [
+        items=quote_items
+        or [
             {
                 "description": "Desk sign biru",
                 "quantity": 4,

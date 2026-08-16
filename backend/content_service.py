@@ -514,7 +514,7 @@ class ContentService:
             .sort("activates_at", -1)
             .to_list(500)
         )
-        latest = {}
+        latest: dict[str, dict] = {}
         for publication in publications:
             latest.setdefault(publication["content_block_id"], publication)
         return list(latest.values())

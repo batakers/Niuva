@@ -1,7 +1,6 @@
 import asyncio
 import copy
 import importlib.util
-import json
 import os
 import sys
 import types
@@ -41,7 +40,7 @@ class Cursor:
 class Tokens:
     def __init__(self, items):
         self.items = copy.deepcopy(items)
-        self.indexes = {"_id_": {}}
+        self.indexes: dict[str, dict] = {"_id_": {}}
 
     def find(self, *_args):
         return Cursor(self.items)
@@ -312,9 +311,8 @@ def test_real_replica_set_apply_idempotency_and_rollback(
     if loaded_motor is not None and getattr(loaded_motor, "__file__", None) is None:
         sys.modules.pop("motor.motor_asyncio", None)
         sys.modules.pop("motor", None)
-    from motor.motor_asyncio import AsyncIOMotorClient
-
     from database_capabilities import DatabaseCapabilities
+    from motor.motor_asyncio import AsyncIOMotorClient
     from transaction_execution import TransactionExecutor
     from transaction_guard import TransactionMutationGuard
 
