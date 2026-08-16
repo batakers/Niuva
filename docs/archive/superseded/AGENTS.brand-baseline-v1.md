@@ -1,5 +1,15 @@
 # AGENTS.md — Niuva Inovasi Utama Website
 
+<!-- markdownlint-disable MD013 MD022 MD060 -->
+
+> **Superseded 17 August 2026 — provenance only.** This snapshot no longer
+> provides instructions to AI agents or implementers. Current agent authority
+> is the repository-root [`AGENTS.md`](../../../AGENTS.md); current product and
+> experience authority begins with
+> [`docs/NIUVA_MASTER_SPEC.md`](../../NIUVA_MASTER_SPEC.md). All imperative
+> language below records historical public-v1 direction and must not be applied
+> to current work without independent current authority.
+
 This file gives coding agents the fixed product, business, brand, UX, and implementation rules for the Niuva Inovasi Utama website.
 
 ## 1. Project Mission
@@ -16,16 +26,19 @@ The website is not just a visual company profile. It is a **B2B company profile 
 
 Primary conversion goal: **Diskusikan Project**.
 
-Status: Active Implementation Guardrail
-Stakeholder approval evidence: Not separately recorded
-Authority: Subordinate to approved v2.1 requirements
+Historical status at capture: Active Implementation Guardrail
+Current status: Superseded — provenance only
+Stakeholder approval evidence at capture: Not separately recorded
+Superseded by: Owner-approved root AGENTS/PRODUCT authority consolidation,
+17 August 2026
 
 ---
 
 ## 2. Canonical and Public Brand Authority
 
-This file is an active guardrail for public-page and brand work only. Read the
-repository-root `AGENTS.md` first, then resolve conflicts in this order:
+At the time of capture, this file served as a guardrail for public-page and
+brand work. The following order is retained only to explain that historical
+context; it no longer governs current work:
 
 1. `docs/NIUVA_MASTER_SPEC.md`
 2. `docs/context/DOCUMENT_REGISTER.md`, then
@@ -556,7 +569,7 @@ Do not keyword-stuff.
 ## 16. Development Workflow for Agents
 
 For team-mediated work, follow
-[`docs/context/AI_AGENT_TEAM_WORKFLOW.md`](../../../context/AI_AGENT_TEAM_WORKFLOW.md)
+[`docs/context/AI_AGENT_TEAM_WORKFLOW.md`](../../context/AI_AGENT_TEAM_WORKFLOW.md)
 for task cards, worktree isolation, review, verification, and handover. It is
 process guidance only; it does not upgrade this file's authority or authorize
 changes outside an approved public-brand task.
