@@ -56,7 +56,7 @@ export const profileContent = {
       title: "Consultant & Workshop",
       body: "Konsultasi ahli dan workshop praktis untuk membantu tim merumuskan strategi, mengambil keputusan, dan membangun kemampuan internal.",
       accent: "Konsultasi",
-      priority: "supporting",
+      priority: "primary",
       role: "Mendampingi tim untuk menyelaraskan strategi, keputusan teknis, dan cara kerja.",
       output: "Sesi konsultasi, modul workshop, rangkuman arahan, dan rencana tindak lanjut.",
       problem: "Membantu organisasi mengambil keputusan inovasi dengan pemahaman yang sama antar pemangku kepentingan.",
@@ -70,7 +70,7 @@ export const profileContent = {
       title: "Apparel & Merchandise",
       body: "Pengembangan apparel dan merchandise untuk kebutuhan brand, komunitas, event, dan program yang membutuhkan identitas visual konsisten.",
       accent: "Kreatif",
-      priority: "supporting",
+      priority: "primary",
       role: "Mengembangkan produk kreatif pendukung identitas brand, program, dan aktivasi komunitas.",
       output: "Arah visual, desain apparel, desain merchandise, dan panduan produksi awal.",
       problem: "Membantu kebutuhan komunikasi brand tetap konsisten dari konsep visual sampai produk fisik.",
@@ -450,7 +450,7 @@ export function CapabilityPanel({
           </p>
         )}
         <BrandButton
-          to="/contact"
+          to="/kontak"
           variant="secondary"
           className="mt-6"
           aria-label={`${actionLabel} untuk ${item.title}`}
@@ -485,7 +485,7 @@ export function CapabilityPanel({
           </h3>
           <p className="type-body mt-5 max-w-[54ch] text-text-secondary">{item.body}</p>
           <BrandButton
-            to="/contact"
+            to="/kontak"
             variant="secondary"
             className="mt-7"
             aria-label={`${actionLabel} untuk ${item.title}`}
@@ -547,7 +547,7 @@ export function ServiceCard({ service, index, featured = false, className }) {
         ))}
       </dl>
       <BrandButton
-        to="/contact"
+        to="/kontak"
         variant="secondary"
         className="mt-6"
         aria-label={`${actionLabel} untuk ${service.title}`}
@@ -639,7 +639,7 @@ export function ProjectCaseStudyCard({
     { label: "Output", value: project.output },
   ].filter((item) => item.value);
   const actionLabel = ctaLabel || (onClick ? "Buka Studi Kasus" : project.cta || "Lihat Projects");
-  const destination = to || (project.cta ? "/contact" : "/projects");
+  const destination = to || (project.cta ? "/kontak" : "/proyek");
   // Pure index%2 mirroring produced an unbroken run of image-and-text splits.
   // Every third case switches to a full-width band instead, so no more than two
   // neighbours ever share a layout family.
