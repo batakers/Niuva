@@ -24,6 +24,10 @@ export function BrandPage({ children, className, revealSections = true }) {
 
       pageRef.current?.classList.add("brand-motion-ready");
 
+      // Durations below use the approved 0/120/180/280ms grammar (DEC-UX-004):
+      // both are bounded page-state entrances, so they use the 280ms
+      // "deliberate" tier, matching --motion-deliberate in index.css.
+
       // Hero copy resolves on mount rather than on scroll: it is already in the
       // viewport, so a scroll trigger would either fire instantly with no
       // sequence or not at all.
@@ -32,7 +36,13 @@ export function BrandPage({ children, className, revealSections = true }) {
         gsap.fromTo(
           heroEntry,
           { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", stagger: 0.09 }
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.28,
+            ease: "power3.out",
+            stagger: 0.09,
+          }
         );
       }
 
@@ -50,7 +60,7 @@ export function BrandPage({ children, className, revealSections = true }) {
               {
                 opacity: 1,
                 y: 0,
-                duration: 0.75,
+                duration: 0.28,
                 ease: "power3.out",
                 stagger: 0.08,
                 overwrite: true,

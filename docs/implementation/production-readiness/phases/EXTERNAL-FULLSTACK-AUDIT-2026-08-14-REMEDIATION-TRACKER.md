@@ -56,7 +56,7 @@ file — not as of the original 14 August audit.
 | --- | --- | --- | --- | --- |
 | CLEANUP-001 | Unused `StatCard`; undeclared `vaul` boundary | Frontend | **Open** | Needs an approved component/dependency decision before removal, per the audit's own instruction |
 | CONTENT-001 | Project-evidence provenance gate | Content/Product (not code) | **Open** | Not a coding task |
-| MOTION-001 | Public motion grammar not fully normalized (GSAP timing) | Frontend/Design | **Open** | Not started |
+| MOTION-001 | Public motion grammar not fully normalized (GSAP timing) | Frontend/Design | **Resolved (pending merge)** | This PR: the only two hardcoded GSAP durations in the codebase (`BrandSystem.jsx`, 700ms and 750ms hero/section entrances) moved to the approved 280ms "deliberate" tier from `DEC-UX-004`'s 0/120/180/280ms grammar, matching `--motion-deliberate` in `index.css`. Grepped the full `frontend/src` tree first to confirm these were the only two GSAP `duration:` values outside test files |
 
 ## Open PRs referenced above
 
@@ -76,7 +76,8 @@ file — not as of the original 14 August audit.
 | [#264](https://github.com/batakers/Niuva/pull/264) | Blank-line spacing fixes (QUALITY-001, part 3) | `chore/niuva-backend-flake8-blank-lines` | **Merged** |
 | [#265](https://github.com/batakers/Niuva/pull/265) | Fix `field` import-shadowing (QUALITY-001, part 4) | `chore/niuva-backend-flake8-field-shadowing` | **Merged** |
 | [#266](https://github.com/batakers/Niuva/pull/266) | E402 import-order noqa annotations (QUALITY-001, part 5) | `chore/niuva-backend-flake8-e402` | **Merged** |
-| [#267](https://github.com/batakers/Niuva/pull/267) | mypy var-annotated fixes (QUALITY-001, mypy part 1) | `chore/niuva-backend-mypy-var-annotated` | Open, CI green |
+| [#267](https://github.com/batakers/Niuva/pull/267) | mypy var-annotated fixes (QUALITY-001, mypy part 1) | `chore/niuva-backend-mypy-var-annotated` | **Merged** |
+| [#268](https://github.com/batakers/Niuva/pull/268) | Normalize GSAP motion timing to approved grammar (MOTION-001) | `fix/niuva-frontend-gsap-motion-timing` | Open, CI green |
 
 Being merged in sequence as of 2026-08-16; this tracker records source-level
 progress only, it does not itself close any P0/P1 finding, and it does not
