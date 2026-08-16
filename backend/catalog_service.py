@@ -12,7 +12,6 @@ from catalog_domain import (
     validate_bill_of_materials,
     validate_catalog_aggregate,
 )
-from permissions import has_permission
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
 
