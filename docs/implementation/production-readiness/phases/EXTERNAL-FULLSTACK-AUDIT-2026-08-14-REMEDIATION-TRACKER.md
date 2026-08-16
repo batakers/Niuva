@@ -43,7 +43,7 @@ file — not as of the original 14 August audit.
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | API-001 | 25 of 152 operations missing 4xx/5xx OpenAPI metadata | Backend | **Resolved (pending merge)** | PR #257: all 25 documented per-route from actual code, plus a regression test |
-| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **Partially resolved (pending merge)** | This PR: `black` (47 files) and `isort` (51 files) now 0 remaining, project-wide, verified against full test suite. flake8 (2,046 findings) and mypy (274 errors) deliberately deferred — those need case-by-case review, not a bulk mechanical pass, per this same audit's own caution against reformatting without diff control |
+| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **In progress** | PR #258: `black` (47 files) and `isort` (51 files) now 0 remaining, project-wide. This PR: `.flake8` config fix reduces flake8 from 2,046 to 433 genuine findings (1,948 were a line-length config mismatch against `black`'s 88-column standard, not real debt). mypy (274) and the remaining 433 flake8 findings still open, to be worked in further bounded PRs |
 | DEP-001 | Unused `framer-motion`; undeclared `vaul` in `drawer.jsx` | Frontend | **Partially resolved (pending merge)** | PR #255 removes `framer-motion` (verified zero consumers). `vaul` quarantine/declaration still open, tied to CLEANUP-001 |
 | DESIGN-001 | NDS migration incomplete (legacy fonts, `transition-all`, side-border) | Frontend | **Open** | Not started |
 | UX-STATE-001 | `RouteFallback` near-blank; `AppErrorBoundary` mislabels render crashes as connection loss | Frontend | **Resolved (pending merge)** | PR #256: honest copy + visible spinner + second recovery action |
@@ -69,7 +69,9 @@ file — not as of the original 14 August audit.
 | [#257](https://github.com/batakers/Niuva/pull/257) | Declare 4xx/5xx responses for 25 undocumented operations | `docs/niuva-api-error-response-metadata` | **Merged** |
 | [#258](https://github.com/batakers/Niuva/pull/258) | Backend `black`/`isort` formatting | `chore/niuva-backend-black-isort-formatting` | **Merged** |
 | [#259](https://github.com/batakers/Niuva/pull/259) | Disposable local backup/restore evidence (DATA-001) | `ops/niuva-disposable-backup-restore-evidence-20260816` | **Merged** |
-| [#260](https://github.com/batakers/Niuva/pull/260) | Rate-limiter multi-worker evidence (SEC-002) | `test/niuva-rate-limiter-multiworker-evidence` | Open, CI green |
+| [#260](https://github.com/batakers/Niuva/pull/260) | Rate-limiter multi-worker evidence (SEC-002) | `test/niuva-rate-limiter-multiworker-evidence` | **Merged** |
+| [#261](https://github.com/batakers/Niuva/pull/261) | Migration 007-009 dry-run evidence (DATA-001) | `docs/niuva-migration-007-009-dryrun-evidence-20260816` | **Merged** |
+| [#262](https://github.com/batakers/Niuva/pull/262) | `.flake8` config fix (QUALITY-001, part 1) | `chore/niuva-backend-flake8-line-length-config` | Open, CI green |
 
 Being merged in sequence as of 2026-08-16; this tracker records source-level
 progress only, it does not itself close any P0/P1 finding, and it does not
