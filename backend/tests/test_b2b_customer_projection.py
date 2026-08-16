@@ -10,13 +10,13 @@ projection about.
 import asyncio
 
 import httpx
-
 from b2b_domain import (
     CUSTOMER_QUOTE_ITEM_FIELDS,
     project_customer_inquiry,
     project_customer_project,
     project_customer_quote,
 )
+
 from tests.test_b2b_inquiry_routes import INTAKE_SUBMISSION, build_context
 
 # Names that must never reach a customer, whatever nests them.
@@ -208,7 +208,9 @@ def test_projections_withhold_fields_nobody_declared():
 def test_quote_items_expose_price_but_never_cost():
     assert "unit_price_minor" in CUSTOMER_QUOTE_ITEM_FIELDS
     assert not any(
-        field for field in CUSTOMER_QUOTE_ITEM_FIELDS if "cost" in field or "margin" in field
+        field
+        for field in CUSTOMER_QUOTE_ITEM_FIELDS
+        if "cost" in field or "margin" in field
     )
 
 

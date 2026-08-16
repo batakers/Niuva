@@ -14,71 +14,70 @@ not authorize migration, deployment, provider activation, or go-live by
 itself.
 
 Every row below is updated in the same PR that does the corresponding
-work. Several open PRs each carry their own copy of this file (branched
-from the same `main` before any of them merged); merging them in sequence
-needs a trivial conflict resolution on this one file each time.
+work, so this table is current as of the latest merge into this tracker
+file — not as of the original 14 August audit.
 
 ## P0
 
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| SEC-001 / NIV-001 | Prior credential incident lacks independent closure evidence | Security/ops (not app code) | **Open** | Still requires an independent verifier, not source changes |
+| SEC-001 / NIV-001 | Prior credential incident lacks independent closure evidence | Security/ops (not app code) | **Open** | Unchanged since the audit; still requires an independent verifier, not source changes |
 
 ## P1
 
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| GOV-001 | Readiness evidence split across stale/current baselines | Governance (not app code) | **Open** | Needs a Project Owner decision to freeze one release SHA |
-| ROUTE-001 | Canonical Indonesian/English public routes not implemented | Frontend | **Resolved (pending merge)** | PR #243: canonical routes, metadata/hreflang/canonical link, and sitemap generation all updated; CI green |
-| INTAKE-001 | Public Inquiry contract missing consent + optional backend phone | Backend + Frontend | **Resolved (pending merge)** | PR #254 |
-| ERROR-001 | Inquiry dependency failure was toast-only | Frontend | **Resolved (pending merge)** | PR #254 |
-| AUTH-001 | Mandatory internal MFA absent | Backend | **Blocked on decision** | Awaiting Project Owner answers on TOTP provider, key custody, recovery policy |
-| SEC-002 | Distributed abuse-control evidence incomplete | Backend | **Partially resolved (pending merge)** | PR #260 |
-| OPS-001 | No production deployment/rollback workflow | Platform/DevOps | **Open** | — |
-| DATA-001 | Migration/backup/restore evidence missing | Backend/Data | **Resolved for disposable-local scope (pending merge)** | PR #259; migration 007-009 dry-run also recorded, PR #261 |
-| SRE-001 | Production observability/SLO evidence incomplete | Backend/Platform | **Blocked on decision** | Awaiting telemetry destination decision |
-| A11Y-001 | Public accessibility evidence incomplete | Frontend/QA | **Partially covered** | Contrast (UX-002), focus-trap (UX-003), and target-size (UX-004) all re-verified already-resolved during demo-prep checks on 2026-08-16 (measured in a real browser, not just source review). Full keyboard/screen-reader/zoom-reflow matrix still open |
+| GOV-001 | Readiness evidence split across stale (`15b759a`) and current (`2a649679`) baselines | Governance (not app code) | **Open** | Needs a Project Owner decision to freeze one release SHA |
+| ROUTE-001 | Canonical Indonesian/English public routes not implemented | Frontend | **Partially addressed** | PR #243 adds `/tentang`, `/layanan`, `/proyek`, `/kontak`, `/privasi`, `/en/*` — open, CI green, not merged. HTTP 308 redirect boundary, `hreflang`, sitemap still not done |
+| INTAKE-001 | Public Inquiry contract missing consent + optional backend phone | Backend + Frontend | **Resolved (pending merge)** | PR #254: consent required at API + UI, `pic_phone` now required and validated server-side |
+| ERROR-001 | Inquiry dependency failure was toast-only | Frontend | **Resolved (pending merge)** | PR #254: persistent, focus-managed error state replacing toast-only handling |
+| AUTH-001 | Mandatory internal MFA absent | Backend | **Blocked on decision** | Needs TOTP provider, key custody, and recovery/break-glass policy from Project Owner before implementation starts |
+| SEC-002 | Distributed abuse-control evidence incomplete | Backend | **Partially resolved (pending merge)** | [RATE-LIMITER-MULTIWORKER-EVIDENCE-2026-08-16.md](RATE-LIMITER-MULTIWORKER-EVIDENCE-2026-08-16.md): real cross-process atomicity proven (4 separate OS processes, exact 5/7 split, 5 consecutive runs) and outage behavior documented. TTL/retention confirmed already implemented. Trusted-proxy header trust, alerting, and named ownership remain genuinely blocked on OPS-001/SRE-001 decisions — not attempted |
+| OPS-001 | No production deployment/rollback workflow | Platform/DevOps (not backend/frontend) | **Open** | No Dockerfile, staging target, or deploy workflow exists yet |
+| DATA-001 | Migration/backup/restore evidence missing | Backend/Data | **Resolved for disposable-local scope (pending merge)** | [DISPOSABLE-BACKUP-RESTORE-EVIDENCE-2026-08-16.md](DISPOSABLE-BACKUP-RESTORE-EVIDENCE-2026-08-16.md): fresh disposable-local backup/restore proof, 4/4 tests passed, full cleanup verified. Staging/production restore drill, migration 001–010 apply, and independent review remain open |
+| SRE-001 | Production observability/SLO evidence incomplete | Backend/Platform | **Blocked on decision** | Source instrumentation exists; needs a telemetry destination decision from Project Owner |
+| A11Y-001 | Public accessibility evidence incomplete | Frontend/QA | **Open** | Not started |
 
 ## P2
 
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| API-001 | 25 of 152 operations missing 4xx/5xx OpenAPI metadata | Backend | **Resolved (pending merge)** | PR #257 |
-| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **In progress** | PR #258: black/isort now 0 remaining. PR #262-#266: flake8 fully resolved (2,046 -> 0 across all categories: line-length config, F401/F841/W391, E301/E302/E306, F402, E402). This PR (mypy, part 1 of N): fixed all 17 `var-annotated` findings (mypy `--follow-imports=skip --ignore-missing-imports --check-untyped-defs` against the full `backend/` tree) — each investigated for the correct precise type from real usage in the surrounding code; 2 initial attempts (`list[ast.expr]` in a test, `list[tuple[str, str]]` in another) turned out too strict and surfaced new cascading errors on re-run, so both were relaxed to match what the code actually guarantees (`list`, `list[tuple[str, object]]`). CI-scoped mypy gate (23 files) still reports 0. mypy count: 274 -> 257 project-wide. Remaining 257 mypy findings are case-by-case (arg-type=82, assignment=41, index=40, operator=24, attr-defined=23, union-attr=21, return-value=16, dict-item=3, call-overload=3, call-arg=3, method-assign=1) and some of these may be genuine bugs, not just style — still open for further bounded PRs |
-| DEP-001 | Unused `framer-motion`; undeclared `vaul` in `drawer.jsx` | Frontend | **Resolved / not-a-bug** | PR #255 removes `framer-motion`. `vaul`/`Drawer` re-checked on 2026-08-16: a dedicated test (`keeps the undeclared vaul Drawer quarantined`) confirms this is an intentional, tested quarantine, not an oversight — no fix needed |
+| API-001 | 25 of 152 operations missing 4xx/5xx OpenAPI metadata | Backend | **Resolved (pending merge)** | PR #257: all 25 documented per-route from actual code, plus a regression test |
+| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **In progress** | PR #258: `black`/`isort` now 0 remaining. PR #262-#266: flake8 fully resolved (2,046 -> 0 across every category). This PR (mypy, part 1 of N): fixed all 17 `var-annotated` findings (mypy `--follow-imports=skip --ignore-missing-imports --check-untyped-defs` against the full `backend/` tree) — each investigated for the correct precise type from real usage in the surrounding code; 2 initial attempts turned out too strict and surfaced new cascading errors, so both were relaxed to match what the code actually guarantees. CI-scoped mypy gate (23 files) still reports 0. mypy count: 274 -> 257 project-wide. Remaining 257 mypy findings are case-by-case (arg-type=82, assignment=41, index=40, operator=24, attr-defined=23, union-attr=21, return-value=16, dict-item=3, call-overload=3, call-arg=3, method-assign=1) and some of these may be genuine bugs, not just style — still open for further bounded PRs |
+| DEP-001 | Unused `framer-motion`; undeclared `vaul` in `drawer.jsx` | Frontend | **Partially resolved (pending merge)** | PR #255 removes `framer-motion` (verified zero consumers). `vaul` quarantine/declaration still open, tied to CLEANUP-001 |
 | DESIGN-001 | NDS migration incomplete (legacy fonts, `transition-all`, side-border) | Frontend | **Open** | Not started |
-| UX-STATE-001 | `RouteFallback`/`AppErrorBoundary` issues | Frontend | **Resolved (pending merge)** | PR #256 |
-| PERF-001 | Bundle report is report-only, no approved budget | Frontend | **Open** | Blocked on a budget-threshold decision |
-| PR-001 | PR #243 stale, failing frontend check | Frontend (repo hygiene) | **Resolved** | Rebased onto current `main`; CI green |
+| UX-STATE-001 | `RouteFallback` near-blank; `AppErrorBoundary` mislabels render crashes as connection loss | Frontend | **Resolved (pending merge)** | PR #256: honest copy + visible spinner + second recovery action |
+| PERF-001 | Bundle report is report-only, no approved budget | Frontend | **Open** | Not started |
+| PR-001 | PR #243 stale, failing frontend check | Frontend (repo hygiene) | **Resolved** | Rebased onto current `main` (picked up the `nanoid` security fix); all checks now pass. PR itself still open pending review |
 
 ## P3
 
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| CLEANUP-001 | Unused `StatCard`; undeclared `vaul` boundary | Frontend | **Open (`vaul` half resolved as not-a-bug, see DEP-001)** | `StatCard` removal still needs an approved component decision |
+| CLEANUP-001 | Unused `StatCard`; undeclared `vaul` boundary | Frontend | **Open** | Needs an approved component/dependency decision before removal, per the audit's own instruction |
 | CONTENT-001 | Project-evidence provenance gate | Content/Product (not code) | **Open** | Not a coding task |
-| MOTION-001 | Public motion grammar not fully normalized (GSAP timing) | Frontend/Design | **Open** | Direction already approved (`DEC-UX-004`); not started |
+| MOTION-001 | Public motion grammar not fully normalized (GSAP timing) | Frontend/Design | **Open** | Not started |
 
 ## Open PRs referenced above
 
-| PR | Title | Branch |
-| --- | --- | --- |
-| [#243](https://github.com/batakers/Niuva/pull/243) | Localized public navigation, Homepage R4.1, sitemap sync | `feat/niuva-shared-navbar-localized-routes` |
-| [#254](https://github.com/batakers/Niuva/pull/254) | Public Inquiry contract | `feat/niuva-public-inquiry-contract` |
-| [#255](https://github.com/batakers/Niuva/pull/255) | Remove unused `framer-motion` | `chore/niuva-remove-unused-framer-motion` |
-| [#256](https://github.com/batakers/Niuva/pull/256) | Error state labeling | `fix/niuva-error-state-labeling` |
-| [#257](https://github.com/batakers/Niuva/pull/257) | API error response metadata | `docs/niuva-api-error-response-metadata` |
-| [#258](https://github.com/batakers/Niuva/pull/258) | Backend `black`/`isort` formatting | `chore/niuva-backend-black-isort-formatting` |
-| [#259](https://github.com/batakers/Niuva/pull/259) | Disposable backup/restore evidence | `ops/niuva-disposable-backup-restore-evidence-20260816` |
-| [#260](https://github.com/batakers/Niuva/pull/260) | Rate-limiter multi-worker evidence | `test/niuva-rate-limiter-multiworker-evidence` |
-| [#261](https://github.com/batakers/Niuva/pull/261) | Migration 007-009 dry-run evidence | `docs/niuva-migration-007-009-dryrun-evidence-20260816` |
-| [#262](https://github.com/batakers/Niuva/pull/262) | `.flake8` config fix (QUALITY-001, part 1) | `chore/niuva-backend-flake8-line-length-config` |
-| [#263](https://github.com/batakers/Niuva/pull/263) | Remove unused imports/vars (QUALITY-001, part 2) | `chore/niuva-backend-flake8-unused-imports` |
-| [#264](https://github.com/batakers/Niuva/pull/264) | Blank-line spacing fixes (QUALITY-001, part 3) | `chore/niuva-backend-flake8-blank-lines` |
-| [#265](https://github.com/batakers/Niuva/pull/265) | Fix `field` import-shadowing (QUALITY-001, part 4) | `chore/niuva-backend-flake8-field-shadowing` |
-| [#266](https://github.com/batakers/Niuva/pull/266) | E402 import-order noqa annotations (QUALITY-001, part 5) | `chore/niuva-backend-flake8-e402` |
-| [#267](https://github.com/batakers/Niuva/pull/267) | mypy var-annotated fixes (QUALITY-001, mypy part 1) | `chore/niuva-backend-mypy-var-annotated` |
+| PR | Title | Branch | Status |
+| --- | --- | --- | --- |
+| [#243](https://github.com/batakers/Niuva/pull/243) | Localized public navigation and Homepage R4.1 | `feat/niuva-shared-navbar-localized-routes` | **Merged** |
+| [#254](https://github.com/batakers/Niuva/pull/254) | Public Inquiry contract (consent, phone, error state) | `feat/niuva-public-inquiry-contract` | **Merged** |
+| [#255](https://github.com/batakers/Niuva/pull/255) | Remove unused `framer-motion` | `chore/niuva-remove-unused-framer-motion` | **Merged** |
+| [#256](https://github.com/batakers/Niuva/pull/256) | Stop mislabeling render crashes as connection failures | `fix/niuva-error-state-labeling` | **Merged** |
+| [#257](https://github.com/batakers/Niuva/pull/257) | Declare 4xx/5xx responses for 25 undocumented operations | `docs/niuva-api-error-response-metadata` | **Merged** |
+| [#258](https://github.com/batakers/Niuva/pull/258) | Backend `black`/`isort` formatting | `chore/niuva-backend-black-isort-formatting` | **Merged** |
+| [#259](https://github.com/batakers/Niuva/pull/259) | Disposable local backup/restore evidence (DATA-001) | `ops/niuva-disposable-backup-restore-evidence-20260816` | **Merged** |
+| [#260](https://github.com/batakers/Niuva/pull/260) | Rate-limiter multi-worker evidence (SEC-002) | `test/niuva-rate-limiter-multiworker-evidence` | **Merged** |
+| [#261](https://github.com/batakers/Niuva/pull/261) | Migration 007-009 dry-run evidence (DATA-001) | `docs/niuva-migration-007-009-dryrun-evidence-20260816` | **Merged** |
+| [#262](https://github.com/batakers/Niuva/pull/262) | `.flake8` config fix (QUALITY-001, part 1) | `chore/niuva-backend-flake8-line-length-config` | **Merged** |
+| [#263](https://github.com/batakers/Niuva/pull/263) | Remove unused imports/vars (QUALITY-001, part 2) | `chore/niuva-backend-flake8-unused-imports` | **Merged** |
+| [#264](https://github.com/batakers/Niuva/pull/264) | Blank-line spacing fixes (QUALITY-001, part 3) | `chore/niuva-backend-flake8-blank-lines` | **Merged** |
+| [#265](https://github.com/batakers/Niuva/pull/265) | Fix `field` import-shadowing (QUALITY-001, part 4) | `chore/niuva-backend-flake8-field-shadowing` | **Merged** |
+| [#266](https://github.com/batakers/Niuva/pull/266) | E402 import-order noqa annotations (QUALITY-001, part 5) | `chore/niuva-backend-flake8-e402` | **Merged** |
+| [#267](https://github.com/batakers/Niuva/pull/267) | mypy var-annotated fixes (QUALITY-001, mypy part 1) | `chore/niuva-backend-mypy-var-annotated` | Open, CI green |
 
-None of the PRs above have been merged. This tracker records source-level
-progress only; it does not itself close any P0/P1 finding, and it does not
+Being merged in sequence as of 2026-08-16; this tracker records source-level
+progress only, it does not itself close any P0/P1 finding, and it does not
 authorize deployment, migration, provider activation, or go-live.

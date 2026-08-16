@@ -5,50 +5,50 @@ from dotenv import load_dotenv
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-import asyncio
-import csv
-import html
-import io
-import logging
-import os
-import re
-import secrets
-import tempfile
-import uuid
-from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
-from typing import List, Literal, Optional
-from urllib.parse import quote, urlsplit
+import asyncio  # noqa: E402
+import csv  # noqa: E402
+import html  # noqa: E402
+import io  # noqa: E402
+import logging  # noqa: E402
+import os  # noqa: E402
+import re  # noqa: E402
+import secrets  # noqa: E402
+import tempfile  # noqa: E402
+import uuid  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
+from datetime import datetime, timedelta, timezone  # noqa: E402
+from typing import List, Literal, Optional  # noqa: E402
+from urllib.parse import quote, urlsplit  # noqa: E402
 
-import bcrypt
-import emailer
-import storage
-from api_contract import (
+import bcrypt  # noqa: E402
+import emailer  # noqa: E402
+import storage  # noqa: E402
+from api_contract import (  # noqa: E402
     error_response,
     error_responses,
     normalize_request_id,
 )
-from audit import append_audit_event, append_identity_governance_event
-from auth_password import (
+from audit import append_audit_event, append_identity_governance_event  # noqa: E402
+from auth_password import (  # noqa: E402
     PasswordPolicyError,
     PasswordPolicyUnavailableError,
     PasswordWriteDisabledError,
     build_password_module,
 )
-from auth_rate_limit import LoginRateLimiter, PublicRateLimiter
-from auth_recovery import (
+from auth_rate_limit import LoginRateLimiter, PublicRateLimiter  # noqa: E402
+from auth_recovery import (  # noqa: E402
     MongoRecoveryStore,
     PublicSiteOrigin,
     PublicSiteOriginError,
     build_recovery_module,
 )
-from auth_security_events import (
+from auth_security_events import (  # noqa: E402
     AuthenticationSecurityEventService,
     EventPseudonymizer,
     MongoSecurityEventStore,
     SecurityEventDependencyError,
 )
-from auth_session import (
+from auth_session import (  # noqa: E402
     ACCESS_COOKIE_NAME,
     SESSION_COOKIE_NAME,
     AdminSessionError,
@@ -60,7 +60,7 @@ from auth_session import (
     clear_cookie_options,
     session_cookie_options,
 )
-from auth_sessions import (
+from auth_sessions import (  # noqa: E402
     ACCESS_COOKIE,
     CSRF_COOKIE,
     CSRF_HEADER,
@@ -68,11 +68,11 @@ from auth_sessions import (
     AuthSessionService,
     validate_cookie_configuration,
 )
-from b2b_routes import build_b2b_router
-from catalog_routes import build_catalog_router
-from content_routes import build_content_router
-from csv_safety import safe_csv_row
-from dashboard_domain import (
+from b2b_routes import build_b2b_router  # noqa: E402
+from catalog_routes import build_catalog_router  # noqa: E402
+from content_routes import build_content_router  # noqa: E402
+from csv_safety import safe_csv_row  # noqa: E402
+from dashboard_domain import (  # noqa: E402
     DashboardRangeError,
     created_within,
     date_bucket,
@@ -81,30 +81,28 @@ from dashboard_domain import (
     summarize_movements,
     withheld_revenue,
 )
-from database_capabilities import DatabaseCapabilities
-from fastapi import (
+from database_capabilities import DatabaseCapabilities  # noqa: E402
+from fastapi import (  # noqa: E402
     APIRouter,
     Depends,
     FastAPI,
     File,
-    Form,
-    Header,
     HTTPException,
     Request,
     Response,
     UploadFile,
     status,
 )
-from fastapi.exceptions import RequestValidationError
-from identity_routes import build_identity_router
-from inventory_routes import build_inventory_router
-from inventory_service import InventoryService
-from material_routes import build_material_router
-from motor.motor_asyncio import AsyncIOMotorClient
-from notification_service import NotificationError, NotificationService
-from notification_worker import NotificationDeliveryWorker
-from observability import Observability, route_template_for_request
-from permissions import (
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+from identity_routes import build_identity_router  # noqa: E402
+from inventory_routes import build_inventory_router  # noqa: E402
+from inventory_service import InventoryService  # noqa: E402
+from material_routes import build_material_router  # noqa: E402
+from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
+from notification_service import NotificationError, NotificationService  # noqa: E402
+from notification_worker import NotificationDeliveryWorker  # noqa: E402
+from observability import Observability, route_template_for_request  # noqa: E402
+from permissions import (  # noqa: E402
     CUSTOMER_ROLES,
     ROLE_LABELS,
     ROLE_POLICY_VERSION,
@@ -113,8 +111,8 @@ from permissions import (
     is_internal,
     permissions_for,
 )
-from portfolio_routes import build_portfolio_router
-from pydantic import (
+from portfolio_routes import build_portfolio_router  # noqa: E402
+from pydantic import (  # noqa: E402
     BaseModel,
     ConfigDict,
     EmailStr,
@@ -123,31 +121,34 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
-from readiness_health import (
+from readiness_health import (  # noqa: E402
     TOTAL_TIMEOUT_SECONDS,
     ReadinessProbeCoordinator,
     public_schema_status,
     public_transaction_status,
 )
-from retail_domain import (
+from retail_domain import (  # noqa: E402
     project_customer_legacy_order,
     project_internal_legacy_order,
 )
-from retail_routes import build_retail_router
-from settings_domain import (
+from retail_routes import build_retail_router  # noqa: E402
+from settings_domain import (  # noqa: E402
     PUBLIC_PROFILE_FIELDS,
     default_settings,
     merge_profile,
     project_admin_settings,
     project_public_settings,
 )
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse, StreamingResponse
-from transaction_api import transaction_unavailable_handler
-from transaction_execution import TransactionExecutor, TransactionUnavailableError
-from transaction_guard import TransactionMutationGuard
-from transaction_observability import TransactionLogSink
-from worker_runtime import (
+from starlette.middleware.cors import CORSMiddleware  # noqa: E402
+from starlette.responses import JSONResponse, StreamingResponse  # noqa: E402
+from transaction_api import transaction_unavailable_handler  # noqa: E402
+from transaction_execution import (  # noqa: E402
+    TransactionExecutor,
+    TransactionUnavailableError,
+)
+from transaction_guard import TransactionMutationGuard  # noqa: E402
+from transaction_observability import TransactionLogSink  # noqa: E402
+from worker_runtime import (  # noqa: E402
     APPROVED_DRAIN_SECONDS,
     NamedJobLease,
     WorkerRuntime,
@@ -1318,7 +1319,7 @@ async def store_upload(
 
 
 # ----------------------------- Auth routes -----------------------------
-@api.post("/auth/register")
+@api.post("/auth/register", responses=error_responses(403))
 async def register():
     raise HTTPException(
         status_code=403,
@@ -1506,19 +1507,19 @@ async def admin_login(req: AdminLoginReq, request: Request):
     return _admin_session_response(user, grant)
 
 
-@api.post("/auth/refresh")
+@api.post("/auth/refresh", responses=error_responses(401, 403, 500))
 async def refresh_session(request: Request, response: Response):
     user = await _session_service().refresh(request, response)
     return {"user": safe_user(user)}
 
 
-@api.post("/auth/logout")
+@api.post("/auth/logout", responses=error_responses(500))
 async def logout_session(request: Request, response: Response):
     await _session_service().logout(request, response)
     return {"ok": True}
 
 
-@api.post("/auth/admin/session/refresh")
+@api.post("/auth/admin/session/refresh", responses=error_responses(401, 500))
 async def refresh_admin_session(request: Request):
     verify_admin_origin(request)
     session_secret = request.cookies.get(SESSION_COOKIE_NAME)
@@ -1558,7 +1559,7 @@ async def current_admin_session(request: Request):
     )
 
 
-@api.post("/auth/admin/logout")
+@api.post("/auth/admin/logout", responses=error_responses(403, 500))
 async def admin_logout(request: Request):
     try:
         await get_admin_user(request)
@@ -1621,7 +1622,7 @@ async def forgot_password(req: ForgotPasswordReq, request: Request):
     return result
 
 
-@api.get("/auth/password-policy")
+@api.get("/auth/password-policy", responses=error_responses(500))
 async def password_policy():
     return get_password_module().public_policy()
 
@@ -1682,7 +1683,11 @@ async def create_order(
     )
 
 
-@api.get("/capabilities", response_model=CapabilityResponse)
+@api.get(
+    "/capabilities",
+    response_model=CapabilityResponse,
+    responses=error_responses(500),
+)
 async def public_capabilities():
     return PUBLIC_CAPABILITIES
 
@@ -1946,7 +1951,7 @@ def development_media_upload_active() -> bool:
     )
 
 
-@api.get("/admin/media/capabilities")
+@api.get("/admin/media/capabilities", responses=error_responses(401, 403, 500))
 async def admin_media_capabilities(
     _user: dict = Depends(require_permission("media.read")),
 ):
@@ -2274,7 +2279,7 @@ async def contact(req: ContactReq, request: Request):
     return {"ok": True, "message": "Pesan berhasil dikirim"}
 
 
-@api.get("/admin/contacts")
+@api.get("/admin/contacts", responses=error_responses(401, 403, 500))
 async def list_contacts(
     user: dict = Depends(require_permission("inquiries.read")),
 ):
@@ -2300,13 +2305,13 @@ async def list_contacts(
 
 
 # ----------------------------- Settings & Users -----------------------------
-@api.get("/settings")
+@api.get("/settings", responses=error_responses(500))
 async def settings_public():
     """The company profile the public site and its footer read from."""
     return project_public_settings(await get_settings())
 
 
-@api.get("/admin/settings")
+@api.get("/admin/settings", responses=error_responses(401, 403, 500))
 async def settings_admin(
     _actor: dict = Depends(require_permission("settings.write")),
 ):
@@ -2380,7 +2385,7 @@ async def create_client_user(
     return await provision_client(req)
 
 
-@api.get("/admin/customers")
+@api.get("/admin/customers", responses=error_responses(401, 403, 500))
 async def list_customers(
     user: dict = Depends(require_permission("customers.read")),
 ):
@@ -2666,7 +2671,7 @@ async def my_notifications(
     )
 
 
-@api.get("/notifications/unread-count")
+@api.get("/notifications/unread-count", responses=error_responses(401, 500))
 async def my_unread_notification_count(user: dict = Depends(get_current_user)):
     return {"unread": await notification_service().unread_count(user["id"])}
 
@@ -2681,7 +2686,7 @@ async def mark_notification_read(
     )
 
 
-@api.post("/notifications/read-all")
+@api.post("/notifications/read-all", responses=error_responses(401, 500))
 async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
     return await _invoke_notifications(notification_service().mark_all_read(user["id"]))
 
@@ -2801,7 +2806,7 @@ async def list_sent_notifications(
     )
 
 
-@api.get("/health")
+@api.get("/health", responses=error_responses(500))
 async def health():
     return {
         "status": "ok",
@@ -2809,12 +2814,21 @@ async def health():
     }
 
 
-@api.get("/health/live")
+@api.get("/health/live", responses=error_responses(500))
 async def health_live():
     return {"status": "ok"}
 
 
-@api.get("/health/ready")
+@api.get(
+    "/health/ready",
+    responses={
+        # The 503 body is the readiness payload (status/database/schema/
+        # capabilities), not the shared ErrorEnvelope — it is not raised as an
+        # HTTPException, so error_responses() would document the wrong shape.
+        503: {"description": "Required dependency or capability is not ready"},
+        **error_responses(500),
+    },
+)
 async def health_ready():
     loop = asyncio.get_running_loop()
     started_at = loop.time()
@@ -2953,7 +2967,7 @@ async def health_ready():
     return JSONResponse(payload, status_code=200 if ready else 503)
 
 
-@api.get("/")
+@api.get("/", responses=error_responses(500))
 async def root():
     return {"message": "NIUVA API", "status": "ok"}
 

@@ -61,7 +61,9 @@ ALLOWED_EVENTS = frozenset(
         "schema_rejected",
     }
 )
-ALLOWED_METHODS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "unknown"})
+ALLOWED_METHODS = frozenset(
+    {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "unknown"}
+)
 ALLOWED_STATUS_CLASSES = frozenset({"1xx", "2xx", "3xx", "4xx", "5xx", "unknown"})
 ALLOWED_ENVIRONMENTS = frozenset(
     {"local", "test", "development", "sandbox", "staging", "production", "unknown"}
@@ -124,9 +126,21 @@ ALLOWED_OPERATION_CLASSES = frozenset(
 ALLOWED_WORKER_CLASSES = frozenset({"notification_delivery", "scheduler", "unknown"})
 ALLOWED_CHANNELS = frozenset({"in_app", "email", "unknown"})
 ALLOWED_STATES = frozenset(
-    {"pending", "processing", "delivered", "exhausted", "ready", "unavailable", "active", "released", "unknown"}
+    {
+        "pending",
+        "processing",
+        "delivered",
+        "exhausted",
+        "ready",
+        "unavailable",
+        "active",
+        "released",
+        "unknown",
+    }
 )
-ALLOWED_JOB_NAMES = frozenset({"reservation_expiry", "notification_retention", "unknown"})
+ALLOWED_JOB_NAMES = frozenset(
+    {"reservation_expiry", "notification_retention", "unknown"}
+)
 ALLOWED_CAPABILITY_REASONS = frozenset(
     {"available", "transactions_disabled", "probe_failed", "unknown"}
 )
@@ -193,12 +207,13 @@ ROUTE_TEMPLATES = frozenset(
         "unmatched",
     }
 )
-SYNTHETIC_ROUTE_TEMPLATES = frozenset(
-    {"/api/health/live", "/api/health/ready"}
-)
+SYNTHETIC_ROUTE_TEMPLATES = frozenset({"/api/health/live", "/api/health/ready"})
 
 METRIC_SPECS = {
-    "http_requests": ("counter", frozenset({"method", "route_template", "status_class"})),
+    "http_requests": (
+        "counter",
+        frozenset({"method", "route_template", "status_class"}),
+    ),
     "http_duration": ("histogram", frozenset({"method", "route_template"})),
     "dependency_operations": (
         "counter",
@@ -226,7 +241,10 @@ METRIC_SPECS = {
         "counter",
         frozenset({"operation_class", "safe_outcome", "retry_mode"}),
     ),
-    "transaction_duration": ("histogram", frozenset({"operation_class", "safe_outcome"})),
+    "transaction_duration": (
+        "histogram",
+        frozenset({"operation_class", "safe_outcome"}),
+    ),
     "transaction_capability": ("gauge", frozenset({"safe_capability_reason"})),
 }
 
@@ -267,7 +285,14 @@ LABEL_KEYS = frozenset(
 
 EVENT_FIELD_ALLOWLIST = {
     "http_request": frozenset(
-        {"request_id", "route_template", "method", "status_class", "duration_ms", "synthetic"}
+        {
+            "request_id",
+            "route_template",
+            "method",
+            "status_class",
+            "duration_ms",
+            "synthetic",
+        }
     ),
     "dependency_operation": frozenset(
         {
@@ -369,7 +394,11 @@ def route_template_for_request(request) -> str:
 
 
 def status_class(status_code: object) -> str:
-    if isinstance(status_code, int) and not isinstance(status_code, bool) and 100 <= status_code <= 599:
+    if (
+        isinstance(status_code, int)
+        and not isinstance(status_code, bool)
+        and 100 <= status_code <= 599
+    ):
         return f"{status_code // 100}xx"
     return "unknown"
 
@@ -385,7 +414,9 @@ def _bounded_int(value: object, *, maximum: int = 60_000) -> int | None:
     return min(number, maximum)
 
 
-def _safe_enum(value: object, allowed: frozenset[str], *, fallback: str = "unknown") -> str:
+def _safe_enum(
+    value: object, allowed: frozenset[str], *, fallback: str = "unknown"
+) -> str:
     return value if isinstance(value, str) and value in allowed else fallback
 
 
@@ -427,7 +458,9 @@ def _safe_labels(labels: object) -> dict[str, str]:
         elif key == "dependency_class":
             normalized[key] = _safe_enum(value, ALLOWED_DEPENDENCIES)
         elif key == "operation_class":
-            normalized[key] = _safe_enum(value, ALLOWED_OPERATION_CLASSES, fallback="other")
+            normalized[key] = _safe_enum(
+                value, ALLOWED_OPERATION_CLASSES, fallback="other"
+            )
         elif key == "worker_class":
             normalized[key] = _safe_enum(value, ALLOWED_WORKER_CLASSES)
         elif key == "channel":
@@ -495,9 +528,7 @@ def _safe_fields(fields: object, *, event: str) -> tuple[dict[str, object], int]
             result[key] = _safe_enum(value, ALLOWED_OUTCOMES)
         elif key in {"safe_error_class", "error_class"}:
             result[key] = (
-                "none"
-                if value is None
-                else _safe_enum(value, ALLOWED_ERROR_CLASSES)
+                "none" if value is None else _safe_enum(value, ALLOWED_ERROR_CLASSES)
             )
         elif key == "retry_mode":
             result[key] = _safe_enum(value, ALLOWED_RETRY_MODES)
@@ -519,9 +550,23 @@ def _safe_fields(fields: object, *, event: str) -> tuple[dict[str, object], int]
             else:
                 result[key] = "unknown"
         elif key == "metric_type":
-            result[key] = _safe_enum(value, frozenset({"counter", "gauge", "histogram"}))
+            result[key] = _safe_enum(
+                value, frozenset({"counter", "gauge", "histogram"})
+            )
         elif key == "unit":
-            result[key] = _safe_enum(value, frozenset({"entries", "requests", "runs", "milliseconds", "seconds", "boolean"}))
+            result[key] = _safe_enum(
+                value,
+                frozenset(
+                    {
+                        "entries",
+                        "requests",
+                        "runs",
+                        "milliseconds",
+                        "seconds",
+                        "boolean",
+                    }
+                ),
+            )
         elif key == "labels":
             result[key] = _safe_labels(value)
         elif key == "safe_capability_reason":
@@ -677,9 +722,15 @@ class JsonLineEmitter:
         now = self.monotonic()
         self._trim_attempts(now)
         total = len(self._recent_attempts)
-        dropped = sum(1 for _timestamp, was_dropped in self._recent_attempts if was_dropped)
+        dropped = sum(
+            1 for _timestamp, was_dropped in self._recent_attempts if was_dropped
+        )
         ratio_exceeded = total > 0 and dropped / total > 0.01
-        if self._consecutive_failures >= 3 or self.buffer_bytes >= MAX_BUFFER_BYTES or ratio_exceeded:
+        if (
+            self._consecutive_failures >= 3
+            or self.buffer_bytes >= MAX_BUFFER_BYTES
+            or ratio_exceeded
+        ):
             self._control_signal(reason=reason, count=max(1, dropped))
 
     def _buffer_record(self, line: str, level: str) -> bool:
@@ -687,7 +738,10 @@ class JsonLineEmitter:
         if line_bytes > MAX_RECORD_BYTES:
             self.dropped_records += 1
             return False
-        if len(self.buffer) >= MAX_BUFFER_RECORDS or self.buffer_bytes + line_bytes > MAX_BUFFER_BYTES:
+        if (
+            len(self.buffer) >= MAX_BUFFER_RECORDS
+            or self.buffer_bytes + line_bytes > MAX_BUFFER_BYTES
+        ):
             # Evict the oldest lower-severity record before protecting a
             # warning/critical record; no sensitive fallback is attempted.
             if level in {"warning", "error", "critical"}:
@@ -697,7 +751,10 @@ class JsonLineEmitter:
                         del self.buffer[index]
                         self.buffer_bytes -= len(old_line.encode("utf-8"))
                         break
-            if len(self.buffer) >= MAX_BUFFER_RECORDS or self.buffer_bytes + line_bytes > MAX_BUFFER_BYTES:
+            if (
+                len(self.buffer) >= MAX_BUFFER_RECORDS
+                or self.buffer_bytes + line_bytes > MAX_BUFFER_BYTES
+            ):
                 self.dropped_records += 1
                 return False
         self.buffer.append((line, level))
@@ -789,7 +846,10 @@ class MetricCapacityRegistry:
         )
         if key in known:
             return True
-        if metric_type == "histogram" and len(self.histogram_keys) >= MAX_HISTOGRAM_COMBINATIONS:
+        if (
+            metric_type == "histogram"
+            and len(self.histogram_keys) >= MAX_HISTOGRAM_COMBINATIONS
+        ):
             return False
         projected = self.entry_count + (14 if metric_type == "histogram" else 1)
         if projected > MAX_TOTAL_ENTRIES or (
@@ -810,7 +870,9 @@ class MetricPort:
     def __init__(self, *, capacity_registry: MetricCapacityRegistry | None = None):
         self.counters: dict[tuple[str, tuple[tuple[str, str], ...]], int] = {}
         self.gauges: dict[tuple[str, tuple[tuple[str, str], ...]], int] = {}
-        self.histograms: dict[tuple[str, tuple[tuple[str, str], ...]], dict[str, object]] = {}
+        self.histograms: dict[
+            tuple[str, tuple[tuple[str, str], ...]], dict[str, object]
+        ] = {}
         self.schema_rejections = 0
         self.capacity_rejections = 0
         self.capacity_registry = (
@@ -823,7 +885,9 @@ class MetricPort:
     def entry_count(self) -> int:
         return self.capacity_registry.entry_count
 
-    def _labels(self, metric_name: str, labels: Mapping[str, object] | None) -> tuple[tuple[str, str], ...] | None:
+    def _labels(
+        self, metric_name: str, labels: Mapping[str, object] | None
+    ) -> tuple[tuple[str, str], ...] | None:
         spec = METRIC_SPECS.get(metric_name)
         if spec is None:
             self.schema_rejections += 1
@@ -832,10 +896,7 @@ class MetricPort:
         normalized = _safe_labels(labels or {})
         if set(normalized) != set(expected):
             self.schema_rejections += 1
-            normalized = {
-                key: normalized.get(key, "unknown")
-                for key in expected
-            }
+            normalized = {key: normalized.get(key, "unknown") for key in expected}
         if any(key not in LABEL_KEYS for key in (labels or {})):
             self.schema_rejections += 1
         return tuple(sorted(normalized.items()))
@@ -846,7 +907,9 @@ class MetricPort:
             return False
         return True
 
-    def increment(self, metric_name: str, labels: Mapping[str, object], amount: int = 1) -> bool:
+    def increment(
+        self, metric_name: str, labels: Mapping[str, object], amount: int = 1
+    ) -> bool:
         if isinstance(amount, bool) or not isinstance(amount, int) or amount < 0:
             self.schema_rejections += 1
             return False
@@ -863,7 +926,9 @@ class MetricPort:
         self.counters[key] = self.counters.get(key, 0) + min(amount, 1_000_000)
         return True
 
-    def set_gauge(self, metric_name: str, labels: Mapping[str, object], value: int) -> bool:
+    def set_gauge(
+        self, metric_name: str, labels: Mapping[str, object], value: int
+    ) -> bool:
         if isinstance(value, bool) or not isinstance(value, int) or value < 0:
             self.schema_rejections += 1
             return False
@@ -880,7 +945,9 @@ class MetricPort:
         self.gauges[key] = min(value, 1_000_000)
         return True
 
-    def observe(self, metric_name: str, labels: Mapping[str, object], value_ms: int) -> bool:
+    def observe(
+        self, metric_name: str, labels: Mapping[str, object], value_ms: int
+    ) -> bool:
         if (
             isinstance(value_ms, bool)
             or not isinstance(value_ms, (int, float))
@@ -987,9 +1054,7 @@ class Observability:
         self._http_samples: deque[tuple[datetime, bool, float | None]] = deque(
             maxlen=2_048
         )
-        self._dependency_samples: deque[tuple[datetime, str, str]] = deque(
-            maxlen=2_048
-        )
+        self._dependency_samples: deque[tuple[datetime, str, str]] = deque(maxlen=2_048)
         self._dependency_unavailable_since: dict[str, datetime] = {}
         self._worker_backlog_since: datetime | None = None
         self._worker_lease_losses: deque[datetime] = deque(maxlen=1_024)
@@ -1013,7 +1078,13 @@ class Observability:
                 break
             values.popleft()
 
-    def emit(self, event: str, *, level: str = "info", fields: Mapping[str, object] | None = None) -> bool:
+    def emit(
+        self,
+        event: str,
+        *,
+        level: str = "info",
+        fields: Mapping[str, object] | None = None,
+    ) -> bool:
         return self.emitter.emit(event, level=level, fields=fields)
 
     def record_http(
@@ -1039,9 +1110,17 @@ class Observability:
             "synthetic": excluded_from_customer_sli,
         }
         self.emit("http_request", fields=fields)
-        labels = {"method": method, "route_template": route_template, "status_class": status_value}
+        labels = {
+            "method": method,
+            "route_template": route_template,
+            "status_class": status_value,
+        }
         self.metrics.increment("http_requests", labels)
-        self.metrics.observe("http_duration", {"method": method, "route_template": route_template}, duration_ms)
+        self.metrics.observe(
+            "http_duration",
+            {"method": method, "route_template": route_template},
+            duration_ms,
+        )
         if excluded_from_customer_sli:
             return
         now = self._now()
@@ -1066,9 +1145,7 @@ class Observability:
         ):
             window_cutoff = now - timedelta(seconds=window_seconds)
             samples = [
-                sample
-                for sample in self._http_samples
-                if sample[0] >= window_cutoff
+                sample for sample in self._http_samples if sample[0] >= window_cutoff
             ]
             if len(samples) < 20:
                 continue
@@ -1080,9 +1157,7 @@ class Observability:
                     level=level,
                 )
             durations = [
-                duration
-                for _at, _is_error, duration in samples
-                if duration is not None
+                duration for _at, _is_error, duration in samples if duration is not None
             ]
             if len(durations) < 20:
                 continue
@@ -1104,11 +1179,17 @@ class Observability:
             "transaction_rejected": "unavailable",
             "transaction_start": "started",
         }.get(event, outcome)
-        safe_fields = {
-            key: value for key, value in fields.items() if key != "event"
-        }
+        safe_fields = {key: value for key, value in fields.items() if key != "event"}
         safe_fields["safe_outcome"] = safe_outcome
-        self.emit("transaction_lifecycle", fields=safe_fields, level="critical" if event in {"transaction_commit_unknown", "transaction_rejected"} else "info")
+        self.emit(
+            "transaction_lifecycle",
+            fields=safe_fields,
+            level=(
+                "critical"
+                if event in {"transaction_commit_unknown", "transaction_rejected"}
+                else "info"
+            ),
+        )
         labels = {
             "operation_class": fields.get("operation_name"),
             "safe_outcome": safe_outcome,
@@ -1185,9 +1266,9 @@ class Observability:
         summary["count"] = min(int(summary["count"]) + 1, 1_000_000)
         summary["last_timestamp"] = timestamp
         severity_rank = {"debug": 0, "info": 1, "warning": 2, "error": 3, "critical": 4}
-        if severity_rank.get(
-            _safe_enum(level, ALLOWED_LEVELS), 1
-        ) > severity_rank.get(str(summary.get("level")), 1):
+        if severity_rank.get(_safe_enum(level, ALLOWED_LEVELS), 1) > severity_rank.get(
+            str(summary.get("level")), 1
+        ):
             summary["level"] = _safe_enum(level, ALLOWED_LEVELS)
         if summary["emitted_count"] == 0:
             self._emit_alert_summary(summary)
@@ -1288,17 +1369,19 @@ class Observability:
                         if timeouts >= 3
                         else "dependency_unavailable"
                     ),
-                    safe_outcome=(
-                        "timeout" if timeouts >= 3 else "unavailable"
-                    ),
+                    safe_outcome=("timeout" if timeouts >= 3 else "unavailable"),
                     level="warning",
                     timestamp=now,
                 )
-        elif safe_outcome == "timeout" and sum(
-            1
-            for _at, _dependency, sample_outcome in dependency_samples
-            if sample_outcome == "timeout"
-        ) >= 3:
+        elif (
+            safe_outcome == "timeout"
+            and sum(
+                1
+                for _at, _dependency, sample_outcome in dependency_samples
+                if sample_outcome == "timeout"
+            )
+            >= 3
+        ):
             self._record_operational_alert(
                 alert_family="dependency_timeout",
                 safe_outcome="timeout",
@@ -1320,7 +1403,11 @@ class Observability:
             if isinstance(count, int) and count > 0:
                 self.metrics.increment(
                     "worker_claims_results",
-                    {"worker_class": "notification_delivery", "channel": "email", "safe_outcome": outcome},
+                    {
+                        "worker_class": "notification_delivery",
+                        "channel": "email",
+                        "safe_outcome": outcome,
+                    },
                     min(count, 1_000_000),
                 )
         exhausted = _bounded_int(values.get("exhausted"), maximum=1_000_000) or 0
@@ -1337,9 +1424,9 @@ class Observability:
             )
         pending_due = _bounded_int(current.get("pending_due"), maximum=1_000_000) or 0
         processing = _bounded_int(current.get("processing"), maximum=1_000_000) or 0
-        oldest_age = _bounded_int(
-            current.get("oldest_due_age_seconds"), maximum=1_000_000
-        ) or 0
+        oldest_age = (
+            _bounded_int(current.get("oldest_due_age_seconds"), maximum=1_000_000) or 0
+        )
         stale_leases = _bounded_int(current.get("stale_leases"), maximum=1_000_000) or 0
         exhausted_total = _bounded_int(current.get("exhausted"), maximum=1_000_000) or 0
         if "pending_due" in current:
@@ -1391,7 +1478,9 @@ class Observability:
             self._record_operational_alert(
                 alert_family="worker_lease",
                 safe_outcome="failed_safe",
-                level=("critical" if len(self._worker_lease_losses) >= 3 else "warning"),
+                level=(
+                    "critical" if len(self._worker_lease_losses) >= 3 else "warning"
+                ),
                 timestamp=now,
             )
         if "oldest_due_age_seconds" in current and oldest_age >= 60:
@@ -1425,7 +1514,9 @@ class Observability:
             },
         )
 
-    def record_readiness(self, *, dependency: str, ready: bool, duration_ms: int = 0) -> None:
+    def record_readiness(
+        self, *, dependency: str, ready: bool, duration_ms: int = 0
+    ) -> None:
         safe_state = "ready" if ready else "unavailable"
         self.emit(
             "readiness_signal",
@@ -1440,11 +1531,23 @@ class Observability:
             {"dependency_class": dependency, "safe_state": safe_state},
         )
 
-    def record_scheduler(self, *, job_name: str, outcome: str, duration_ms: int = 0) -> None:
-        fields = {"job_name": job_name, "safe_outcome": outcome, "duration_ms": duration_ms}
+    def record_scheduler(
+        self, *, job_name: str, outcome: str, duration_ms: int = 0
+    ) -> None:
+        fields = {
+            "job_name": job_name,
+            "safe_outcome": outcome,
+            "duration_ms": duration_ms,
+        }
         self.emit("scheduler_run", fields=fields)
-        self.metrics.increment("scheduled_runs", {"job_name": job_name, "safe_outcome": outcome})
-        self.metrics.observe("scheduled_duration", {"job_name": job_name, "safe_outcome": outcome}, duration_ms)
+        self.metrics.increment(
+            "scheduled_runs", {"job_name": job_name, "safe_outcome": outcome}
+        )
+        self.metrics.observe(
+            "scheduled_duration",
+            {"job_name": job_name, "safe_outcome": outcome},
+            duration_ms,
+        )
         if outcome in {"failed_safe", "timeout", "unavailable"}:
             self._record_operational_alert(
                 alert_family="scheduled_job",

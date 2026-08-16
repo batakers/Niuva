@@ -4,8 +4,10 @@ from copy import deepcopy
 from types import SimpleNamespace
 from typing import Any
 
-from catalog_inventory_indexes import INDEX_DECLARATIONS, ensure_catalog_inventory_indexes
-
+from catalog_inventory_indexes import (
+    INDEX_DECLARATIONS,
+    ensure_catalog_inventory_indexes,
+)
 
 migration = importlib.import_module("migrations.002_catalog_material_inventory")
 
@@ -27,9 +29,13 @@ class FakeCollection:
     @classmethod
     def matches(cls, item, query):
         for key, expected in query.items():
-            if key == "$and" and not all(cls.matches(item, branch) for branch in expected):
+            if key == "$and" and not all(
+                cls.matches(item, branch) for branch in expected
+            ):
                 return False
-            if key == "$or" and not any(cls.matches(item, branch) for branch in expected):
+            if key == "$or" and not any(
+                cls.matches(item, branch) for branch in expected
+            ):
                 return False
             if key in {"$and", "$or"}:
                 continue
@@ -39,7 +45,11 @@ class FakeCollection:
                     return False
                 if "$exists" in expected and (key in item) != expected["$exists"]:
                     return False
-                if "$type" in expected and expected["$type"] == "string" and not isinstance(actual, str):
+                if (
+                    "$type" in expected
+                    and expected["$type"] == "string"
+                    and not isinstance(actual, str)
+                ):
                     return False
                 if "$gt" in expected and not actual > expected["$gt"]:
                     return False
@@ -76,7 +86,9 @@ class FakeCollection:
         values = deepcopy(self.items)
         for stage in pipeline:
             if "$match" in stage:
-                values = [item for item in values if self.matches(item, stage["$match"])]
+                values = [
+                    item for item in values if self.matches(item, stage["$match"])
+                ]
             elif "$group" in stage:
                 group_spec = stage["$group"]["_id"]
                 grouped: dict[Any, int] = {}
@@ -90,8 +102,7 @@ class FakeCollection:
                         key = item.get(group_spec.removeprefix("$"))
                     grouped[key] = grouped.get(key, 0) + 1
                 values = [
-                    {"_id": key, "count": count}
-                    for key, count in grouped.items()
+                    {"_id": key, "count": count} for key, count in grouped.items()
                 ]
             elif "$count" in stage:
                 field = stage["$count"]
@@ -194,7 +205,11 @@ async def run_dry_run_and_apply_idempotency():
         "dry_run": True,
     }
     assert db.materials.items == materials_before
-    assert all(not collection.indexes for collection in vars(db).values() if isinstance(collection, FakeCollection))
+    assert all(
+        not collection.indexes
+        for collection in vars(db).values()
+        if isinstance(collection, FakeCollection)
+    )
 
     applied = await migration.migrate(db, dry_run=False)
     assert applied["changed"] == 2
@@ -244,7 +259,11 @@ async def run_collision_preflight():
     assert active_id in report["affected_material_ids"]
     assert report["changed"] == 0
     assert db.materials.items == before
-    assert all(not collection.indexes for collection in vars(db).values() if isinstance(collection, FakeCollection))
+    assert all(
+        not collection.indexes
+        for collection in vars(db).values()
+        if isinstance(collection, FakeCollection)
+    )
 
 
 def test_deterministic_sku_collision_blocks_every_write():
@@ -253,14 +272,18 @@ def test_deterministic_sku_collision_blocks_every_write():
 
 async def run_child_identity_index_preflight():
     db, _active_id, _inactive_id = legacy_fixture()
-    db.product_variants.items.extend([
-        {"id": "duplicate-child", "sku": "VAR-A", "product_id": "product-1"},
-        {"id": "duplicate-child", "sku": "VAR-B", "product_id": "product-1"},
-    ])
-    db.configuration_options.items.extend([
-        {"id": "option-a", "product_id": "product-1", "code": "finish"},
-        {"id": "option-b", "product_id": "product-1", "code": "finish"},
-    ])
+    db.product_variants.items.extend(
+        [
+            {"id": "duplicate-child", "sku": "VAR-A", "product_id": "product-1"},
+            {"id": "duplicate-child", "sku": "VAR-B", "product_id": "product-1"},
+        ]
+    )
+    db.configuration_options.items.extend(
+        [
+            {"id": "option-a", "product_id": "product-1", "code": "finish"},
+            {"id": "option-b", "product_id": "product-1", "code": "finish"},
+        ]
+    )
     before = deepcopy(db.materials.items)
 
     dry_run = await migration.migrate(db, dry_run=True)
@@ -299,7 +322,9 @@ async def run_index_declarations():
         if isinstance(collection, FakeCollection)
         for _keys, options in collection.indexes
     }
-    assert names == {declaration["options"]["name"] for declaration in INDEX_DECLARATIONS}
+    assert names == {
+        declaration["options"]["name"] for declaration in INDEX_DECLARATIONS
+    }
     assert {
         "uq_category_slug",
         "uq_product_slug",
@@ -318,10 +343,14 @@ async def run_index_declarations():
         "uq_active_restock_deduplication",
     } == names
     assert next(
-        item for item in INDEX_DECLARATIONS if item["options"]["name"] == "uq_material_sku"
+        item
+        for item in INDEX_DECLARATIONS
+        if item["options"]["name"] == "uq_material_sku"
     )["options"]["partialFilterExpression"] == {"sku": {"$type": "string"}}
     assert next(
-        item for item in INDEX_DECLARATIONS if item["options"]["name"] == "uq_active_restock_deduplication"
+        item
+        for item in INDEX_DECLARATIONS
+        if item["options"]["name"] == "uq_active_restock_deduplication"
     )["options"]["partialFilterExpression"] == {"status": "active"}
 
 

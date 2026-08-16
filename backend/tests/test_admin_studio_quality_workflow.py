@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -24,7 +23,7 @@ def test_transaction_workflow_covers_identity_and_inventory_atomicity():
     assert "backend/tests/test_inventory_transactions.py" in workflow
     assert "backend/tests/test_identity_access_migration.py" in workflow
     assert "backend/tests/test_granular_role_migration.py" in workflow
-    assert "NIUVA_RUN_REAL_TRANSACTION_TESTS: \"1\"" in workflow
+    assert 'NIUVA_RUN_REAL_TRANSACTION_TESTS: "1"' in workflow
 
     for test_file in (
         "backend/tests/test_transaction_integration.py",

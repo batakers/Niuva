@@ -6,7 +6,6 @@ from pathlib import Path
 
 import httpx
 
-
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
@@ -16,7 +15,9 @@ os.environ.setdefault("JWT_SECRET", "dashboard-test-secret-at-least-32-character
 os.environ.setdefault("ADMIN_EMAIL", "admin@niuva.com")
 os.environ.setdefault("ADMIN_PASSWORD", "AdminPassword123")
 os.environ.setdefault("PUBLIC_SITE_URL", "https://testserver")
-os.environ.setdefault("AUTH_SESSION_CSRF_KEY", "dashboard-test-csrf-key-at-least-32-bytes")
+os.environ.setdefault(
+    "AUTH_SESSION_CSRF_KEY", "dashboard-test-csrf-key-at-least-32-bytes"
+)
 
 
 resend_module = types.ModuleType("resend")
@@ -25,8 +26,8 @@ resend_module.Emails = types.SimpleNamespace(send=lambda _params: {"id": "test"}
 sys.modules.setdefault("resend", resend_module)
 
 import server  # noqa: E402
-from tests.auth_support import AuthCollection  # noqa: E402
 
+from tests.auth_support import AuthCollection  # noqa: E402
 
 ORIGIN = {"Origin": "https://testserver"}
 
@@ -105,9 +106,13 @@ class FakeCollection:
         for key, expected in query.items():
             actual = item.get(key)
             if isinstance(expected, dict):
-                if "$gte" in expected and not (actual is not None and actual >= expected["$gte"]):
+                if "$gte" in expected and not (
+                    actual is not None and actual >= expected["$gte"]
+                ):
                     return False
-                if "$lte" in expected and not (actual is not None and actual <= expected["$lte"]):
+                if "$lte" in expected and not (
+                    actual is not None and actual <= expected["$lte"]
+                ):
                     return False
                 if "$in" in expected:
                     actual_values = actual if isinstance(actual, list) else [actual]
@@ -141,7 +146,11 @@ class FakeCollection:
         return types.SimpleNamespace(inserted_id=item.get("id"))
 
     def find(self, query, projection=None):
-        matched = [self._project(item, projection) for item in self.items if self._matches(item, query)]
+        matched = [
+            self._project(item, projection)
+            for item in self.items
+            if self._matches(item, query)
+        ]
 
         class _Cursor:
             def __init__(self, values):
@@ -177,16 +186,28 @@ class FakeDatabase:
 
 def build_users():
     operations = {
-        "id": "ops-1", "name": "Operations", "email": "operations@niuva.com",
+        "id": "ops-1",
+        "name": "Operations",
+        "email": "operations@niuva.com",
         "password_hash": server.hash_password("OperationsPassword123"),
-        "phone": "", "company": "Niuva", "roles": ["warehouse"],
-        "status": "active", "access_state": "approved", "created_at": server.now_iso(),
+        "phone": "",
+        "company": "Niuva",
+        "roles": ["warehouse"],
+        "status": "active",
+        "access_state": "approved",
+        "created_at": server.now_iso(),
     }
     commercial = {
-        "id": "commercial-1", "name": "Commercial", "email": "commercial@niuva.com",
+        "id": "commercial-1",
+        "name": "Commercial",
+        "email": "commercial@niuva.com",
         "password_hash": server.hash_password("CommercialPassword123"),
-        "phone": "", "company": "Niuva", "roles": ["finance"],
-        "status": "active", "access_state": "approved", "created_at": server.now_iso(),
+        "phone": "",
+        "company": "Niuva",
+        "roles": ["finance"],
+        "status": "active",
+        "access_state": "approved",
+        "created_at": server.now_iso(),
     }
     return operations, commercial
 
@@ -195,16 +216,23 @@ async def run_timeseries_role_based_series():
     operations, commercial = build_users()
     orders = [
         {
-            "id": "order-1", "created_at": "2026-07-01T10:00:00+00:00", "status": "completed",
+            "id": "order-1",
+            "created_at": "2026-07-01T10:00:00+00:00",
+            "status": "completed",
             "payment": {"verified": True, "verified_at": "2026-07-01T12:00:00+00:00"},
             "estimate": {"amount": 500000},
         },
         {
-            "id": "order-2", "created_at": "2026-07-01T14:00:00+00:00", "status": "in_process",
-            "payment": {"verified": False}, "estimate": {"amount": 300000},
+            "id": "order-2",
+            "created_at": "2026-07-01T14:00:00+00:00",
+            "status": "in_process",
+            "payment": {"verified": False},
+            "estimate": {"amount": 300000},
         },
         {
-            "id": "order-3", "created_at": "2026-07-02T09:00:00+00:00", "status": "pending_estimate",
+            "id": "order-3",
+            "created_at": "2026-07-02T09:00:00+00:00",
+            "status": "pending_estimate",
         },
     ]
     stock_movements = [
@@ -221,14 +249,18 @@ async def run_timeseries_role_based_series():
             "deltas": {"on_hand": "-4"},
         },
     ]
-    server.db = FakeDatabase([operations, commercial], orders=orders, stock_movements=stock_movements)
+    server.db = FakeDatabase(
+        [operations, commercial], orders=orders, stock_movements=stock_movements
+    )
     server.app.state.admin_session_module = FakeAdminSessionModule()
 
     transport = httpx.ASGITransport(app=server.app)
     async with (
         AdminApi(transport) as ops_api,
         AdminApi(transport) as commercial_api,
-        httpx.AsyncClient(transport=transport, base_url="https://testserver") as anonymous_api,
+        httpx.AsyncClient(
+            transport=transport, base_url="https://testserver"
+        ) as anonymous_api,
     ):
         await ops_api.login(operations["email"], "OperationsPassword123")
         await commercial_api.login(commercial["email"], "CommercialPassword123")
@@ -243,10 +275,14 @@ async def run_timeseries_role_based_series():
         # Operations sees production/stock trends (DEC-OPS-001: role-appropriate
         # dashboards, not identical views for every role).
         assert "stock_movements" in ops_series
-        day_one = next(row for row in ops_series["orders_by_status"] if row["date"] == "2026-07-01")
+        day_one = next(
+            row for row in ops_series["orders_by_status"] if row["date"] == "2026-07-01"
+        )
         assert day_one["completed"] == 1
         assert day_one["in_process"] == 1
-        day_one_stock = next(row for row in ops_series["stock_movements"] if row["date"] == "2026-07-01")
+        day_one_stock = next(
+            row for row in ops_series["stock_movements"] if row["date"] == "2026-07-01"
+        )
         # Signed on-hand effect, not a count: +10 received and -4 consumed.
         assert day_one_stock["signed_quantity"] == "6"
         assert day_one_stock["movements"] == 2
@@ -280,4 +316,5 @@ async def run_timeseries_role_based_series():
 
 def test_dashboard_timeseries_is_role_aware_and_uses_real_data():
     import asyncio
+
     asyncio.run(run_timeseries_role_based_series())

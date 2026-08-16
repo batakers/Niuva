@@ -3,8 +3,8 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 from retail_domain import (
-    RetailDomainError,
     SUSPENDED_ACTIONS,
+    RetailDomainError,
     project_retail_order,
     validate_retail_transition,
 )
@@ -32,9 +32,12 @@ class RetailOrderService:
 
     async def list_orders(self, *, status: str | None = None) -> list[dict]:
         query = {"status": status} if status else {}
-        documents = await self.db.retail_orders.find(query, {"_id": 0}).sort(
-            "updated_at", -1
-        ).limit(500).to_list(500)
+        documents = (
+            await self.db.retail_orders.find(query, {"_id": 0})
+            .sort("updated_at", -1)
+            .limit(500)
+            .to_list(500)
+        )
         return [project_retail_order(document) for document in documents]
 
     async def _next_order_number(self, session) -> str:
@@ -72,7 +75,9 @@ class RetailOrderService:
 
         if not items:
             raise RetailDomainError(
-                422, "retail_items_required", "Pesanan retail memerlukan minimal satu item."
+                422,
+                "retail_items_required",
+                "Pesanan retail memerlukan minimal satu item.",
             )
 
         snapshots = await self._build_item_snapshots(items)
@@ -107,7 +112,9 @@ class RetailOrderService:
                 "created_at": timestamp,
                 "updated_at": timestamp,
             }
-            await self.db.retail_orders.insert_one(deepcopy(order), **{"session": session})
+            await self.db.retail_orders.insert_one(
+                deepcopy(order), **{"session": session}
+            )
             return project_retail_order(order)
 
         if self.transaction_guard is None:
@@ -126,7 +133,11 @@ class RetailOrderService:
     async def _build_item_snapshots(self, items: list[dict]) -> list[dict]:
         """Freeze what each line commits to at the moment it is ordered."""
         variant_ids = sorted(
-            {str(item["variant_id"]).strip() for item in items if item.get("variant_id")}
+            {
+                str(item["variant_id"]).strip()
+                for item in items
+                if item.get("variant_id")
+            }
         )
         if not variant_ids:
             raise RetailDomainError(
