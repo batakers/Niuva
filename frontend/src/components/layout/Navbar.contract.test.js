@@ -14,11 +14,6 @@ const stylesSource = fs.readFileSync(
   path.resolve(__dirname, "navigationStyles.js"),
   "utf8",
 );
-const {
-  PUBLIC_RETAIL_ITEMS,
-  PUBLIC_SERVICE_ITEMS,
-} = require("@/lib/publicRoutes");
-
 describe("public navigation semantics", () => {
   test("makes the mobile panel modal only while open and inert while closed", () => {
     expect(shellSource).toContain('role={open ? "dialog" : undefined}');
@@ -29,15 +24,23 @@ describe("public navigation semantics", () => {
     expect(shellSource).not.toContain('aria-hidden={!open}');
   });
 
-  test("uses one registry for canonical Public routes and the 60/40 menu taxonomy", () => {
-    expect(PUBLIC_SERVICE_ITEMS).toHaveLength(4);
-    expect(PUBLIC_RETAIL_ITEMS).toHaveLength(2);
-    expect(publicSource).toContain("PUBLIC_SERVICE_ITEMS.map");
-    expect(publicSource).toContain("PUBLIC_RETAIL_ITEMS.map");
-    expect(publicSource).toContain("grid-cols-[minmax(0,3fr)_minmax(17rem,2fr)]");
-    expect(publicSource).toContain('getPublicPath("services", routeLocale)');
-    expect(publicSource).toContain('getPublicPath("retail", routeLocale)');
+  test("uses one registry for direct Public routes without a Services menu", () => {
+    expect(publicSource).toContain("PUBLIC_NAVIGATION_LINKS.map");
+    expect(publicSource).toContain('getPublicPath(item.key, routeLocale)');
+    expect(publicSource).not.toContain("PUBLIC_SERVICE_ITEMS");
+    expect(publicSource).not.toContain("PUBLIC_RETAIL_ITEMS");
+    expect(publicSource).not.toContain("desktop-services-panel");
+    expect(publicSource).not.toContain("mobile-services-panel");
     expect(publicSource).not.toMatch(/(?:to|pathname):?\s*[={]?['"]\/(?:about|capabilities|services|projects|portfolio|contact|privacy)['"]/);
+  });
+
+  test("keeps compact behavior Public-only and freezes it while the menu is open", () => {
+    expect(shellSource).toContain("PUBLIC_NAVBAR_COMPACT_THRESHOLD = 96");
+    expect(shellSource).toContain("IntersectionObserver");
+    expect(shellSource).toContain("if (open) return undefined");
+    expect(shellSource).toContain("data-compact={compact ? \"true\" : \"false\"}");
+    expect(shellSource).toContain("isPublicRoute");
+    expect(shellSource).toContain("duration-deliberate ease-snap");
   });
 
   test("keeps Public and operational information architecture in separate compositions", () => {

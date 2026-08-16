@@ -7,8 +7,6 @@ import {
   getLocaleSwitchPath,
   getPublicLocale,
   getPublicPath,
-  PUBLIC_RETAIL_ITEMS,
-  PUBLIC_SERVICE_ITEMS,
   resolvePublicRoute,
 } from "@/lib/publicRoutes";
 import {
@@ -51,44 +49,26 @@ export function PublicNavigation({
   const routeLocale = resolvePublicRoute(pathname)
     ? getPublicLocale(pathname)
     : lang;
-  const [servicesOpen, setServicesOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
-  const servicesRootRef = useRef(null);
   const languageRootRef = useRef(null);
-  const servicesButtonRef = useRef(null);
   const languageButtonRef = useRef(null);
 
   useEffect(() => {
-    setServicesOpen(false);
     setLanguageOpen(false);
   }, [pathname, search, hash]);
 
   useEffect(() => {
-    if (mobile || (!servicesOpen && !languageOpen)) return undefined;
+    if (mobile || !languageOpen) return undefined;
 
     const handlePointerDown = (event) => {
-      if (
-        servicesOpen &&
-        !servicesRootRef.current?.contains(event.target)
-      ) {
-        setServicesOpen(false);
-      }
-      if (
-        languageOpen &&
-        !languageRootRef.current?.contains(event.target)
-      ) {
+      if (!languageRootRef.current?.contains(event.target)) {
         setLanguageOpen(false);
       }
     };
     const handleKeyDown = (event) => {
       if (event.key !== "Escape") return;
-      if (languageOpen) {
-        setLanguageOpen(false);
-        languageButtonRef.current?.focus();
-      } else if (servicesOpen) {
-        setServicesOpen(false);
-        servicesButtonRef.current?.focus();
-      }
+      setLanguageOpen(false);
+      languageButtonRef.current?.focus();
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -97,7 +77,7 @@ export function PublicNavigation({
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [languageOpen, mobile, servicesOpen]);
+  }, [languageOpen, mobile]);
 
   const selectLanguage = (locale) => {
     setLang(locale);
@@ -109,126 +89,25 @@ export function PublicNavigation({
     onNavigate?.();
   };
 
-  const servicePath = getPublicPath("services", routeLocale);
-  const retailPath = getPublicPath("retail", routeLocale);
-
-  const serviceLinks = (
-    <div className="grid gap-1">
-      {PUBLIC_SERVICE_ITEMS.map((service) => (
-        <Link
-          key={service.slug}
-          to={{ pathname: servicePath, hash: service.slug }}
-          className="group grid min-h-11 gap-1 rounded-control px-3 py-2 text-left transition-colors duration-fast ease-standard hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          onClick={onNavigate}
-        >
-          <span className="font-semibold text-text-primary group-hover:text-action-primary">
-            {service.labels[routeLocale]}
-          </span>
-          <span className="text-sm leading-6 text-text-secondary">
-            {service.descriptions[routeLocale]}
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-
-  const retailLinks = (
-    <div className="grid gap-1">
-      {PUBLIC_RETAIL_ITEMS.map((item) => (
-        <Link
-          key={item.hash}
-          to={{ pathname: retailPath, hash: item.hash }}
-          className="group grid min-h-11 gap-1 rounded-control px-3 py-2 text-left transition-colors duration-fast ease-standard hover:bg-surface-highlight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          onClick={onNavigate}
-        >
-          <span className="font-semibold text-text-primary group-hover:text-action-primary">
-            {item.labels[routeLocale]}
-          </span>
-          <span className="text-sm leading-6 text-text-secondary">
-            {item.descriptions[routeLocale]}
-          </span>
-        </Link>
-      ))}
-      <Link
-        to={retailPath}
-        className="mt-2 inline-flex min-h-11 items-center rounded-control px-3 py-2 font-semibold text-action-primary hover:bg-surface-highlight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        onClick={onNavigate}
-      >
-        {t("nav.exploreRetail")}
-      </Link>
-    </div>
-  );
+  const navigationLinks = PUBLIC_NAVIGATION_LINKS.map((item) => (
+    <Link
+      key={item.key}
+      to={getPublicPath(item.key, routeLocale)}
+      aria-current={routeIsActive(pathname, item.key) ? "page" : undefined}
+      className={navigationLinkClass(
+        routeIsActive(pathname, item.key),
+        mobile,
+      )}
+      onClick={onNavigate}
+    >
+      {t(item.labelKey)}
+    </Link>
+  ));
 
   if (mobile) {
     return (
       <>
-        <div className="rounded-control ring-1 ring-border-default">
-          <button
-            type="button"
-            className="flex min-h-11 w-full items-center justify-between rounded-control px-4 py-3 text-left font-semibold text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            aria-expanded={servicesOpen}
-            aria-controls="mobile-services-panel"
-            onClick={() => setServicesOpen((current) => !current)}
-          >
-            {t("nav.services")}
-            <ChevronDown
-              className={`h-4 w-4 transition-transform duration-fast ease-standard ${
-                servicesOpen ? "rotate-180" : ""
-              }`}
-              aria-hidden="true"
-            />
-          </button>
-          {servicesOpen && (
-            <div
-              id="mobile-services-panel"
-              className="grid gap-5 border-t border-border-default p-3"
-            >
-              <section aria-labelledby="mobile-services-ideas">
-                <h2
-                  id="mobile-services-ideas"
-                  className="px-3 pb-2 text-sm font-semibold text-text-secondary"
-                >
-                  {t("nav.developIdeas")}
-                </h2>
-                {serviceLinks}
-                <Link
-                  to={servicePath}
-                  className="mt-1 inline-flex min-h-11 items-center rounded-control px-3 py-2 font-semibold text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                  onClick={onNavigate}
-                >
-                  {t("nav.allServices")}
-                </Link>
-              </section>
-              <section
-                aria-labelledby="mobile-services-retail"
-                className="border-t border-border-default pt-4"
-              >
-                <h2
-                  id="mobile-services-retail"
-                  className="px-3 pb-2 text-sm font-semibold text-text-secondary"
-                >
-                  {t("nav.printAndProducts")}
-                </h2>
-                {retailLinks}
-              </section>
-            </div>
-          )}
-        </div>
-
-        {["projects", "about", "contact", "retail"].map((key) => {
-          const item = PUBLIC_NAVIGATION_LINKS.find((entry) => entry.key === key);
-          return (
-            <Link
-              key={key}
-              to={getPublicPath(key, routeLocale)}
-              aria-current={routeIsActive(pathname, key) ? "page" : undefined}
-              className={navigationLinkClass(routeIsActive(pathname, key), true)}
-              onClick={onNavigate}
-            >
-              {t(item.labelKey)}
-            </Link>
-          );
-        })}
+        {navigationLinks}
 
         <div className="mt-2 rounded-control border border-border-default">
           <button
@@ -250,7 +129,10 @@ export function PublicNavigation({
             />
           </button>
           {languageOpen && (
-            <div id="mobile-language-panel" className="grid grid-cols-2 gap-2 border-t border-border-default p-3">
+            <div
+              id="mobile-language-panel"
+              className="grid grid-cols-2 gap-2 border-t border-border-default p-3"
+            >
               {[
                 ["id", "Bahasa Indonesia"],
                 ["en", "English"],
@@ -293,72 +175,11 @@ export function PublicNavigation({
 
   return (
     <>
-      <nav className="hidden items-center gap-1 lg:flex" aria-label={t("nav.primary")}>
-        <div ref={servicesRootRef} className="relative">
-          <button
-            ref={servicesButtonRef}
-            type="button"
-            className={`${navigationLinkClass(routeIsActive(pathname, "services"))} gap-1.5`}
-            aria-expanded={servicesOpen}
-            aria-controls="desktop-services-panel"
-            onClick={() => {
-              setLanguageOpen(false);
-              setServicesOpen((current) => !current);
-            }}
-          >
-            {t("nav.services")}
-            <ChevronDown
-              className={`h-4 w-4 transition-transform duration-fast ease-standard ${
-                servicesOpen ? "rotate-180" : ""
-              }`}
-              aria-hidden="true"
-            />
-          </button>
-          {servicesOpen && (
-            <div
-              id="desktop-services-panel"
-              className="fixed left-1/2 top-[5.75rem] z-30 grid w-[min(64rem,calc(100vw-3rem))] -translate-x-1/2 grid-cols-[minmax(0,3fr)_minmax(17rem,2fr)] gap-0 overflow-hidden rounded-feature bg-surface-default shadow-overlay ring-1 ring-border-default"
-            >
-              <section className="p-5" aria-labelledby="desktop-services-ideas">
-                <div className="mb-3 flex items-center justify-between gap-4 px-3">
-                  <h2 id="desktop-services-ideas" className="text-sm font-semibold text-text-secondary">
-                    {t("nav.developIdeas")}
-                  </h2>
-                  <Link
-                    to={servicePath}
-                    className="inline-flex min-h-11 items-center rounded-control px-3 text-sm font-semibold text-action-primary hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                  >
-                    {t("nav.allServices")}
-                  </Link>
-                </div>
-                {serviceLinks}
-              </section>
-              <section
-                className="border-l border-border-default bg-surface-muted p-5"
-                aria-labelledby="desktop-services-retail"
-              >
-                <h2 id="desktop-services-retail" className="px-3 pb-3 text-sm font-semibold text-text-secondary">
-                  {t("nav.printAndProducts")}
-                </h2>
-                {retailLinks}
-              </section>
-            </div>
-          )}
-        </div>
-
-        {["projects", "about", "contact", "retail"].map((key) => {
-          const item = PUBLIC_NAVIGATION_LINKS.find((entry) => entry.key === key);
-          return (
-            <Link
-              key={key}
-              to={getPublicPath(key, routeLocale)}
-              aria-current={routeIsActive(pathname, key) ? "page" : undefined}
-              className={navigationLinkClass(routeIsActive(pathname, key))}
-            >
-              {t(item.labelKey)}
-            </Link>
-          );
-        })}
+      <nav
+        className="hidden items-center gap-1 lg:flex"
+        aria-label={t("nav.primary")}
+      >
+        {navigationLinks}
       </nav>
 
       <div className="hidden items-center gap-1 lg:flex">
@@ -370,10 +191,7 @@ export function PublicNavigation({
             aria-label={t("nav.changeLanguage")}
             aria-expanded={languageOpen}
             aria-controls="desktop-language-panel"
-            onClick={() => {
-              setServicesOpen(false);
-              setLanguageOpen((current) => !current);
-            }}
+            onClick={() => setLanguageOpen((current) => !current)}
           >
             <Globe2 className="h-4 w-4" aria-hidden="true" />
             {routeLocale.toUpperCase()}

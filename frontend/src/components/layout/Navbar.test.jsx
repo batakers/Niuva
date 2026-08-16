@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -12,6 +13,40 @@ import { Navbar } from "./Navbar";
 
 const mockLogout = jest.fn(() => Promise.resolve());
 const mockSetLang = jest.fn();
+let intersectionObservers = [];
+
+class MockIntersectionObserver {
+  constructor(callback) {
+    this.callback = callback;
+    this.active = true;
+    this.target = null;
+    intersectionObservers.push(this);
+  }
+
+  observe(target) {
+    this.target = target;
+  }
+
+  disconnect() {
+    this.active = false;
+  }
+}
+
+function emitNavbarIntersection({ isIntersecting, top }) {
+  act(() => {
+    intersectionObservers
+      .filter((observer) => observer.active && observer.target)
+      .forEach((observer) => {
+        observer.callback([
+          {
+            boundingClientRect: { top },
+            isIntersecting,
+            target: observer.target,
+          },
+        ]);
+      });
+  });
+}
 
 jest.mock("@/context/AuthContext", () => ({
   useAuth: () => ({
@@ -41,10 +76,6 @@ jest.mock("@/i18n", () => ({
         "nav.mobile": "Menu navigasi",
         "nav.openMenu": "Buka menu",
         "nav.closeMenu": "Tutup menu",
-        "nav.developIdeas": "Kembangkan ide",
-        "nav.printAndProducts": "Cetak & pilih produk",
-        "nav.allServices": "Lihat semua layanan",
-        "nav.exploreRetail": "Jelajahi Retail",
         "nav.changeLanguage": "Ubah bahasa",
         "nav.signIn": "Masuk",
         "nav.discussProject": "Diskusikan project",
@@ -56,7 +87,20 @@ jest.mock("@/lib/permissions", () => ({
   hasPermission: () => false,
 }));
 
-afterEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  intersectionObservers = [];
+  window.IntersectionObserver = MockIntersectionObserver;
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
+  delete window.IntersectionObserver;
+  Object.defineProperty(window, "scrollY", {
+    configurable: true,
+    value: 0,
+    writable: true,
+  });
+});
 
 function LocationProbe() {
   const location = useLocation();
@@ -77,6 +121,8 @@ test("keeps customer operational navigation task-focused on desktop and mobile",
   expect(
     screen.queryByRole("navigation", { name: "Primary navigation" }),
   ).not.toBeInTheDocument();
+  expect(document.querySelector("header")).toHaveAttribute("data-compact", "false");
+  expect(screen.queryByTestId("public-navbar-compact-sentinel")).not.toBeInTheDocument();
   const desktopHeader = document.querySelector("header > div");
   expect(within(desktopHeader).getByRole("button", { name: "Pesanan saya" })).toBeInTheDocument();
 
@@ -113,60 +159,89 @@ test("keeps canonical Public navigation available outside operational routes", (
   );
 });
 
-test("exposes four equal Services separately from the two Retail destinations", async () => {
+test("links directly to Services and keeps Retail as its own top-level destination", () => {
   render(
     <MemoryRouter initialEntries={["/"]}>
       <Navbar />
     </MemoryRouter>,
   );
 
-  const servicesButton = document.querySelector(
-    '[aria-controls="desktop-services-panel"]',
-  );
-  fireEvent.click(servicesButton);
+  const primaryNavigation = screen.getByRole("navigation", {
+    name: "Navigasi utama",
+  });
+  expect(
+    within(primaryNavigation).getByRole("link", { name: "Layanan" }),
+  ).toHaveAttribute("href", "/layanan");
+  expect(
+    within(primaryNavigation).getByRole("link", { name: "Retail" }),
+  ).toHaveAttribute("href", "/retail");
+  expect(
+    within(primaryNavigation).queryByRole("button", { name: "Layanan" }),
+  ).not.toBeInTheDocument();
+  expect(document.getElementById("desktop-services-panel")).not.toBeInTheDocument();
 
-  const panel = document.getElementById("desktop-services-panel");
-  expect(panel).toBeInTheDocument();
-  for (const [label, hash] of [
-    ["Research & Development", "research-development"],
-    ["Consultant & Workshop", "consultant-workshop"],
-    ["Design & Prototyping", "design-prototyping"],
-    ["Apparel & Merchandise", "apparel-merchandise"],
-  ]) {
-    expect(within(panel).getByRole("link", { name: new RegExp(`^${label}`) })).toHaveAttribute(
-      "href",
-      `/layanan#${hash}`,
-    );
-  }
-  expect(within(panel).getByRole("link", { name: /^Custom 3D Print/ })).toHaveAttribute(
-    "href",
-    "/retail#custom-3d-print",
-  );
-  expect(within(panel).getByRole("link", { name: /^Ready Products/ })).toHaveAttribute(
-    "href",
-    "/retail#ready-products",
+  fireEvent.click(screen.getByRole("button", { name: "Buka menu" }));
+  const mobilePanel = screen.getByRole("dialog", { name: "Menu navigasi" });
+  expect(
+    within(mobilePanel).getByRole("link", { name: "Layanan" }),
+  ).toHaveAttribute("href", "/layanan");
+  expect(
+    within(mobilePanel).getByRole("link", { name: "Retail" }),
+  ).toHaveAttribute("href", "/retail");
+  expect(
+    within(mobilePanel).queryByRole("button", { name: "Layanan" }),
+  ).not.toBeInTheDocument();
+  expect(document.getElementById("mobile-services-panel")).not.toBeInTheDocument();
+});
+
+test("compacts the Public Navbar after the scroll threshold and restores it at the top", async () => {
+  render(
+    <MemoryRouter initialEntries={["/"]}>
+      <Navbar />
+    </MemoryRouter>,
   );
 
-  servicesButton.focus();
-  fireEvent.keyDown(document, { key: "Escape" });
+  const header = document.querySelector("header");
+  expect(header).toHaveAttribute("data-compact", "false");
+  expect(screen.getByTestId("public-navbar-compact-sentinel")).toHaveStyle({
+    top: "96px",
+  });
+
+  emitNavbarIntersection({ isIntersecting: false, top: -1 });
   await waitFor(() => {
-    expect(document.getElementById("desktop-services-panel")).not.toBeInTheDocument();
-    expect(servicesButton).toHaveFocus();
+    expect(header).toHaveAttribute("data-compact", "true");
+  });
+
+  emitNavbarIntersection({ isIntersecting: true, top: 96 });
+  await waitFor(() => {
+    expect(header).toHaveAttribute("data-compact", "false");
   });
 });
 
-test("closes the desktop mega-menu on an outside pointer action", () => {
+test("freezes the compact state while the mobile menu owns focus", async () => {
   render(
     <MemoryRouter initialEntries={["/"]}>
       <Navbar />
     </MemoryRouter>,
   );
 
-  fireEvent.click(document.querySelector('[aria-controls="desktop-services-panel"]'));
-  expect(document.getElementById("desktop-services-panel")).toBeInTheDocument();
+  const header = document.querySelector("header");
+  emitNavbarIntersection({ isIntersecting: false, top: -1 });
+  expect(header).toHaveAttribute("data-compact", "true");
 
-  fireEvent.pointerDown(document.body);
-  expect(document.getElementById("desktop-services-panel")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Buka menu" }));
+  emitNavbarIntersection({ isIntersecting: true, top: 96 });
+  expect(header).toHaveAttribute("data-compact", "true");
+
+  fireEvent.click(screen.getByTestId("mobile-navigation-backdrop"));
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Buka menu" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+  emitNavbarIntersection({ isIntersecting: true, top: 96 });
+  expect(header).toHaveAttribute("data-compact", "false");
 });
 
 test("switches a registered Public route while preserving query and hash", async () => {

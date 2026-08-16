@@ -12,10 +12,14 @@ import {
   resolvePublicRoute,
 } from "@/lib/publicRoutes";
 
+export const PUBLIC_NAVBAR_COMPACT_THRESHOLD = 96;
+
 export function Navbar() {
   const { lang, setLang, t } = useI18n();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const compactSentinelRef = useRef(null);
   const menuButtonRef = useRef(null);
   const mobilePanelRef = useRef(null);
   const menuFocusTimerRef = useRef(null);
@@ -31,6 +35,8 @@ export function Navbar() {
     loc.pathname === "/order" ||
     loc.pathname.startsWith("/orders/") ||
     (loc.pathname.startsWith("/admin") && loc.pathname !== "/admin/login");
+  const isPublicRoute = Boolean(matchedPublicRoute);
+  const compact = scrolled && isPublicRoute;
   const workspaceLabel = canAccessAdmin
     ? t("nav.adminStudio")
     : t("nav.customerOrders");
@@ -51,6 +57,40 @@ export function Navbar() {
   useEffect(() => {
     setOpen(false);
   }, [loc.hash, loc.pathname, loc.search]);
+
+  useEffect(() => {
+    if (!isPublicRoute) {
+      setScrolled(false);
+      return undefined;
+    }
+
+    // Keep the capsule stable while the modal mobile menu owns focus.
+    if (open) return undefined;
+
+    const sentinel = compactSentinelRef.current;
+    if (!sentinel) return undefined;
+
+    const updateFromScroll = () => {
+      setScrolled(window.scrollY > PUBLIC_NAVBAR_COMPACT_THRESHOLD);
+    };
+
+    if (typeof window.IntersectionObserver !== "function") {
+      updateFromScroll();
+      window.addEventListener("scroll", updateFromScroll, { passive: true });
+      return () => window.removeEventListener("scroll", updateFromScroll);
+    }
+
+    const observer = new window.IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        setScrolled(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { threshold: 0 },
+    );
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [isPublicRoute, open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -125,8 +165,27 @@ export function Navbar() {
   useEffect(() => () => window.clearTimeout(menuFocusTimerRef.current), []);
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 bg-navigation-backdrop px-4 pb-3 pt-3 sm:px-6 lg:px-8">
-      <div className="relative z-10 mx-auto flex h-16 max-w-[var(--container-wide)] items-center justify-between rounded-panel bg-surface-default px-4 shadow-navigation ring-1 ring-border-default sm:px-6">
+    <>
+      {isPublicRoute && (
+        <span
+          ref={compactSentinelRef}
+          data-testid="public-navbar-compact-sentinel"
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 h-px w-px"
+          style={{ top: `${PUBLIC_NAVBAR_COMPACT_THRESHOLD}px` }}
+        />
+      )}
+      <header
+        data-compact={compact ? "true" : "false"}
+        className={`fixed left-0 right-0 top-0 z-40 bg-navigation-backdrop px-4 transition-[padding] duration-deliberate ease-snap motion-reduce:transition-none sm:px-6 lg:px-8 ${
+          compact ? "py-2" : "pb-3 pt-3"
+        }`}
+      >
+      <div
+        className={`relative z-10 mx-auto flex max-w-[var(--container-wide)] items-center justify-between rounded-panel bg-surface-default px-4 shadow-navigation ring-1 ring-border-default transition-[height,max-width] duration-deliberate ease-snap motion-reduce:transition-none sm:px-6 ${
+          compact ? "h-14 xl:max-w-[76rem]" : "h-16"
+        }`}
+      >
         <Link
           to={getPublicPath("home", activeLocale)}
           className="-ml-2 flex min-h-11 items-center rounded-control px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
@@ -235,6 +294,7 @@ export function Navbar() {
           )}
         </nav>
       </div>
-    </header>
+      </header>
+    </>
   );
 }
