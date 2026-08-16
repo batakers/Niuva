@@ -482,11 +482,16 @@ export function CTASection({
   );
 }
 
-export function ContactSummary({ className, contact, showMapLink = false }) {
+export function ContactSummary({
+  className,
+  contact,
+  labels = { location: "Lokasi", email: "Email", whatsapp: "WhatsApp" },
+  showMapLink = false,
+}) {
   const items = [
-    { label: "Lokasi", value: contact.location, href: showMapLink ? contact.mapsHref : undefined },
-    { label: "Email", value: contact.email, href: contact.email ? `mailto:${contact.email}` : undefined },
-    { label: "WhatsApp", value: contact.whatsapp, href: contact.whatsappHref },
+    { label: labels.location, value: contact.location, href: showMapLink ? contact.mapsHref : undefined },
+    { label: labels.email, value: contact.email, href: contact.email ? `mailto:${contact.email}` : undefined },
+    { label: labels.whatsapp, value: contact.whatsapp, href: contact.whatsappHref },
   ].filter((item) => item.value);
 
   return (
@@ -510,10 +515,10 @@ export function ContactSummary({ className, contact, showMapLink = false }) {
   );
 }
 
-function RequiredLabel({ children }) {
+function RequiredLabel({ children, suffix = "wajib" }) {
   return (
     <>
-      {children} <span className="font-normal text-text-secondary">(wajib)</span>
+      {children} <span className="font-normal text-text-secondary">({suffix})</span>
     </>
   );
 }
@@ -545,8 +550,32 @@ export function ContactForm({
   className,
   submitLabel = "Kirim Permintaan",
   loadingLabel = "Mengirim",
+  copy = {},
 }) {
   const errorCount = Object.values(errors).filter(Boolean).length;
+  const labels = {
+    requiredNote: "Semua field wajib diisi agar tim Niuva dapat meninjau brief awal dengan konteks yang cukup.",
+    errorSummary: (count) => `Ada ${count} field yang perlu diperbaiki.`,
+    required: "wajib",
+    name: "Nama",
+    namePlaceholder: "Nama lengkap",
+    company: "Perusahaan / Instansi",
+    companyPlaceholder: "Nama perusahaan atau institusi",
+    email: "Email",
+    emailPlaceholder: "nama@perusahaan.com",
+    phone: "Nomor WhatsApp",
+    phonePlaceholder: "08xx xxxx xxxx",
+    need: "Jenis kebutuhan",
+    timeline: "Estimasi timeline",
+    message: "Pesan tambahan",
+    messagePlaceholder: "Jelaskan konteks, tujuan, ruang lingkup, target pengguna, bentuk hasil, atau batasan proyek.",
+    privacy: "Tim Niuva akan menggunakan informasi ini hanya untuk menanggapi permintaan proyek.",
+    ...copy,
+  };
+  const optionValue = (option) =>
+    typeof option === "string" ? option : option.value;
+  const optionLabel = (option) =>
+    typeof option === "string" ? option : option.label;
 
   return (
     <form
@@ -559,20 +588,20 @@ export function ContactForm({
       aria-describedby="contact-required-note contact-privacy-note"
     >
       <p id="contact-required-note" className="mb-6 text-sm leading-6 text-text-secondary">
-        Semua field wajib diisi agar tim Niuva dapat meninjau brief awal dengan konteks yang cukup.
+        {labels.requiredNote}
       </p>
 
       {/* Announced once per failed submit. Individual messages sit with their
           own field; this only tells a screen-reader user that something needs
           attention before they walk back through the form. */}
       <p role="alert" aria-live="polite" className="sr-only">
-        {errorCount > 0 ? `Ada ${errorCount} field yang perlu diperbaiki.` : ""}
+        {errorCount > 0 ? labels.errorSummary(errorCount) : ""}
       </p>
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="contact-name" className="text-sm font-semibold text-text-primary">
-            <RequiredLabel>Nama</RequiredLabel>
+            <RequiredLabel suffix={labels.required}>{labels.name}</RequiredLabel>
           </Label>
           <Input
             id="contact-name"
@@ -585,13 +614,13 @@ export function ContactForm({
             aria-describedby={describedBy("contact-name", errors.name)}
             autoComplete="name"
             className="brand-field"
-            placeholder="Nama lengkap"
+            placeholder={labels.namePlaceholder}
           />
           <FieldError id="contact-name-error" message={errors.name} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-company" className="text-sm font-semibold text-text-primary">
-            <RequiredLabel>Perusahaan / Instansi</RequiredLabel>
+            <RequiredLabel suffix={labels.required}>{labels.company}</RequiredLabel>
           </Label>
           <Input
             id="contact-company"
@@ -604,13 +633,13 @@ export function ContactForm({
             aria-describedby={describedBy("contact-company", errors.company)}
             autoComplete="organization"
             className="brand-field"
-            placeholder="Nama perusahaan atau institusi"
+            placeholder={labels.companyPlaceholder}
           />
           <FieldError id="contact-company-error" message={errors.company} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-email" className="text-sm font-semibold text-text-primary">
-            <RequiredLabel>Email</RequiredLabel>
+            <RequiredLabel suffix={labels.required}>{labels.email}</RequiredLabel>
           </Label>
           <Input
             id="contact-email"
@@ -624,13 +653,13 @@ export function ContactForm({
             aria-describedby={describedBy("contact-email", errors.email)}
             autoComplete="email"
             className="brand-field"
-            placeholder="nama@perusahaan.com"
+            placeholder={labels.emailPlaceholder}
           />
           <FieldError id="contact-email-error" message={errors.email} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-phone" className="text-sm font-semibold text-text-primary">
-            <RequiredLabel>Nomor WhatsApp</RequiredLabel>
+            <RequiredLabel suffix={labels.required}>{labels.phone}</RequiredLabel>
           </Label>
           <Input
             id="contact-phone"
@@ -643,13 +672,13 @@ export function ContactForm({
             aria-describedby={describedBy("contact-phone", errors.phone)}
             autoComplete="tel"
             className="brand-field"
-            placeholder="08xx xxxx xxxx"
+            placeholder={labels.phonePlaceholder}
           />
           <FieldError id="contact-phone-error" message={errors.phone} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-need" className="text-sm font-semibold text-text-primary">
-            <RequiredLabel>Jenis kebutuhan</RequiredLabel>
+            <RequiredLabel suffix={labels.required}>{labels.need}</RequiredLabel>
           </Label>
           <select
             id="contact-need"
@@ -661,13 +690,13 @@ export function ContactForm({
             className="brand-field h-12 w-full px-3 py-2 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
           >
             {needOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={optionValue(option)} value={optionValue(option)}>{optionLabel(option)}</option>
             ))}
           </select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact-timeline" className="text-sm font-semibold text-text-primary">
-            <RequiredLabel>Estimasi timeline</RequiredLabel>
+            <RequiredLabel suffix={labels.required}>{labels.timeline}</RequiredLabel>
           </Label>
           <select
             id="contact-timeline"
@@ -679,7 +708,7 @@ export function ContactForm({
             className="brand-field h-12 w-full px-3 py-2 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
           >
             {timelineOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={optionValue(option)} value={optionValue(option)}>{optionLabel(option)}</option>
             ))}
           </select>
         </div>
@@ -687,7 +716,7 @@ export function ContactForm({
 
       <div className="mt-6 space-y-2">
         <Label htmlFor="contact-message" className="text-sm font-semibold text-text-primary">
-          <RequiredLabel>Pesan tambahan</RequiredLabel>
+          <RequiredLabel suffix={labels.required}>{labels.message}</RequiredLabel>
         </Label>
         <Textarea
           id="contact-message"
@@ -700,14 +729,14 @@ export function ContactForm({
           aria-describedby={describedBy("contact-message", errors.message)}
           rows={7}
           className="brand-field min-h-[190px] resize-y py-4"
-          placeholder="Jelaskan konteks, tujuan, ruang lingkup, target pengguna, bentuk hasil, atau batasan proyek."
+          placeholder={labels.messagePlaceholder}
         />
         <FieldError id="contact-message-error" message={errors.message} />
       </div>
 
       <div className="mt-8 flex flex-col gap-4 border-t border-border-default pt-7 md:flex-row md:items-center md:justify-between">
         <p id="contact-privacy-note" className="max-w-sm text-sm leading-6 text-text-secondary">
-          Tim Niuva akan menggunakan informasi ini hanya untuk menanggapi permintaan proyek.
+          {labels.privacy}
         </p>
         <BrandButton type="submit" disabled={loading} aria-busy={loading} data-testid="contact-submit">
           {loading ? loadingLabel : submitLabel}
