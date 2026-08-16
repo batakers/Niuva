@@ -18,6 +18,12 @@ Scope: Public website, Retail commerce, Custom 3D Print, inventory, customer tra
 Related decision packet: `docs/implementation/specs/candidates/2026-07-30-niuva-mvp-decision-packet.md`
 Related user-flow candidate: `docs/implementation/specs/candidates/2026-07-31-niuva-mvp-user-flow-and-route-contract.md`
 
+> **Read-first notice:** This file is not the active PRD. Start with
+> [`NIUVA_MASTER_SPEC.md`](../../../NIUVA_MASTER_SPEC.md), then consult the
+> applicable approved decision or ADR. This candidate is retained only for
+> discussion and promotion provenance; its approved selections cannot be
+> reconstructed or implemented directly from this file.
+
 ## 1. Document Purpose and Authority
 
 This candidate translates the 30 July 2026 product discussion into a reviewable

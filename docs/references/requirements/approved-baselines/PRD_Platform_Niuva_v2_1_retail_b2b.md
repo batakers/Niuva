@@ -14,6 +14,13 @@ Approved architecture pointers:
 - `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md`
 - `docs/decisions/product/DECISION_LOG_Platform_Niuva_v2_1.md`
 
+> **Read-first notice:** Start with
+> [`NIUVA_MASTER_SPEC.md`](../../../NIUVA_MASTER_SPEC.md) for the consolidated
+> current product direction and feature maturity. This PRD remains an approved
+> requirements baseline and provenance source where the Master Spec and a more
+> specific approved decision are silent; it is not the day-to-day PRD front
+> door and grants no implementation or go-live authority.
+
 ## 1. Ringkasan Produk
 
 Niuva akan memiliki satu website dan satu platform operasional dengan dua journey pelanggan:
