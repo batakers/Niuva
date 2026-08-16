@@ -79,7 +79,7 @@ needs a trivial conflict resolution on this one file each time.
 | [#266](https://github.com/batakers/Niuva/pull/266) | E402 import-order noqa annotations (QUALITY-001, part 5) | `chore/niuva-backend-flake8-e402` |
 | [#267](https://github.com/batakers/Niuva/pull/267) | mypy var-annotated fixes (QUALITY-001, mypy part 1) | `chore/niuva-backend-mypy-var-annotated` |
 | [#268](https://github.com/batakers/Niuva/pull/268) | Normalize GSAP motion timing to approved grammar (MOTION-001) | `fix/niuva-frontend-gsap-motion-timing` |
-| (this branch) | Legacy-font cleanup investigation (DESIGN-001, docs only) | `docs/niuva-legacy-font-cleanup-investigation-20260816` |
+| [#269](https://github.com/batakers/Niuva/pull/269) | Legacy-font cleanup investigation (DESIGN-001, docs only) | `docs/niuva-legacy-font-cleanup-investigation-20260816` |
 
 None of the PRs above have been merged. This tracker records source-level
 progress only; it does not itself close any P0/P1 finding, and it does not
