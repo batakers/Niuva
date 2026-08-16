@@ -17,10 +17,10 @@ from permissions import (  # noqa: E402
     SUPERSEDED_INTERNAL_ROLE_MARKERS,
     canonical_roles,
 )
-from transaction_execution import (
+from transaction_execution import (  # noqa: E402
     TransactionExecutor,
     TransactionUnavailableError,
-)  # noqa: E402
+)
 from transaction_guard import TransactionMutationGuard  # noqa: E402
 
 
