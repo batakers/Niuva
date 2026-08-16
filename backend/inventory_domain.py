@@ -74,7 +74,9 @@ def compute_deltas(
 ) -> dict[str, Decimal]:
     if movement_type == "adjustment":
         if on_hand_delta is None:
-            raise InventoryConflict("adjustment requires an explicit signed on_hand_delta")
+            raise InventoryConflict(
+                "adjustment requires an explicit signed on_hand_delta"
+            )
         delta = as_decimal(on_hand_delta)
         if delta == 0:
             raise InventoryConflict("adjustment on_hand_delta must be non-zero")

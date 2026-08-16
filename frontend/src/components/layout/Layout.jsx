@@ -1,66 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
-
-const DEFAULT_PUBLIC_META = {
-  title: "Niuva Inovasi Utama - Mitra R&D, Design Engineering, dan Prototyping",
-  description:
-    "PT Niuva Inovasi Utama membantu organisasi mengembangkan inovasi, riset produk, design engineering, prototyping, EV/product development, simulator, workshop, apparel, dan merchandise.",
-  canonical: "/",
-};
-
-const PUBLIC_ROUTE_META = {
-  "/": DEFAULT_PUBLIC_META,
-  "/about": {
-    title: "Tentang Niuva - Mitra Inovasi dan Pengembangan Produk",
-    description:
-      "Kenali PT Niuva Inovasi Utama sebagai mitra strategis untuk inovasi, riset berbasis kebutuhan, konsultasi ahli, design engineering, prototyping, dan pertumbuhan bisnis berkelanjutan.",
-    canonical: "/about",
-  },
-  "/capabilities": {
-    title: "Capabilities Niuva - R&D, Design Engineering, dan Prototyping",
-    description:
-      "Pelajari kapabilitas Niuva untuk Research & Development, Design & Prototyping, Consultant & Workshop, serta Apparel & Merchandise.",
-    canonical: "/capabilities",
-  },
-  "/services": {
-    title: "Capabilities Niuva - R&D, Design Engineering, dan Prototyping",
-    description:
-      "Pelajari kapabilitas Niuva untuk Research & Development, Design & Prototyping, Consultant & Workshop, serta Apparel & Merchandise.",
-    canonical: "/capabilities",
-  },
-  "/projects": {
-    title: "Projects Niuva - Mobilitas, EV, Simulator, dan Produk Teknis",
-    description:
-      "Lihat mini case study Niuva untuk Redesain Motor Xeon, Pengembangan Motor EV PT Pindad, Bicycle Arcade Agate, dan Motorcycle Simulator Agate.",
-    canonical: "/projects",
-  },
-  "/portfolio": {
-    title: "Projects Niuva - Mobilitas, EV, Simulator, dan Produk Teknis",
-    description:
-      "Lihat mini case study Niuva untuk Redesain Motor Xeon, Pengembangan Motor EV PT Pindad, Bicycle Arcade Agate, dan Motorcycle Simulator Agate.",
-    canonical: "/projects",
-  },
-  "/contact": {
-    title: "Contact Niuva - Diskusikan Project R&D dan Prototyping",
-    description:
-      "Hubungi Niuva melalui WhatsApp, email, atau form project intake untuk kebutuhan riset, desain, prototyping, EV/product development, simulator, workshop, apparel, dan merchandise.",
-    canonical: "/contact",
-  },
-  "/privacy": {
-    title: "Privacy Policy - PT Niuva Inovasi Utama",
-    description:
-      "Kebijakan privasi Niuva menjelaskan data yang dikumpulkan melalui form contact dan pemesanan, serta hak pengguna terkait data tersebut.",
-    canonical: "/privacy",
-  },
-  "/faq": {
-    title: "FAQ - PT Niuva Inovasi Utama",
-    description:
-      "Pertanyaan yang sering diajukan seputar riset, desain, prototyping, dan kolaborasi dengan Niuva.",
-    canonical: "/faq",
-  },
-};
+import { useI18n } from "@/i18n";
+import { getPublicRouteMetadata } from "@/lib/publicRoutes";
 
 const configuredPublicSiteUrl = (process.env.REACT_APP_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 
@@ -90,6 +33,15 @@ function getCanonicalOrigin() {
   return resolveCanonicalOrigin(configuredPublicSiteUrl, window.location.origin);
 }
 
+function getHashTargetId(hash) {
+  const encoded = String(hash || "").replace(/^#/, "");
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return encoded;
+  }
+}
+
 function ensureMetaDescription(content) {
   let tag = document.querySelector('meta[name="description"]');
 
@@ -105,6 +57,11 @@ function ensureMetaDescription(content) {
 function ensureCanonical(pathname) {
   let tag = document.querySelector('link[rel="canonical"]');
 
+  if (!pathname) {
+    tag?.remove();
+    return;
+  }
+
   if (!tag) {
     tag = document.createElement("link");
     tag.setAttribute("rel", "canonical");
@@ -114,6 +71,31 @@ function ensureCanonical(pathname) {
   tag.setAttribute("href", `${getCanonicalOrigin()}${pathname}`);
 }
 
+function ensureRobots(content) {
+  let tag = document.querySelector('meta[name="robots"]');
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.setAttribute("name", "robots");
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute("content", content);
+}
+
+function replaceLanguageAlternates(alternates) {
+  document
+    .querySelectorAll('link[rel="alternate"][hreflang]')
+    .forEach((tag) => tag.remove());
+
+  if (!alternates) return;
+  Object.entries(alternates).forEach(([locale, pathname]) => {
+    const tag = document.createElement("link");
+    tag.setAttribute("rel", "alternate");
+    tag.setAttribute("hreflang", locale);
+    tag.setAttribute("href", `${getCanonicalOrigin()}${pathname}`);
+    document.head.appendChild(tag);
+  });
+}
+
 /**
  * MarketingLayout
  * For public-facing pages: Home, About, Capabilities, Projects, Contact
@@ -121,18 +103,39 @@ function ensureCanonical(pathname) {
  */
 export function MarketingLayout({ children, hideFooter = false }) {
   const location = useLocation();
+  const { lang, t } = useI18n();
+  const routeMeta = useMemo(
+    () => getPublicRouteMetadata(location.pathname),
+    [location.pathname],
+  );
 
   useEffect(() => {
+    if (location.hash) {
+      const targetId = getHashTargetId(location.hash);
+      const target = document.getElementById(targetId);
+      if (target && typeof target.scrollIntoView === "function") {
+        target.scrollIntoView({ block: "start" });
+        return;
+      }
+    }
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.hash, location.pathname]);
 
-    const routeMeta = PUBLIC_ROUTE_META[location.pathname] || {
-      ...DEFAULT_PUBLIC_META,
-      canonical: location.pathname,
-    };
-    document.title = routeMeta.title;
-    ensureMetaDescription(routeMeta.description);
-    ensureCanonical(routeMeta.canonical || location.pathname);
-  }, [location.pathname]);
+  useEffect(() => {
+    if (routeMeta) {
+      document.title = routeMeta.title;
+      ensureMetaDescription(routeMeta.description);
+      ensureCanonical(routeMeta.canonical);
+      ensureRobots(routeMeta.robots);
+      replaceLanguageAlternates(routeMeta.alternates);
+      return;
+    }
+
+    const isRetailDetail = location.pathname.startsWith("/retail/products/");
+    ensureCanonical(isRetailDetail ? location.pathname : null);
+    ensureRobots(isRetailDetail ? "index, follow" : "noindex, follow");
+    replaceLanguageAlternates(null);
+  }, [location.pathname, routeMeta]);
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-page selection:bg-primary/20 selection:text-text-primary">
@@ -140,10 +143,22 @@ export function MarketingLayout({ children, hideFooter = false }) {
         href="#main-content"
         className="fixed left-4 top-3 z-[60] inline-flex min-h-11 -translate-y-24 items-center rounded-full bg-action-primary-hover px-4 py-2 text-sm font-semibold text-text-inverse transition-transform duration-emphasis ease-snap focus:translate-y-0"
       >
-        Lewati ke konten
+        {lang === "en" ? "Skip to content" : "Lewati ke konten"}
       </a>
       <Navbar />
-      <main id="main-content" tabIndex="-1" className="flex-1 w-full max-w-full overflow-x-hidden">{children}</main>
+      <main id="main-content" tabIndex="-1" className="flex-1 w-full max-w-full overflow-x-hidden">
+        {routeMeta?.fallbackToIndonesian && (
+          <div
+            className="border-b border-border-default bg-surface-muted px-4 py-3 text-sm text-text-secondary sm:px-6"
+            role="status"
+          >
+            <p className="mx-auto max-w-[var(--container-wide)]">
+              {t("nav.translationUnavailable")}
+            </p>
+          </div>
+        )}
+        <div lang={routeMeta?.contentLanguage || lang}>{children}</div>
+      </main>
       {!hideFooter && <Footer />}
     </div>
   );

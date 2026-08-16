@@ -2,7 +2,6 @@ import asyncio
 
 import httpx
 from fastapi import APIRouter, FastAPI, Header, HTTPException
-
 from inventory_routes import build_inventory_router
 from inventory_service import InventoryError
 
@@ -26,15 +25,22 @@ class StubInventoryService:
 
     async def list_reservations(self, **filters):
         self.calls.append(("list_reservations", filters))
-        return [{
-            "id": "reservation-1", "subject_type": "material",
-            "subject_id": "mat-1", "quantity": "2", "status": "active",
-        }]
+        return [
+            {
+                "id": "reservation-1",
+                "subject_type": "material",
+                "subject_id": "mat-1",
+                "quantity": "2",
+                "status": "active",
+            }
+        ]
 
     async def apply_operation(self, *, actor, payload):
         self.calls.append(("apply_operation", actor, payload))
         if payload["operation_id"] == "00000000-0000-0000-0000-000000000503":
-            raise InventoryError(503, "transaction_unavailable", "Transactions unavailable")
+            raise InventoryError(
+                503, "transaction_unavailable", "Transactions unavailable"
+            )
         existing = self.operations.get(payload["operation_id"])
         if existing and existing != payload:
             raise InventoryError(409, "operation_id_conflict", "Operation ID conflict")
@@ -73,7 +79,9 @@ class StubInventoryService:
 
     async def transition_reservation(self, **kwargs):
         self.calls.append(("transition_reservation", kwargs))
-        return {"reservation": {"id": kwargs["reservation_id"], "status": kwargs["action"]}}
+        return {
+            "reservation": {"id": kwargs["reservation_id"], "status": kwargs["action"]}
+        }
 
     async def list_alerts(self, **filters):
         self.calls.append(("list_alerts", filters))
@@ -89,9 +97,13 @@ def require_permission(permission):
         x_permissions: str = Header(default=""),
         x_actor_id: str = Header(default="staff-1"),
     ):
-        permissions = {value.strip() for value in x_permissions.split(",") if value.strip()}
+        permissions = {
+            value.strip() for value in x_permissions.split(",") if value.strip()
+        }
         if permission not in permissions:
-            raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
+            raise HTTPException(
+                status_code=403, detail=f"Permission required: {permission}"
+            )
         return {
             "id": x_actor_id,
             "email": "staff@test",
@@ -143,7 +155,9 @@ def movement(operation_id, movement_type="receive", **overrides):
 async def run_permission_and_operation_routes():
     app, service = build_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         read = await api.get(
             "/api/admin/inventory/balances?subject_type=material&limit=20",
             headers=headers("inventory.read"),
@@ -201,7 +215,10 @@ async def run_permission_and_operation_routes():
             headers=headers("inventory.write", "inventory.adjust"),
         )
         assert manager_adjustment.status_code == 409
-        assert manager_adjustment.json()["detail"]["code"] == "adjustment_approval_required"
+        assert (
+            manager_adjustment.json()["detail"]["code"]
+            == "adjustment_approval_required"
+        )
 
         requested = await api.post(
             "/api/admin/inventory/adjustment-requests",
@@ -247,7 +264,9 @@ def test_inventory_read_write_adjust_and_replay_permissions():
 async def run_reservation_and_alert_routes():
     app, service = build_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         reservation = await api.post(
             "/api/admin/inventory/reservations",
             json={
@@ -316,14 +335,18 @@ def test_reservation_and_restock_alert_routes():
 async def run_reservation_listing_and_generic_movement_guard():
     app, service = build_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         listed = await api.get(
             "/api/admin/inventory/reservations?subject_type=material&subject_id=mat-1&status=active&limit=20",
             headers=headers("inventory.read"),
         )
         assert listed.status_code == 200
         assert listed.json()[0]["id"] == "reservation-1"
-        list_call = [call for call in service.calls if call[0] == "list_reservations"][-1]
+        list_call = [call for call in service.calls if call[0] == "list_reservations"][
+            -1
+        ]
         assert list_call[1] == {
             "subject_type": "material",
             "subject_id": "mat-1",
@@ -340,7 +363,9 @@ async def run_reservation_listing_and_generic_movement_guard():
             headers=headers("inventory.write"),
         )
         assert generic_reserve.status_code == 409
-        assert generic_reserve.json()["detail"]["code"] == "reservation_endpoint_required"
+        assert (
+            generic_reserve.json()["detail"]["code"] == "reservation_endpoint_required"
+        )
 
         generic_release = await api.post(
             "/api/admin/inventory/movements",
@@ -351,9 +376,12 @@ async def run_reservation_listing_and_generic_movement_guard():
             headers=headers("inventory.write"),
         )
         assert generic_release.status_code == 409
-        assert generic_release.json()["detail"]["code"] == "reservation_endpoint_required"
+        assert (
+            generic_release.json()["detail"]["code"] == "reservation_endpoint_required"
+        )
         guarded_calls = [
-            call for call in service.calls
+            call
+            for call in service.calls
             if call[0] == "apply_operation"
             and call[2]["movement_type"] in {"reserve", "release"}
         ]
@@ -367,7 +395,9 @@ def test_reservations_can_be_listed_and_cannot_bypass_lifecycle_routes():
 async def run_csv_export_routes():
     app, service = build_context()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api:
         balances = await api.get(
             "/api/admin/inventory/balances/export?subject_type=material",
             headers=headers("inventory.read"),
@@ -384,7 +414,9 @@ async def run_csv_export_routes():
             headers=headers("inventory.read"),
         )
         assert movements.status_code == 200
-        assert movements.text.strip().splitlines()[0].startswith("created_at,subject_type")
+        assert (
+            movements.text.strip().splitlines()[0].startswith("created_at,subject_type")
+        )
 
         forbidden = await api.get("/api/admin/inventory/balances/export")
         assert forbidden.status_code == 403

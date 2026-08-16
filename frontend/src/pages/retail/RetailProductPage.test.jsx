@@ -100,7 +100,7 @@ test("keeps the approved contact handoff limited to quote-required products", as
 
   expect(
     await screen.findByRole("link", { name: "Minta penawaran" }),
-  ).toHaveAttribute("href", "/contact");
+  ).toHaveAttribute("href", "/kontak");
   expect(screen.getByText(/tidak langsung membuat pesanan/i)).toBeInTheDocument();
 });
 test("keeps a failed product read generic and recoverable", async () => {

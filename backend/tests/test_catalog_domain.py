@@ -2,7 +2,6 @@ from copy import deepcopy
 from decimal import Decimal
 
 import pytest
-
 from catalog_domain import (
     build_publication_snapshot,
     normalize_slug,
@@ -27,9 +26,7 @@ def valid_aggregate():
             "slug": "desk-sign",
             "short_description": "Custom desk sign",
             "description": "Printed desk sign",
-            "media": [
-                {"storage_path": "catalog/sign.webp", "alt": "Blue desk sign"}
-            ],
+            "media": [{"storage_path": "catalog/sign.webp", "alt": "Blue desk sign"}],
             "pricing_mode": "fixed",
             "price_from": 50000,
             "currency": "IDR",
@@ -71,7 +68,10 @@ def test_complete_fixed_aggregate_is_valid(valid_aggregate):
 @pytest.mark.parametrize(
     ("mutate", "expected_code"),
     [
-        (lambda value: value["category"].update(status="archived"), "category_inactive"),
+        (
+            lambda value: value["category"].update(status="archived"),
+            "category_inactive",
+        ),
         (lambda value: value["product"].update(name=""), "required"),
         (lambda value: value["product"].update(media=[]), "media_required"),
         (
@@ -84,9 +84,7 @@ def test_complete_fixed_aggregate_is_valid(valid_aggregate):
             "fixed_price_required",
         ),
         (
-            lambda value: value["variants"][0].update(
-                inventory_tracking_enabled=False
-            ),
+            lambda value: value["variants"][0].update(inventory_tracking_enabled=False),
             "inventory_tracking_required",
         ),
         (
@@ -190,17 +188,10 @@ def test_public_projection_removes_actor_reason_and_exact_stock(valid_aggregate)
 
 def test_public_stock_mapping_never_returns_quantity():
     assert (
-        public_stock_status("ready_stock", Decimal("0"), Decimal("2"))
-        == "out_of_stock"
+        public_stock_status("ready_stock", Decimal("0"), Decimal("2")) == "out_of_stock"
     )
-    assert (
-        public_stock_status("ready_stock", Decimal("2"), Decimal("2"))
-        == "low_stock"
-    )
-    assert (
-        public_stock_status("ready_stock", Decimal("3"), Decimal("2"))
-        == "in_stock"
-    )
+    assert public_stock_status("ready_stock", Decimal("2"), Decimal("2")) == "low_stock"
+    assert public_stock_status("ready_stock", Decimal("3"), Decimal("2")) == "in_stock"
     assert (
         public_stock_status("made_to_order", Decimal("0"), Decimal("0"))
         == "made_to_order"

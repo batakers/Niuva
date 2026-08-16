@@ -15,10 +15,7 @@ itself.
 
 Every row below is updated in the same PR that does the corresponding
 work, so this table is current as of the latest merge into this tracker
-file — not as of the original 14 August audit. Several open PRs each carry
-their own copy of this file (branched from the same `main` before any of
-them merged); merging them in sequence needs a trivial conflict
-resolution on this one file each time.
+file — not as of the original 14 August audit.
 
 ## P0
 
@@ -46,7 +43,7 @@ resolution on this one file each time.
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | API-001 | 25 of 152 operations missing 4xx/5xx OpenAPI metadata | Backend | **Resolved (pending merge)** | PR #257: all 25 documented per-route from actual code, plus a regression test |
-| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **Partially resolved (pending merge)** | PR #258: `black` (47 files) and `isort` (51 files) now 0 remaining, project-wide, verified against full test suite. flake8 (2,046 findings) and mypy (274 errors) deliberately deferred — those need case-by-case review, not a bulk mechanical pass |
+| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **Partially resolved (pending merge)** | This PR: `black` (47 files) and `isort` (51 files) now 0 remaining, project-wide, verified against full test suite. flake8 (2,046 findings) and mypy (274 errors) deliberately deferred — those need case-by-case review, not a bulk mechanical pass, per this same audit's own caution against reformatting without diff control |
 | DEP-001 | Unused `framer-motion`; undeclared `vaul` in `drawer.jsx` | Frontend | **Partially resolved (pending merge)** | PR #255 removes `framer-motion` (verified zero consumers). `vaul` quarantine/declaration still open, tied to CLEANUP-001 |
 | DESIGN-001 | NDS migration incomplete (legacy fonts, `transition-all`, side-border) | Frontend | **Open** | Not started |
 | UX-STATE-001 | `RouteFallback` near-blank; `AppErrorBoundary` mislabels render crashes as connection loss | Frontend | **Resolved (pending merge)** | PR #256: honest copy + visible spinner + second recovery action |
@@ -65,15 +62,15 @@ resolution on this one file each time.
 
 | PR | Title | Branch | Status |
 | --- | --- | --- | --- |
-| [#243](https://github.com/batakers/Niuva/pull/243) | Localized public navigation and Homepage R4.1 | `feat/niuva-shared-navbar-localized-routes` | Open, CI green |
-| [#254](https://github.com/batakers/Niuva/pull/254) | Public Inquiry contract (consent, phone, error state) | `feat/niuva-public-inquiry-contract` | Open, CI green |
-| [#255](https://github.com/batakers/Niuva/pull/255) | Remove unused `framer-motion` | `chore/niuva-remove-unused-framer-motion` | Open, CI green |
-| [#256](https://github.com/batakers/Niuva/pull/256) | Stop mislabeling render crashes as connection failures | `fix/niuva-error-state-labeling` | Open, CI green |
-| [#257](https://github.com/batakers/Niuva/pull/257) | Declare 4xx/5xx responses for 25 undocumented operations | `docs/niuva-api-error-response-metadata` | Open, CI green |
-| [#258](https://github.com/batakers/Niuva/pull/258) | Backend `black`/`isort` formatting (QUALITY-001, partial) | `chore/niuva-backend-black-isort-formatting` | Open, CI green |
-| [#259](https://github.com/batakers/Niuva/pull/259) | Disposable local backup/restore evidence (DATA-001) | `ops/niuva-disposable-backup-restore-evidence-20260816` | Open, CI green |
-| (this branch) | Real multi-worker rate-limiter evidence (SEC-002) | `test/niuva-rate-limiter-multiworker-evidence` | About to be opened |
+| [#243](https://github.com/batakers/Niuva/pull/243) | Localized public navigation and Homepage R4.1 | `feat/niuva-shared-navbar-localized-routes` | **Merged** |
+| [#254](https://github.com/batakers/Niuva/pull/254) | Public Inquiry contract (consent, phone, error state) | `feat/niuva-public-inquiry-contract` | **Merged** |
+| [#255](https://github.com/batakers/Niuva/pull/255) | Remove unused `framer-motion` | `chore/niuva-remove-unused-framer-motion` | **Merged** |
+| [#256](https://github.com/batakers/Niuva/pull/256) | Stop mislabeling render crashes as connection failures | `fix/niuva-error-state-labeling` | **Merged** |
+| [#257](https://github.com/batakers/Niuva/pull/257) | Declare 4xx/5xx responses for 25 undocumented operations | `docs/niuva-api-error-response-metadata` | **Merged** |
+| [#258](https://github.com/batakers/Niuva/pull/258) | Backend `black`/`isort` formatting | `chore/niuva-backend-black-isort-formatting` | **Merged** |
+| [#259](https://github.com/batakers/Niuva/pull/259) | Disposable local backup/restore evidence (DATA-001) | `ops/niuva-disposable-backup-restore-evidence-20260816` | **Merged** |
+| [#260](https://github.com/batakers/Niuva/pull/260) | Rate-limiter multi-worker evidence (SEC-002) | `test/niuva-rate-limiter-multiworker-evidence` | Open, CI green |
 
-None of the PRs above have been merged. This tracker records source-level
-progress only; it does not itself close any P0/P1 finding, and it does not
+Being merged in sequence as of 2026-08-16; this tracker records source-level
+progress only, it does not itself close any P0/P1 finding, and it does not
 authorize deployment, migration, provider activation, or go-live.

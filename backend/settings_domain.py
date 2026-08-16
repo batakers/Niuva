@@ -54,10 +54,7 @@ def default_settings() -> dict:
 
 def project_public_settings(document: dict) -> dict:
     """Company profile only. Bank details are not a public fact."""
-    return {
-        field: document.get(field, "")
-        for field in PUBLIC_PROFILE_FIELDS
-    }
+    return {field: document.get(field, "") for field in PUBLIC_PROFILE_FIELDS}
 
 
 def project_admin_settings(document: dict) -> dict:

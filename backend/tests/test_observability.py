@@ -1,7 +1,7 @@
 """Negative and bounded-contract tests for local observability."""
 
-import json
 import itertools
+import json
 import threading
 import time
 import types
@@ -12,15 +12,14 @@ from observability import (
     HISTOGRAM_BUCKETS_MS,
     MAX_BUFFER_RECORDS,
     MAX_TOTAL_ENTRIES,
-    MetricCapacityRegistry,
     JsonLineEmitter,
+    MetricCapacityRegistry,
     MetricPort,
     Observability,
     build_event,
     route_template_for_request,
     safe_request_id,
 )
-
 
 VALID_REQUEST_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479"
 
@@ -75,10 +74,17 @@ def test_jsonl_emission_is_provider_neutral_and_one_record_per_line():
             return None
 
     emitter = JsonLineEmitter(stream=Stream(), error_stream=Stream())
-    assert emitter.emit(
-        "http_request",
-        fields={"route_template": "/api/health", "method": "GET", "status_class": "2xx"},
-    ) is True
+    assert (
+        emitter.emit(
+            "http_request",
+            fields={
+                "route_template": "/api/health",
+                "method": "GET",
+                "status_class": "2xx",
+            },
+        )
+        is True
+    )
 
     lines = output.value.splitlines()
     assert len(lines) == 1
@@ -124,10 +130,17 @@ def test_emitter_bounds_failures_and_reserves_redacted_degraded_signal():
 
 def test_metric_port_maps_unknown_labels_and_enforces_capacity_shape():
     metrics = MetricPort()
-    assert metrics.increment(
-        "http_requests",
-        {"method": "TRACE", "route_template": "/not-registered", "status_class": "7xx"},
-    ) is True
+    assert (
+        metrics.increment(
+            "http_requests",
+            {
+                "method": "TRACE",
+                "route_template": "/not-registered",
+                "status_class": "7xx",
+            },
+        )
+        is True
+    )
     snapshot = metrics.snapshot()
     labels = next(iter(snapshot["counters"]))[1]
     assert dict(labels) == {
@@ -135,11 +148,14 @@ def test_metric_port_maps_unknown_labels_and_enforces_capacity_shape():
         "route_template": "unmatched",
         "status_class": "unknown",
     }
-    assert metrics.observe(
-        "http_duration",
-        {"method": "GET", "route_template": "/api/health"},
-        42,
-    ) is True
+    assert (
+        metrics.observe(
+            "http_duration",
+            {"method": "GET", "route_template": "/api/health"},
+            42,
+        )
+        is True
+    )
     assert len(HISTOGRAM_BUCKETS_MS) == 12
     assert metrics.entry_count <= MAX_TOTAL_ENTRIES
 
@@ -224,11 +240,14 @@ def test_event_schema_rejects_fields_from_another_event_family():
 def test_metric_port_rejects_nonfinite_histogram_values():
     metrics = MetricPort()
 
-    assert metrics.observe(
-        "http_duration",
-        {"method": "GET", "route_template": "/api/health"},
-        float("nan"),
-    ) is False
+    assert (
+        metrics.observe(
+            "http_duration",
+            {"method": "GET", "route_template": "/api/health"},
+            float("nan"),
+        )
+        is False
+    )
     assert metrics.snapshot()["histograms"] == {}
 
 
@@ -244,14 +263,20 @@ def test_emitter_enforces_daily_output_budget(monkeypatch):
             return None
 
     emitter = JsonLineEmitter(stream=Stream(), error_stream=Stream())
-    assert emitter.emit(
-        "http_request",
-        fields={"route_template": "/api/health", "method": "GET"},
-    ) is True
-    assert emitter.emit(
-        "http_request",
-        fields={"route_template": "/api/health", "method": "GET"},
-    ) is False
+    assert (
+        emitter.emit(
+            "http_request",
+            fields={"route_template": "/api/health", "method": "GET"},
+        )
+        is True
+    )
+    assert (
+        emitter.emit(
+            "http_request",
+            fields={"route_template": "/api/health", "method": "GET"},
+        )
+        is False
+    )
     assert emitter.output_bytes <= 250
 
 
@@ -270,10 +295,13 @@ def test_emitter_returns_within_write_budget_for_a_slow_stream():
     emitter = JsonLineEmitter(stream=SlowStream(), error_stream=SlowStream())
     started_at = time.monotonic()
     try:
-        assert emitter.emit(
-            "http_request",
-            fields={"route_template": "/api/health", "method": "GET"},
-        ) is False
+        assert (
+            emitter.emit(
+                "http_request",
+                fields={"route_template": "/api/health", "method": "GET"},
+            )
+            is False
+        )
         assert time.monotonic() - started_at < 0.2
         assert started.wait(timeout=1)
         assert emitter.write_in_flight is True
@@ -387,12 +415,16 @@ def test_transaction_alerts_are_deduplicated_and_flush_aggregate_state():
 
     observability.record_transaction("transaction_commit_unknown", fields)
     observability.record_transaction("transaction_commit_unknown", fields)
-    assert [
-        json.loads(value)["event"] for value in output
-    ].count("operational_alert") == 1
+    assert [json.loads(value)["event"] for value in output].count(
+        "operational_alert"
+    ) == 1
 
     observability.flush_alerts()
-    alerts = [json.loads(value) for value in output if json.loads(value)["event"] == "operational_alert"]
+    alerts = [
+        json.loads(value)
+        for value in output
+        if json.loads(value)["event"] == "operational_alert"
+    ]
     assert alerts[-1]["fields"]["count"] == 2
     assert alerts[-1]["fields"]["first_timestamp"]
     assert alerts[-1]["fields"]["last_timestamp"]
@@ -449,8 +481,7 @@ def test_alert_families_cover_api_dependency_worker_and_scheduler_signals():
         "worker_lease",
     } <= families
     assert any(
-        alert["alert_family"] == "api_error_rate"
-        and alert["count"] >= 2
+        alert["alert_family"] == "api_error_rate" and alert["count"] >= 2
         for alert in alerts
     )
 
