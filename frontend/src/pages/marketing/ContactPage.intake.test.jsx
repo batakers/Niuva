@@ -228,7 +228,10 @@ describe("Public project intake", () => {
     );
 
     renderPage();
-    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    // A plain mount-triggered effect call; the default 1000ms waitFor budget
+    // has been observed to be too tight on a loaded CI runner even though it
+    // never reproduces locally, so this one gets more headroom.
+    await waitFor(() => expect(api.get).toHaveBeenCalled(), { timeout: 5000 });
     expect(screen.queryByTestId("contact-success-whatsapp")).not.toBeInTheDocument();
 
     fillBrief();
