@@ -1,9 +1,8 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-
 from auth_security_events import (
     EVENT_TYPES,
     RETENTION,

@@ -8,9 +8,9 @@ Opt in with NIUVA_RUN_REAL_TRANSACTION_TESTS=1 and MONGO_TRANSACTION_TEST_URL.
 """
 
 import asyncio
-from datetime import datetime, timezone
 import os
 import uuid
+from datetime import datetime, timezone
 
 import pytest
 
@@ -24,11 +24,10 @@ if (
         allow_module_level=True,
     )
 
-from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
-
 from b2b_domain import B2BDomainError  # noqa: E402
 from b2b_service import B2BService  # noqa: E402
 from database_capabilities import probe_database_capabilities  # noqa: E402
+from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 from transaction_execution import TransactionExecutor  # noqa: E402
 from transaction_guard import TransactionMutationGuard  # noqa: E402
 

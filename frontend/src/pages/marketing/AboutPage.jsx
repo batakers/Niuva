@@ -16,6 +16,8 @@ import {
 import { ErrorState } from "@/components/ui/error-state";
 import { findBySlug, usePublicContent } from "../../lib/content";
 import { usePublicSettings } from "../../lib/publicSettings";
+import { useI18n } from "@/i18n";
+import { getPublicPath } from "@/lib/publicRoutes";
 
 const fallbackDossierItems = [
   {
@@ -80,6 +82,10 @@ const backgroundPoints = [
 ];
 
 export default function AboutPage() {
+  const { lang, t } = useI18n();
+  const contactPath = getPublicPath("contact", lang);
+  const servicesPath = getPublicPath("services", lang);
+  const projectsPath = getPublicPath("projects", lang);
   const { contact } = usePublicSettings();
   const { blocks: cmsBlocks, status: contentStatus } = usePublicContent("about");
   const cmsFields = useMemo(() => findBySlug(cmsBlocks, "company-profile"), [cmsBlocks]);
@@ -103,8 +109,8 @@ export default function AboutPage() {
           title="Mitra inovasi untuk engineering dan prototyping."
           body="Niuva membantu perusahaan, institusi, dan komunitas mengambil keputusan pengembangan produk melalui riset, konsultasi ahli, design engineering, dan prototyping yang dapat diuji."
           variant="stack"
-          primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton to="/capabilities" variant="secondary">Lihat Capabilities</BrandButton>}
+          primaryAction={<BrandButton to={contactPath}>{t("nav.discussProject")}</BrandButton>}
+          secondaryAction={<BrandButton to={servicesPath} variant="secondary">{lang === "en" ? "View Services" : "Lihat Layanan"}</BrandButton>}
         />
 
         {contentStatus === "invalid" && (
@@ -245,7 +251,7 @@ export default function AboutPage() {
               <div>
                 <h2 className="type-heading-section text-text-primary">Ekosistem untuk riset, makerspace, dan kolaborasi teknis.</h2>
                 <p className="mt-5 max-w-[58ch] text-base leading-8 text-text-secondary">Niuva berada di Gedung D Lt.1, Ruang Makerspace. Konteks ini mendukung eksperimen bentuk, prototyping, workshop, dan kerja lintas disiplin.</p>
-                <BrandButton to="/contact" variant="secondary" className="mt-7">Hubungi Niuva</BrandButton>
+                <BrandButton to={contactPath} variant="secondary" className="mt-7">{lang === "en" ? "Contact Niuva" : "Hubungi Niuva"}</BrandButton>
               </div>
               <ul className="grid border-t border-border-default sm:grid-cols-2 sm:gap-x-10">
                 {ecosystem.map((item) => (
@@ -262,8 +268,8 @@ export default function AboutPage() {
           eyebrow={null}
           title="Bangun arah inovasi yang relevan bagi organisasi."
           body="Ceritakan tantangan, ide, atau target pengembangan. Tim Niuva akan membantu memetakan kebutuhan riset, desain, teknologi, prototyping, atau workshop yang paling relevan."
-          primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton to="/projects" variant="secondary">Lihat Projects</BrandButton>}
+          primaryAction={<BrandButton to={contactPath} variant="inverse">{t("nav.discussProject")}</BrandButton>}
+          secondaryAction={<BrandButton to={projectsPath} variant="secondary">{lang === "en" ? "View Projects" : "Lihat Proyek"}</BrandButton>}
           contactEmphasis="Respons awal akan fokus pada konteks kebutuhan, ruang lingkup, dan output yang perlu dicapai."
           whatsappHref={contact.whatsappHref}
           email={contact.email}

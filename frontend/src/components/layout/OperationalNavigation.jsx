@@ -22,6 +22,8 @@ export function OperationalNavigation({
   siteLabel,
   workspaceLabel,
 }) {
+  const homePath = lang === "en" ? "/en" : "/";
+  const contactPath = lang === "en" ? "/en/contact" : "/kontak";
   if (mobile) {
     return (
       <>
@@ -33,7 +35,7 @@ export function OperationalNavigation({
           {workspaceLabel}
         </button>
         <Link
-          to="/"
+          to={homePath}
           className="rounded-control px-4 py-4 text-lg font-semibold text-text-primary transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           {siteLabel}
@@ -91,10 +93,10 @@ export function OperationalNavigation({
         </>
       ) : (
         <Link
-          to="/contact"
+          to={contactPath}
           className={`${navigationControlClass} bg-action-primary text-text-inverse hover:bg-action-primary-hover`}
         >
-          Diskusikan Project
+          {lang === "en" ? "Discuss a project" : "Diskusikan project"}
         </Link>
       )}
     </div>

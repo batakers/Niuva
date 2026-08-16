@@ -1,17 +1,16 @@
 """Tests for bounded worker runtime and named scheduler ownership."""
 
 import asyncio
-from datetime import datetime, timedelta, timezone
 import types
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from pymongo.errors import DuplicateKeyError
-
 from worker_runtime import (
-    cancel_task_with_deadline,
     NamedJobLease,
     WorkerRuntime,
     WorkerRuntimeConfig,
+    cancel_task_with_deadline,
     renew_lease_until_stopped,
     resolve_runtime_mode,
 )

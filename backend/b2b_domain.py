@@ -1,6 +1,6 @@
+import uuid
 from copy import deepcopy
 from decimal import Decimal
-import uuid
 
 INQUIRY_TRANSITIONS = {
     "new": {"reviewed", "rejected"},
@@ -321,7 +321,9 @@ def validate_quote_transition(
     reason: str,
 ) -> None:
     if current_status not in QUOTE_TRANSITIONS:
-        raise B2BDomainError(409, "quote_status_unknown", "Status Quote tidak dikenali.")
+        raise B2BDomainError(
+            409, "quote_status_unknown", "Status Quote tidak dikenali."
+        )
     if not QUOTE_TRANSITIONS[current_status]:
         raise B2BDomainError(
             409,
@@ -339,7 +341,9 @@ def validate_quote_transition(
             },
         )
     if not reason.strip():
-        raise B2BDomainError(422, "reason_required", "Alasan perubahan Quote wajib diisi.")
+        raise B2BDomainError(
+            422, "reason_required", "Alasan perubahan Quote wajib diisi."
+        )
 
 
 def validate_quote_readiness(version: dict) -> None:
@@ -362,8 +366,7 @@ def validate_quote_readiness(version: dict) -> None:
             or not _strict_int(item.get("unit_price_minor"))
             or item["unit_price_minor"] < 0
             or not _strict_int(item.get("line_total_minor"))
-            or item["line_total_minor"]
-            != item["quantity"] * item["unit_price_minor"]
+            or item["line_total_minor"] != item["quantity"] * item["unit_price_minor"]
         )
     ]
     total_minor = version.get("total_minor")
@@ -392,7 +395,9 @@ def validate_quote_readiness(version: dict) -> None:
 def require_exact_quote_line_identities(items: list[dict]) -> None:
     """Reject legacy or corrupt line identity without inferring a replacement."""
     identities = [item.get("quote_line_id") for item in items]
-    if any(not isinstance(identity, str) or not identity.strip() for identity in identities):
+    if any(
+        not isinstance(identity, str) or not identity.strip() for identity in identities
+    ):
         raise B2BDomainError(
             409,
             "quote_line_reconciliation_required",
@@ -453,7 +458,9 @@ def validate_project_transition(
             },
         )
     if not reason.strip():
-        raise B2BDomainError(422, "reason_required", "Alasan perubahan Project wajib diisi.")
+        raise B2BDomainError(
+            422, "reason_required", "Alasan perubahan Project wajib diisi."
+        )
 
 
 def project_b2b_project(document: dict) -> dict:

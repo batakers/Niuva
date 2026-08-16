@@ -5,7 +5,6 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 from audit import append_audit_event
-from permissions import has_permission
 from catalog_domain import (
     build_publication_snapshot,
     normalize_slug,
@@ -40,6 +39,7 @@ class CatalogError(Exception):
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
 
 def _preserved_workflow_status(product: dict) -> str:
     return "archived" if product.get("workflow_status") == "archived" else "draft"
@@ -97,6 +97,7 @@ class CatalogService:
             "updated_at": timestamp,
             "updated_by": actor.get("id"),
         }
+
         async def mutation(session):
             await self.db.categories.insert_one(category, **_write_options(session))
             await append_audit_event(
@@ -222,9 +223,11 @@ class CatalogService:
         return after
 
     async def list_products(self) -> list[dict]:
-        return await self.db.products.find({}, {"_id": 0}).sort(
-            "updated_at", -1
-        ).to_list(500)
+        return (
+            await self.db.products.find({}, {"_id": 0})
+            .sort("updated_at", -1)
+            .to_list(500)
+        )
 
     async def list_quotable_variants(self) -> list[dict]:
         """Active variants a quotation line may reference, across all products.
@@ -275,9 +278,7 @@ class CatalogService:
                     ),
                 }
             )
-        return sorted(
-            quotable, key=lambda item: (item["product_name"], item["sku"])
-        )
+        return sorted(quotable, key=lambda item: (item["product_name"], item["sku"]))
 
     async def _product_document(self, product_id: str) -> dict:
         product = clean_document(
@@ -289,9 +290,13 @@ class CatalogService:
 
     async def get_product(self, product_id: str) -> dict:
         aggregate = await self._load_aggregate(product_id)
-        publications = await self.db.catalog_publications.find(
-            {"product_id": product_id}, {"_id": 0}
-        ).sort("revision", -1).to_list(500)
+        publications = (
+            await self.db.catalog_publications.find(
+                {"product_id": product_id}, {"_id": 0}
+            )
+            .sort("revision", -1)
+            .to_list(500)
+        )
         return {**aggregate, "publications": publications}
 
     async def create_product(self, payload: dict, actor: dict) -> dict:
@@ -311,6 +316,7 @@ class CatalogService:
             "updated_at": timestamp,
             "updated_by": actor.get("id"),
         }
+
         async def mutation(session):
             await self.db.products.insert_one(product, **_write_options(session))
             await append_audit_event(
@@ -339,15 +345,11 @@ class CatalogService:
             ) from exc
         return clean_document(product)
 
-    async def update_product(
-        self, product_id: str, payload: dict, actor: dict
-    ) -> dict:
+    async def update_product(self, product_id: str, payload: dict, actor: dict) -> dict:
         before = await self._product_document(product_id)
         await self.get_category(payload["category_id"])
         slug = normalize_slug(payload.get("slug") or payload["name"])
-        if await self.db.products.find_one(
-            {"slug": slug, "id": {"$ne": product_id}}
-        ):
+        if await self.db.products.find_one({"slug": slug, "id": {"$ne": product_id}}):
             raise CatalogError(409, "slug_conflict", "Slug produk sudah digunakan.")
         changes = {
             **payload,
@@ -516,19 +518,29 @@ class CatalogService:
                         value, **_write_options(session)
                     )
             for current in existing:
-                if current["id"] not in saved_ids and current.get("status") != "archived":
+                if (
+                    current["id"] not in saved_ids
+                    and current.get("status") != "archived"
+                ):
                     await self.db.product_variants.update_one(
                         {"id": current["id"]},
-                        {"$set": {
-                            "status": "archived",
-                            "updated_at": timestamp,
-                            "updated_by": actor.get("id"),
-                        }},
+                        {
+                            "$set": {
+                                "status": "archived",
+                                "updated_at": timestamp,
+                                "updated_by": actor.get("id"),
+                            }
+                        },
                         **_write_options(session),
                     )
             await self.db.products.update_one(
                 {"id": product_id},
-                {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
+                {
+                    "$set": {
+                        "workflow_status": _preserved_workflow_status(product),
+                        "updated_at": timestamp,
+                    }
+                },
                 **_write_options(session),
             )
             await append_audit_event(
@@ -634,16 +646,23 @@ class CatalogService:
                 if current["id"] not in saved_ids and current.get("active", True):
                     await self.db.configuration_options.update_one(
                         {"id": current["id"]},
-                        {"$set": {
-                            "active": False,
-                            "updated_at": timestamp,
-                            "updated_by": actor.get("id"),
-                        }},
+                        {
+                            "$set": {
+                                "active": False,
+                                "updated_at": timestamp,
+                                "updated_by": actor.get("id"),
+                            }
+                        },
                         **_write_options(session),
                     )
             await self.db.products.update_one(
                 {"id": product_id},
-                {"$set": {"workflow_status": _preserved_workflow_status(product), "updated_at": timestamp}},
+                {
+                    "$set": {
+                        "workflow_status": _preserved_workflow_status(product),
+                        "updated_at": timestamp,
+                    }
+                },
                 **_write_options(session),
             )
             await append_audit_event(
@@ -744,11 +763,16 @@ class CatalogService:
         return after
 
     async def _next_revision(self, product_id: str, session=None) -> int:
-        latest = await self.db.catalog_publications.find(
-            {"product_id": product_id},
-            {"_id": 0},
-            **_write_options(session),
-        ).sort("revision", -1).limit(1).to_list(1)
+        latest = (
+            await self.db.catalog_publications.find(
+                {"product_id": product_id},
+                {"_id": 0},
+                **_write_options(session),
+            )
+            .sort("revision", -1)
+            .limit(1)
+            .to_list(1)
+        )
         return (latest[0]["revision"] if latest else 0) + 1
 
     @staticmethod
@@ -764,9 +788,7 @@ class CatalogService:
             )
         return None
 
-    async def publish_product(
-        self, product_id: str, actor: dict, reason: str
-    ) -> dict:
+    async def publish_product(self, product_id: str, actor: dict, reason: str) -> dict:
         aggregate = await self._load_aggregate(product_id)
         errors = validate_catalog_aggregate(aggregate)
         if errors:
@@ -789,6 +811,7 @@ class CatalogService:
                 "catalog_candidate_required",
                 "Produk harus diajukan sebagai kandidat publikasi setelah perubahan terakhir.",
             )
+
         async def mutation(session):
             publication = build_publication_snapshot(
                 aggregate,
@@ -827,7 +850,10 @@ class CatalogService:
                 action="catalog.product_published",
                 target_type="product",
                 target_id=product_id,
-                after={"publication_id": publication["id"], "revision": publication["revision"]},
+                after={
+                    "publication_id": publication["id"],
+                    "revision": publication["revision"],
+                },
                 reason=reason,
                 session=session,
             )
@@ -863,14 +889,13 @@ class CatalogService:
             raise CatalogError(
                 404, "publication_not_found", "Revisi publikasi tidak ditemukan."
             )
+
         async def mutation(session):
             publication = deepcopy(selected)
             publication.update(
                 {
                     "id": str(uuid.uuid4()),
-                    "revision": await self._next_revision(
-                        product_id, session=session
-                    ),
+                    "revision": await self._next_revision(product_id, session=session),
                     "published_at": now_iso(),
                     "published_by": actor.get("id"),
                     "publish_reason": reason,
@@ -908,7 +933,10 @@ class CatalogService:
                 target_type="product",
                 target_id=product_id,
                 before={"publication_id": publication_id},
-                after={"publication_id": publication["id"], "revision": publication["revision"]},
+                after={
+                    "publication_id": publication["id"],
+                    "revision": publication["revision"],
+                },
                 reason=reason,
                 session=session,
             )
@@ -927,9 +955,7 @@ class CatalogService:
             raise
         return clean_document(publication)
 
-    async def archive_product(
-        self, product_id: str, actor: dict, reason: str
-    ) -> dict:
+    async def archive_product(self, product_id: str, actor: dict, reason: str) -> dict:
         before = await self._product_document(product_id)
         changes = {
             "workflow_status": "archived",
@@ -1038,14 +1064,10 @@ class CatalogService:
             balances = []
             working_variants = []
         balance_by_id = {
-            item["subject_id"]: item
-            for item in balances
-            if item.get("subject_id")
+            item["subject_id"]: item for item in balances if item.get("subject_id")
         }
         working_by_id = {
-            item["id"]: item
-            for item in working_variants
-            if item.get("id")
+            item["id"]: item for item in working_variants if item.get("id")
         }
         stock_by_variant = {
             variant_id: {
@@ -1100,16 +1122,19 @@ class CatalogService:
                     "id": {"$lt": decoded["id"]},
                 },
             ]
-        products = await self.db.products.find(
-            query,
-            {
-                "_id": 0,
-                "id": 1,
-                "updated_at": 1,
-                "active_publication_id": 1,
-            },
-        ).sort([("updated_at", -1), ("id", -1)]).limit(limit + 1).to_list(
-            limit + 1
+        products = (
+            await self.db.products.find(
+                query,
+                {
+                    "_id": 0,
+                    "id": 1,
+                    "updated_at": 1,
+                    "active_publication_id": 1,
+                },
+            )
+            .sort([("updated_at", -1), ("id", -1)])
+            .limit(limit + 1)
+            .to_list(limit + 1)
         )
         page = products[:limit]
         publication_ids = [

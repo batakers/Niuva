@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
-import pytest
 
+import pytest
 from b2b_domain import B2BDomainError, validate_quote_transition
 from b2b_service import B2BService
 

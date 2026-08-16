@@ -1,15 +1,31 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { domainTranslations } from "./lib/domain-translations";
+import { getPublicLocale, resolvePublicRoute } from "./lib/publicRoutes";
 
 const translations = {
   id: {
     ...domainTranslations.id,
-    "nav.home": "Home",
-    "nav.about": "About",
-    "nav.services": "Capabilities",
-    "nav.portfolio": "Projects",
+    "nav.home": "Beranda",
+    "nav.about": "Tentang",
+    "nav.services": "Layanan",
+    "nav.portfolio": "Proyek",
     "nav.ecosystem": "Ekosistem",
-    "nav.contact": "Contact",
+    "nav.contact": "Kontak",
+    "nav.retail": "Retail",
+    "nav.signIn": "Masuk",
+    "nav.discussProject": "Diskusikan project",
+    "nav.changeLanguage": "Pilih bahasa",
+    "nav.primary": "Navigasi utama",
+    "nav.mobile": "Navigasi mobile",
+    "nav.openMenu": "Buka menu",
+    "nav.closeMenu": "Tutup menu",
+    "nav.allServices": "Lihat semua layanan",
+    "nav.developIdeas": "Kembangkan ide",
+    "nav.printAndProducts": "Cetak & pilih produk",
+    "nav.exploreRetail": "Jelajahi Retail",
+    "nav.customPrint": "Custom 3D Print",
+    "nav.readyProducts": "Ready Products",
+    "nav.translationUnavailable": "English translation belum tersedia. Konten berikut tetap ditampilkan dalam Bahasa Indonesia.",
     "nav.order": "Pesan 3D Printing",
     "nav.dashboard": "Dashboard",
     "nav.logout": "Keluar",
@@ -781,10 +797,25 @@ const translations = {
     ...domainTranslations.en,
     "nav.home": "Home",
     "nav.about": "About",
-    "nav.services": "Capabilities",
+    "nav.services": "Services",
     "nav.portfolio": "Projects",
     "nav.ecosystem": "Ecosystem",
     "nav.contact": "Contact",
+    "nav.retail": "Retail",
+    "nav.signIn": "Sign in",
+    "nav.discussProject": "Discuss a project",
+    "nav.changeLanguage": "Choose language",
+    "nav.primary": "Primary navigation",
+    "nav.mobile": "Mobile navigation",
+    "nav.openMenu": "Open menu",
+    "nav.closeMenu": "Close menu",
+    "nav.allServices": "View all services",
+    "nav.developIdeas": "Develop an idea",
+    "nav.printAndProducts": "Print & choose products",
+    "nav.exploreRetail": "Explore Retail",
+    "nav.customPrint": "Custom 3D Print",
+    "nav.readyProducts": "Ready Products",
+    "nav.translationUnavailable": "English translation is not available yet. The following content remains in Bahasa Indonesia.",
     "nav.order": "Order 3D Printing",
     "nav.dashboard": "Dashboard",
     "nav.logout": "Logout",
@@ -1554,13 +1585,37 @@ const translations = {
   },
 };
 
-const I18nContext = createContext(null);
+const I18nContext = createContext({
+  lang: "id",
+  setLang: () => {},
+  t: (key) => translations.id[key] || key,
+});
+
+function readStoredLanguage() {
+  try {
+    const stored = localStorage.getItem("niuva_lang");
+    return stored === "en" ? "en" : "id";
+  } catch {
+    return "id";
+  }
+}
+
+function getInitialLanguage() {
+  const pathname = typeof window === "undefined" ? "/" : window.location.pathname;
+  if (resolvePublicRoute(pathname)) return getPublicLocale(pathname);
+  return readStoredLanguage();
+}
 
 export function I18nProvider({ children }) {
-  const [lang, setLang] = useState(localStorage.getItem("niuva_lang") || "id");
+  const [lang, setLang] = useState(getInitialLanguage);
   const changeLang = useCallback((l) => {
-    setLang(l);
-    localStorage.setItem("niuva_lang", l);
+    const next = l === "en" ? "en" : "id";
+    setLang(next);
+    try {
+      localStorage.setItem("niuva_lang", next);
+    } catch {
+      // The in-memory preference remains usable when storage is unavailable.
+    }
   }, []);
   const t = useCallback((key) => translations[lang][key] || translations.id[key] || key, [lang]);
 

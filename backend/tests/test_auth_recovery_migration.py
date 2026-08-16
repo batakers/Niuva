@@ -1,7 +1,6 @@
 import asyncio
 import copy
 import importlib.util
-import json
 import os
 import sys
 import types
@@ -312,9 +311,8 @@ def test_real_replica_set_apply_idempotency_and_rollback(
     if loaded_motor is not None and getattr(loaded_motor, "__file__", None) is None:
         sys.modules.pop("motor.motor_asyncio", None)
         sys.modules.pop("motor", None)
-    from motor.motor_asyncio import AsyncIOMotorClient
-
     from database_capabilities import DatabaseCapabilities
+    from motor.motor_asyncio import AsyncIOMotorClient
     from transaction_execution import TransactionExecutor
     from transaction_guard import TransactionMutationGuard
 

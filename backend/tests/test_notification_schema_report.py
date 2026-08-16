@@ -6,15 +6,14 @@ import pathlib
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
-import pytest
-
 import notification_schema_report as report_module
+import pytest
 from notification_schema_report import (
-    RepresentativeEvidenceApproval,
     ReportTargetError,
-    build_representative_fingerprint,
-    build_parser,
+    RepresentativeEvidenceApproval,
     build_notification_schema_report,
+    build_parser,
+    build_representative_fingerprint,
     execute_report_command,
     inspect_report_target,
     load_representative_evidence_manifest,
