@@ -5,7 +5,7 @@ import httpx
 import pytest
 from catalog_routes import build_catalog_router
 from catalog_service import CatalogError, CatalogService
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 from permissions import ROLE_POLICY_VERSION, has_permission
 from pymongo.errors import DuplicateKeyError, PyMongoError
 from transaction_api import transaction_unavailable_handler
