@@ -6,10 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from schema_manifest import INDEX_DECLARATIONS
 
-
-migration = importlib.import_module(
-    "migrations.007_security_publication_schema"
-)
+migration = importlib.import_module("migrations.007_security_publication_schema")
 
 
 def backup_evidence(tmp_path):
@@ -107,9 +104,7 @@ class MigrationCollection:
                 continue
             if projection:
                 included = {
-                    key
-                    for key, value in projection.items()
-                    if value and key != "_id"
+                    key for key, value in projection.items() if value and key != "_id"
                 }
                 if included:
                     projected = {
@@ -135,11 +130,7 @@ class MigrationCollection:
     def aggregate(self, pipeline, **_options):
         rows = list(self.rows)
         if pipeline and "$match" in pipeline[0]:
-            rows = [
-                row
-                for row in rows
-                if matches(row, pipeline[0]["$match"])
-            ]
+            rows = [row for row in rows if matches(row, pipeline[0]["$match"])]
         group_stage = next(stage["$group"] for stage in pipeline if "$group" in stage)
         group_id = group_stage["_id"]
         counts = {}
@@ -154,9 +145,7 @@ class MigrationCollection:
             counts[key] = counts.get(key, 0) + 1
         duplicate_count = sum(1 for count in counts.values() if count > 1)
         return Cursor(
-            [{"duplicate_groups": duplicate_count}]
-            if duplicate_count
-            else []
+            [{"duplicate_groups": duplicate_count}] if duplicate_count else []
         )
 
     async def insert_one(self, row, **_options):
@@ -181,11 +170,7 @@ class MigrationCollection:
         normalized = [(keys, 1)] if isinstance(keys, str) else list(keys)
         self.indexes[options["name"]] = {
             "key": normalized,
-            **{
-                key: deepcopy(value)
-                for key, value in options.items()
-                if key != "name"
-            },
+            **{key: deepcopy(value) for key, value in options.items() if key != "name"},
         }
         return options["name"]
 
@@ -355,8 +340,7 @@ async def run_idempotent_migration_contract(evidence):
     assert len(database.portfolio_publications.rows) == 1
     assert "versions" not in database.portfolio.rows[0]
     assert (
-        database.content_publications.rows[0]["fields"]["answer"]
-        == "Published answer"
+        database.content_publications.rows[0]["fields"]["answer"] == "Published answer"
     )
     assert isinstance(
         database.password_reset_tokens.rows[0]["expires_at"],
@@ -370,9 +354,7 @@ async def run_idempotent_migration_contract(evidence):
         datetime,
     )
     assert database.settings.rows[0]["version"] == 1
-    assert len(applied["indexes"]["created_indexes"]) == len(
-        INDEX_DECLARATIONS
-    )
+    assert len(applied["indexes"]["created_indexes"]) == len(INDEX_DECLARATIONS)
 
     second = await migration.migrate(
         database,
@@ -455,9 +437,7 @@ def test_portfolio_preflight_blocks_when_active_revision_is_not_unique(tmp_path)
             backup_evidence=backup_evidence(tmp_path),
         )
         assert report["status"] == "blocked_portfolio_history"
-        assert report["portfolio_preflight_issues"] == {
-            "active_revision_ambiguous": 1
-        }
+        assert report["portfolio_preflight_issues"] == {"active_revision_ambiguous": 1}
         assert database.schema_migrations.rows == []
 
     asyncio.run(scenario())

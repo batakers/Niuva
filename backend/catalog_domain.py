@@ -127,9 +127,10 @@ def validate_catalog_aggregate(aggregate: dict) -> list[dict]:
                 )
             )
     elif pricing_mode == "calculated":
-        if not product.get("pricing_rule_reference") or int(
-            product.get("price_from") or 0
-        ) <= 0:
+        if (
+            not product.get("pricing_rule_reference")
+            or int(product.get("price_from") or 0) <= 0
+        ):
             errors.append(
                 _error(
                     "calculated_metadata_required",
@@ -269,8 +270,7 @@ def build_publication_snapshot(
         if item.get("active", True)
     ]
     category = {
-        key: deepcopy(aggregate["category"][key])
-        for key in ("id", "name", "slug")
+        key: deepcopy(aggregate["category"][key]) for key in ("id", "name", "slug")
     }
     return {
         "id": str(uuid.uuid4()),

@@ -60,18 +60,14 @@ class MemoryStore:
             or session_hash in row["rotated_session_hashes"]
         )
 
-    async def touch(
-        self, session_id, access_hash, *, last_seen_at, idle_expires_at
-    ):
+    async def touch(self, session_id, access_hash, *, last_seen_at, idle_expires_at):
         row = self._row(session_id)
         if row["access_hash"] != access_hash or row["revoked_at"] is not None:
             return False
         row.update(last_seen_at=last_seen_at, idle_expires_at=idle_expires_at)
         return True
 
-    async def rotate(
-        self, session_id, expected_session_hash, replacement, *, session
-    ):
+    async def rotate(self, session_id, expected_session_hash, replacement, *, session):
         row = self._row(session_id)
         if row["session_hash"] != expected_session_hash or row["revoked_at"]:
             return False
@@ -170,7 +166,9 @@ def test_storage_contains_hashes_only_and_token_version_snapshot():
     assert grant.access_secret not in serialized
     assert grant.session_secret not in serialized
     assert grant.csrf_token not in serialized
-    assert all(len(row[name]) == 64 for name in ("access_hash", "session_hash", "csrf_digest"))
+    assert all(
+        len(row[name]) == 64 for name in ("access_hash", "session_hash", "csrf_digest")
+    )
     assert row["token_version"] == 7
     assert "ip" not in serialized
     assert len(grant.access_secret) >= 43 and len(grant.session_secret) >= 43
@@ -247,7 +245,9 @@ def test_authentication_extends_idle_but_never_absolute_and_checks_version():
         )
 
 
-@pytest.mark.parametrize("boundary", ["access_expires_at", "idle_expires_at", "absolute_expires_at"])
+@pytest.mark.parametrize(
+    "boundary", ["access_expires_at", "idle_expires_at", "absolute_expires_at"]
+)
 def test_each_expiry_boundary_fails_closed(boundary):
     module, store, clock = subject()
     grant = create(module)

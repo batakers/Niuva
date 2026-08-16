@@ -13,13 +13,11 @@ if (
         allow_module_level=True,
     )
 
-from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
-
 from database_capabilities import DatabaseCapabilities  # noqa: E402
 from inventory_service import InventoryError, InventoryService  # noqa: E402
+from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 from transaction_execution import TransactionExecutor  # noqa: E402
 from transaction_guard import TransactionMutationGuard  # noqa: E402
-
 
 ACTOR = {"id": "warehouse-real", "email": "warehouse@test", "roles": ["warehouse"]}
 
@@ -77,7 +75,9 @@ async def run_transaction_evidence(database_name):
         committed = await service.apply_operation(actor=ACTOR, payload=first_payload)
         assert committed["balance"]["on_hand"] == "10"
 
-        replayed = await service.apply_operation(actor=ACTOR, payload=dict(first_payload))
+        replayed = await service.apply_operation(
+            actor=ACTOR, payload=dict(first_payload)
+        )
         assert replayed["replayed"] is True
         assert replayed["movement"]["id"] == committed["movement"]["id"]
         assert await db.stock_movements.count_documents({}) == 1
