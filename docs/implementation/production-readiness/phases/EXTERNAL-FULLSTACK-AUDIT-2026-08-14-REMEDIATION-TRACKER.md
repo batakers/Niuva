@@ -34,7 +34,7 @@ file — not as of the original 14 August audit.
 | AUTH-001 | Mandatory internal MFA absent | Backend | **Blocked on decision** | Needs TOTP provider, key custody, and recovery/break-glass policy from Project Owner before implementation starts |
 | SEC-002 | Distributed abuse-control evidence incomplete | Backend | **In progress** | Next in this session's queue |
 | OPS-001 | No production deployment/rollback workflow | Platform/DevOps (not backend/frontend) | **Open** | No Dockerfile, staging target, or deploy workflow exists yet |
-| DATA-001 | Migration/backup/restore evidence missing | Backend/Data | **In progress** | Queued after SEC-002 in this session |
+| DATA-001 | Migration/backup/restore evidence missing | Backend/Data | **Resolved for disposable-local scope (pending merge)** | [DISPOSABLE-BACKUP-RESTORE-EVIDENCE-2026-08-16.md](DISPOSABLE-BACKUP-RESTORE-EVIDENCE-2026-08-16.md): fresh disposable-local backup/restore proof, 4/4 tests passed, full cleanup verified. Staging/production restore drill, migration 001–010 apply, and independent review remain open |
 | SRE-001 | Production observability/SLO evidence incomplete | Backend/Platform | **Blocked on decision** | Source instrumentation exists; needs a telemetry destination decision from Project Owner |
 | A11Y-001 | Public accessibility evidence incomplete | Frontend/QA | **Open** | Not started |
 
@@ -62,12 +62,14 @@ file — not as of the original 14 August audit.
 
 | PR | Title | Branch | Status |
 | --- | --- | --- | --- |
-| [#243](https://github.com/batakers/Niuva/pull/243) | Localized public navigation and Homepage R4.1 | `feat/niuva-shared-navbar-localized-routes` | Open, CI green |
-| [#254](https://github.com/batakers/Niuva/pull/254) | Public Inquiry contract (consent, phone, error state) | `feat/niuva-public-inquiry-contract` | Open, CI green |
-| [#255](https://github.com/batakers/Niuva/pull/255) | Remove unused `framer-motion` | `chore/niuva-remove-unused-framer-motion` | Open, CI green |
-| [#256](https://github.com/batakers/Niuva/pull/256) | Stop mislabeling render crashes as connection failures | `fix/niuva-error-state-labeling` | Open, CI green |
-| [#257](https://github.com/batakers/Niuva/pull/257) | Declare 4xx/5xx responses for 25 undocumented operations | `docs/niuva-api-error-response-metadata` | Open, CI green |
+| [#243](https://github.com/batakers/Niuva/pull/243) | Localized public navigation and Homepage R4.1 | `feat/niuva-shared-navbar-localized-routes` | **Merged** |
+| [#254](https://github.com/batakers/Niuva/pull/254) | Public Inquiry contract (consent, phone, error state) | `feat/niuva-public-inquiry-contract` | **Merged** |
+| [#255](https://github.com/batakers/Niuva/pull/255) | Remove unused `framer-motion` | `chore/niuva-remove-unused-framer-motion` | **Merged** |
+| [#256](https://github.com/batakers/Niuva/pull/256) | Stop mislabeling render crashes as connection failures | `fix/niuva-error-state-labeling` | **Merged** |
+| [#257](https://github.com/batakers/Niuva/pull/257) | Declare 4xx/5xx responses for 25 undocumented operations | `docs/niuva-api-error-response-metadata` | **Merged** |
+| [#258](https://github.com/batakers/Niuva/pull/258) | Backend `black`/`isort` formatting | `chore/niuva-backend-black-isort-formatting` | **Merged** |
+| [#259](https://github.com/batakers/Niuva/pull/259) | Disposable local backup/restore evidence (DATA-001) | `ops/niuva-disposable-backup-restore-evidence-20260816` | Open, CI green |
 
-None of the PRs above have been merged. This tracker records source-level
-progress only; it does not itself close any P0/P1 finding, and it does not
+Being merged in sequence as of 2026-08-16; this tracker records source-level
+progress only, it does not itself close any P0/P1 finding, and it does not
 authorize deployment, migration, provider activation, or go-live.
