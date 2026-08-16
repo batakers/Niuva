@@ -18,9 +18,23 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { usePublicContent } from "../../lib/content";
 import { usePublicSettings } from "../../lib/publicSettings";
+import { useI18n } from "@/i18n";
+import { getPublicPath, PUBLIC_SERVICE_ITEMS } from "@/lib/publicRoutes";
+
+const primaryServiceOrder = new Map(
+  PUBLIC_SERVICE_ITEMS.map((service, index) => [service.slug, index]),
+);
+
+function sortPrimaryServices(services) {
+  return [...services].sort(
+    (left, right) =>
+      (primaryServiceOrder.get(left.slug) ?? Number.MAX_SAFE_INTEGER) -
+      (primaryServiceOrder.get(right.slug) ?? Number.MAX_SAFE_INTEGER),
+  );
+}
 
 function mergeCapabilities(cmsBlocks, status) {
-  if (status === "disabled") return profileContent.services;
+  if (status === "disabled") return sortPrimaryServices(profileContent.services);
   if (status !== "ready") return [];
   const fallbackBySlug = new Map(
     profileContent.services.map((service) => [service.slug, service])
@@ -62,30 +76,29 @@ const engagementSteps = [
 ];
 
 export default function CapabilitiesPage() {
+  const { lang, t } = useI18n();
   const { contact } = usePublicSettings();
   const { blocks: cmsBlocks, status } = usePublicContent("capability");
   const capabilities = useMemo(
     () => mergeCapabilities(cmsBlocks, status),
     [cmsBlocks, status]
   );
-  const primaryCapabilities = capabilities.filter((service) => service.priority === "primary");
-  const supportingCapabilities = capabilities.filter((service) => service.priority === "supporting");
+  const contactPath = getPublicPath("contact", lang);
+  const projectsPath = getPublicPath("projects", lang);
 
   return (
     <MarketingLayout>
       <BrandPage>
-        {/* The panel now carries the two primary capabilities and what each one
-            hands back, instead of a blue box repeating their names. */}
         <PageHero
-          eyebrow="Capabilities"
+          eyebrow="Layanan Niuva"
           title="Dari ide menjadi produk yang dapat diuji."
-          body="Research & Development serta Design & Prototyping menjadi kapabilitas utama Niuva. Konsultasi, workshop, apparel, dan merchandise mendukung ekosistem inovasi yang lebih luas."
+          body="Empat layanan utama Niuva memiliki hierarki yang setara. Titik masuknya mengikuti kebutuhan, bukti yang perlu dibangun, dan bentuk realisasi yang dibutuhkan."
           variant="index"
-          primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton to="/projects" variant="secondary">Lihat Projects</BrandButton>}
+          primaryAction={<BrandButton to={contactPath}>{t("nav.discussProject")}</BrandButton>}
+          secondaryAction={<BrandButton to={projectsPath} variant="secondary">{t("nav.portfolio")}</BrandButton>}
           visual={
             <div className="grid gap-6 rounded-card bg-surface-muted p-6 sm:p-8">
-              {primaryCapabilities.length > 0 ? primaryCapabilities.map((service) => (
+              {capabilities.length > 0 ? capabilities.map((service) => (
                 <div key={service.slug} className="border-t-2 border-[var(--color-brand-secondary)] pt-4">
                   <p className="type-heading-card text-text-primary">{service.title}</p>
                   <p className="type-body-small mt-2 max-w-[42ch] text-text-secondary">{service.output}</p>
@@ -104,9 +117,8 @@ export default function CapabilitiesPage() {
         <MarketingSection tone="muted">
           <PageContainer className="relative z-10">
             <SectionHeader
-              eyebrow="Primary Capabilities"
-              title="R&D serta Design & Prototyping menjadi pusat pengembangan produk."
-              body="Dua kapabilitas utama ini membantu mitra memahami masalah, menentukan arah teknologi, memvalidasi konsep, dan menyiapkan hasil yang dapat diuji sebelum keputusan implementasi lebih besar."
+              title="Empat layanan utama, satu standar kerja yang setara."
+              body="Research & Development, Consultant & Workshop, Design & Prototyping, serta Apparel & Merchandise dipilih berdasarkan kebutuhan project—bukan berdasarkan tingkatan layanan."
               align="stacked"
             />
             {status === "loading" && (
@@ -124,38 +136,10 @@ export default function CapabilitiesPage() {
               <EmptyState>Belum ada kapabilitas yang dipublikasikan.</EmptyState>
             )}
             <div className="grid gap-8 lg:gap-10">
-              {primaryCapabilities.map((service, index) => (
-                <CapabilityPanel key={service.slug} service={service} index={index} />
-              ))}
-            </div>
-          </PageContainer>
-        </MarketingSection>
-
-        <MarketingSection tone="default">
-          <PageContainer>
-            <SectionHeader
-              title="Konsultasi, workshop, apparel, dan merchandise sebagai penguat eksekusi."
-              body="Tidak semua kebutuhan dimulai dari prototipe. Sebagian mitra membutuhkan penyelarasan strategi, pelatihan praktis, atau produk kreatif pendukung identitas program."
-              align="stacked"
-            />
-            <div className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
-              {supportingCapabilities.map((service) => (
-                <article key={service.slug} className="brand-reveal border-t border-border-default pt-6">
-                  <p className="type-label text-text-secondary">Kapabilitas pendukung</p>
-                  <h3 className="type-heading-subsection mt-4 text-text-primary">{service.title}</h3>
-                  <p className="type-body mt-4 max-w-[52ch] text-text-secondary">{service.body}</p>
-                  <dl className="mt-6 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-                    <div>
-                      <dt className="type-label text-text-secondary">Output</dt>
-                      <dd className="type-body-small mt-2 text-text-primary">{service.output}</dd>
-                    </div>
-                    <div>
-                      <dt className="type-label text-text-secondary">Untuk</dt>
-                      <dd className="type-body-small mt-2 text-text-primary">{service.targetUsers}</dd>
-                    </div>
-                  </dl>
-                  <BrandButton to="/contact" variant="secondary" className="mt-7" aria-label={`${service.cta} untuk ${service.title}`}>{service.cta}</BrandButton>
-                </article>
+              {capabilities.map((service, index) => (
+                <div id={service.slug} key={service.slug} className="scroll-mt-32">
+                  <CapabilityPanel service={service} index={index} />
+                </div>
               ))}
             </div>
           </PageContainer>
@@ -172,8 +156,8 @@ export default function CapabilitiesPage() {
           eyebrow={null}
           title="Tentukan titik mulai yang relevan untuk kebutuhan Anda."
           body="Tim Niuva dapat masuk dari riset awal, evaluasi konsep, desain dan prototyping, penyusunan workshop, atau kebutuhan produk kreatif yang sudah siap dieksekusi."
-          primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton href={contact.email ? `mailto:${contact.email}` : "/contact"} variant="secondary">Kirim Brief</BrandButton>}
+          primaryAction={<BrandButton to={contactPath} variant="inverse">{t("nav.discussProject")}</BrandButton>}
+          secondaryAction={<BrandButton href={contact.email ? `mailto:${contact.email}` : contactPath} variant="secondary">{lang === "en" ? "Send a brief" : "Kirim brief"}</BrandButton>}
           contactEmphasis="Sampaikan jenis kebutuhan, target hasil, dan perkiraan timeline agar respons awal lebih tepat."
           whatsappHref={contact.whatsappHref}
           email={contact.email}

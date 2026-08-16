@@ -15,10 +15,7 @@ itself.
 
 Every row below is updated in the same PR that does the corresponding
 work, so this table is current as of the latest merge into this tracker
-file — not as of the original 14 August audit. This copy was written from
-branch `ops/niuva-disposable-backup-restore-evidence-20260816`; it and the
-copy on `chore/niuva-backend-black-isort-formatting` (PR #258) will need a
-trivial merge-order resolution since both branch from the same `main`.
+file — not as of the original 14 August audit.
 
 ## P0
 
@@ -35,7 +32,7 @@ trivial merge-order resolution since both branch from the same `main`.
 | INTAKE-001 | Public Inquiry contract missing consent + optional backend phone | Backend + Frontend | **Resolved (pending merge)** | PR #254: consent required at API + UI, `pic_phone` now required and validated server-side |
 | ERROR-001 | Inquiry dependency failure was toast-only | Frontend | **Resolved (pending merge)** | PR #254: persistent, focus-managed error state replacing toast-only handling |
 | AUTH-001 | Mandatory internal MFA absent | Backend | **Blocked on decision** | Needs TOTP provider, key custody, and recovery/break-glass policy from Project Owner before implementation starts |
-| SEC-002 | Distributed abuse-control evidence incomplete | Backend | **Next in queue** | Not started yet in this session |
+| SEC-002 | Distributed abuse-control evidence incomplete | Backend | **In progress** | Next in this session's queue |
 | OPS-001 | No production deployment/rollback workflow | Platform/DevOps (not backend/frontend) | **Open** | No Dockerfile, staging target, or deploy workflow exists yet |
 | DATA-001 | Migration/backup/restore evidence missing | Backend/Data | **Resolved for disposable-local scope (pending merge)** | [DISPOSABLE-BACKUP-RESTORE-EVIDENCE-2026-08-16.md](DISPOSABLE-BACKUP-RESTORE-EVIDENCE-2026-08-16.md): fresh disposable-local backup/restore proof, 4/4 tests passed, full cleanup verified. Staging/production restore drill, migration 001–010 apply, and independent review remain open |
 | SRE-001 | Production observability/SLO evidence incomplete | Backend/Platform | **Blocked on decision** | Source instrumentation exists; needs a telemetry destination decision from Project Owner |
@@ -46,7 +43,7 @@ trivial merge-order resolution since both branch from the same `main`.
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | API-001 | 25 of 152 operations missing 4xx/5xx OpenAPI metadata | Backend | **Resolved (pending merge)** | PR #257: all 25 documented per-route from actual code, plus a regression test |
-| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **Partially resolved (pending merge)** | PR #258: `black` (47 files) and `isort` (51 files) now 0 remaining, project-wide, verified against full test suite. flake8 (2,046 findings) and mypy (274 errors) deliberately deferred — those need case-by-case review, not a bulk mechanical pass |
+| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **Partially resolved (pending merge)** | This PR: `black` (47 files) and `isort` (51 files) now 0 remaining, project-wide, verified against full test suite. flake8 (2,046 findings) and mypy (274 errors) deliberately deferred — those need case-by-case review, not a bulk mechanical pass, per this same audit's own caution against reformatting without diff control |
 | DEP-001 | Unused `framer-motion`; undeclared `vaul` in `drawer.jsx` | Frontend | **Partially resolved (pending merge)** | PR #255 removes `framer-motion` (verified zero consumers). `vaul` quarantine/declaration still open, tied to CLEANUP-001 |
 | DESIGN-001 | NDS migration incomplete (legacy fonts, `transition-all`, side-border) | Frontend | **Open** | Not started |
 | UX-STATE-001 | `RouteFallback` near-blank; `AppErrorBoundary` mislabels render crashes as connection loss | Frontend | **Resolved (pending merge)** | PR #256: honest copy + visible spinner + second recovery action |
@@ -65,14 +62,14 @@ trivial merge-order resolution since both branch from the same `main`.
 
 | PR | Title | Branch | Status |
 | --- | --- | --- | --- |
-| [#243](https://github.com/batakers/Niuva/pull/243) | Localized public navigation and Homepage R4.1 | `feat/niuva-shared-navbar-localized-routes` | Open, CI green |
-| [#254](https://github.com/batakers/Niuva/pull/254) | Public Inquiry contract (consent, phone, error state) | `feat/niuva-public-inquiry-contract` | Open, CI green |
-| [#255](https://github.com/batakers/Niuva/pull/255) | Remove unused `framer-motion` | `chore/niuva-remove-unused-framer-motion` | Open, CI green |
-| [#256](https://github.com/batakers/Niuva/pull/256) | Stop mislabeling render crashes as connection failures | `fix/niuva-error-state-labeling` | Open, CI green |
-| [#257](https://github.com/batakers/Niuva/pull/257) | Declare 4xx/5xx responses for 25 undocumented operations | `docs/niuva-api-error-response-metadata` | Open, CI green |
-| [#258](https://github.com/batakers/Niuva/pull/258) | Backend `black`/`isort` formatting (QUALITY-001, partial) | `chore/niuva-backend-black-isort-formatting` | Open, CI green |
-| (this branch) | Disposable local backup/restore evidence (DATA-001) | `ops/niuva-disposable-backup-restore-evidence-20260816` | About to be opened |
+| [#243](https://github.com/batakers/Niuva/pull/243) | Localized public navigation and Homepage R4.1 | `feat/niuva-shared-navbar-localized-routes` | **Merged** |
+| [#254](https://github.com/batakers/Niuva/pull/254) | Public Inquiry contract (consent, phone, error state) | `feat/niuva-public-inquiry-contract` | **Merged** |
+| [#255](https://github.com/batakers/Niuva/pull/255) | Remove unused `framer-motion` | `chore/niuva-remove-unused-framer-motion` | **Merged** |
+| [#256](https://github.com/batakers/Niuva/pull/256) | Stop mislabeling render crashes as connection failures | `fix/niuva-error-state-labeling` | **Merged** |
+| [#257](https://github.com/batakers/Niuva/pull/257) | Declare 4xx/5xx responses for 25 undocumented operations | `docs/niuva-api-error-response-metadata` | **Merged** |
+| [#258](https://github.com/batakers/Niuva/pull/258) | Backend `black`/`isort` formatting | `chore/niuva-backend-black-isort-formatting` | **Merged** |
+| [#259](https://github.com/batakers/Niuva/pull/259) | Disposable local backup/restore evidence (DATA-001) | `ops/niuva-disposable-backup-restore-evidence-20260816` | Open, CI green |
 
-None of the PRs above have been merged. This tracker records source-level
-progress only; it does not itself close any P0/P1 finding, and it does not
+Being merged in sequence as of 2026-08-16; this tracker records source-level
+progress only, it does not itself close any P0/P1 finding, and it does not
 authorize deployment, migration, provider activation, or go-live.

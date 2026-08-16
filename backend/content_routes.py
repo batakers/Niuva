@@ -1,11 +1,10 @@
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
-
 from content_domain import project_block_for_public
 from content_service import ContentError, ContentService
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ContentBlockPayload(BaseModel):
@@ -64,7 +63,9 @@ def build_content_router(
         try:
             return await awaitable
         except ContentError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.payload()) from exc
+            raise HTTPException(
+                status_code=exc.status_code, detail=exc.payload()
+            ) from exc
 
     @router.get("/admin/content")
     async def list_content(
@@ -87,8 +88,11 @@ def build_content_router(
     ):
         return await invoke(
             service().create_block(
-                content_type=payload.content_type, slug=payload.slug,
-                fields=payload.fields, actor=actor, reason=payload.reason,
+                content_type=payload.content_type,
+                slug=payload.slug,
+                fields=payload.fields,
+                actor=actor,
+                reason=payload.reason,
             )
         )
 

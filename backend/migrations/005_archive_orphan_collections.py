@@ -41,7 +41,11 @@ async def migrate(db, *, dry_run: bool) -> dict:
         if not dry_run:
             # Rename is atomic and non-destructive; data is preserved under new name
             await db[name].rename(archived_name)
-        results[name] = {"documents": count, "archived_as": archived_name, "applied": not dry_run}
+        results[name] = {
+            "documents": count,
+            "archived_as": archived_name,
+            "applied": not dry_run,
+        }
     return {"collections": results, "dry_run": dry_run}
 
 

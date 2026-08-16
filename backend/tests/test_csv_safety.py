@@ -6,7 +6,7 @@ from csv_safety import safe_csv_cell, safe_csv_row
 
 def test_formula_prefixes_are_neutralized_without_changing_normal_values():
     for hostile in (
-        "=HYPERLINK(\"https://evil.test\")",
+        '=HYPERLINK("https://evil.test")',
         "+1+1",
         "-2+3",
         "@SUM(A1:A2)",

@@ -10,7 +10,6 @@ import os
 import pytest
 import requests
 
-
 BASE_URL = os.environ.get("NIUVA_EXTERNAL_API_URL", "").rstrip("/")
 if not BASE_URL:
     pytest.skip(

@@ -174,3 +174,27 @@ def test_openapi_error_schema_keeps_compatibility_detail():
     schema = server.app.openapi()["components"]["schemas"]["ErrorEnvelope"]
     assert schema["required"] == ["detail", "error", "request_id"]
     assert set(schema["properties"]) == {"detail", "error", "request_id"}
+
+
+def test_every_operation_declares_at_least_one_error_response():
+    """A generated client should never see an undocumented failure shape.
+
+    FastAPI adds a 422 automatically for a route with body/query validation,
+    which is why this previously went unnoticed for the 25 operations that
+    had neither validated input nor an explicit ``responses=`` entry (plain
+    GETs and body-less POSTs). Every operation now declares its real failure
+    set explicitly; this guards against a new one going undocumented again.
+    """
+
+    schema = server.app.openapi()
+    undocumented = [
+        f"{method.upper()} {path}"
+        for path, methods in schema["paths"].items()
+        for method, operation in methods.items()
+        if method in ("get", "post", "put", "patch", "delete")
+        and not any(
+            str(status_code).startswith(("4", "5"))
+            for status_code in operation.get("responses", {})
+        )
+    ]
+    assert undocumented == []

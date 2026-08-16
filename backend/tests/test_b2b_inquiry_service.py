@@ -2,7 +2,6 @@ import asyncio
 import types
 
 import pytest
-
 from b2b_domain import B2BDomainError
 from b2b_service import B2BService
 

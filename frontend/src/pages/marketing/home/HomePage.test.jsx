@@ -41,7 +41,26 @@ test("renders the centered R4 story and the five-stage process", () => {
   ).toBeInTheDocument();
   const process = screen.getByRole("list", { name: "Alur pengembangan Niuva" });
   expect(within(process).getAllByRole("listitem")).toHaveLength(5);
-  expect(container.querySelectorAll("[data-testid^='home-fdm-contour-']")).toHaveLength(2);
+  expect(screen.getByText("Satu partner, dua cara memulai")).toBeInTheDocument();
+  expect(screen.getByText("Cara kerja")).toBeInTheDocument();
+  expect(screen.getByText("Layanan Niuva")).toBeInTheDocument();
+
+  const editorialIntros = [...container.querySelectorAll(".home-r4-editorial-intro")];
+  expect(editorialIntros).toHaveLength(4);
+  expect(editorialIntros.map((intro) => intro.parentElement?.closest("section")?.className)).toEqual(
+    expect.arrayContaining([
+      expect.stringContaining("home-r4-orientation"),
+      expect.stringContaining("home-r4-process"),
+      expect.stringContaining("home-r4-services"),
+      expect.stringContaining("home-r4-retail"),
+    ]),
+  );
+
+  const contours = [...container.querySelectorAll("[data-testid^='home-fdm-contour-']")];
+  expect(contours).toHaveLength(2);
+  for (const contour of contours) {
+    expect(contour.querySelectorAll(".home-r4-contour-lines path")).toHaveLength(11);
+  }
 });
 
 test("keeps all four primary services equal and uses one shared action", () => {
@@ -58,7 +77,7 @@ test("keeps all four primary services equal and uses one shared action", () => {
   for (const service of services) {
     expect(within(service).getByRole("link", { name: /Lihat layanan/i })).toHaveAttribute(
       "href",
-      "/capabilities",
+      `/layanan#${service.getAttribute("data-service-slug") || ""}`,
     );
   }
 });
@@ -82,7 +101,7 @@ test("shows public-settings loading and recoverable error states without hiding 
   expect(screen.getByRole("status")).toHaveTextContent("Memuat detail kontak publik");
   expect(screen.getByRole("link", { name: /Buka halaman Kontak/i })).toHaveAttribute(
     "href",
-    "/contact",
+    "/kontak",
   );
 
   mockPublicSettings = { status: "error", contact: {} };
