@@ -1318,7 +1318,7 @@ async def store_upload(
 
 
 # ----------------------------- Auth routes -----------------------------
-@api.post("/auth/register")
+@api.post("/auth/register", responses=error_responses(403))
 async def register():
     raise HTTPException(
         status_code=403,
@@ -1506,19 +1506,19 @@ async def admin_login(req: AdminLoginReq, request: Request):
     return _admin_session_response(user, grant)
 
 
-@api.post("/auth/refresh")
+@api.post("/auth/refresh", responses=error_responses(401, 403, 500))
 async def refresh_session(request: Request, response: Response):
     user = await _session_service().refresh(request, response)
     return {"user": safe_user(user)}
 
 
-@api.post("/auth/logout")
+@api.post("/auth/logout", responses=error_responses(500))
 async def logout_session(request: Request, response: Response):
     await _session_service().logout(request, response)
     return {"ok": True}
 
 
-@api.post("/auth/admin/session/refresh")
+@api.post("/auth/admin/session/refresh", responses=error_responses(401, 500))
 async def refresh_admin_session(request: Request):
     verify_admin_origin(request)
     session_secret = request.cookies.get(SESSION_COOKIE_NAME)
@@ -1558,7 +1558,7 @@ async def current_admin_session(request: Request):
     )
 
 
-@api.post("/auth/admin/logout")
+@api.post("/auth/admin/logout", responses=error_responses(403, 500))
 async def admin_logout(request: Request):
     try:
         await get_admin_user(request)
@@ -1621,7 +1621,7 @@ async def forgot_password(req: ForgotPasswordReq, request: Request):
     return result
 
 
-@api.get("/auth/password-policy")
+@api.get("/auth/password-policy", responses=error_responses(500))
 async def password_policy():
     return get_password_module().public_policy()
 
@@ -1682,7 +1682,11 @@ async def create_order(
     )
 
 
-@api.get("/capabilities", response_model=CapabilityResponse)
+@api.get(
+    "/capabilities",
+    response_model=CapabilityResponse,
+    responses=error_responses(500),
+)
 async def public_capabilities():
     return PUBLIC_CAPABILITIES
 
@@ -1946,7 +1950,7 @@ def development_media_upload_active() -> bool:
     )
 
 
-@api.get("/admin/media/capabilities")
+@api.get("/admin/media/capabilities", responses=error_responses(401, 403, 500))
 async def admin_media_capabilities(
     _user: dict = Depends(require_permission("media.read")),
 ):
@@ -2274,7 +2278,7 @@ async def contact(req: ContactReq, request: Request):
     return {"ok": True, "message": "Pesan berhasil dikirim"}
 
 
-@api.get("/admin/contacts")
+@api.get("/admin/contacts", responses=error_responses(401, 403, 500))
 async def list_contacts(
     user: dict = Depends(require_permission("inquiries.read")),
 ):
@@ -2300,13 +2304,13 @@ async def list_contacts(
 
 
 # ----------------------------- Settings & Users -----------------------------
-@api.get("/settings")
+@api.get("/settings", responses=error_responses(500))
 async def settings_public():
     """The company profile the public site and its footer read from."""
     return project_public_settings(await get_settings())
 
 
-@api.get("/admin/settings")
+@api.get("/admin/settings", responses=error_responses(401, 403, 500))
 async def settings_admin(
     _actor: dict = Depends(require_permission("settings.write")),
 ):
@@ -2380,7 +2384,7 @@ async def create_client_user(
     return await provision_client(req)
 
 
-@api.get("/admin/customers")
+@api.get("/admin/customers", responses=error_responses(401, 403, 500))
 async def list_customers(
     user: dict = Depends(require_permission("customers.read")),
 ):
@@ -2666,7 +2670,7 @@ async def my_notifications(
     )
 
 
-@api.get("/notifications/unread-count")
+@api.get("/notifications/unread-count", responses=error_responses(401, 500))
 async def my_unread_notification_count(user: dict = Depends(get_current_user)):
     return {"unread": await notification_service().unread_count(user["id"])}
 
@@ -2681,7 +2685,7 @@ async def mark_notification_read(
     )
 
 
-@api.post("/notifications/read-all")
+@api.post("/notifications/read-all", responses=error_responses(401, 500))
 async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
     return await _invoke_notifications(notification_service().mark_all_read(user["id"]))
 
@@ -2801,7 +2805,7 @@ async def list_sent_notifications(
     )
 
 
-@api.get("/health")
+@api.get("/health", responses=error_responses(500))
 async def health():
     return {
         "status": "ok",
@@ -2809,12 +2813,21 @@ async def health():
     }
 
 
-@api.get("/health/live")
+@api.get("/health/live", responses=error_responses(500))
 async def health_live():
     return {"status": "ok"}
 
 
-@api.get("/health/ready")
+@api.get(
+    "/health/ready",
+    responses={
+        # The 503 body is the readiness payload (status/database/schema/
+        # capabilities), not the shared ErrorEnvelope — it is not raised as an
+        # HTTPException, so error_responses() would document the wrong shape.
+        503: {"description": "Required dependency or capability is not ready"},
+        **error_responses(500),
+    },
+)
 async def health_ready():
     loop = asyncio.get_running_loop()
     started_at = loop.time()
@@ -2953,7 +2966,7 @@ async def health_ready():
     return JSONResponse(payload, status_code=200 if ready else 503)
 
 
-@api.get("/")
+@api.get("/", responses=error_responses(500))
 async def root():
     return {"message": "NIUVA API", "status": "ok"}
 

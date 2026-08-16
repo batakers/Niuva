@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
+from api_contract import error_responses
 from fastapi import APIRouter, Depends, HTTPException, status
 from portfolio_domain import PortfolioDomainError
 from portfolio_service import PortfolioService
@@ -73,7 +74,7 @@ def build_portfolio_router(
                 status_code=exc.status_code, detail=exc.payload()
             ) from exc
 
-    @router.get("/portfolio")
+    @router.get("/portfolio", responses=error_responses(500))
     async def list_public_portfolio():
         """Public: only published entries, and only their public fields."""
         return await invoke(service().list_public())
