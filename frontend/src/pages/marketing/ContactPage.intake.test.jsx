@@ -23,6 +23,10 @@ jest.mock("@gsap/react", () => ({ useGSAP: jest.fn() }));
 // so the page is exercised against the same contract it ships with.
 jest.mock("@/lib/api", () => ({
   ...jest.requireActual("@/lib/api"),
+  // Forces the settings/content hooks down their real fetch path regardless
+  // of whether a local .env sets REACT_APP_BACKEND_URL, so this suite's
+  // behavior does not depend on an untracked, developer-local file.
+  HAS_CONFIGURED_BACKEND: true,
   api: {
     get: jest.fn(),
     post: jest.fn(),
@@ -228,10 +232,7 @@ describe("Public project intake", () => {
     );
 
     renderPage();
-    // A plain mount-triggered effect call; the default 1000ms waitFor budget
-    // has been observed to be too tight on a loaded CI runner even though it
-    // never reproduces locally, so this one gets more headroom.
-    await waitFor(() => expect(api.get).toHaveBeenCalled(), { timeout: 5000 });
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
     expect(screen.queryByTestId("contact-success-whatsapp")).not.toBeInTheDocument();
 
     fillBrief();
