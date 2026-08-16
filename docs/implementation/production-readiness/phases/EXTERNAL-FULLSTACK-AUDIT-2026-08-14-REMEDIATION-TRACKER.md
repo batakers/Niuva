@@ -73,7 +73,7 @@ needs a trivial conflict resolution on this one file each time.
 | [#260](https://github.com/batakers/Niuva/pull/260) | Rate-limiter multi-worker evidence | `test/niuva-rate-limiter-multiworker-evidence` |
 | [#261](https://github.com/batakers/Niuva/pull/261) | Migration 007-009 dry-run evidence | `docs/niuva-migration-007-009-dryrun-evidence-20260816` |
 | [#262](https://github.com/batakers/Niuva/pull/262) | `.flake8` config fix (QUALITY-001, part 1) | `chore/niuva-backend-flake8-line-length-config` |
-| (this branch) | Remove unused imports/vars (QUALITY-001, part 2) | `chore/niuva-backend-flake8-unused-imports` |
+| [#263](https://github.com/batakers/Niuva/pull/263) | Remove unused imports/vars (QUALITY-001, part 2) | `chore/niuva-backend-flake8-unused-imports` |
 
 None of the PRs above have been merged. This tracker records source-level
 progress only; it does not itself close any P0/P1 finding, and it does not
