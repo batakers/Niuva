@@ -12,13 +12,15 @@ import { Button } from "@/components/ui/button";
 import { OperationalState } from "@/components/ui/operational-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HAS_CONFIGURED_BACKEND } from "@/lib/api";
+import { useI18n } from "@/i18n";
+import { getPublicPath } from "@/lib/publicRoutes";
 import {
   availabilityLabel,
   formatCatalogPrice,
   publicCatalogApi,
 } from "@/lib/catalog";
 
-function RetailCtaState({ state }) {
+function RetailCtaState({ state, contactPath, lang }) {
   if (state === "quote_required") {
     return (
       <div className="border-l-2 border-action-primary pl-5">
@@ -30,7 +32,7 @@ function RetailCtaState({ state }) {
           ditinjau. Permintaan ini tidak langsung membuat pesanan atau pembayaran.
         </p>
         <Button asChild className="mt-5 w-full sm:w-auto">
-          <Link to="/contact">Minta penawaran</Link>
+          <Link to={contactPath}>{lang === "en" ? "Request a quote" : "Minta penawaran"}</Link>
         </Button>
       </div>
     );
@@ -64,6 +66,8 @@ function RetailCtaState({ state }) {
 }
 
 export default function RetailProductPage() {
+  const { lang } = useI18n();
+  const contactPath = getPublicPath("contact", lang);
   const { slug } = useParams();
   const [state, setState] = useState({
     status: HAS_CONFIGURED_BACKEND ? "loading" : "unavailable",
@@ -223,7 +227,11 @@ export default function RetailProductPage() {
                   </dl>
 
                   <div className="mt-7">
-                    <RetailCtaState state={state.value.cta_state} />
+                    <RetailCtaState
+                      state={state.value.cta_state}
+                      contactPath={contactPath}
+                      lang={lang}
+                    />
                   </div>
 
                   {state.value.variants.length > 0 && (
