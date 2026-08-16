@@ -90,7 +90,7 @@ class Context:
     def __init__(self, client, database_name, capabilities):
         self.client = client
         self.database = client[database_name]
-        self.transaction_events = []
+        self.transaction_events: list[tuple[str, object]] = []
         executor = TransactionExecutor(
             client,
             lambda: capabilities,

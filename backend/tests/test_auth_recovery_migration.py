@@ -41,7 +41,7 @@ class Cursor:
 class Tokens:
     def __init__(self, items):
         self.items = copy.deepcopy(items)
-        self.indexes = {"_id_": {}}
+        self.indexes: dict[str, dict] = {"_id_": {}}
 
     def find(self, *_args):
         return Cursor(self.items)

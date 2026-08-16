@@ -149,8 +149,8 @@ class CapturingDelivery:
     def __init__(self, *, fail_reset: bool = False, fail_changed: bool = False):
         self.fail_reset = fail_reset
         self.fail_changed = fail_changed
-        self.reset_messages = []
-        self.changed_messages = []
+        self.reset_messages: list[dict] = []
+        self.changed_messages: list[dict] = []
 
     async def send_password_reset(self, *, email, reset_url, expires_at):
         if self.fail_reset:

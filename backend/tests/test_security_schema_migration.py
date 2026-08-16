@@ -3,6 +3,7 @@ import json
 import types
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from schema_manifest import INDEX_DECLARATIONS
 
@@ -142,7 +143,7 @@ class MigrationCollection:
             ]
         group_stage = next(stage["$group"] for stage in pipeline if "$group" in stage)
         group_id = group_stage["_id"]
-        counts = {}
+        counts: dict[Any, int] = {}
         for row in rows:
             if isinstance(group_id, str):
                 key = nested(row, group_id[1:])

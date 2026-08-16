@@ -96,7 +96,7 @@ async def preflight_unique_indexes(db) -> list[dict]:
         documents = await getattr(db, declaration["collection"]).find(
             {}, {"_id": 0}
         ).to_list(100000)
-        owners = {}
+        owners: dict[tuple, int] = {}
         duplicate_groups = 0
         missing_documents = 0
         for document in documents:
@@ -159,7 +159,7 @@ async def migrate(db, *, dry_run: bool = True) -> dict:
     candidates = [material for material in materials if not is_migrated(material)]
     already_migrated = len(materials) - len(candidates)
 
-    sku_owners = {}
+    sku_owners: dict[str, set[str]] = {}
     for material in materials:
         if material.get("sku"):
             sku_owners.setdefault(material["sku"].upper(), set()).add(material["id"])

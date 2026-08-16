@@ -2,6 +2,7 @@ import asyncio
 import importlib
 from copy import deepcopy
 from types import SimpleNamespace
+from typing import Any
 
 from catalog_inventory_indexes import INDEX_DECLARATIONS, ensure_catalog_inventory_indexes
 
@@ -78,7 +79,7 @@ class FakeCollection:
                 values = [item for item in values if self.matches(item, stage["$match"])]
             elif "$group" in stage:
                 group_spec = stage["$group"]["_id"]
-                grouped = {}
+                grouped: dict[Any, int] = {}
                 for item in values:
                     if isinstance(group_spec, dict):
                         key = tuple(
