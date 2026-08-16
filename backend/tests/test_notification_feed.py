@@ -7,6 +7,7 @@ an allowlisted reference, never stored by whoever wrote the notification.
 import asyncio
 import types
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import emailer
 import pytest
@@ -555,7 +556,7 @@ def test_expired_and_unknown_records_are_absent_from_reader_operations():
             id="expired",
             expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
         )
-        unknown = {
+        unknown: dict[str, Any] = {
             "id": "unknown",
             "user_id": "user-1",
             "read_at": None,

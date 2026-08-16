@@ -19,7 +19,7 @@ class RepositoryCredentialHygieneTests(unittest.TestCase):
             "ADMIN_EMAIL": "NIUVA_TEST_ADMIN_EMAIL",
             "ADMIN_PASSWORD": "NIUVA_TEST_ADMIN_PASSWORD",
         }
-        assignments = {name: [] for name in expected_environment}
+        assignments: dict[str, list] = {name: [] for name in expected_environment}
 
         for node in ast.walk(tree):
             if not isinstance(node, ast.Assign):

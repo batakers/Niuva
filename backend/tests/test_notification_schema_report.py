@@ -5,6 +5,7 @@ import json
 import pathlib
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any
 
 import notification_schema_report as report_module
 import pytest
@@ -819,7 +820,7 @@ def test_known_payload_field_with_wrong_type_is_blocked_without_value_output():
 
 
 def test_pathological_nested_structure_stops_at_bounded_depth():
-    nested = {}
+    nested: dict[str, Any] = {}
     cursor = nested
     for _index in range(report_module.MAX_NESTED_DEPTH + 2):
         cursor["safe_container"] = {}

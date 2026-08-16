@@ -175,7 +175,7 @@ async def _accounts(database) -> list[dict]:
 
 
 def _report(accounts: list[dict], bootstrap_owner_id: str | None) -> dict:
-    categories = Counter()
+    categories: Counter[str] = Counter()
     remediation_ids = []
     for account in accounts:
         category = _classify(account, bootstrap_owner_id)

@@ -382,8 +382,8 @@ class NotificationService:
 
     async def mark_all_read(self, user_id: str) -> dict:
         timestamp = now_utc()
-        datetime_ids = []
-        string_ids = []
+        datetime_ids: list[str] = []
+        string_ids: list[str] = []
         cursor = self.db.notifications.find(
             {"user_id": user_id, "read_at": None}, {"_id": 0}
         )
