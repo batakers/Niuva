@@ -734,7 +734,35 @@ export function ContactForm({
         <FieldError id="contact-message-error" message={errors.message} />
       </div>
 
-      <div className="mt-8 flex flex-col gap-4 border-t border-border-default pt-7 md:flex-row md:items-center md:justify-between">
+      {/* DEC-UX-003 fixes this copy. It is the consent the backend now requires,
+          so it stays verbatim rather than being reworded per surface. */}
+      <div className="mt-8 border-t border-border-default pt-7">
+        <div className="flex gap-3">
+          <input
+            id="contact-consent"
+            data-testid="contact-consent"
+            type="checkbox"
+            checked={Boolean(form.consent)}
+            onChange={onChange("consent")}
+            required
+            aria-required="true"
+            aria-invalid={errors.consent ? "true" : undefined}
+            aria-describedby={describedBy("contact-consent", errors.consent)}
+            className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[var(--color-brand-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+          />
+          <Label
+            htmlFor="contact-consent"
+            className="cursor-pointer text-sm font-normal leading-6 text-text-secondary"
+          >
+            Saya setuju Niuva menggunakan data ini untuk meninjau inquiry dan
+            menghubungi saya terkait kebutuhan yang saya kirim. Data tidak
+            digunakan untuk marketing tanpa persetujuan terpisah.
+          </Label>
+        </div>
+        <FieldError id="contact-consent-error" message={errors.consent} />
+      </div>
+
+      <div className="mt-7 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <p id="contact-privacy-note" className="max-w-sm text-sm leading-6 text-text-secondary">
           {labels.privacy}
         </p>
