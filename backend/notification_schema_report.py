@@ -421,32 +421,32 @@ def _notification_summary(document: dict) -> dict:
         "reference_id",
         "deduplication_key",
     }
-    for field in identity_fields:
-        if field in document:
-            summary[field] = _identity_value(document[field])
-    for field in (
+    for field_name in identity_fields:
+        if field_name in document:
+            summary[field_name] = _identity_value(document[field_name])
+    for field_name in (
         "read_at",
         "created_at",
         "last_seen_at",
         "updated_at",
         "expires_at",
     ):
-        if field in document:
-            summary[field] = _datetime_value(document[field])
-    for field in ("occurrence_count", "schema_version"):
-        if field in document:
-            summary[field] = _integer_value(document[field])
-    for field in ("user_id", "title", "body"):
-        if field in document:
-            summary[field] = _text_shape(document[field])
+        if field_name in document:
+            summary[field_name] = _datetime_value(document[field_name])
+    for field_name in ("occurrence_count", "schema_version"):
+        if field_name in document:
+            summary[field_name] = _integer_value(document[field_name])
+    for field_name in ("user_id", "title", "body"):
+        if field_name in document:
+            summary[field_name] = _text_shape(document[field_name])
     return summary
 
 
 def _outbox_summary(document: dict) -> dict:
     summary = {_REPORT_FIELD_NAMES: frozenset(document)}
-    for field in ("id", "notification_id", "delivery_key"):
-        if field in document:
-            summary[field] = _identity_value(document[field])
+    for field_name in ("id", "notification_id", "delivery_key"):
+        if field_name in document:
+            summary[field_name] = _identity_value(document[field_name])
     if "status" in document:
         status = document["status"]
         summary["status"] = (
@@ -456,14 +456,14 @@ def _outbox_summary(document: dict) -> dict:
         )
     if "attempts" in document:
         summary["attempts"] = _integer_value(document["attempts"])
-    for field in (
+    for field_name in (
         "next_attempt_at",
         "lease_until",
         "created_at",
         "updated_at",
     ):
-        if field in document:
-            summary[field] = _datetime_value(document[field])
+        if field_name in document:
+            summary[field_name] = _datetime_value(document[field_name])
     if "channel" in document:
         channel = document["channel"]
         if isinstance(channel, str) and channel in SUPPORTED_OUTBOX_CHANNELS:
@@ -472,15 +472,15 @@ def _outbox_summary(document: dict) -> dict:
             summary["channel"] = _UNKNOWN_VALUE
         else:
             summary["channel"] = _INVALID_VALUE
-    for field in ("recipient", "lease_owner", "lease_token", "last_error"):
-        if field in document:
-            summary[field] = _text_shape(document[field])
+    for field_name in ("recipient", "lease_owner", "lease_token", "last_error"):
+        if field_name in document:
+            summary[field_name] = _text_shape(document[field_name])
     if "payload" in document:
         payload = document["payload"]
         summary["payload"] = {} if isinstance(payload, dict) else None
         if isinstance(payload, dict) and any(
-            field in OUTBOX_PAYLOAD_ALLOWED_FIELDS and not isinstance(value, str)
-            for field, value in payload.items()
+            field_name in OUTBOX_PAYLOAD_ALLOWED_FIELDS and not isinstance(value, str)
+            for field_name, value in payload.items()
         ):
             summary[_INVALID_OUTBOX_PAYLOAD_FIELD] = True
     return summary
@@ -494,7 +494,7 @@ def _admin_log_summary(document: dict) -> dict:
         summary["recipient_count"] = _integer_value(document["recipient_count"])
     if "created_at" in document:
         summary["created_at"] = _datetime_value(document["created_at"])
-    for field in (
+    for field_name in (
         "sent_by",
         "target",
         "user_id",
@@ -503,24 +503,26 @@ def _admin_log_summary(document: dict) -> dict:
         "subject",
         "message",
     ):
-        if field in document:
-            summary[field] = _text_shape(document[field])
+        if field_name in document:
+            summary[field_name] = _text_shape(document[field_name])
     return summary
 
 
 def _admin_log_type_issues(document: dict) -> set[str]:
     issues = set()
-    for field in ("target", "delivery_status"):
-        if field in _document_fields(document) and not _identity(document.get(field)):
-            issues.add(f"invalid_admin_log_{field}")
-    for field in ("user_id", "segment", "subject", "message"):
-        value = document.get(field)
+    for field_name in ("target", "delivery_status"):
+        if field_name in _document_fields(document) and not _identity(
+            document.get(field_name)
+        ):
+            issues.add(f"invalid_admin_log_{field_name}")
+    for field_name in ("user_id", "segment", "subject", "message"):
+        value = document.get(field_name)
         if (
-            field in _document_fields(document)
+            field_name in _document_fields(document)
             and value is not None
             and not isinstance(value, str)
         ):
-            issues.add(f"invalid_admin_log_{field}")
+            issues.add(f"invalid_admin_log_{field_name}")
     return issues
 
 
@@ -953,12 +955,12 @@ def _finish_report(
 def _notification_type_issues(document: dict) -> set[str]:
     issues = set()
     fields = _document_fields(document)
-    for field in CANONICAL_NOTIFICATION_FIELDS - {"schema_version"}:
-        if field not in fields:
-            issues.add(f"missing_notification_{field}")
-    for field in ("id", "user_id", "event", "title", "body", "deduplication_key"):
-        if not _identity(document.get(field)):
-            issues.add(f"invalid_notification_{field}")
+    for field_name in CANONICAL_NOTIFICATION_FIELDS - {"schema_version"}:
+        if field_name not in fields:
+            issues.add(f"missing_notification_{field_name}")
+    for field_name in ("id", "user_id", "event", "title", "body", "deduplication_key"):
+        if not _identity(document.get(field_name)):
+            issues.add(f"invalid_notification_{field_name}")
     schema_version = document.get("schema_version")
     if (
         "schema_version" not in fields
@@ -978,9 +980,9 @@ def _notification_type_issues(document: dict) -> set[str]:
         and _as_datetime(document.get("read_at")) is None
     ):
         issues.add("invalid_notification_read_at")
-    for field in ("created_at", "last_seen_at", "updated_at"):
-        if _as_datetime(document.get(field)) is None:
-            issues.add(f"invalid_notification_{field}")
+    for field_name in ("created_at", "last_seen_at", "updated_at"):
+        if _as_datetime(document.get(field_name)) is None:
+            issues.add(f"invalid_notification_{field_name}")
     expires_at = _as_datetime(document.get("expires_at"))
     created_at = _as_datetime(document.get("created_at"))
     if "expires_at" in fields and expires_at is None:
@@ -1203,9 +1205,9 @@ async def build_notification_schema_report(
         else:
             outbox_shapes["mixed_or_unknown"] += 1
             issues["mixed_or_unknown_outbox_shape"] += 1
-        for field in ("id", "notification_id", "recipient", "delivery_key"):
-            if not _identity(document.get(field)):
-                issue = f"invalid_outbox_{field}"
+        for field_name in ("id", "notification_id", "recipient", "delivery_key"):
+            if not _identity(document.get(field_name)):
+                issue = f"invalid_outbox_{field_name}"
                 issues[issue] += 1
                 outbox_type_issues[issue] += 1
         if not isinstance(document.get("payload"), dict):

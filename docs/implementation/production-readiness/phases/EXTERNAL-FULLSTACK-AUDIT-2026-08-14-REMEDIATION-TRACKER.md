@@ -43,7 +43,7 @@ file — not as of the original 14 August audit.
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | API-001 | 25 of 152 operations missing 4xx/5xx OpenAPI metadata | Backend | **Resolved (pending merge)** | PR #257: all 25 documented per-route from actual code, plus a regression test |
-| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **In progress** | PR #258: `black`/`isort` now 0 remaining. PR #262: `.flake8` config fix. PR #263: F401/F841/W391 fixed. This PR (part 3): fixed all E301/E302/E306 blank-line-spacing findings (23 occurrences, 5 files) — pure whitespace. Remaining: E402 (58) and F402 (6, in `notification_schema_report.py`) and all 274 mypy findings, still open for further bounded PRs |
+| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **In progress** | PR #258: `black`/`isort` now 0 remaining. PR #262-#264: `.flake8` config, F401/F841/W391, E301/E302/E306 all resolved. This PR (part 4): fixed all 6 F402 findings in `notification_schema_report.py` — investigated first (AST-checked every function shadowing the module-level `dataclasses.field` import), confirmed none call `field(...)` in that scope, so this was a naming-hygiene risk, not a live bug; fixed by renaming the loop variable to `field_name`. Remaining: E402 (58) and all 274 mypy findings, still open for further bounded PRs |
 | DEP-001 | Unused `framer-motion`; undeclared `vaul` in `drawer.jsx` | Frontend | **Partially resolved (pending merge)** | PR #255 removes `framer-motion` (verified zero consumers). `vaul` quarantine/declaration still open, tied to CLEANUP-001 |
 | DESIGN-001 | NDS migration incomplete (legacy fonts, `transition-all`, side-border) | Frontend | **Open** | Not started |
 | UX-STATE-001 | `RouteFallback` near-blank; `AppErrorBoundary` mislabels render crashes as connection loss | Frontend | **Resolved (pending merge)** | PR #256: honest copy + visible spinner + second recovery action |
@@ -73,7 +73,8 @@ file — not as of the original 14 August audit.
 | [#261](https://github.com/batakers/Niuva/pull/261) | Migration 007-009 dry-run evidence (DATA-001) | `docs/niuva-migration-007-009-dryrun-evidence-20260816` | **Merged** |
 | [#262](https://github.com/batakers/Niuva/pull/262) | `.flake8` config fix (QUALITY-001, part 1) | `chore/niuva-backend-flake8-line-length-config` | **Merged** |
 | [#263](https://github.com/batakers/Niuva/pull/263) | Remove unused imports/vars (QUALITY-001, part 2) | `chore/niuva-backend-flake8-unused-imports` | **Merged** |
-| [#264](https://github.com/batakers/Niuva/pull/264) | Blank-line spacing fixes (QUALITY-001, part 3) | `chore/niuva-backend-flake8-blank-lines` | Open, CI green |
+| [#264](https://github.com/batakers/Niuva/pull/264) | Blank-line spacing fixes (QUALITY-001, part 3) | `chore/niuva-backend-flake8-blank-lines` | **Merged** |
+| [#265](https://github.com/batakers/Niuva/pull/265) | Fix `field` import-shadowing (QUALITY-001, part 4) | `chore/niuva-backend-flake8-field-shadowing` | Open, CI green |
 
 Being merged in sequence as of 2026-08-16; this tracker records source-level
 progress only, it does not itself close any P0/P1 finding, and it does not
