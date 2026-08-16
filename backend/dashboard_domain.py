@@ -42,9 +42,9 @@ def resolve_date_range(
     """Resolve the one range every aggregate on the dashboard will use."""
     now = today or datetime.now(timezone.utc)
     end_value = date_to or now.strftime("%Y-%m-%d")
-    start_value = date_from or (
-        now - timedelta(days=DEFAULT_RANGE_DAYS)
-    ).strftime("%Y-%m-%d")
+    start_value = date_from or (now - timedelta(days=DEFAULT_RANGE_DAYS)).strftime(
+        "%Y-%m-%d"
+    )
 
     start = _parse_day(start_value, "date_from")
     end = _parse_day(end_value, "date_to")

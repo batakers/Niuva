@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import PrivacyPolicyPage from "./PrivacyPolicyPage";
+import { I18nProvider } from "@/i18n";
 
 jest.mock("@/components/layout/Layout", () => ({
   MarketingLayout: ({ children }) => <div>{children}</div>,
@@ -67,4 +68,25 @@ test("gives both privacy contact links a 44px touch target", () => {
     "min-h-11"
   );
   expect(screen.getByRole("link", { name: "+62 800" })).toHaveClass("min-h-11");
+});
+
+test("renders the complete English privacy and contact copy", () => {
+  window.history.replaceState({}, "", "/en/privacy");
+  render(
+    <I18nProvider>
+      <PrivacyPolicyPage />
+    </I18nProvider>,
+  );
+
+  expect(screen.getByText(/Last updated: 30 July 2026/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/Information is used only for relevant operational needs/i),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/does not claim that any specific provider is active/i),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Terakhir diperbarui/i)).not.toBeInTheDocument();
+
+  window.history.replaceState({}, "", "/");
+  window.localStorage.clear();
 });

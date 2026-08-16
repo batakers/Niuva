@@ -297,10 +297,14 @@ class MongoSecurityEventStore:
             raise SecurityEventValidationError("Invalid cleanup batch limit")
         before = _utc(before)
         try:
-            cursor = self.collection.find(
-                {"expires_at": {"$lte": before}},
-                {"_id": 1},
-            ).sort("expires_at", 1).limit(limit)
+            cursor = (
+                self.collection.find(
+                    {"expires_at": {"$lte": before}},
+                    {"_id": 1},
+                )
+                .sort("expires_at", 1)
+                .limit(limit)
+            )
             ids = [item["_id"] async for item in cursor]
             if not ids:
                 return 0
@@ -343,9 +347,7 @@ class AuthenticationSecurityEventService:
         session=None,
     ) -> dict[str, object]:
         if subject_kind == "known_user":
-            subject_ref = _opaque(
-                known_subject_id, "known subject ID", required=True
-            )
+            subject_ref = _opaque(known_subject_id, "known subject ID", required=True)
             if unknown_identifier is not None:
                 raise SecurityEventValidationError(
                     "Known subjects cannot include an unknown identifier"

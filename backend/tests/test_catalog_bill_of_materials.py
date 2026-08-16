@@ -8,8 +8,8 @@ register; snapshots are taken later, onto immutable quotation versions.
 import asyncio
 
 import httpx
-
 from catalog_domain import validate_bill_of_materials
+
 from tests.test_catalog_routes import (
     build_test_context,
     create_publishable_product,
@@ -17,9 +17,24 @@ from tests.test_catalog_routes import (
 )
 
 MATERIALS = {
-    "mat-ply": {"id": "mat-ply", "sku": "PLY-18", "name": "Plywood 18mm", "status": "active"},
-    "mat-ink": {"id": "mat-ink", "sku": "INK-BLK", "name": "Ink Black", "status": "active"},
-    "mat-old": {"id": "mat-old", "sku": "OLD-01", "name": "Retired", "status": "archived"},
+    "mat-ply": {
+        "id": "mat-ply",
+        "sku": "PLY-18",
+        "name": "Plywood 18mm",
+        "status": "active",
+    },
+    "mat-ink": {
+        "id": "mat-ink",
+        "sku": "INK-BLK",
+        "name": "Ink Black",
+        "status": "active",
+    },
+    "mat-old": {
+        "id": "mat-old",
+        "sku": "OLD-01",
+        "name": "Retired",
+        "status": "archived",
+    },
 }
 
 

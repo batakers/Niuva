@@ -212,7 +212,63 @@ INTAKE_SUBMISSION = {
     "need": "Prototype enclosure",
     "timeline": "Q4 2026",
     "brief": "Membutuhkan validasi desain dan prototype fungsional.",
+    "consent": True,
 }
+
+
+@pytest.mark.parametrize(
+    "override, rejected_field",
+    [
+        ({"consent": False}, "consent"),
+        ({"pic_phone": ""}, "pic_phone"),
+        ({"pic_phone": "0812"}, "pic_phone"),
+    ],
+)
+def test_public_intake_refuses_incomplete_consent_or_contact(override, rejected_field):
+    """DEC-UX-003 requires consent and a reachable phone at the boundary.
+
+    The frontend checks both, but the public endpoint is reachable without it,
+    so the contract is enforced here rather than assumed.
+    """
+
+    async def scenario():
+        app = build_context()
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            response = await api.post(
+                "/api/inquiries",
+                json={**INTAKE_SUBMISSION, **override},
+            )
+            assert response.status_code == 422
+            body = response.text
+            assert rejected_field in body
+
+    asyncio.run(scenario())
+
+
+def test_public_intake_does_not_persist_consent_flag():
+    """Consent gates the request; storing it needs its own schema decision."""
+
+    async def scenario():
+        database = FakeDatabase()
+        app = build_context(db=database)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as api:
+            created = await api.post("/api/inquiries", json=INTAKE_SUBMISSION)
+            assert created.status_code == 201
+            assert "consent" not in created.json()
+
+        stored = await database.inquiries.find_one({"id": created.json()["id"]})
+        assert stored is not None
+        assert "consent" not in stored
+
+    asyncio.run(scenario())
 
 
 def test_public_intake_and_permission_scoped_triage():
@@ -233,6 +289,7 @@ def test_public_intake_and_permission_scoped_triage():
                     "need": "Prototype enclosure",
                     "timeline": "Q4 2026",
                     "brief": "Membutuhkan validasi desain dan prototype fungsional.",
+                    "consent": True,
                 },
             )
             assert created.status_code == 201

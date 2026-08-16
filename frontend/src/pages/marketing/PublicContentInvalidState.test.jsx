@@ -91,7 +91,7 @@ test("Contact does not render fallback contact details for malformed CMS data", 
   render(<ContactPage />);
 
   expect(screen.getByRole("alert")).toHaveTextContent(
-    "Konten Contact terbaru tidak dapat diverifikasi."
+    "Konten Kontak terbaru tidak dapat diverifikasi."
   );
   expect(
     screen.queryByText("fallback-contact@example.test")

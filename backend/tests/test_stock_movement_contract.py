@@ -6,9 +6,8 @@ mutate one, so this test pins the whole surface by inspecting the routers
 rather than trusting the absence to persist by convention.
 """
 
-from fastapi.routing import APIRoute
-
 from b2b_routes import build_b2b_router
+from fastapi.routing import APIRoute
 from inventory_routes import build_inventory_router
 
 READ_OR_APPEND = {"GET", "POST", "HEAD", "OPTIONS"}
@@ -73,7 +72,5 @@ def test_movement_history_is_readable_by_subject_and_by_source():
         and route.path == "/admin/inventory/movements"
         and route.methods == {"GET"}
     )
-    parameters = {
-        parameter.name for parameter in list_route.dependant.query_params
-    }
+    parameters = {parameter.name for parameter in list_route.dependant.query_params}
     assert {"subject_type", "subject_id", "reference_id"} <= parameters

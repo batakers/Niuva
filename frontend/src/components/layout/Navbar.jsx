@@ -6,6 +6,11 @@ import { PublicNavigation } from "@/components/layout/PublicNavigation";
 import { useI18n } from "@/i18n";
 import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/permissions";
+import {
+  getPublicLocale,
+  getPublicPath,
+  resolvePublicRoute,
+} from "@/lib/publicRoutes";
 
 export function Navbar() {
   const { lang, setLang, t } = useI18n();
@@ -17,6 +22,10 @@ export function Navbar() {
   const loc = useLocation();
   const nav = useNavigate();
   const canAccessAdmin = hasPermission(user, "admin.access");
+  const matchedPublicRoute = resolvePublicRoute(loc.pathname);
+  const activeLocale = matchedPublicRoute
+    ? getPublicLocale(loc.pathname)
+    : lang;
   const isOperationalRoute =
     loc.pathname === "/dashboard" ||
     loc.pathname === "/order" ||
@@ -37,11 +46,11 @@ export function Navbar() {
   };
   const signOut = async () => {
     await logout();
-    window.location.replace("/");
+    window.location.replace(getPublicPath("home", lang));
   };
   useEffect(() => {
     setOpen(false);
-  }, [loc.pathname]);
+  }, [loc.hash, loc.pathname, loc.search]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -64,8 +73,8 @@ export function Navbar() {
     return () => window.clearTimeout(menuFocusTimerRef.current);
   }, [open]);
   useEffect(() => {
-    document.documentElement.lang = isOperationalRoute ? lang : "id";
-  }, [isOperationalRoute, lang]);
+    document.documentElement.lang = activeLocale;
+  }, [activeLocale]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -118,7 +127,15 @@ export function Navbar() {
   return (
     <header className="fixed left-0 right-0 top-0 z-40 bg-navigation-backdrop px-4 pb-3 pt-3 sm:px-6 lg:px-8">
       <div className="relative z-10 mx-auto flex h-16 max-w-[var(--container-wide)] items-center justify-between rounded-panel bg-surface-default px-4 shadow-navigation ring-1 ring-border-default sm:px-6">
-        <Link to="/" className="-ml-2 flex min-h-11 items-center rounded-control px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring" aria-label="Niuva Inovasi Utama - Beranda">
+        <Link
+          to={getPublicPath("home", activeLocale)}
+          className="-ml-2 flex min-h-11 items-center rounded-control px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          aria-label={
+            activeLocale === "en"
+              ? "Niuva Inovasi Utama - Home"
+              : "Niuva Inovasi Utama - Beranda"
+          }
+        >
           <BrandIdentity />
         </Link>
 
@@ -139,14 +156,18 @@ export function Navbar() {
             workspaceLabel={workspaceLabel}
           />
         ) : (
-          <PublicNavigation pathname={loc.pathname} />
+          <PublicNavigation
+            pathname={loc.pathname}
+            search={loc.search}
+            hash={loc.hash}
+          />
         )}
 
         <button
           ref={menuButtonRef}
           className="relative h-11 w-11 cursor-pointer rounded-control bg-surface-muted transition-colors duration-emphasis ease-snap hover:bg-surface-highlight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-default lg:hidden"
           onClick={toggleMenu}
-          aria-label={open ? "Tutup menu" : "Buka menu"}
+          aria-label={open ? t("nav.closeMenu") : t("nav.openMenu")}
           aria-expanded={open}
           aria-controls="mobile-navigation-panel"
         >
@@ -177,7 +198,7 @@ export function Navbar() {
         id="mobile-navigation-panel"
         role={open ? "dialog" : undefined}
         aria-modal={open ? "true" : undefined}
-        aria-label="Menu navigasi"
+        aria-label={t("nav.mobile")}
         inert={!open}
         className={`fixed inset-x-4 top-[5.5rem] z-10 max-h-[calc(100dvh-6.5rem)] overflow-y-auto rounded-feature bg-surface-default p-5 shadow-overlay ring-1 ring-border-default transition-[opacity,transform] duration-emphasis ease-snap sm:inset-x-6 lg:hidden ${
           open
@@ -185,7 +206,7 @@ export function Navbar() {
             : "invisible pointer-events-none -translate-y-4 opacity-0"
         }`}
       >
-        <nav className="grid gap-2" aria-label="Mobile navigation">
+        <nav className="grid gap-2" aria-label={t("nav.mobile")}>
           {isOperationalRoute ? (
             <OperationalNavigation
               lang={lang}
@@ -206,8 +227,10 @@ export function Navbar() {
           ) : (
             <PublicNavigation
               pathname={loc.pathname}
+              search={loc.search}
+              hash={loc.hash}
               mobile
-              menuOpen={open}
+              onNavigate={() => setOpen(false)}
             />
           )}
         </nav>

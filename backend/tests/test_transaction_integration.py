@@ -13,9 +13,8 @@ if (
         allow_module_level=True,
     )
 
-from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
-
 from database_capabilities import probe_database_capabilities  # noqa: E402
+from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 from transaction_execution import TransactionExecutor  # noqa: E402
 
 
