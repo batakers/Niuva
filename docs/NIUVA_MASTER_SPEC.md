@@ -3,10 +3,12 @@
 Status: **Approved Canonical**
 Draft date: 23 July 2026
 Approval date: 23 July 2026
-Last canonical amendment: 13 August 2026 — NDS 2.0 cross-surface
-design-system reconstruction target and migration guardrail
+Last canonical amendment: 17 August 2026 — unified PRD read-first contract,
+consolidated feature/delivery status, and provenance routing
 Approval record: `docs/decisions/APPROVAL-NIUVA-CANONICAL-DOCUMENTATION-2026-07-23.md`
+Latest amendment approval: Explicit owner approval, 17 August 2026
 Scope: Product, business, experience, data, operational, security, and implementation boundaries for the Niuva website and platform
+Read-first role: **Unified PRD and product/experience front door**
 
 ## 1. Document Status and Authority
 
@@ -37,6 +39,66 @@ Runbooks are procedural authority only. They do not decide product direction, cu
 Documents marked Superseded, Candidate, Context Only, or Archive Candidate are not implementation authority. A newer date alone does not make a document authoritative. Approval status, scope, supersession, and explicit decision evidence must be checked through `docs/context/DOCUMENT_REGISTER.md` and `docs/decisions/DECISION_REGISTER.md`.
 
 Current source code, UI, schemas, routes, and tests must be inspected before implementation, but they do not override approved requirements. When implementation conflicts with an approved requirement, the conflict must be reported and resolved deliberately.
+
+### Unified PRD read-first contract
+
+For ordinary product orientation, feature-scope review, and owner discussion,
+this file is the only required first read and serves as Niuva's unified PRD.
+Readers must not reconstruct current direction by merging the older BRD, PRS,
+PRD, promotion packet, reconciliation packet, or implementation-plan files.
+
+This consolidation changes the reading experience, not authority:
+
+- this Master Specification consolidates current product and experience
+  direction;
+- a more specific approved decision or ADR still governs its exact scope;
+- approved BRD, PRS, and PRD baselines remain requirements provenance where
+  this file and approved decisions are silent;
+- Candidate and Context Only documents remain provenance and cannot amend this
+  file; and
+- merged source or passing tests are implementation evidence, not feature
+  activation, production-readiness, or go-live authority.
+
+The feature matrix below uses these maturity terms:
+
+- **Approved:** product direction is settled within the cited scope; source
+  implementation remains a separate gate unless explicitly recorded.
+- **Merged bounded evidence:** a named implementation slice entered the base
+  branch; it does not prove the whole feature, deployment, or readiness.
+- **Activation gated:** direction is approved, but one or more technical,
+  Finance, provider, migration, operational, or evidence gates remain open.
+- **Candidate:** reviewed planning direction without canonical or
+  implementation authority.
+- **Deferred/Open:** a selection or activation decision remains unresolved.
+
+### Consolidated feature and delivery status
+
+This table summarizes durable product maturity. It is not a live deployment
+inventory; exact implementation claims still require the current source,
+tests, registered evidence, and applicable environment checks at a selected
+SHA.
+
+<!-- markdownlint-disable MD013 -->
+
+| Product area | Consolidated product result | Requirement status | Durable delivery boundary | Governing detail |
+| --- | --- | --- | --- | --- |
+| Platform shape | One website and one operational platform with shared foundations but separate Retail Order and B2B Quote/Project lifecycles | Approved Baseline and Architecture Decision | Existing source/tests are evidence only; whole-platform parity and readiness are not claimed | Sections 2, 5, and 6; `ADR-004` |
+| Public Homepage and Services | Unified Homepage, Business/B2B-primary narrative, clear secondary Retail path, and four equal primary Services | Approved Decisions | Homepage, navigation, localization, and NDS work proceed by bounded slice; broader rollout remains gated | Sections 7–9; `DEC-UX-001`; `DEC-UX-004` |
+| Public routes and localization | Indonesian canonical Public routes, `/en` counterparts, one-hop compatibility aliases, and reserved project-detail prefixes | Approved Documentation Decision | Route source, delivery-boundary redirects, canonical/`hreflang`/sitemap behavior, and browser evidence remain separately verifiable | Section 7; `DEC-UX-003` |
+| Public B2B intake | Form-first Inquiry without login, persisted `new`, existing UUID acknowledgement, optional user-clicked WhatsApp after persistence, manual follow-up, and no public raw-file upload | Approved Documentation Decision | Bounded source evidence does not activate a B2B portal, upload provider, WhatsApp automation, deployment, or readiness | Section 6; `DEC-UX-003` |
+| Retail discovery and account boundary | Anonymous discovery and non-sensitive configuration; authenticated ownership before private upload, authoritative checkout, payment, history, and tracking | Approved Decision | Read-only discovery is the selected first Retail vertical slice; transaction capability is not implied | Sections 6 and 16; `DEC-RT-02`; `ADR-005` |
+| Retail configuration, files, and quote routing | Fixed/calculated/`quote_required`, safe file eligibility, mixed-cart separation, context preservation, and private versioned Assisted Retail Offer | Approved Product Contract — Activation Gated | Exact profiles, thresholds, storage, schema, offer expiry, implementation, and activation remain open | Section 11; `DEC-OFFER-01` |
+| Custom Print pricing and tax | Progressive PLA/ABS material plus exact machine time, final-only rounding, immutable snapshots, and tax-inclusive-if-applicable display | Approved Policies — Activation Gated | Finance tax profile, calibration, effective timestamp, checkout implementation, and activation remain open | Section 11; `DEC-PRICE-001`; `DEC-TAX-01` |
+| Inventory and reservation | Versioned material price, idempotent movement, no-negative-stock, immutable commercial snapshots, and fixed 30-minute checkout reservation | Approved Baseline and Decision | Transaction capability, expiry/payment reconciliation, migration, and environment evidence remain separately gated | Section 12; `DEC-INV-01`; `ADR-001` |
+| Payment, pickup, and delivery | Provider-neutral online payment, Rp0 eligible pickup, domestic automatic-rate delivery, immutable fulfillment snapshots, and safe expiry handling | Approved Direction with Open Provider Gates | No payment, logistics, storage, or production provider is selected or activated by this specification | Sections 11, 15, and 16; `ADR-002`; `ADR-003`; `DEC-FUL-01` |
+| ETA, milestones, and after-sales | Pre-payment ETA ranges, factual milestones, audited updates, `eta_overdue`, file revision, cancellation, complaint, remedy, refund, and return boundaries | Approved Policies — Activation Gated | Numeric profiles, legal/Finance/provider operations, exact technical contract, implementation, and readiness remain open | Sections 11 and 16; `DEC-ETA-01`; `DEC-AFTER-01` |
+| B2B organization, quotation, and project portal | Organization, versioned quotation/design approval, project milestones, invoice/DP/termin, QC, and shipment remain the platform direction | Approved Baseline; first portal slice unresolved | Narrowed MVP begins with manual Public Inquiry; customer organization portal activation remains separately decided and gated | Section 6; approved PRD v2.1; `DR-010` context |
+| CMS and Admin Studio | Reduced integrated structured CMS plus role-scoped content, catalog, inventory, order, production, QC, Finance, and audit operations | Approved Baseline and Decisions | Bounded merged evidence may exist; schema, migration, browser, operational, deployment, and readiness claims remain scoped separately | Sections 9, 10, and 12; `DEC-OPS-001`; `DEC-OPS-003` |
+| Notifications | Recipient-scoped in-app records, provider-neutral transactional email outbox, bounded retry/resend, safe links, retention, and no Retail WhatsApp | Approved Decision; bounded source evidence registered | Provider, scheduler/worker topology, exact events, preference UI, deployment, and production operation remain open | Section 12; `DEC-DATA-003`; Document Register |
+| Design system and UX reconciliation | NDS 2.0 is the approved cross-surface target; lifecycle, state, evidence, and anti-template constraints remain surface-specific | Approved target plus candidate provenance | NDS rollout is implementation gated; the 14 August `UXR-01`–`UXR-22` packet remains Candidate and cannot amend authority | Sections 8, 9, 14–16; `DEC-UX-004`; `DESIGN.md` |
+| Production readiness and go-live | Readiness, activation, deployment, and go-live remain separate owner gates | Deferred/Open | No document, merged PR, source file, green test, or feature matrix row grants production readiness or go-live | Sections 16–18; applicable runbooks |
+
+<!-- markdownlint-enable MD013 -->
 
 Primary provenance:
 

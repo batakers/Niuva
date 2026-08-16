@@ -21,6 +21,11 @@ canonical amendment is recorded in those documents and in `DEC-UX-003`. It
 does not authorize source/schema changes, select a provider, authorize
 deployment, or authorize production readiness or go-live.
 
+> **Read-first notice:** This packet is promotion provenance, not the active
+> PRD. Start with [`NIUVA_MASTER_SPEC.md`](../../../NIUVA_MASTER_SPEC.md); the
+> approved B2B intake behavior is governed by the amended PRD v2.1 and
+> `DEC-UX-003`.
+
 ## 1. Decision being recorded
 
 The selected B2B intake pattern is:

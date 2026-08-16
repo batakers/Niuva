@@ -10,6 +10,11 @@ reviewed B2B intake decision. It is not itself a runtime authorization and
 does not authorize code, API/schema work, migration, provider activation,
 deployment, production readiness, or go-live.
 
+> **Read-first notice:** This is an approval and provenance record, not the
+> active PRD. Start with
+> [`NIUVA_MASTER_SPEC.md`](../../../NIUVA_MASTER_SPEC.md); use this file only to
+> verify the 8 August 2026 promotion scope and its explicit exclusions.
+
 ## 1. Requested promotion
 
 Promote the following MVP behavior into canonical product/experience

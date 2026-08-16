@@ -22,6 +22,13 @@ This packet does not amend canonical authority. It does not authorize source,
 dependency, route, redirect, CMS, API, schema, provider, migration,
 deployment, readiness, or go-live work.
 
+> **Read-first notice:** This owner-approved packet remains Candidate
+> provenance. Start with
+> [`NIUVA_MASTER_SPEC.md`](../../../NIUVA_MASTER_SPEC.md) for current product
+> direction; use this packet only to trace the reconciled UX/UI recommendations
+> and their dispositions. `UXR-01` through `UXR-22` are not canonical merely
+> because PR #253 published this file.
+
 ## 1. Executive disposition
 
 The four source documents remain **owner-held external inputs**, identified by
