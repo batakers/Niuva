@@ -43,7 +43,7 @@ file — not as of the original 14 August audit.
 | ID | Finding | Domain | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | API-001 | 25 of 152 operations missing 4xx/5xx OpenAPI metadata | Backend | **Resolved (pending merge)** | PR #257: all 25 documented per-route from actual code, plus a regression test |
-| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **In progress** | PR #258: `black`/`isort` now 0 remaining, project-wide. PR #262: `.flake8` config fix reduced flake8 from 2,046 to 433 genuine findings. This PR (part 2): fixed all F401 (9 unused imports), F841 (1 unused exception variable), and W391 (1 trailing blank line) findings across 9 files — flake8 now reports 0 for these three categories. Remaining flake8 categories (E402, E301/E302/E306, F402) and all 274 mypy findings still open, to be worked in further bounded PRs |
+| QUALITY-001 | Backend static-quality debt (flake8/mypy/black/isort) | Backend | **In progress** | PR #258: `black`/`isort` now 0 remaining. PR #262: `.flake8` config fix. PR #263: F401/F841/W391 fixed. This PR (part 3): fixed all E301/E302/E306 blank-line-spacing findings (23 occurrences, 5 files) — pure whitespace. Remaining: E402 (58) and F402 (6, in `notification_schema_report.py`) and all 274 mypy findings, still open for further bounded PRs |
 | DEP-001 | Unused `framer-motion`; undeclared `vaul` in `drawer.jsx` | Frontend | **Partially resolved (pending merge)** | PR #255 removes `framer-motion` (verified zero consumers). `vaul` quarantine/declaration still open, tied to CLEANUP-001 |
 | DESIGN-001 | NDS migration incomplete (legacy fonts, `transition-all`, side-border) | Frontend | **Open** | Not started |
 | UX-STATE-001 | `RouteFallback` near-blank; `AppErrorBoundary` mislabels render crashes as connection loss | Frontend | **Resolved (pending merge)** | PR #256: honest copy + visible spinner + second recovery action |
@@ -72,7 +72,8 @@ file — not as of the original 14 August audit.
 | [#260](https://github.com/batakers/Niuva/pull/260) | Rate-limiter multi-worker evidence (SEC-002) | `test/niuva-rate-limiter-multiworker-evidence` | **Merged** |
 | [#261](https://github.com/batakers/Niuva/pull/261) | Migration 007-009 dry-run evidence (DATA-001) | `docs/niuva-migration-007-009-dryrun-evidence-20260816` | **Merged** |
 | [#262](https://github.com/batakers/Niuva/pull/262) | `.flake8` config fix (QUALITY-001, part 1) | `chore/niuva-backend-flake8-line-length-config` | **Merged** |
-| [#263](https://github.com/batakers/Niuva/pull/263) | Remove unused imports/vars (QUALITY-001, part 2) | `chore/niuva-backend-flake8-unused-imports` | Open, CI green |
+| [#263](https://github.com/batakers/Niuva/pull/263) | Remove unused imports/vars (QUALITY-001, part 2) | `chore/niuva-backend-flake8-unused-imports` | **Merged** |
+| [#264](https://github.com/batakers/Niuva/pull/264) | Blank-line spacing fixes (QUALITY-001, part 3) | `chore/niuva-backend-flake8-blank-lines` | Open, CI green |
 
 Being merged in sequence as of 2026-08-16; this tracker records source-level
 progress only, it does not itself close any P0/P1 finding, and it does not
