@@ -3,7 +3,7 @@ import types
 
 import httpx
 import pytest
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from catalog_routes import build_catalog_router

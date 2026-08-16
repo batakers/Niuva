@@ -1,7 +1,6 @@
 import asyncio
 import copy
 import importlib.util
-import json
 import os
 import sys
 import types

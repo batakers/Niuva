@@ -5,7 +5,6 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 from audit import append_audit_event
-from permissions import has_permission
 from catalog_domain import (
     build_publication_snapshot,
     normalize_slug,

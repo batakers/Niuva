@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 
 from material_pricing import resolve_effective_price
 from material_routes import MaterialService, build_material_router
