@@ -11,6 +11,8 @@ import {
 } from "../../components/brand/BrandSystem";
 import { usePublicContent } from "../../lib/content";
 import { usePublicSettings } from "../../lib/publicSettings";
+import { useI18n } from "@/i18n";
+import { getPublicPath } from "@/lib/publicRoutes";
 
 const FAQ_ROW = "grid gap-3 border-b border-border-default py-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10";
 
@@ -35,6 +37,8 @@ function FaqSkeleton() {
 }
 
 export default function FaqPage() {
+  const { lang, t } = useI18n();
+  const contactPath = getPublicPath("contact", lang);
   const { contact } = usePublicSettings();
   const { blocks: cmsBlocks, status } = usePublicContent("faq");
   const faqs = useMemo(
@@ -53,7 +57,7 @@ export default function FaqPage() {
           title="Pertanyaan yang sering diajukan."
           body="Ringkasan jawaban untuk pertanyaan umum seputar riset, desain, prototyping, dan kolaborasi dengan Niuva. Untuk pertanyaan spesifik, silakan hubungi tim kami langsung."
           variant="stack"
-          primaryAction={<BrandButton to="/contact">Diskusikan Project</BrandButton>}
+          primaryAction={<BrandButton to={contactPath}>{t("nav.discussProject")}</BrandButton>}
           showMotif={false}
         />
 
@@ -107,8 +111,8 @@ export default function FaqPage() {
           eyebrow={null}
           title="Masih ada pertanyaan lain?"
           body="Sampaikan langsung ke tim Niuva melalui WhatsApp, email, atau form konsultasi."
-          primaryAction={<BrandButton to="/contact" variant="inverse">Diskusikan Project</BrandButton>}
-          secondaryAction={<BrandButton href={contact.whatsappHref || "/contact"} variant="secondary">Hubungi Niuva</BrandButton>}
+          primaryAction={<BrandButton to={contactPath} variant="inverse">{t("nav.discussProject")}</BrandButton>}
+          secondaryAction={<BrandButton href={contact.whatsappHref || contactPath} variant="secondary">{lang === "en" ? "Contact Niuva" : "Hubungi Niuva"}</BrandButton>}
           whatsappHref={contact.whatsappHref}
           email={contact.email}
         />

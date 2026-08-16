@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal
 
+from api_contract import error_responses
 from audit import append_audit_event
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from material_pricing import (
@@ -385,11 +386,11 @@ def build_material_router(
                 status_code=exc.status_code, detail=exc.payload()
             ) from exc
 
-    @router.get("/materials")
+    @router.get("/materials", responses=error_responses(500))
     async def public_materials():
         return await invoke(service().list_materials_public())
 
-    @router.get("/admin/materials")
+    @router.get("/admin/materials", responses=error_responses(401, 403, 500))
     async def internal_materials(
         actor: dict = Depends(require_permission("materials.read")),
     ):

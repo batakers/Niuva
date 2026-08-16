@@ -3,6 +3,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from api_contract import error_responses
 from audit import append_identity_governance_event
 from fastapi import APIRouter, Depends, HTTPException
 from permissions import (
@@ -93,7 +94,7 @@ def build_identity_router(
 ) -> APIRouter:
     router = APIRouter(tags=["identity"])
 
-    @router.get("/admin/users")
+    @router.get("/admin/users", responses=error_responses(401, 403, 500))
     async def list_users(_user: dict = Depends(require_permission("users.read"))):
         database = get_db()
         users = (

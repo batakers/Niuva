@@ -14,6 +14,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { OperationalState } from "@/components/ui/operational-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HAS_CONFIGURED_BACKEND } from "@/lib/api";
+import { useI18n } from "@/i18n";
+import { getPublicPath } from "@/lib/publicRoutes";
 import {
   availabilityLabel,
   formatCatalogPrice,
@@ -72,6 +74,8 @@ function ProductTileSkeleton() {
 }
 
 export default function RetailCatalogPage() {
+  const { lang } = useI18n();
+  const contactPath = getPublicPath("contact", lang);
   const [state, setState] = useState({
     status: HAS_CONFIGURED_BACKEND ? "loading" : "unavailable",
     items: [],
@@ -153,9 +157,10 @@ export default function RetailCatalogPage() {
     <MarketingLayout>
       <div className="retail-surface bg-surface-page">
         <MarketingSection
+          id="custom-3d-print"
           tone="page"
           spacing="compact"
-          className="!pt-[var(--space-page-start)]"
+          className="scroll-mt-28 !pt-[var(--space-page-start)]"
         >
           <PageContainer>
             <div className="grid gap-8 border-b border-border-default pb-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -170,13 +175,15 @@ export default function RetailCatalogPage() {
                 </p>
               </div>
               <Button asChild variant="outline" className="w-full lg:w-auto">
-                <Link to="/contact">Diskusikan kebutuhan khusus</Link>
+                <Link to={contactPath}>
+                  {lang === "en" ? "Discuss a specific need" : "Diskusikan kebutuhan khusus"}
+                </Link>
               </Button>
             </div>
           </PageContainer>
         </MarketingSection>
 
-        <MarketingSection tone="default">
+        <MarketingSection id="ready-products" tone="default" className="scroll-mt-28">
           <PageContainer>
             <div className="mb-8 max-w-3xl">
               <h2 className="font-heading text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
