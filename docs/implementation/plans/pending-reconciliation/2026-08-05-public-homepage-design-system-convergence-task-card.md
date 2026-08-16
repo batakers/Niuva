@@ -37,8 +37,8 @@ deferred journey-switching design.
 - `docs/decisions/evidence/HOMEPAGE_PROTOTYPE_DECISION.md`
 - `docs/implementation/plans/pending-reconciliation/2026-07-23-homepage-production-implementation-plan.md`
   as context only
-- `docs/references/requirements/historical-active/AGENTS.brand-baseline-v1.md`
-  where it does not conflict with later decisions
+- root `AGENTS.md`, including its consolidated Public Product and Brand
+  Guardrails
 - `DESIGN.md`
 - The active goal instruction to retain the current UI libraries and converge
   the frontend through isolated surface slices

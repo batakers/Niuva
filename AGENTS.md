@@ -1,5 +1,9 @@
 # AGENTS.md — Niuva Repository Entry Point
 
+> **Sole active repository-level agent instruction.** Historical or archived
+> files whose names begin with `AGENTS.` are provenance only and do not extend
+> or override this file.
+
 ## Canonical Reading Order
 
 1. `docs/NIUVA_MASTER_SPEC.md`
@@ -20,7 +24,36 @@
 - Storage and Retail payment boundaries remain provider-neutral. Do not select or activate a provider, upload, payment, Finance, production-readiness, or go-live decision without explicit approval.
 - Preserve historical records and perform migrations non-destructively with backup, dry run, validation, and rollback instructions. Do not hard-delete referenced records.
 - Do not write credentials, tokens, secrets, or API keys into source or product documentation.
-- `docs/references/requirements/historical-active/AGENTS.brand-baseline-v1.md` remains an Active Guardrail for public-page and brand work only where it does not conflict with the canonical documents or an approved decision.
+- This root `AGENTS.md` is the sole active repository-level agent guardrail.
+  Archived agent baselines are traceability only and must not be interpreted as
+  current instructions.
+
+## Consolidated Public Product and Brand Guardrails
+
+- Public surfaces establish Niuva's credibility through clear positioning,
+  four equal primary Services, attributable project evidence, and an obvious
+  Business/B2B inquiry path. Retail remains secondary but clearly discoverable.
+- Follow the Indonesian-first route and localization contract in `DEC-UX-003`.
+  Do not restore the former exact five-page navigation, English-first canonical
+  paths, or a `Capabilities` hierarchy as current authority.
+- Never restore a primary/supporting split among Research & Development,
+  Consultant & Workshop, Design & Prototyping, and Apparel & Merchandise. Their
+  information, visual rank, and default detail action remain equal.
+- Present projects as factual evidence with context, challenge, method or
+  contribution, output, and capability proven. Do not invent clients, project
+  facts, assets, metrics, awards, status, outcomes, testimonials, or production
+  claims. Supporting stock, conceptual, or generated visuals must be labelled
+  honestly and cannot substantiate Niuva project evidence.
+- Public B2B intake is form-first and persistence-first. A success state names
+  the existing Inquiry UUID; optional WhatsApp continuation is user-clicked and
+  appears only after persistence. Do not add public raw-file upload, automatic
+  WhatsApp behavior, or a false success state.
+- Resolve visual direction through `DESIGN.md`, `DEC-UX-004`, and the current
+  source/register evidence. Historical palette, card, typography, navigation,
+  contact-detail, or page-composition clauses are not independent authority.
+- Keep Public expression distinct from Retail, Account, and Operations task
+  surfaces while preserving shared identity, accessibility, and truthful state
+  feedback.
 
 ## Repository Workflow
 

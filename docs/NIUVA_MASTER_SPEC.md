@@ -4,7 +4,8 @@ Status: **Approved Canonical**
 Draft date: 23 July 2026
 Approval date: 23 July 2026
 Last canonical amendment: 17 August 2026 — unified PRD read-first contract,
-consolidated feature/delivery status, and provenance routing
+consolidated feature/delivery status, provenance routing, and root agent/product
+authority consolidation
 Approval record: `docs/decisions/APPROVAL-NIUVA-CANONICAL-DOCUMENTATION-2026-07-23.md`
 Latest amendment approval: Explicit owner approval, 17 August 2026
 Scope: Product, business, experience, data, operational, security, and implementation boundaries for the Niuva website and platform
@@ -21,11 +22,18 @@ Effective 23 July 2026, this document is the primary product and experience sour
 1. This Master Specification for consolidated product and experience direction.
 2. Approved decision records and ADRs for decisions within their specific scope.
 3. Approved BRD, PRS, PRD, and unified platform design as requirements provenance where this document is silent.
-4. Active implementation guardrails such as `AGENTS.md`, provided they do not conflict with this document or an approved decision.
+4. The repository-root `AGENTS.md` as the sole active repository-level agent
+   guardrail, provided it does not conflict with this document or an approved
+   decision.
 5. Runbooks for rollout, migration, rollback, backup, recovery, and handover procedures.
 6. Brand Guidelines and Company Profile as supporting brand and factual references.
 7. Approved implementation specs and plans within their authorized scope.
 8. Current implementation as evidence of system state, not as requirement authority.
+
+The repository-root `PRODUCT.md` is the sole current short-form product
+orientation and remains subordinate to this specification. Archived
+`AGENTS.*` and `PRODUCT.*` snapshots are provenance only, even when their body
+records language that was active historically.
 
 Approved ADRs are not replaced by summaries in this document. In particular:
 

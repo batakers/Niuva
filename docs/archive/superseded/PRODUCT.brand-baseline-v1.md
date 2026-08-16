@@ -1,16 +1,19 @@
 # Product
 
-> **Historical supporting reference — public-v1 snapshot.**
+<!-- markdownlint-disable MD013 MD022 MD060 -->
+
+> **Superseded 17 August 2026 — provenance only.** Current product orientation
+> is the repository-root [`PRODUCT.md`](../../../PRODUCT.md), and the detailed
+> Unified PRD is [`docs/NIUVA_MASTER_SPEC.md`](../../NIUVA_MASTER_SPEC.md).
 >
-> Authority status: `Supporting Reference`; see
-> [`docs/context/DOCUMENT_REGISTER.md`](../../../context/DOCUMENT_REGISTER.md).
-> Use this file only to recover public positioning and surface-separation intent
-> where it does not conflict with the Master Spec, Document Register, Decision
-> Register, an approved decision or ADR, or an applicable runbook.
+> Authority status: `Superseded — Provenance Only`; see
+> [`docs/context/DOCUMENT_REGISTER.md`](../../context/DOCUMENT_REGISTER.md).
+> Use this file only to trace the historical public-v1 snapshot.
 >
-> Do not use it for current platform scope, role model, implementation
-> authorization, or product decisions. References to “current implementation”
-> below describe the historical snapshot, not present repository truth.
+> Do not use it for current platform scope, Service rank, route/navigation
+> ownership, role model, implementation authorization, or product decisions.
+> References to “current implementation” below describe the historical
+> snapshot, not present repository truth.
 
 ## Register
 

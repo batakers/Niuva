@@ -1,5 +1,9 @@
 # Niuva Product Orientation
 
+> **Current root product orientation.** The detailed Unified PRD remains
+> `docs/NIUVA_MASTER_SPEC.md`. Archived files whose names begin with `PRODUCT.`
+> are provenance only and do not add current product requirements.
+
 ## Product Shape
 
 Niuva is one website and one operational platform. Its primary positioning is a
@@ -17,6 +21,18 @@ rank:
 Equal Service rank does not merge customer journeys. Business/B2B remains the
 Homepage's primary narrative, while Retail remains secondary but clearly
 discoverable.
+
+## Product Outcomes
+
+- **Public and Business/B2B:** help visitors understand the four Services,
+  review verified project evidence, and submit a persisted Inquiry with an
+  existing UUID before any optional user-clicked WhatsApp continuation.
+- **Retail:** let customers discover and safely configure eligible 3D-print
+  products, then continue through account-required, server-authoritative
+  validation, checkout, payment, and factual tracking where separately active.
+- **Account and Operations:** let authorized users act on owned records and
+  operational queues with clear status, privacy, recovery, and lifecycle
+  boundaries rather than Public campaign composition.
 
 ## Two Customer Journeys
 
@@ -45,6 +61,15 @@ applicable ADRs and approved decisions.
 `DEC-UX-004` and `DESIGN.md` govern the approved NDS 2.0 digital design target,
 surface-specific composition, component/state contracts, and staged migration.
 They do not authorize production implementation by themselves.
+
+## Historical Baseline Disposition
+
+The former public-v1 `PRODUCT.brand-baseline-v1.md` snapshot is superseded and
+retained only as provenance. Its still-valid positioning, evidence, truthful
+copy, and Public-versus-Operations separation are consolidated here, in the
+Master Spec, and in the approved UX/design authority. Its former five-page,
+`Capabilities`, unequal-Service-rank, and e-commerce/multilingual exclusion
+clauses are not current product direction.
 
 ## Deferred Decisions
 

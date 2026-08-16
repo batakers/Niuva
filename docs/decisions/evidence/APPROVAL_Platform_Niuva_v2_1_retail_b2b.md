@@ -46,6 +46,8 @@ Historical Active Baseline and Active Implementation Guardrail documents remain 
 
 Candidate and Superseded documents are not implementation authority.
 
+<!-- markdownlint-disable MD013 MD060 -->
+
 | Source | Status | Canonical role | Approval / authority evidence |
 |---|---|---|---|
 | `docs/references/requirements/approved-baselines/BRD_Platform_Niuva_v2_1_retail_b2b_addendum.md` | Approved Baseline | Business requirements v2.1 | Explicitly listed in this record |
@@ -56,7 +58,7 @@ Candidate and Superseded documents are not implementation authority.
 | `AGENTS.md` | Approved Baseline | Platform implementation guardrails | Explicitly listed in this record |
 | `docs/references/requirements/historical-active/BRD_Website_Niuva.md` | Historical Active Baseline | Public brand, company, portfolio, and lead-generation requirements | Approval evidence not recorded |
 | `docs/references/requirements/historical-active/PRS_Website_Niuva.md` | Historical Active Baseline | Public v1 page, navigation, CTA, and scope baseline | Approval evidence not recorded |
-| `docs/references/requirements/historical-active/AGENTS.brand-baseline-v1.md` | Active Implementation Guardrail | Public website and brand guardrails | Stakeholder approval not separately recorded |
+| `docs/archive/superseded/AGENTS.brand-baseline-v1.md` | Superseded — Provenance Only | Historical public website and brand guardrails; retained current clauses were later consolidated into root `AGENTS.md` | Stakeholder approval was not separately recorded; later consolidation explicitly approved 17 August 2026 |
 | `docs/archive/superseded/BRD_Platform_Niuva_v2_addendum.md` | Superseded | Archived historical v2 business requirements | Archived supersession evidence; superseded by BRD v2.1 |
 | `docs/archive/superseded/PRS_Platform_Niuva_v2_addendum.md` | Superseded | Archived historical v2 product scope | Archived supersession evidence; superseded by PRS v2.1 |
 | `docs/archive/superseded/2026-07-14-integrated-operations-marketplace-design.md` | Superseded | Archived integrated marketplace design | Archived supersession evidence; superseded by unified Retail–B2B design |
@@ -64,6 +66,8 @@ Candidate and Superseded documents are not implementation authority.
 | `docs/decisions/architecture/ADR-001-mongodb-transaction-capability.md` | Approved Baseline | Transaction-capability authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; internal architecture direction only |
 | `docs/decisions/architecture/ADR-002-production-file-storage-architecture.md` | Approved with Open Decisions | Production persistent-storage authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; operational decisions remain open |
 | `docs/decisions/architecture/ADR-003-retail-payment-orchestration-boundary.md` | Approved with Open Decisions | Provider-neutral Retail payment authority | Approved in commit `2a45e146f5bc9d7d134c5dd804a9a546cea03a4e`; provider and operational decisions remain open |
+
+<!-- markdownlint-enable MD013 MD060 -->
 
 ## Known Branch-Local Documents
 
@@ -144,12 +148,20 @@ Keputusan berikut tetap deferred dan tidak disetujui oleh record ini:
 - Provider payment gateway.
 - Detail visual navigasi/switch Retail dan B2B.
 
-Dokumen berikut tetap berada di luar approval requirements dan/atau tetap menjadi guardrail atau candidate:
+<!-- markdownlint-disable MD013 -->
 
-- `docs/references/requirements/historical-active/AGENTS.brand-baseline-v1.md` — tetap menjadi Active Implementation Guardrail.
+Dokumen berikut berada di luar approval requirements asli dan/atau memiliki
+status yang kemudian diubah oleh keputusan terpisah:
+
+- `docs/archive/superseded/AGENTS.brand-baseline-v1.md` — awalnya dicatat sebagai
+  Active Implementation Guardrail; superseded pada 17 August 2026 setelah
+  aturan yang masih berlaku dikonsolidasikan ke root `AGENTS.md` melalui
+  persetujuan owner terpisah.
 - `docs/superpowers/specs/2026-07-14-catalog-material-pricing-inventory-foundation-design.md` — Approved with Open Decisions; branch-local and unavailable to primary implementation until merged or otherwise made available there.
 - `docs/superpowers/specs/2026-07-16-remove-emergent-local-storage-design.md` — Approved with Open Decisions untuk development/demo storage only; branch-local and unavailable to primary implementation until merged or otherwise made available there.
 - `docs/superpowers/specs/2026-07-16-retail-order-checkout-foundation-design.md` — branch-local Technical Design Candidate; not approved for implementation.
+
+<!-- markdownlint-enable MD013 -->
 
 ## Supersession Map
 
