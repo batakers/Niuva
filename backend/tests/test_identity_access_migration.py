@@ -347,10 +347,7 @@ def test_apply_classifies_fail_closed_audits_each_change_and_is_idempotent():
     assert by_id["legacy-client"]["roles"] == ["retail_customer"]
     assert by_id["legacy-client"]["access_state"] == "approved"
     assert by_id["canonical-operations"]["roles"] == []
-    assert (
-        by_id["canonical-operations"]["access_state"]
-        == "access_review_required"
-    )
+    assert by_id["canonical-operations"]["access_state"] == "access_review_required"
     assert all("role" not in item for item in by_id.values())
     assert by_id["legacy-admin"][migration.EVIDENCE_FIELD] == {
         "policy_version": ROLE_POLICY_VERSION,
@@ -578,10 +575,7 @@ def test_apply_assigns_reviewed_bootstrap_and_preserves_verified_current_owners(
     assert canonical_roles(by_id[selected["id"]]) == ("super_admin",)
     assert by_id[previous_owner["id"]] == previous_owner
     assert by_id[aggregate_operations["id"]]["roles"] == []
-    assert (
-        by_id[aggregate_operations["id"]]["access_state"]
-        == "access_review_required"
-    )
+    assert by_id[aggregate_operations["id"]]["access_state"] == "access_review_required"
     assert (
         sum(canonical_roles(item) == ("super_admin",) for item in database.users.items)
         == 2

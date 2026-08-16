@@ -2,7 +2,6 @@ import ast
 import unittest
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 INTEGRATION_TEST = REPOSITORY_ROOT / "backend" / "tests" / "backend_test.py"
 STALE_ITERATION_REPORT = REPOSITORY_ROOT / "test_reports" / "iteration_1.json"

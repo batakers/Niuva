@@ -36,7 +36,9 @@ describe("Retail route and data boundaries", () => {
 
   test("limits the product contact handoff to quote-required state", () => {
     expect(detailSource).toContain('state === "quote_required"');
-    expect(detailSource).toContain('<Link to="/contact">Minta penawaran</Link>');
+    expect(detailSource).toContain('getPublicPath("contact", lang)');
+    expect(detailSource).toContain('<Link to={contactPath}>');
+    expect(detailSource).toContain('"Minta penawaran"');
     expect(detailSource).toContain('state === "discovery_only"');
     expect(detailSource).toContain("Transaksi Retail belum aktif");
   });
@@ -50,7 +52,7 @@ describe("Retail design-system convergence", () => {
       expect(source).not.toContain("font-mono-tech");
       expect(source).not.toContain("rounded-feature");
       expect(source).not.toContain("bg-action-primary");
-      expect(source).toContain('className="!pt-[var(--space-page-start)]"');
+      expect(source).toContain("!pt-[var(--space-page-start)]");
     }
 
     expect(visualSource).toContain("rounded-panel");

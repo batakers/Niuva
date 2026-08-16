@@ -5,12 +5,10 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel, Field, field_validator, model_validator
-
-from inventory_service import InventoryError
 from csv_safety import safe_csv_row
-
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from inventory_service import InventoryError
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 SubjectType = Literal["material", "product_variant"]
 MovementType = Literal[
@@ -134,7 +132,9 @@ def build_inventory_router(
         try:
             return await awaitable
         except InventoryError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.payload()) from exc
+            raise HTTPException(
+                status_code=exc.status_code, detail=exc.payload()
+            ) from exc
 
     @router.get("/balances")
     async def list_balances(
@@ -180,12 +180,22 @@ def build_inventory_router(
             get_service().list_balances(subject_type=subject_type, limit=500)
         )
         fieldnames = [
-            "subject_type", "subject_id", "subject_name", "sku",
-            "on_hand", "reserved", "available", "incoming",
-            "planned_demand", "projected", "version",
+            "subject_type",
+            "subject_id",
+            "subject_name",
+            "sku",
+            "on_hand",
+            "reserved",
+            "available",
+            "incoming",
+            "planned_demand",
+            "projected",
+            "version",
         ]
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
-        return _csv_response(fieldnames, balances, f"niuva-inventory-balances-{stamp}.csv")
+        return _csv_response(
+            fieldnames, balances, f"niuva-inventory-balances-{stamp}.csv"
+        )
 
     @router.get("/movements/export")
     async def export_movements(
@@ -203,12 +213,22 @@ def build_inventory_router(
             )
         )
         fieldnames = [
-            "created_at", "subject_type", "subject_id", "movement_type",
-            "quantity", "balance_version_before", "balance_version_after",
-            "reference_type", "reference_id", "reason", "created_by",
+            "created_at",
+            "subject_type",
+            "subject_id",
+            "movement_type",
+            "quantity",
+            "balance_version_before",
+            "balance_version_after",
+            "reference_type",
+            "reference_id",
+            "reason",
+            "created_by",
         ]
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
-        return _csv_response(fieldnames, movements, f"niuva-stock-movements-{stamp}.csv")
+        return _csv_response(
+            fieldnames, movements, f"niuva-stock-movements-{stamp}.csv"
+        )
 
     @router.post("/movements")
     async def apply_movement(
@@ -308,9 +328,9 @@ def build_inventory_router(
     async def list_reservations(
         subject_type: SubjectType | None = None,
         subject_id: str | None = Query(default=None, max_length=200),
-        reservation_status: Literal["active", "released", "consumed", "expired"] | None = Query(
-            default=None, alias="status"
-        ),
+        reservation_status: (
+            Literal["active", "released", "consumed", "expired"] | None
+        ) = Query(default=None, alias="status"),
         limit: int = Query(default=200, ge=1, le=500),
         _actor: dict = Depends(require_permission("inventory.read")),
     ):
@@ -370,9 +390,7 @@ def build_inventory_router(
         limit: int = Query(default=200, ge=1, le=500),
         _actor: dict = Depends(require_permission("restock_alerts.read")),
     ):
-        return await invoke(
-            get_service().list_alerts(status=alert_status, limit=limit)
-        )
+        return await invoke(get_service().list_alerts(status=alert_status, limit=limit))
 
     @router.post("/restock-alerts/{alert_id}/resolve")
     async def resolve_restock_alert(
