@@ -76,7 +76,7 @@ needs a trivial conflict resolution on this one file each time.
 | [#263](https://github.com/batakers/Niuva/pull/263) | Remove unused imports/vars (QUALITY-001, part 2) | `chore/niuva-backend-flake8-unused-imports` |
 | [#264](https://github.com/batakers/Niuva/pull/264) | Blank-line spacing fixes (QUALITY-001, part 3) | `chore/niuva-backend-flake8-blank-lines` |
 | [#265](https://github.com/batakers/Niuva/pull/265) | Fix `field` import-shadowing (QUALITY-001, part 4) | `chore/niuva-backend-flake8-field-shadowing` |
-| (this branch) | E402 import-order noqa annotations (QUALITY-001, part 5) | `chore/niuva-backend-flake8-e402` |
+| [#266](https://github.com/batakers/Niuva/pull/266) | E402 import-order noqa annotations (QUALITY-001, part 5) | `chore/niuva-backend-flake8-e402` |
 
 None of the PRs above have been merged. This tracker records source-level
 progress only; it does not itself close any P0/P1 finding, and it does not
