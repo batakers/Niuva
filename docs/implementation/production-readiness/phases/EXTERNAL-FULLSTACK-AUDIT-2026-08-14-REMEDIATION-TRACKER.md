@@ -77,7 +77,7 @@ needs a trivial conflict resolution on this one file each time.
 | [#264](https://github.com/batakers/Niuva/pull/264) | Blank-line spacing fixes (QUALITY-001, part 3) | `chore/niuva-backend-flake8-blank-lines` |
 | [#265](https://github.com/batakers/Niuva/pull/265) | Fix `field` import-shadowing (QUALITY-001, part 4) | `chore/niuva-backend-flake8-field-shadowing` |
 | [#266](https://github.com/batakers/Niuva/pull/266) | E402 import-order noqa annotations (QUALITY-001, part 5) | `chore/niuva-backend-flake8-e402` |
-| (this branch) | mypy var-annotated fixes (QUALITY-001, mypy part 1) | `chore/niuva-backend-mypy-var-annotated` |
+| [#267](https://github.com/batakers/Niuva/pull/267) | mypy var-annotated fixes (QUALITY-001, mypy part 1) | `chore/niuva-backend-mypy-var-annotated` |
 
 None of the PRs above have been merged. This tracker records source-level
 progress only; it does not itself close any P0/P1 finding, and it does not
