@@ -902,6 +902,8 @@ async def run_operations_catalog_lifecycle_and_variant_boundaries():
 
 def test_operations_catalog_lifecycle_and_variant_boundaries():
     asyncio.run(run_operations_catalog_lifecycle_and_variant_boundaries())
+
+
 async def run_operations_cannot_change_archived_products_or_variants():
     app, db, _capabilities = build_test_context()
     transport = httpx.ASGITransport(app=app)

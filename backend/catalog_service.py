@@ -41,6 +41,7 @@ class CatalogError(Exception):
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+
 def _preserved_workflow_status(product: dict) -> str:
     return "archived" if product.get("workflow_status") == "archived" else "draft"
 
@@ -97,6 +98,7 @@ class CatalogService:
             "updated_at": timestamp,
             "updated_by": actor.get("id"),
         }
+
         async def mutation(session):
             await self.db.categories.insert_one(category, **_write_options(session))
             await append_audit_event(
@@ -311,6 +313,7 @@ class CatalogService:
             "updated_at": timestamp,
             "updated_by": actor.get("id"),
         }
+
         async def mutation(session):
             await self.db.products.insert_one(product, **_write_options(session))
             await append_audit_event(
@@ -789,6 +792,7 @@ class CatalogService:
                 "catalog_candidate_required",
                 "Produk harus diajukan sebagai kandidat publikasi setelah perubahan terakhir.",
             )
+
         async def mutation(session):
             publication = build_publication_snapshot(
                 aggregate,
@@ -863,6 +867,7 @@ class CatalogService:
             raise CatalogError(
                 404, "publication_not_found", "Revisi publikasi tidak ditemukan."
             )
+
         async def mutation(session):
             publication = deepcopy(selected)
             publication.update(

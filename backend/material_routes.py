@@ -65,8 +65,10 @@ class MaterialUpdatePayload(MaterialPayload):
 
     name: str | None = Field(default=None, min_length=2, max_length=200)
 
+
 class SupplierReferencePayload(BaseModel):
     supplier_reference: str = Field(default="", max_length=200)
+
 
 class PriceVersionPayload(BaseModel):
     amount: int = Field(ge=0)
@@ -425,6 +427,7 @@ def build_material_router(
     ):
         material = await invoke(service().update_material(material_id, payload.model_dump(mode="json", exclude_unset=True), actor))
         return {"id": material["id"], "supplier_reference": material.get("supplier_reference", "")}
+
     @router.get("/admin/materials/{material_id}/price-versions")
     async def list_price_versions(
         material_id: str,

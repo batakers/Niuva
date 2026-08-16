@@ -432,6 +432,8 @@ async def run_real_role_supplier_reference_boundaries():
 
 def test_real_roles_keep_supplier_references_off_generic_material_responses():
     asyncio.run(run_real_role_supplier_reference_boundaries())
+
+
 async def run_supplier_reference_omission_preserves_stored_value():
     app, db = build_role_test_context()
     db.materials.items.append({"id": "material-omission", "name": "Omission Material", "supplier_reference": "SUP-ORIGINAL", "status": "active", "active": True, "setup_status": "needs_review", "base_unit": None})

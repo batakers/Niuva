@@ -39,6 +39,7 @@ API = f"{BASE_URL}/api"
 ADMIN_EMAIL = os.environ.get("NIUVA_TEST_ADMIN_EMAIL", "").strip()
 ADMIN_PASSWORD = os.environ.get("NIUVA_TEST_ADMIN_PASSWORD", "")
 
+
 # ---------- Helpers / fixtures ----------
 @pytest.fixture(scope="session")
 def admin_token():
@@ -57,6 +58,7 @@ def admin_token():
     assert "*" in data["user"]["permissions"]
     assert "password_hash" not in data["user"]
     return data["token"]
+
 
 @pytest.fixture(scope="session")
 def client_user(admin_token):
@@ -83,14 +85,17 @@ def client_user(admin_token):
         "id": provisioned.json()["id"],
     }
 
+
 def hh(token):
     return {"Authorization": f"Bearer {token}"}
+
 
 # ---------- Health ----------
 def test_root_ok():
     r = requests.get(f"{API}/", timeout=20)
     assert r.status_code == 200
     assert r.json().get("status") == "ok"
+
 
 # ---------- Auth ----------
 class TestAuth:
@@ -134,6 +139,7 @@ class TestAuth:
         r = requests.get(f"{API}/admin/stats", headers=hh(client_user["token"]), timeout=20)
         assert r.status_code == 403
 
+
 # ---------- Materials (public + admin CRUD) ----------
 class TestMaterials:
     def test_list_public(self):
@@ -166,6 +172,7 @@ class TestMaterials:
         rd = requests.delete(f"{API}/admin/materials/{mid}", headers=hh(admin_token), timeout=20)
         assert rd.status_code == 200
 
+
 # ---------- Orders flow ----------
 @pytest.fixture(scope="session")
 def active_material_id(admin_token):
@@ -173,12 +180,14 @@ def active_material_id(admin_token):
     assert pub, "no active materials"
     return pub[0]["id"]
 
+
 def make_stl_bytes(n_kb=2):
     # Simple ASCII STL
     head = b"solid TEST\n"
     body = b"  facet normal 0 0 0\n    outer loop\n      vertex 0 0 0\n      vertex 1 0 0\n      vertex 0 1 0\n    endloop\n  endfacet\n" * (n_kb * 8)
     tail = b"endsolid TEST\n"
     return head + body + tail
+
 
 class TestOrderFlow:
     order_id = None
@@ -285,6 +294,7 @@ class TestOrderFlow:
         # at least order received + estimate + verified + completed
         assert isinstance(notifs, list) and len(notifs) >= 2
 
+
 # ---------- Contact (public) ----------
 class TestPublicForms:
     def test_contact_submit(self):
@@ -296,6 +306,7 @@ class TestPublicForms:
     def test_admin_contacts(self, admin_token):
         r = requests.get(f"{API}/admin/contacts", headers=hh(admin_token), timeout=20)
         assert r.status_code == 200
+
 
 # ---------- Portfolio ----------
 class TestPortfolio:
@@ -319,6 +330,7 @@ class TestPortfolio:
         assert r2.json()["title_en"] == "TEST_proj_updated"
         rd = requests.delete(f"{API}/admin/portfolio/{pid}", headers=hh(admin_token), timeout=20)
         assert rd.status_code == 200
+
 
 # ---------- Settings + Users + Stats ----------
 class TestSettingsUsersStats:
@@ -354,6 +366,7 @@ class TestSettingsUsersStats:
         d = r.json()
         for k in ("total_orders", "pending_estimate", "awaiting_payment", "in_process", "completed", "clients"):
             assert k in d
+
 
 # ---------- Catalog / material pricing / inventory foundation ----------
 def _provision_staff(admin_token, role):
