@@ -159,6 +159,29 @@ test("keeps canonical Public navigation available outside operational routes", (
   );
 });
 
+test("keeps the Public outer shell transparent while retaining a paper capsule", () => {
+  const { unmount } = render(
+    <MemoryRouter initialEntries={["/"]}>
+      <Navbar />
+    </MemoryRouter>,
+  );
+
+  expect(document.querySelector("header")).toHaveClass("bg-transparent");
+  expect(document.querySelector("header > div")).toHaveClass(
+    "bg-[var(--public-studio-paper)]",
+  );
+
+  unmount();
+  render(
+    <MemoryRouter initialEntries={["/orders/order-1"]}>
+      <Navbar />
+    </MemoryRouter>,
+  );
+
+  expect(document.querySelector("header")).toHaveClass("bg-navigation-backdrop");
+  expect(document.querySelector("header > div")).toHaveClass("bg-surface-default");
+});
+
 test("links directly to Services and keeps Retail as its own top-level destination", () => {
   render(
     <MemoryRouter initialEntries={["/"]}>

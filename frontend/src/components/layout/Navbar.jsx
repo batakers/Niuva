@@ -177,12 +177,16 @@ export function Navbar() {
       )}
       <header
         data-compact={compact ? "true" : "false"}
-        className={`fixed left-0 right-0 top-0 z-40 bg-navigation-backdrop px-4 transition-[padding] duration-deliberate ease-snap motion-reduce:transition-none sm:px-6 lg:px-8 ${
+        className={`fixed left-0 right-0 top-0 z-40 px-4 transition-[padding] duration-deliberate ease-snap motion-reduce:transition-none sm:px-6 lg:px-8 ${
+          isPublicRoute ? "bg-transparent" : "bg-navigation-backdrop"
+        } ${
           compact ? "py-2" : "pb-3 pt-3"
         }`}
       >
       <div
-        className={`relative z-10 mx-auto flex max-w-[var(--container-wide)] items-center justify-between rounded-panel bg-surface-default px-4 shadow-navigation ring-1 ring-border-default transition-[height,max-width] duration-deliberate ease-snap motion-reduce:transition-none sm:px-6 ${
+        className={`relative z-10 mx-auto flex max-w-[var(--container-wide)] items-center justify-between rounded-panel px-4 shadow-navigation ring-1 ring-border-default transition-[height,max-width] duration-deliberate ease-snap motion-reduce:transition-none sm:px-6 ${
+          isPublicRoute ? "bg-[var(--public-studio-paper)]" : "bg-surface-default"
+        } ${
           compact ? "h-14 xl:max-w-[76rem]" : "h-16"
         }`}
       >
@@ -259,7 +263,9 @@ export function Navbar() {
         aria-modal={open ? "true" : undefined}
         aria-label={t("nav.mobile")}
         inert={!open}
-        className={`fixed inset-x-4 top-[5.5rem] z-10 max-h-[calc(100dvh-6.5rem)] overflow-y-auto rounded-feature bg-surface-default p-5 shadow-overlay ring-1 ring-border-default transition-[opacity,transform] duration-emphasis ease-snap sm:inset-x-6 lg:hidden ${
+        className={`fixed inset-x-4 top-[5.5rem] z-10 max-h-[calc(100dvh-6.5rem)] overflow-y-auto rounded-feature p-5 shadow-overlay ring-1 ring-border-default transition-[opacity,transform] duration-emphasis ease-snap sm:inset-x-6 lg:hidden ${
+          isPublicRoute ? "bg-[var(--public-studio-paper)]" : "bg-surface-default"
+        } ${
           open
             ? "visible translate-y-0 opacity-100"
             : "invisible pointer-events-none -translate-y-4 opacity-0"

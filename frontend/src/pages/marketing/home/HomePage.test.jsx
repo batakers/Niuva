@@ -1,9 +1,8 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import HomePage from "../HomePage";
-import { HomeFdmContour } from "./HomePageVisuals";
 
 let mockPublicSettings = {
   status: "ready",
@@ -41,6 +40,10 @@ test("renders the centered R4 story and the five-stage process", () => {
   ).toBeInTheDocument();
   const process = screen.getByRole("list", { name: "Alur pengembangan Niuva" });
   expect(within(process).getAllByRole("listitem")).toHaveLength(5);
+  expect(process).toHaveAttribute("data-motion-ready", "true");
+  expect(container.querySelectorAll(".home-r4-hero-enter")).toHaveLength(4);
+  expect(process.closest("section")?.nextElementSibling).toHaveClass("home-r4-projects");
+  expect(screen.queryByText("Memahami. Membentuk. Membuktikan.")).not.toBeInTheDocument();
   expect(screen.getByText("Satu partner, dua cara memulai")).toBeInTheDocument();
   expect(screen.getByText("Cara kerja")).toBeInTheDocument();
   expect(screen.getByText("Layanan Niuva")).toBeInTheDocument();
@@ -56,10 +59,94 @@ test("renders the centered R4 story and the five-stage process", () => {
     ]),
   );
 
-  const contours = [...container.querySelectorAll("[data-testid^='home-fdm-contour-']")];
-  expect(contours).toHaveLength(2);
-  for (const contour of contours) {
-    expect(contour.querySelectorAll(".home-r4-contour-lines path")).toHaveLength(11);
+  expect(container.querySelectorAll("[data-testid^='home-fdm-contour-']")).toHaveLength(0);
+
+  expect(screen.queryByText(/Ilustrasi konseptual:/i)).not.toBeInTheDocument();
+});
+
+test("uses a deliberate, keyboard-operable Niuva project gallery", () => {
+  const { container } = renderHome();
+
+  const gallery = screen.getByRole("list", { name: "Pilihan project Niuva" });
+  const projects = within(gallery).getAllByRole("listitem");
+  const triggers = within(gallery).getAllByRole("button", {
+    name: /Tampilkan project:/i,
+  });
+
+  expect(projects).toHaveLength(3);
+  expect(gallery).toHaveAttribute("data-active-index", "0");
+  expect(projects[0]).toHaveAttribute("data-active", "true");
+  const compactLabels = container.querySelectorAll(".home-r4-project-compact-label");
+  const expandedContents = container.querySelectorAll(".home-r4-project-expanded");
+  expect([...compactLabels].map((label) => label.textContent)).toEqual([
+    "Pindad EV",
+    "Xeon",
+    "Agate Simulator",
+  ]);
+  expect(compactLabels[0]).toHaveAttribute("aria-hidden", "true");
+  expect(compactLabels[1]).toHaveAttribute("aria-hidden", "false");
+  expect(expandedContents[0]).toHaveAttribute("aria-hidden", "false");
+  expect(expandedContents[1]).toHaveAttribute("aria-hidden", "true");
+  expect(within(gallery).getByRole("link", { name: /Baca project/i })).toHaveAttribute(
+    "href",
+    "/proyek",
+  );
+  expect(
+    within(gallery).getByText(
+      "Kolaborasi pengembangan motor listrik taktis bersama PT Pindad untuk kebutuhan operasional TNI.",
+    ),
+  ).toBeInTheDocument();
+  expect(within(gallery).queryByText(/Kendaraan taktis membutuhkan desain adaptif/i)).not.toBeInTheDocument();
+
+  fireEvent.click(triggers[1]);
+  expect(gallery).toHaveAttribute("data-active-index", "1");
+  expect(projects[1]).toHaveAttribute("data-active", "true");
+  expect(triggers[1]).toHaveAttribute("aria-expanded", "true");
+  expect(compactLabels[0]).toHaveAttribute("aria-hidden", "false");
+  expect(compactLabels[1]).toHaveAttribute("aria-hidden", "true");
+  expect(expandedContents[0]).toHaveAttribute("aria-hidden", "true");
+  expect(expandedContents[1]).toHaveAttribute("aria-hidden", "false");
+
+  fireEvent.focus(triggers[1]);
+  fireEvent.keyDown(triggers[1], { key: "ArrowRight" });
+  expect(triggers[2]).toHaveFocus();
+  expect(projects[2]).toHaveAttribute("data-active", "true");
+});
+
+test("draws the process rail once when it enters the viewport", async () => {
+  const originalIntersectionObserver = window.IntersectionObserver;
+  const observers = [];
+
+  window.IntersectionObserver = class IntersectionObserver {
+    constructor(callback) {
+      this.callback = callback;
+      this.observe = jest.fn((target) => {
+        this.target = target;
+      });
+      this.disconnect = jest.fn();
+      observers.push(this);
+    }
+  };
+
+  try {
+    renderHome();
+    const process = screen.getByRole("list", { name: "Alur pengembangan Niuva" });
+    const processObserver = observers.find((observer) => observer.target === process);
+
+    expect(process).toHaveAttribute("data-motion-ready", "false");
+    expect(processObserver).toBeDefined();
+    expect(processObserver.observe).toHaveBeenCalledWith(process);
+
+    act(() => {
+      processObserver.callback([{ isIntersecting: true }]);
+    });
+
+    await waitFor(() => {
+      expect(process).toHaveAttribute("data-motion-ready", "true");
+    });
+    expect(processObserver.disconnect).toHaveBeenCalled();
+  } finally {
+    window.IntersectionObserver = originalIntersectionObserver;
   }
 });
 
@@ -126,35 +213,4 @@ test("shows public-settings loading and recoverable error states without hiding 
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Buka halaman Kontak/i })).toBeInTheDocument();
-});
-
-test("cancels a pending contour pointer frame before resetting its offset", () => {
-  const originalMatchMedia = window.matchMedia;
-  const originalRequestAnimationFrame = window.requestAnimationFrame;
-  const originalCancelAnimationFrame = window.cancelAnimationFrame;
-  const requestAnimationFrame = jest.fn(() => 41);
-  const cancelAnimationFrame = jest.fn();
-
-  window.matchMedia = jest.fn((query) => ({
-    matches: query.includes("pointer: fine"),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-  }));
-  window.requestAnimationFrame = requestAnimationFrame;
-  window.cancelAnimationFrame = cancelAnimationFrame;
-
-  try {
-    render(<HomeFdmContour />);
-    const contour = screen.getByTestId("home-fdm-contour-light");
-
-    fireEvent.pointerMove(contour, { clientX: 120, clientY: 80 });
-    expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
-
-    fireEvent.pointerLeave(contour);
-    expect(cancelAnimationFrame).toHaveBeenCalledWith(41);
-  } finally {
-    window.matchMedia = originalMatchMedia;
-    window.requestAnimationFrame = originalRequestAnimationFrame;
-    window.cancelAnimationFrame = originalCancelAnimationFrame;
-  }
 });
