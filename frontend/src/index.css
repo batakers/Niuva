@@ -206,6 +206,12 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-enter: cubic-bezier(0, 0, 0.2, 1);
   --ease-exit: cubic-bezier(0.3, 0, 1, 0.3);
+  /* Public-only authored choreography; task feedback keeps the core timings. */
+  --public-motion-focal: 720ms;
+  --public-motion-story: 560ms;
+  --public-motion-media: 640ms;
+  --public-ease-arrive: cubic-bezier(0.16, 1, 0.3, 1);
+  --public-ease-shape: cubic-bezier(0.65, 0, 0.35, 1);
   /* Existing names remain aliases until their consumers migrate. */
   --motion-emphasis: var(--motion-deliberate);
   --motion-reveal: var(--motion-deliberate);
@@ -220,6 +226,35 @@
   --public-canvas: var(--color-surface-canvas);
   --public-evidence-surface: var(--nds-blue-950);
   --public-expression-color: var(--nds-blue-500);
+  /* Public Mineral Prototype Studio aliases. Other surfaces do not inherit these. */
+  --public-studio-canvas: #F3F5F2;
+  --public-studio-canvas-rgb: 243 245 242;
+  --public-studio-paper: #FCFCF8;
+  --public-studio-paper-rgb: 252 252 248;
+  --public-studio-mineral: #E5ECE8;
+  --public-studio-mineral-rgb: 229 236 232;
+  --public-studio-process: #E4EDF0;
+  --public-studio-process-rgb: 228 237 240;
+  --public-studio-ink: #101C24;
+  --public-studio-ink-rgb: 16 28 36;
+  --public-studio-muted: #475A63;
+  --public-studio-muted-rgb: 71 90 99;
+  --public-studio-line: #B5C6CD;
+  --public-studio-line-rgb: 181 198 205;
+  --public-studio-action: #2C628F;
+  --public-studio-action-rgb: 44 98 143;
+  --public-studio-action-hover: #204A70;
+  --public-studio-action-hover-rgb: 32 74 112;
+  --public-studio-expression: #557FA9;
+  --public-studio-expression-rgb: 85 127 169;
+  --public-studio-evidence: #081821;
+  --public-studio-evidence-rgb: 8 24 33;
+  --public-studio-evidence-raised: #122B37;
+  --public-studio-evidence-raised-rgb: 18 43 55;
+  --public-studio-inverse: #F7F8F2;
+  --public-studio-inverse-rgb: 247 248 242;
+  --public-studio-inverse-muted: #BBD3E3;
+  --public-studio-inverse-muted-rgb: 187 211 227;
   --commerce-canvas: var(--color-surface-canvas);
   --commerce-summary-surface: var(--color-surface-default);
   --commerce-selected-surface: var(--color-surface-selected);

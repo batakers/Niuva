@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -8,10 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n";
 import { getPublicPath } from "@/lib/publicRoutes";
 import { usePublicSettings } from "@/lib/publicSettings";
-import {
-  HomeChapterIllustration,
-  HomeFdmContour,
-} from "@/pages/marketing/home/HomePageVisuals";
+import { NiuvaProjectGallery } from "@/pages/marketing/home/NiuvaProjectGallery";
 import "@/pages/marketing/home/HomePageR4.css";
 
 // Homepage remains hardcoded. A Homepage CMS schema is a separate decision and
@@ -38,6 +35,12 @@ const baseProjects = PROJECT_ORDER.map((title) =>
   profileContent.projects.find((project) => project.title === title),
 ).filter(Boolean);
 
+const PROJECT_SHORT_TITLES = {
+  "Pengembangan Motor EV PT Pindad": "Pindad EV",
+  "Redesain Motor Xeon": "Xeon",
+  "Motorcycle Simulator Agate": "Agate Simulator",
+};
+
 const processStagesId = [
   {
     name: "Need",
@@ -58,45 +61,6 @@ const processStagesId = [
   {
     name: "Output",
     body: "Bukti menjadi output atau arah realisasi berikutnya.",
-  },
-];
-
-const chaptersId = [
-  {
-    key: "understand",
-    title: "Memahami",
-    body: "Kami memulai dari kebutuhan, konteks pengguna, risiko, dan bukti apa yang benar-benar perlu dibangun.",
-    points: [
-      "Brief dan ruang masalah",
-      "Pertanyaan riset dan batas keputusan",
-      "Rencana eksperimen yang proporsional",
-    ],
-    caption:
-      "Ilustrasi konseptual: kebutuhan dan batas keputusan dipusatkan menjadi satu pertanyaan uji.",
-  },
-  {
-    key: "shape",
-    title: "Membentuk",
-    body: "Keputusan mulai memiliki dimensi, material, sambungan, dan konsekuensi yang dapat diuji bersama.",
-    points: [
-      "Desain dan rekayasa",
-      "Iterasi bentuk dan material",
-      "Prototyping melalui fasilitas Niuva",
-    ],
-    caption:
-      "Ilustrasi konseptual: lapisan, bentuk, material, dan sambungan mulai menjadi keputusan fisik.",
-  },
-  {
-    key: "prove",
-    title: "Membuktikan",
-    body: "Prototype membantu tim melihat apa yang bekerja, apa yang perlu diubah, dan apakah gagasan siap bergerak lebih jauh.",
-    points: [
-      "Pengujian dan demonstrasi",
-      "Evaluasi keputusan",
-      "Realisasi satuan hingga kebutuhan skala lebih besar",
-    ],
-    caption:
-      "Ilustrasi konseptual: prototype diuji lalu mengembalikan bukti untuk keputusan berikutnya.",
   },
 ];
 
@@ -138,45 +102,6 @@ const processStagesEn = [
   {
     name: "Output",
     body: "Evidence becomes an output or a clear direction for the next realization step.",
-  },
-];
-
-const chaptersEn = [
-  {
-    key: "understand",
-    title: "Understand",
-    body: "We begin with the need, user context, risks, and the evidence that is genuinely worth building.",
-    points: [
-      "Brief and problem space",
-      "Research questions and decision boundaries",
-      "A proportionate experiment plan",
-    ],
-    caption:
-      "Conceptual illustration: needs and decision boundaries converge into one testable question.",
-  },
-  {
-    key: "shape",
-    title: "Shape",
-    body: "Decisions gain dimensions, materials, joints, and consequences that a team can examine together.",
-    points: [
-      "Design and engineering",
-      "Form and material iterations",
-      "Prototyping through Niuva facilities",
-    ],
-    caption:
-      "Conceptual illustration: layers, form, material, and joints become physical decisions.",
-  },
-  {
-    key: "prove",
-    title: "Prove",
-    body: "A prototype helps a team see what works, what must change, and whether the idea is ready to move further.",
-    points: [
-      "Testing and demonstration",
-      "Decision review",
-      "Realization from one-off work to larger-scale needs",
-    ],
-    caption:
-      "Conceptual illustration: a prototype is tested and returns evidence for the next decision.",
   },
 ];
 
@@ -251,13 +176,10 @@ const homeCopy = {
     processTitle: "Lima tahap untuk mengurangi asumsi sebelum keputusan tumbuh lebih mahal.",
     processHeadingLabel: "Cara kerja",
     processLabel: "Alur pengembangan Niuva",
-    chaptersTitle: "Memahami. Membentuk. Membuktikan.",
-    chaptersBody: "Satu cara kerja untuk membaca kebutuhan, membangun bentuk, dan mengembalikan bukti ke dalam keputusan.",
     projectsTitle: "Bentuk akhir hanya berarti ketika keputusan di belakangnya tetap terbaca.",
     allProjects: "Lihat seluruh Proyek",
-    projectCaption: "Dokumentasi project sebagaimana tercantum dalam Company Profile Niuva.",
-    challenge: "Tantangan",
-    output: "Output",
+    projectGalleryLabel: "Pilihan project Niuva",
+    selectProject: "Tampilkan project",
     readProject: "Baca project",
     servicesLabel: "Layanan Niuva",
     servicesTitle: "Kemampuan yang mengikuti pertanyaan, bukan paket yang dipaksakan sejak awal.",
@@ -307,13 +229,10 @@ const homeCopy = {
     processTitle: "Five stages that reduce assumptions before decisions become more expensive.",
     processHeadingLabel: "How we work",
     processLabel: "Niuva development flow",
-    chaptersTitle: "Understand. Shape. Prove.",
-    chaptersBody: "One way of working to frame the need, build a form, and return evidence to the decision.",
     projectsTitle: "A final form only matters when the decisions behind it remain legible.",
     allProjects: "View all Projects",
-    projectCaption: "Project documentation as presented in the Niuva Company Profile.",
-    challenge: "Challenge",
-    output: "Output",
+    projectGalleryLabel: "Selected Niuva projects",
+    selectProject: "Show project",
     readProject: "Read project",
     servicesLabel: "Niuva services",
     servicesTitle: "Capabilities that follow the question, not a package imposed from the start.",
@@ -360,26 +279,55 @@ function PageLink({ to, children, variant = "default", className = "" }) {
   );
 }
 
+function useMotionReady(threshold = 0.22) {
+  const targetRef = useRef(null);
+  const [motionReady, setMotionReady] = useState(
+    () => typeof window === "undefined" || typeof window.IntersectionObserver !== "function",
+  );
+
+  useEffect(() => {
+    if (motionReady || !targetRef.current) return undefined;
+
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setMotionReady(true);
+      return undefined;
+    }
+
+    const observer = new window.IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setMotionReady(true);
+        observer.disconnect();
+      },
+      { threshold },
+    );
+
+    observer.observe(targetRef.current);
+    return () => observer.disconnect();
+  }, [motionReady, threshold]);
+
+  return [targetRef, motionReady];
+}
+
 function HeroSection({ copy, locale }) {
   return (
     <section className="home-r4-hero" aria-labelledby="home-r4-title">
       <div className="home-r4-shell home-r4-hero-inner">
-        <p className="home-r4-context">{copy.context}</p>
-        <h1 id="home-r4-title" className="home-r4-display">
+        <p className="home-r4-context home-r4-hero-enter home-r4-hero-enter-context">{copy.context}</p>
+        <h1 id="home-r4-title" className="home-r4-display home-r4-hero-enter home-r4-hero-enter-title">
           <span>{copy.heroLead}</span>
           <em className="nds-expression">{copy.heroExpression}</em>
         </h1>
-        <p className="home-r4-hero-copy">
+        <p className="home-r4-hero-copy home-r4-hero-enter home-r4-hero-enter-copy">
           {copy.heroBody}
         </p>
-        <div className="home-r4-actions">
+        <div className="home-r4-actions home-r4-hero-enter home-r4-hero-enter-actions">
           <PageLink to={getPublicPath("contact", locale)}>{copy.discuss}</PageLink>
           <PageLink to={getPublicPath("retail", locale)} variant="link">
             {copy.exploreRetail}
           </PageLink>
         </div>
       </div>
-      <HomeFdmContour variant="light" />
     </section>
   );
 }
@@ -395,12 +343,12 @@ function OrientationSection({ copy, locale }) {
           </h2>
         </header>
         <div className="home-r4-orientation-paths">
-          <article>
+          <article className="home-r4-orientation-partnership">
             <h3>{copy.partnershipTitle}</h3>
             <p>{copy.partnershipBody}</p>
             <Link to={getPublicPath("contact", locale)}>{copy.partnershipAction} <ArrowDownRight aria-hidden="true" /></Link>
           </article>
-          <article>
+          <article className="home-r4-orientation-retail">
             <h3>Retail</h3>
             <p>{copy.retailBody}</p>
             <Link to={getPublicPath("retail", locale)}>{copy.exploreRetail} <ArrowDownRight aria-hidden="true" /></Link>
@@ -412,6 +360,8 @@ function OrientationSection({ copy, locale }) {
 }
 
 function ProcessSection({ copy, stages }) {
+  const [railRef, motionReady] = useMotionReady();
+
   return (
     <section className="home-r4-section home-r4-process" aria-labelledby="home-r4-process-title">
       <div className="home-r4-shell">
@@ -421,52 +371,23 @@ function ProcessSection({ copy, stages }) {
             {copy.processTitle}
           </h2>
         </header>
-        <ol className="home-r4-process-rail" aria-label={copy.processLabel}>
-          {stages.map((stage) => (
-            <li key={stage.name}>
+        <ol
+          ref={railRef}
+          className="home-r4-process-rail"
+          aria-label={copy.processLabel}
+          data-motion-ready={motionReady ? "true" : "false"}
+        >
+          {stages.map((stage, index) => (
+            <li
+              key={stage.name}
+              style={{ "--home-r4-process-delay": `${index * 70}ms` }}
+            >
               <span className="home-r4-process-dot" aria-hidden="true" />
               <h3>{stage.name}</h3>
               <p>{stage.body}</p>
             </li>
           ))}
         </ol>
-      </div>
-    </section>
-  );
-}
-
-function ChaptersSection({ copy, chapters }) {
-  return (
-    <section className="home-r4-section home-r4-chapters" aria-labelledby="home-r4-chapters-title">
-      <div className="home-r4-shell">
-        <header className="home-r4-section-intro">
-          <h2 id="home-r4-chapters-title" className="home-r4-heading">
-            {copy.chaptersTitle}
-          </h2>
-          <p>
-            {copy.chaptersBody}
-          </p>
-        </header>
-
-        <div className="home-r4-chapter-list">
-          {chapters.map((chapter) => (
-            <article className="home-r4-chapter" key={chapter.key}>
-              <div className="home-r4-chapter-copy">
-                <h3>{chapter.title}</h3>
-                <p>{chapter.body}</p>
-                <ul>
-                  {chapter.points.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-              </div>
-              <figure className="home-r4-chapter-figure">
-                <HomeChapterIllustration type={chapter.key} />
-                <figcaption>{chapter.caption}</figcaption>
-              </figure>
-            </article>
-          ))}
-        </div>
       </div>
     </section>
   );
@@ -482,36 +403,17 @@ function ProjectsSection({ copy, locale, projects }) {
           </h2>
           <Link to={getPublicPath("projects", locale)}>{copy.allProjects} <ArrowUpRight aria-hidden="true" /></Link>
         </header>
-        <div className="home-r4-project-list">
-          {projects.map((project, index) => (
-            <article className="home-r4-project" key={project.title}>
-              <figure>
-                <img
-                  src={project.image}
-                  alt={project.imageAlt}
-                  width={project.imageWidth}
-                  height={project.imageHeight}
-                  loading={index === 0 ? "eager" : "lazy"}
-                  fetchPriority={index === 0 ? "high" : "auto"}
-                  decoding="async"
-                />
-                <figcaption>
-                  {copy.projectCaption}
-                </figcaption>
-              </figure>
-              <div className="home-r4-project-copy">
-                <p>{project.category}</p>
-                <h3>{project.title}</h3>
-                <p>{project.body}</p>
-                <dl>
-                  <div><dt>{copy.challenge}</dt><dd>{project.challenge}</dd></div>
-                  <div><dt>{copy.output}</dt><dd>{project.output}</dd></div>
-                </dl>
-                <Link to={getPublicPath("projects", locale)}>{copy.readProject} <ArrowUpRight aria-hidden="true" /></Link>
-              </div>
-            </article>
-          ))}
-        </div>
+        <NiuvaProjectGallery
+          items={projects.map((project) => ({
+            ...project,
+            to: getPublicPath("projects", locale),
+          }))}
+          ariaLabel={copy.projectGalleryLabel}
+          actionLabel={copy.readProject}
+          selectLabel={copy.selectProject}
+          defaultIndex={0}
+          expandRatio={0.52}
+        />
       </div>
     </section>
   );
@@ -659,7 +561,6 @@ function FaqSection({ copy, faqItems }) {
 function ClosingSection({ copy, locale }) {
   return (
     <section className="home-r4-closing" aria-labelledby="home-r4-closing-title">
-      <HomeFdmContour variant="dark" />
       <div className="home-r4-shell home-r4-closing-inner">
         <h2 id="home-r4-closing-title" className="home-r4-display home-r4-closing-title">
           <span>{copy.closingLead}</span>
@@ -684,7 +585,6 @@ export default function HomePage() {
   const locale = lang === "en" ? "en" : "id";
   const copy = homeCopy[locale];
   const stages = locale === "en" ? processStagesEn : processStagesId;
-  const chapters = locale === "en" ? chaptersEn : chaptersId;
   const faqItems = locale === "en" ? faqItemsEn : faqItemsId;
   const services = baseServices.map((service) =>
     locale === "en"
@@ -692,9 +592,12 @@ export default function HomePage() {
       : service,
   );
   const projects = baseProjects.map((project) =>
-    locale === "en"
-      ? { ...project, ...(projectEnglish[project.title] || {}) }
-      : project,
+    ({
+      ...project,
+      ...(locale === "en" ? projectEnglish[project.title] || {} : {}),
+      shortTitle: PROJECT_SHORT_TITLES[project.title] || project.title,
+      preview: locale === "en" ? projectEnglish[project.title]?.body || project.body : project.body,
+    }),
   );
 
   return (
@@ -703,7 +606,6 @@ export default function HomePage() {
         <HeroSection copy={copy} locale={locale} />
         <OrientationSection copy={copy} locale={locale} />
         <ProcessSection copy={copy} stages={stages} />
-        <ChaptersSection copy={copy} chapters={chapters} />
         <ProjectsSection copy={copy} locale={locale} projects={projects} />
         <ServicesSection copy={copy} locale={locale} services={services} />
         <RetailSection copy={copy} locale={locale} />
