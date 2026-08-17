@@ -408,7 +408,7 @@
 }
 
 .home-r4-project-panel.is-active .home-r4-project-scrim {
-  background: rgb(var(--public-studio-evidence-rgb) / 0.3);
+  background: rgb(var(--public-studio-evidence-rgb) / 0.88);
 }
 
 .home-r4-project-trigger {

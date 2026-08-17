@@ -126,6 +126,9 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
     expect(styleSource).toContain("@keyframes home-r4-hero-fade");
     expect(styleSource).toContain("transition: flex-grow var(--public-motion-media) var(--public-ease-shape)");
     expect(styleSource).toContain("transition: grid-template-rows var(--public-motion-media) var(--public-ease-shape)");
+    expect(styleSource).toContain(
+      ".home-r4-project-panel.is-active .home-r4-project-scrim {\n  background: rgb(var(--public-studio-evidence-rgb) / 0.88);",
+    );
     expect(styleSource).not.toContain(".home-r4-chapter");
     expect(foundationSource).toContain("--public-motion-focal: 720ms");
     expect(foundationSource).toContain("--public-motion-story: 560ms");
