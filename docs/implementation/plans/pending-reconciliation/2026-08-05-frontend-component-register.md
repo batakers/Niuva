@@ -1,13 +1,15 @@
 # Niuva Frontend Component Register
 
-Status: **Active integration register — reconciled baseline plus bounded Gate
-1 foundation evidence; not independent product or Git-delivery authority**
+Status: **Active integration register — current baseline plus bounded Gate 1
+and semantic-contract evidence; not independent product or Git-delivery
+authority**
 
-Selected implementation baseline: `origin/main` at
-`c5054ede2ae868858b8764c27587c10144bf39a4`, inspected 13 August 2026
-(Asia/Jakarta). The Gate 1 change set described below is bounded work on top of
-that baseline; its Git integration state must be read from the applicable task
-card and repository rather than inferred from this register.
+Selected reconciliation baseline: `origin/main` at
+`96a60580699ae9bd8ad7f78b9e1ff3c475ca51a1`, inspected 17 August 2026
+(Asia/Jakarta). The Gate 1 foundation baseline remains historical evidence at
+`c5054ede2ae868858b8764c27587c10144bf39a4`; current Git integration state must
+be read from the applicable task card and repository rather than inferred from
+this register.
 
 Historical integration baseline: `origin/main` at
 `18f51dee8a8ddf83e438de2f2f0e3acccbc5b8c1` through PR #137, inspected 5 August
@@ -117,6 +119,26 @@ contracts without migrating any route page:
 This foundation does not activate Mona Sans on a route by default. Surface
 adoption remains opt-in through a separately approved pilot so the current
 pages do not receive an unreviewed global visual cutover.
+
+## Semantic-token contract follow-up
+
+The owner-approved 17 August 2026 contract follow-up preserves the Gate 1
+foundation and adds only purpose-based aliases and contract evidence in the
+existing CSS-variable runtime. The exact implementation boundary is recorded
+in
+[`2026-08-17-niuva-semantic-token-foundation-contract-task-card.md`](2026-08-17-niuva-semantic-token-foundation-contract-task-card.md).
+
+The follow-up records these constraints:
+
+- `frontend/src/index.css` remains the single semantic-token runtime source;
+- `frontend/tailwind.config.js` maps to that runtime and does not create a
+  second token system;
+- compatibility aliases remain until zero-consumer evidence and removal
+  approval;
+- semantic roles do not encode Inquiry, Request, Offer, Order, payment,
+  Project, Work Order, or other lifecycle authority; and
+- no page, route, surface consumer, dependency, or component API migrates in
+  this foundation contract slice.
 
 ## Shared UI inventory
 
