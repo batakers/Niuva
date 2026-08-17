@@ -51,7 +51,7 @@ consumers.
 
 | Slice | Route/page family | Register and durable owner | Migration concern | Candidate order |
 | --- | --- | --- | --- | ---: |
-| Foundation | CSS runtime, Tailwind mappings, focus/motion contracts, shared primitive records | Foundation maintainer | Semantic role vocabulary, compatibility aliases, API continuity, reduced motion | Complete in PR #276 |
+| Foundation | CSS runtime, Tailwind mappings, focus/motion contracts, shared primitive records | Foundation maintainer | Semantic role vocabulary, compatibility aliases, API continuity, reduced motion; `DESIGN.md` owns the canonical `motion-ambient` envelope (`12–18s`), `frontend/src/index.css` selects the current runtime value (`--motion-ambient: 15s`), and runtime changes require a separate foundation gate | Complete in PR #276 |
 | Public/Marketing | `/`, `/en`, `/tentang`, `/en/about`, `/layanan`, `/en/services`, `/proyek`, `/en/projects`, `/kontak`, `/en/contact`, `/privasi`, `/en/privacy`, `/faq`, `/en/faq`, Public 404, Navbar, Footer, Layout | Brand register; Public content and Inquiry entry | B2B-primary narrative, four equal Services, factual evidence, ID/EN parity, no lifecycle authority in visual tokens | 1 — pilot after exact-file approval |
 | B2B inquiry | Contact form, acknowledgement, recovery, optional visitor-clicked WhatsApp, Operations handoff | Inquiry lifecycle owner | Consent, persisted `new`, existing UUID, validation/dependency distinction, no public upload | Alongside Public only when form files are explicitly scoped |
 | Auth/Account | `/login`, `/forgot-password`, `/forgot-password/check-email`, `/reset-password`, `/reset-password/success`, `/reset-password/error`, `/dashboard`, `/order`, `/orders/:id` | Product register; session and owned-resource owners | Identity, privacy, loading, expired, permission, conflict, recovery, customer-safe projection | 2 |
@@ -154,6 +154,10 @@ exact-file task card containing:
 - preserved component props and state contracts;
 - lifecycle, route, privacy, and provider exclusions;
 - responsive, accessibility, localization, and reduced-motion checks;
+- canonical/runtime motion-token verification: compare the `DESIGN.md`
+  `12–18s` envelope with the `frontend/src/index.css`
+  `--motion-ambient: 15s` selection, with the foundation contract test serving
+  as the runtime-token gate;
 - Impeccable detector and screenshot/browser evidence plan;
 - rollback and compatibility window; and
 - separate staging, commit, push, PR, CI/thread, merge, deployment, and

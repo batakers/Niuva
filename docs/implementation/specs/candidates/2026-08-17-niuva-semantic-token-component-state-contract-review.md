@@ -103,6 +103,12 @@ rename variables:
 - **Motion:** instant, fast, standard, deliberate, ambient, easing, and the
   reduced-motion alternative.
 
+Motion has deliberately separate canonical and runtime authority:
+`DESIGN.md` owns the canonical `motion-ambient` envelope of `12–18s`, while
+`frontend/src/index.css` selects the current runtime value
+`--motion-ambient: 15s`. A runtime-value change requires a separate foundation
+gate and contract-test evidence. This candidate packet changes neither value.
+
 Status and lifecycle meanings remain domain-owned. A shared color or token role
 never authorizes an Inquiry, Request, Offer, Order, payment, Work Order, or
 Admin transition.
@@ -207,7 +213,10 @@ carried into a later exact-file foundation task:
    zero-consumer evidence, named replacements, rollback notes, and removal
    approval exist.
 4. **Typography and motion classification:** preserve the current NDS roles and
-   surface-specific expression, including reduced-motion behavior; no new
+   surface-specific expression, including reduced-motion behavior; `DESIGN.md`
+   owns the canonical `motion-ambient` envelope of `12–18s`, while
+   `frontend/src/index.css` selects the current `--motion-ambient: 15s`
+   runtime value; a runtime change requires a separate foundation gate; no new
    dependency or global feedback reset is approved.
 5. **Consumer and rollback evidence:** every migration slice must identify
    consumers, verification, compatibility impact, and rollback requirements.

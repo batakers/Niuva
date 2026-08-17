@@ -69,7 +69,9 @@ Only these paths may be changed by the later implementation slice:
    - do not introduce a second token source or theme engine.
 3. `frontend/src/components/ui/design-system-foundation.contract.test.js`
    - assert required role families, dependency direction, compatibility aliases,
-     and absence of backend lifecycle meaning in token names.
+     current runtime motion selection (`--motion-ambient: 15s`) as the
+     runtime-token gate, and absence of backend lifecycle meaning in token
+     names.
 4. `frontend/src/components/ui/motion-accessibility.contract.test.js`
    - assert the approved motion grammar, visible focus, and per-contract
      reduced-motion behavior where the foundation contract applies.
@@ -104,7 +106,11 @@ The implementation must:
   recovery, conflict, permission, expired, offline, uncertain, and success
   state contract; and
 - keep CSS-first motion, visible focus, and reduced-motion feedback without a
-  new dependency or a global feedback reset.
+  new dependency or a global feedback reset; `DESIGN.md` remains the canonical
+  authority for the `motion-ambient` envelope (`12–18s`), while
+  `frontend/src/index.css` selects the current runtime value
+  (`--motion-ambient: 15s`); runtime changes require a separate foundation gate
+  and the foundation contract test is that runtime-token gate.
 
 ## 5. Explicit exclusions
 
@@ -148,6 +154,9 @@ The implementation slice is acceptable only when:
 After separate implementation authorization, run from `frontend/`:
 
 - focused contract tests for the three exact test paths above;
+- the foundation contract test as the runtime-token gate for the current
+  `frontend/src/index.css` selection (`--motion-ambient: 15s`), reviewed against
+  the canonical `DESIGN.md` envelope (`12–18s`) without changing either value;
 - the full frontend test suite with watch mode disabled;
 - production build and `npm run audit:production`;
 - Impeccable detector after edits are complete;
