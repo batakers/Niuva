@@ -109,6 +109,11 @@ describe("frontend design-system foundation", () => {
       "--color-action-primary: var(--nds-blue-700)",
       "--color-action-primary-rgb: 49 95 143",
       "--color-border-control: #708BA3",
+      "--color-border-focus: var(--color-focus-ring)",
+      "--color-action-disabled: var(--color-disabled-surface)",
+      "--color-surface-inverse: var(--nds-blue-950)",
+      "--color-overlay-surface: var(--color-overlay-scrim)",
+      "--color-text-technical: var(--color-text-secondary)",
       "--public-canvas: var(--color-surface-canvas)",
       "--commerce-summary-surface: var(--color-surface-default)",
       "--account-task-surface: var(--color-surface-default)",
@@ -116,6 +121,20 @@ describe("frontend design-system foundation", () => {
     ]) {
       expect(css).toContain(contract);
     }
+  });
+
+  test("keeps semantic roles independent from lifecycle authority", () => {
+    const css = fs.readFileSync(path.join(sourceRoot, "index.css"), "utf8");
+    const lifecyclePattern =
+      /(?:^|-)(?:inquiry|request|offer|order|payment|quote|project|work-order)(?:-|$)/i;
+    const tokenDeclarations = [...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)].map(
+      ([, name]) => name
+    );
+    const lifecycleNamedRoles = tokenDeclarations.filter((name) =>
+      lifecyclePattern.test(name.slice(2))
+    );
+
+    expect(lifecycleNamedRoles).toEqual([]);
   });
 
   test("uses the approved motion grammar without a global reduced-motion wipe", () => {
@@ -259,7 +278,12 @@ describe("frontend design-system foundation", () => {
       "expression: [\"var(--font-family-nds-expression)\"]",
       "const withOpacity = (token) => `rgb(var(${token}) / <alpha-value>)`",
       "'action-primary': withOpacity('--color-action-primary-rgb')",
+      "'action-disabled': withOpacity('--color-action-disabled-rgb')",
       "'disabled-surface': withOpacity('--color-disabled-surface-rgb')",
+      "'surface-inverse': withOpacity('--color-surface-inverse-rgb')",
+      "'border-focus': withOpacity('--color-border-focus-rgb')",
+      "'text-technical': withOpacity('--color-text-technical-rgb')",
+      "'overlay-surface': 'var(--color-overlay-surface)'",
       "'public-canvas': 'var(--public-canvas)'",
       "DEFAULT: withOpacity('--color-status-success-rgb')",
       "surface: 'var(--color-status-success-surface)'",
