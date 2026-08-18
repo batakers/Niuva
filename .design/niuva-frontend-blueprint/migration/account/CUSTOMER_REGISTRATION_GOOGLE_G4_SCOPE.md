@@ -6,7 +6,7 @@ runtime activation are not authorized by this document
 **Date:** 18 August 2026 (Asia/Jakarta)
 
 **Baseline:** `origin/main`
-`ea4d3f5d79322d02cfbff5e3ee616140f1530e92`
+`652418ebc4fcd049eeb020f7e00bdbe78515bfbb`
 
 **G3 review:**
 [`CUSTOMER_REGISTRATION_GOOGLE_G3_REVIEW.md`](../../validation/CUSTOMER_REGISTRATION_GOOGLE_G3_REVIEW.md)
