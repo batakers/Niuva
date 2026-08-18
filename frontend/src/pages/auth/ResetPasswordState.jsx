@@ -1,33 +1,38 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
-import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
+import { AuthCard, AuthShell, getAuthCopy } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n";
 
 export default function ResetPasswordState({ success = false }) {
+  const { lang } = useI18n();
+  const authCopy = getAuthCopy(lang);
+  const copy = authCopy.resetState;
+
   return (
     <AuthShell audience="recovery">
       <AuthCard
-        eyebrow="Pemulihan akun"
-        title={success ? "Password berhasil diubah" : "Link tidak valid"}
+        eyebrow={authCopy.recovery.eyebrow}
+        title={success ? copy.successTitle : copy.errorTitle}
         description={
           success
-            ? "Sesi lama telah diakhiri. Pilih halaman login yang sesuai untuk masuk dengan password baru."
-            : "Link reset tidak valid atau sudah tidak dapat digunakan. Anda dapat meminta link baru."
+            ? copy.successDescription
+            : copy.errorDescription
         }
       >
         {success ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <Button asChild variant="outline">
-              <Link to="/login">Login pelanggan</Link>
+              <Link to="/login">{copy.customerLogin}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/admin/login">Login admin</Link>
+              <Link to="/admin/login">{copy.staffLogin}</Link>
             </Button>
           </div>
         ) : (
           <Button asChild className="w-full" size="lg">
-            <Link to="/forgot-password">Minta link baru</Link>
+            <Link to="/forgot-password">{copy.requestNew}</Link>
           </Button>
         )}
       </AuthCard>

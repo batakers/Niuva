@@ -1,10 +1,10 @@
 # MIG-03A — Account/Auth customer safe-return pilot
 
-**Status:** G4 exact-file scope amended — implementation authorized by the
-owner Goal; no runtime change in this card
+**Status:** G4 implementation complete locally — delivery evidence recorded;
+no backend or capability activation in this card
 **Parent:** `MIG-03` Account/Auth source pilot task card
 **Baseline:** `origin/main` at
-`2cb2c69e4d8b13232045857616d3c89f954a418b`
+`5bf673a9d9ce7841e5020aa6afba40c2fc2351cf`
 **Surface:** Customer login and recovery only
 
 ## Objective
@@ -121,8 +121,9 @@ reviewable. Runtime source remains unchanged by this review.
 ### G4 exact-file amendment result
 
 **Result:** PASS for the amended exact-file scope, with implementation limited
-to the paths below and the exclusions that follow. The amendment is a
-documentation gate record; runtime source is still unchanged in this worktree.
+to the paths below and the exclusions that follow. At the time of the
+amendment, this documentation gate did not change runtime source; the
+implementation evidence below records the subsequent bounded G4 work.
 
 | Exact path | Allowed change | Explicitly unchanged |
 | --- | --- | --- |
@@ -156,12 +157,55 @@ included.
 
 ## Verification and rollback
 
-After G4, run focused auth tests, full frontend regression, production build,
+For G4, run focused auth tests, full frontend regression, production build,
 dependency and diff checks, keyboard/return-path browser checks, Axe, and the
 Impeccable Product-register critique. Use a fresh isolated worktree from
 `origin/main`; rollback only the approved pilot paths and preserve auth history.
 
-**Self-review result:** Amended G4 exact-file review is bounded and recorded as
-PASS at the current `origin/main` SHA. Only this documentation card is changed
-in the scope-amendment worktree; runtime implementation follows in a separate
-source worktree and PR.
+## G4 implementation evidence
+
+**Implementation date:** 18 August 2026 (Asia/Jakarta)
+
+The owner Goal authorized implementation and autonomous Git delivery for this
+bounded slice. The source worktree was created from the baseline above and the
+following exact paths are the only changed application/test paths:
+
+- `frontend/src/components/auth/AuthShell.jsx`
+- `frontend/src/components/auth/AuthShell.test.jsx`
+- `frontend/src/pages/auth/CustomerLogin.jsx`
+- `frontend/src/pages/auth/CustomerLogin.test.jsx`
+- `frontend/src/pages/auth/ForgotPassword.jsx`
+- `frontend/src/pages/auth/ForgotPassword.test.jsx`
+- `frontend/src/pages/auth/ResetPassword.jsx`
+- `frontend/src/pages/auth/ResetPasswordState.jsx`
+
+The implementation localizes the existing Account/Auth presentation through
+the stored ID/EN preference, keeps customer/staff/recovery audiences distinct,
+preserves the customer safe-return allowlist, retains generic recovery/error
+meaning, and adds no route, API, session, role, identity-provider, dependency,
+or backend behavior. `ProtectedRoute.jsx`, `App.js`, Admin login, and staff
+invitation remain unchanged references.
+
+Verification completed before delivery:
+
+- focused auth: 7 suites, 49 tests passed;
+- full frontend regression: 73 suites, 466 tests passed;
+- production build: passed;
+- production dependency audit: passed; two existing exact RSC-only React
+  Router advisory entries remain accepted for this BrowserRouter SPA;
+- `git diff --check`: passed;
+- Impeccable detector over all changed UI targets: `[]`;
+- Playwright browser matrix: login, forgot-password, and reset-password at
+  ID/EN × 320/390/1440; no overflow, page errors, or token left in the URL;
+- Axe: 0 violations across that browser matrix;
+- keyboard smoke: first Tab reaches the visible site-return control and the
+  controls remain reachable at mobile and desktop widths.
+
+The 320px shell overflow found during the first browser pass was corrected by
+bounded `min-w-0` constraints in `AuthShell.jsx`; no lifecycle or route
+contract changed. A production/readiness/go-live claim is not made.
+
+**Self-review result:** G4 implementation is PASS for the amended exact-file
+scope. Delivery remains limited to this source/test slice and this execution
+record; Dashboard Customer, Order Detail, staff login, Operations,
+registration, provider activation, and backend authority remain excluded.

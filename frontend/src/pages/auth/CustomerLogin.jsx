@@ -6,11 +6,33 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import { api, formatApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { getAuthCopy } from "@/components/auth/AuthShell";
+import { useI18n } from "@/i18n";
+
+export function getCustomerDestination(requestedDestination) {
+  if (typeof requestedDestination !== "string") return "/dashboard";
+  if (requestedDestination === "/dashboard" || requestedDestination === "/order") {
+    return requestedDestination;
+  }
+  if (/^\/orders\/[^/?#]+(?:[?#].*)?$/.test(requestedDestination)) {
+    return requestedDestination;
+  }
+  return "/dashboard";
+}
+
+function loginError(requestError, copy) {
+  const status = requestError?.response?.status;
+  if (status === 401) return copy.errors.invalidCredentials;
+  if (!requestError?.response || status >= 500) return copy.errors.unavailable;
+  return copy.errors.generic;
+}
 
 
 export default function CustomerLogin() {
   const { user, loading, login } = useAuth();
+  const { lang } = useI18n();
+  const copy = getAuthCopy(lang).login;
   const location = useLocation();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -18,17 +40,11 @@ export default function CustomerLogin() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const requestedDestination = location.state?.from;
-  const destination =
-    typeof requestedDestination === "string" &&
-    (requestedDestination === "/dashboard" ||
-      requestedDestination === "/order" ||
-      requestedDestination.startsWith("/orders/"))
-      ? requestedDestination
-      : "/dashboard";
+  const destination = getCustomerDestination(requestedDestination);
 
   useEffect(() => {
-    document.title = "Login Pelanggan - Niuva";
-  }, []);
+    document.title = `${copy.title} - Niuva`;
+  }, [copy.title]);
 
   if (!loading && user) {
     return <Navigate to={destination} replace />;
@@ -43,7 +59,7 @@ export default function CustomerLogin() {
       login(data.user);
       navigate(destination, { replace: true });
     } catch (requestError) {
-      setError(formatApiError(requestError.response?.data?.detail));
+      setError(loginError(requestError, copy));
     } finally {
       setSubmitting(false);
     }
@@ -52,12 +68,12 @@ export default function CustomerLogin() {
   return (
     <AuthShell audience="customer">
       <AuthCard
-        eyebrow="Portal pelanggan"
-        title="Masuk ke akun Anda"
-        description="Lihat pesanan dan perkembangan pekerjaan yang terhubung dengan akun Anda."
+        eyebrow={copy.eyebrow}
+        title={copy.heading}
+        description={copy.description}
       >
         <form onSubmit={submit} className="space-y-5" data-testid="customer-login-form">
-          <FormField label="Email" required>
+          <FormField label={copy.email} required>
             <Input
               id="customer-login-email"
               type="email"
@@ -67,7 +83,7 @@ export default function CustomerLogin() {
               required
             />
           </FormField>
-          <FormField label="Password" required>
+          <FormField label={copy.password} required>
             <Input
               id="customer-login-password"
               type="password"
@@ -79,10 +95,10 @@ export default function CustomerLogin() {
           </FormField>
           {error && <Alert>{error}</Alert>}
           <Button type="submit" className="w-full" size="lg" disabled={submitting || loading}>
-            {submitting ? "Memverifikasi…" : "Masuk"}
+            {submitting ? copy.verifying : copy.submit}
           </Button>
           <Button asChild variant="link" className="w-full">
-            <Link to="/forgot-password?audience=customer">Lupa password?</Link>
+            <Link to="/forgot-password?audience=customer">{copy.forgot}</Link>
           </Button>
         </form>
       </AuthCard>

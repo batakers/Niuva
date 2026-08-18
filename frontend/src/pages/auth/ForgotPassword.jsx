@@ -6,7 +6,9 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { api, formatApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { getAuthCopy } from "@/components/auth/AuthShell";
+import { useI18n } from "@/i18n";
 
 const RESEND_SECONDS = 60;
 
@@ -27,11 +29,11 @@ function audienceSearch(audience) {
   return audience === "recovery" ? "" : `?audience=${audience}`;
 }
 
-function LoginDestinations({ audience }) {
+function LoginDestinations({ audience, copy }) {
   if (audience === "customer") {
     return (
       <Button asChild variant="link" className="w-full">
-        <Link to="/login">Kembali ke login pelanggan</Link>
+        <Link to="/login">{copy.customerLogin}</Link>
       </Button>
     );
   }
@@ -39,7 +41,7 @@ function LoginDestinations({ audience }) {
   if (audience === "staff") {
     return (
       <Button asChild variant="link" className="w-full">
-        <Link to="/admin/login">Kembali ke login admin</Link>
+        <Link to="/admin/login">{copy.staffLogin}</Link>
       </Button>
     );
   }
@@ -47,10 +49,10 @@ function LoginDestinations({ audience }) {
   return (
     <div className="grid gap-2 sm:grid-cols-2">
       <Button asChild variant="outline">
-        <Link to="/login">Login pelanggan</Link>
+        <Link to="/login">{copy.customerDestination}</Link>
       </Button>
       <Button asChild variant="outline">
-        <Link to="/admin/login">Login admin</Link>
+        <Link to="/admin/login">{copy.staffDestination}</Link>
       </Button>
     </div>
   );
@@ -60,6 +62,8 @@ export default function ForgotPassword() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { lang } = useI18n();
+  const copy = getAuthCopy(lang).recovery;
   const audience = recoveryAudience(searchParams);
   const preservedSearch = audienceSearch(audience);
   const [email, setEmail] = useState("");
@@ -68,6 +72,10 @@ export default function ForgotPassword() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(location.pathname.endsWith("/check-email"));
   const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    document.title = `${copy.title} - Niuva`;
+  }, [copy.title]);
 
   useEffect(() => {
     if (!cooldown) return undefined;
@@ -87,7 +95,12 @@ export default function ForgotPassword() {
         replace: true,
       });
     } catch (requestError) {
-      setError(formatApiError(requestError.response?.data?.detail));
+      const status = requestError?.response?.status;
+      setError(
+        requestError?.response && (status == null || status < 500)
+          ? copy.errors.requestFailed
+          : copy.errors.unavailable,
+      );
     } finally {
       setSubmitting(false);
     }
@@ -109,19 +122,14 @@ export default function ForgotPassword() {
   return (
     <AuthShell audience={audience}>
       <AuthCard
-        eyebrow="Pemulihan akun"
-        title={sent ? "Periksa email Anda" : "Lupa password?"}
-        description={
-          sent
-            ? "Instruksi reset dikirim dengan respons yang sama untuk setiap permintaan."
-            : "Masukkan email akun. Jika terdaftar dan memenuhi syarat, kami akan mengirimkan link reset."
-        }
+        eyebrow={copy.eyebrow}
+        title={sent ? copy.sentTitle : copy.requestTitle}
+        description={sent ? copy.sentDescription : copy.requestDescription}
       >
         {sent ? (
           <div className="space-y-5" data-testid="forgot-password-sent">
             <Alert tone="default" role="status">
-              Jika email {maskedEmail || "yang Anda masukkan"} terdaftar,
-              instruksi reset password telah dikirim.
+              {copy.maskedPrefix} {maskedEmail || (lang === "en" ? "the email you entered" : "yang Anda masukkan")} {copy.maskedSuffix}
             </Alert>
             {error && <Alert id="forgot-password-error">{error}</Alert>}
             {email && (
@@ -133,10 +141,10 @@ export default function ForgotPassword() {
                 size="lg"
               >
                 {submitting
-                  ? "Mengirim…"
+                  ? copy.sending
                   : cooldown > 0
-                    ? `Kirim ulang (${cooldown})`
-                    : "Kirim ulang"}
+                    ? copy.resend(cooldown)
+                    : copy.resendReady}
               </Button>
             )}
             <Button
@@ -145,13 +153,13 @@ export default function ForgotPassword() {
               className="w-full"
               onClick={useAnotherEmail}
             >
-              Gunakan email lain
+              {copy.anotherEmail}
             </Button>
-            <LoginDestinations audience={audience} />
+            <LoginDestinations audience={audience} copy={copy} />
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-5" data-testid="forgot-password-form">
-            <FormField label="Email" required>
+            <FormField label={copy.email} required>
               <Input
                 data-testid="forgot-password-email"
                 type="email"
@@ -169,9 +177,9 @@ export default function ForgotPassword() {
               className="w-full"
               size="lg"
             >
-              {submitting ? "Mengirim…" : "Kirim link reset"}
+              {submitting ? copy.sending : copy.request}
             </Button>
-            <LoginDestinations audience={audience} />
+            <LoginDestinations audience={audience} copy={copy} />
           </form>
         )}
       </AuthCard>

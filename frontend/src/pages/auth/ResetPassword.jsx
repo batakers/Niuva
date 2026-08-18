@@ -1,11 +1,12 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
-import { api, formatApiError } from "@/lib/api";
+import { AuthCard, AuthShell, getAuthCopy } from "@/components/auth/AuthShell";
+import { api } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/i18n";
 
 function captureToken() {
   const url = new URL(window.location.href);
@@ -17,6 +18,8 @@ function captureToken() {
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const { lang } = useI18n();
+  const copy = getAuthCopy(lang).reset;
   const capturedToken = useRef(null);
   const [token, setToken] = useState(null);
   const [policy, setPolicy] = useState(null);
@@ -29,6 +32,10 @@ export default function ResetPassword() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const errorRef = useRef(null);
+
+  useEffect(() => {
+    document.title = `${copy.title} - Niuva`;
+  }, [copy.title]);
 
   useLayoutEffect(() => {
     if (capturedToken.current === null) capturedToken.current = captureToken();
@@ -87,8 +94,8 @@ export default function ResetPassword() {
     try {
       await api.post("/auth/reset-password", { token, new_password: newPassword });
       navigate("/reset-password/success", { replace: true });
-    } catch (requestError) {
-      setError(formatApiError(requestError.response?.data?.detail));
+    } catch {
+      setError(copy.errors.unavailable);
     } finally {
       setSubmitting(false);
     }
@@ -97,35 +104,39 @@ export default function ResetPassword() {
   return (
     <AuthShell audience="recovery">
       <AuthCard
-        eyebrow="Pemulihan akun"
-        title="Buat password baru"
-        description="Link akan diperiksa sebelum Anda dapat mengubah password."
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
       >
         {preparationError ? (
           <div className="space-y-5">
-            <Alert>Link belum dapat diperiksa. Periksa koneksi, lalu coba lagi.</Alert>
+            <Alert>{copy.unavailable}</Alert>
             <Button
               type="button"
               onClick={() => setPreparationAttempt((attempt) => attempt + 1)}
               className="w-full"
               size="lg"
             >
-              Coba Lagi
+              {copy.retry}
             </Button>
           </div>
         ) : validating ? (
           <p className="text-sm text-text-secondary" role="status" aria-live="polite">
-            Memeriksa link reset…
+            {copy.checking}
           </p>
         ) : (
           <form onSubmit={submit} className="space-y-5" data-testid="reset-password-form">
             <FormField
-              label="Password baru"
+              label={copy.newPassword}
               required
-              hint={`${policy.min_code_points}–${policy.max_code_points} karakter Unicode, maksimal ${policy.max_utf8_bytes} byte, tanpa aturan kombinasi karakter.`}
+              hint={copy.passwordHint(
+                policy.min_code_points,
+                policy.max_code_points,
+                policy.max_utf8_bytes,
+              )}
               error={
                 newPassword.length > 0 && !lengthValid
-                  ? "Password belum memenuhi panjang yang diperlukan."
+                  ? copy.passwordInvalid
                   : undefined
               }
             >
@@ -144,15 +155,15 @@ export default function ResetPassword() {
               variant="ghost"
               size="sm"
               onClick={() => setShowPassword((shown) => !shown)}
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={showPassword ? copy.hidePassword : copy.showPassword}
             >
-              {showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              {showPassword ? copy.hidePassword : copy.showPassword}
             </Button>
 
             <FormField
-              label="Konfirmasi password"
+              label={copy.confirmPassword}
               required
-              error={mismatch ? "Password tidak cocok." : undefined}
+              error={mismatch ? copy.passwordMismatch : undefined}
             >
               <Input
                 data-testid="reset-password-confirm"
@@ -177,10 +188,10 @@ export default function ResetPassword() {
               className="w-full"
               size="lg"
             >
-              {submitting ? "Memproses…" : "Simpan password baru"}
+              {submitting ? copy.processing : copy.submit}
             </Button>
             <Button asChild variant="link" className="w-full">
-              <Link to="/forgot-password">Minta link baru</Link>
+              <Link to="/forgot-password">{copy.requestNew}</Link>
             </Button>
           </form>
         )}
