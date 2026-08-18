@@ -17,6 +17,10 @@ export default function NotFoundPage() {
   const description = english
     ? "The requested Niuva page is unavailable. Return home or use the main navigation."
     : "Halaman Niuva yang diminta tidak tersedia. Kembali ke Beranda atau gunakan navigasi utama.";
+  const missingPath = location.pathname || "/";
+  const missingPathLabel = (
+    <span className="break-words [overflow-wrap:anywhere]">{`\"${missingPath}\"`}</span>
+  );
 
   useEffect(() => {
     document.title = title;
@@ -57,9 +61,11 @@ export default function NotFoundPage() {
         <PageHero
           label="Error 404"
           title={english ? "The page you are looking for was not found." : "Halaman yang Anda cari tidak ditemukan."}
-          body={english
-            ? `The address "${location.pathname}" is unavailable or may have moved. Use the links below to return to a main Niuva page.`
-            : `Alamat "${location.pathname}" tidak tersedia atau mungkin sudah dipindahkan. Gunakan tautan di bawah untuk kembali ke bagian utama situs Niuva.`}
+          body={english ? (
+            <>The address {missingPathLabel} is unavailable or may have moved. Use the links below to return to a main Niuva page.</>
+          ) : (
+            <>Alamat {missingPathLabel} tidak tersedia atau mungkin sudah dipindahkan. Gunakan tautan di bawah untuk kembali ke bagian utama situs Niuva.</>
+          )}
           variant="standard"
           primaryAction={<BrandButton to={getPublicPath("home", locale)}>{english ? "Return home" : "Kembali ke Beranda"}</BrandButton>}
           secondaryAction={<BrandButton to={getPublicPath("contact", locale)} variant="secondary">{english ? "Contact Niuva" : "Hubungi Niuva"}</BrandButton>}
