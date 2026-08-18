@@ -3,6 +3,8 @@ import {
   categoryDraftFrom,
   emptyCategoryDraft,
   emptyProductDraft,
+  availabilityLabel,
+  formatCatalogPrice,
   normalizeValidationErrors,
   validCategoryDraft,
   visibleCatalogActions,
@@ -78,4 +80,20 @@ test("category drafts support safe create and edit payloads", () => {
   });
   expect(validCategoryDraft({ ...draft, name: "R" })).toBe(false);
   expect(validCategoryDraft(draft)).toBe(true);
+});
+
+test("public catalog labels localize without changing price authority", () => {
+  const product = {
+    pricing_mode: "fixed",
+    price_from: 125000,
+    currency: "IDR",
+  };
+
+  expect(formatCatalogPrice(product)).toMatch(/^Mulai /);
+  expect(formatCatalogPrice(product, [], "en")).toMatch(/^Starting at /);
+  expect(
+    formatCatalogPrice({ ...product, pricing_mode: "quote_required" }, [], "en"),
+  ).toBe("Price available after discussion");
+  expect(availabilityLabel([{ stock_status: "in_stock" }])).toBe("Tersedia");
+  expect(availabilityLabel([{ stock_status: "in_stock" }], "en")).toBe("In stock");
 });

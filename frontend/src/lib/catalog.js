@@ -101,7 +101,11 @@ export const publicCatalogApi = {
   product: (slug) => unwrap(api.get(`/catalog/products/${encodeURIComponent(slug)}`)),
 };
 
-export function formatCatalogPrice(product, variants = []) {
+function isEnglishCatalogLocale(locale) {
+  return locale === "en";
+}
+
+export function formatCatalogPrice(product, variants = [], locale = "id") {
   const currency = product?.currency || "IDR";
   const values = variants
     .map((variant) => Number(variant.fixed_price || 0))
@@ -109,19 +113,35 @@ export function formatCatalogPrice(product, variants = []) {
   const base = Number(product?.price_from || 0);
   const amount = base > 0 ? base : values.length ? Math.min(...values) : 0;
   if (product?.pricing_mode === "quote_required" || amount <= 0) {
-    return "Harga berdasarkan penawaran";
+    return isEnglishCatalogLocale(locale)
+      ? "Price available after discussion"
+      : "Harga setelah diskusi";
   }
-  return `Mulai ${new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount)}`;
+  const formattedAmount = new Intl.NumberFormat(
+    isEnglishCatalogLocale(locale) ? "en-US" : "id-ID",
+    {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    },
+  ).format(amount);
+  return isEnglishCatalogLocale(locale)
+    ? `Starting at ${formattedAmount}`
+    : `Mulai ${formattedAmount}`;
 }
 
-export function availabilityLabel(variants = []) {
+export function availabilityLabel(variants = [], locale = "id") {
   const statuses = new Set(variants.map((variant) => variant.stock_status));
-  if (statuses.has("in_stock")) return "Tersedia";
-  if (statuses.has("low_stock")) return "Stok terbatas";
-  if (statuses.has("made_to_order")) return "Dibuat sesuai pesanan";
-  return "Belum tersedia";
+  if (statuses.has("in_stock")) {
+    return isEnglishCatalogLocale(locale) ? "In stock" : "Tersedia";
+  }
+  if (statuses.has("low_stock")) {
+    return isEnglishCatalogLocale(locale) ? "Limited stock" : "Stok terbatas";
+  }
+  if (statuses.has("made_to_order")) {
+    return isEnglishCatalogLocale(locale)
+      ? "Made to order"
+      : "Dibuat sesuai pesanan";
+  }
+  return isEnglishCatalogLocale(locale) ? "Not available" : "Belum tersedia";
 }

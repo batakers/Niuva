@@ -40,3 +40,23 @@ test("uses a calm labelled fallback when publication media is absent", () => {
   expect(screen.getByRole("img", { name: "Visual Desk Sign" })).toBeInTheDocument();
   expect(screen.getByText("Visual produk belum tersedia")).toBeInTheDocument();
 });
+
+test("accepts localized fallback labels from its surface owner", () => {
+  resolveMediaUrl.mockReturnValue("");
+
+  render(
+    <RetailProductVisual
+      product={{ media: [] }}
+      fallbackProductName="Niuva product"
+      visualAltPrefix="Product image"
+      missingVisualLabel="Product visual is not available yet"
+    />,
+  );
+
+  expect(
+    screen.getByRole("img", { name: "Product image Niuva product" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("Product visual is not available yet"),
+  ).toBeInTheDocument();
+});

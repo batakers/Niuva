@@ -14,6 +14,7 @@ const visualSource = read(
   "retail",
   "RetailProductVisual.jsx",
 );
+const i18nSource = read("..", "..", "i18n.js");
 
 describe("Retail route and data boundaries", () => {
   test("keeps the approved public discovery routes", () => {
@@ -37,10 +38,18 @@ describe("Retail route and data boundaries", () => {
   test("limits the product contact handoff to quote-required state", () => {
     expect(detailSource).toContain('state === "quote_required"');
     expect(detailSource).toContain('getPublicPath("contact", lang)');
+    expect(detailSource).toContain('getPublicPath("retail", lang)');
     expect(detailSource).toContain('<Link to={contactPath}>');
-    expect(detailSource).toContain('"Minta penawaran"');
+    expect(detailSource).toContain('t("retail.detail.quoteAction")');
+    expect(detailSource).toContain('t("retail.detail.quoteDescription")');
     expect(detailSource).toContain('state === "discovery_only"');
-    expect(detailSource).toContain("Transaksi Retail belum aktif");
+    expect(detailSource).toContain('t("retail.detail.discoveryOnlyTitle")');
+    expect(i18nSource).toContain(
+      '"retail.detail.quoteDescription": "Harga dan komitmen pengerjaan baru ditetapkan setelah kebutuhan ditinjau.',
+    );
+    expect(i18nSource).toContain(
+      '"retail.detail.quoteDescription": "Final price and work commitment are set only after the requirement is reviewed.',
+    );
   });
 });
 describe("Retail design-system convergence", () => {
@@ -62,8 +71,18 @@ describe("Retail design-system convergence", () => {
   test("keeps filtering and pagination failures perceivable", () => {
     expect(catalogSource).toContain("aria-pressed={selectedCategory");
     expect(catalogSource).toContain('data-testid="retail-load-more-error"');
-    expect(catalogSource).toMatch(
-      /Produk yang\s+sudah tampil tetap tersedia/,
+    expect(catalogSource).toContain('t("retail.discovery.loadMoreError")');
+    expect(i18nSource).toContain(
+      '"retail.discovery.loadMoreError": "Produk berikutnya belum berhasil dimuat. Produk yang sudah tampil tetap tersedia."',
     );
+  });
+
+  test("keeps Retail entry localization separate from unprefixed product detail", () => {
+    expect(catalogSource).toContain('getPublicPath("contact", lang)');
+    expect(catalogSource).toContain("formatCatalogPrice(product, variants, lang)");
+    expect(detailSource).toContain('availabilityLabel(state.value.variants, lang)');
+    expect(detailSource).not.toContain('to="/retail"');
+    expect(i18nSource).toContain('"retail.discovery.title": "Produk yang dapat Anda pelajari sebelum bertransaksi."');
+    expect(i18nSource).toContain('"retail.discovery.title": "Products you can review before any transaction."');
   });
 });
