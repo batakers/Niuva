@@ -1,10 +1,10 @@
 # SRC-PUB-02 — Privacy and Not Found support-family G3 task card
 
-**Status:** Candidate G3 exact-file review — source implementation not
-authorized
+**Status:** Historical G3 candidate review — documentation PASS WITH
+CONDITIONS; source implementation remains unauthorized
 **Date:** 19 August 2026 (Asia/Jakarta)
 **G3 baseline:** `origin/main` at
-`518f951d2dd7aa94c45b65b0f8944bee7b20fe11` (merge of PR #301)
+`ff843ce403932de2ff3f77532e60448c789e3aec` (after documentation PR #302)
 **Parent design task:** `PUB-06` — FAQ, Privacy, and Not Found support family
 **Surface:** Public support/content
 **Owner:** Public frontend driver; exact individual name is not part of the
@@ -198,14 +198,15 @@ exact-file amendment. Do not expand this card opportunistically.
 
 ## G3 result and next gate
 
-**Self-review result:** PASS WITH CONDITIONS for a bounded candidate G3 scope.
+**Self-review result:** PASS WITH CONDITIONS for a bounded candidate G3 scope;
+the documentation review is closed by the backlog reconciliation ledger.
 The route owners, two-page exact-file boundary, read-only references, state
-contract, search decision, and content/legal hold are reviewable at
-`518f951d2dd7aa94c45b65b0f8944bee7b20fe11`.
+contract, search decision, and content/legal hold were initially reviewed at
+`518f951d2dd7aa94c45b65b0f8944bee7b20fe11` and revalidated against the current
+`origin/main` `ff843ce403932de2ff3f77532e60448c789e3aec` during this Goal.
 
-The next gate is a separately reviewed owner decision for G3 exact-file scope.
-Only after that decision may a distinct G4 implementation authorization be
-requested. G3 does not change source, stage files, activate routes, publish
+The next gate is a distinct G4 implementation authorization for the two named
+runtime files. G3 does not change source, stage files, activate routes, publish
 policy, establish provider/server behavior, or imply readiness/go-live.
 
 ## Rollback and exclusions

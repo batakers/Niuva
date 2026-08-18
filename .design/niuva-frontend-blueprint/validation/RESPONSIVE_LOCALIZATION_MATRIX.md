@@ -42,17 +42,23 @@ These measurements are source-pilot evidence attached to exact merged commits.
 The mocked API boundary proves only client rendering and interaction under the
 supplied fixtures; it does not prove backend behavior or readiness.
 
-## Measurement checklist for later browser evidence
+## Deferred measurement checklist for later browser evidence
 
-- [ ] Capture each remaining unimplemented artifact at 320, 390, 768, 1024,
-  and 1440px.
-- [ ] Check horizontal overflow, clipped focus, lost primary action, and fixed
-  height/width assumptions.
-- [ ] Repeat at 200% zoom/reflow with keyboard access to the same action.
-- [ ] Repeat in Indonesian and English with intentionally long labels, errors,
-  names, and status text.
-- [ ] Record artifact revision, browser, viewport, and screenshot path before
-  calling a source pilot responsive-ready.
+The following measurements are intentionally deferred. This documentation
+reconciliation did not run a browser, zoom, assistive-technology, or long-
+content session for the remaining unimplemented artifacts, so no checkbox is
+converted into a false pass:
+
+- **Deferred:** capture each remaining unimplemented artifact at 320, 390, 768,
+  1024, and 1440px.
+- **Deferred:** check horizontal overflow, clipped focus, lost primary action,
+  and fixed height/width assumptions.
+- **Deferred:** repeat at 200% zoom/reflow with keyboard access to the same
+  action.
+- **Deferred:** repeat in Indonesian and English with intentionally long
+  labels, errors, names, and status text.
+- **Deferred:** record artifact revision, browser, viewport, and screenshot
+  path before calling a source pilot responsive-ready.
 
 ## Findings and dispositions
 

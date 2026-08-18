@@ -1,8 +1,8 @@
 # MIG-03 — Candidate Account/Auth source pilot task card
 
-**Status:** Candidate planning-only umbrella — G3/G4 not granted; the bounded
-MIG-03A split card is the proposed next G3 scope
-**Baseline:** `origin/main` at `d8438b2e4e4d6b97eb147f4866b0890e85f0de06`
+**Status:** Historical bounded source pilot — G4/G5 complete in PR #288;
+future Account/Auth slices remain separately scoped
+**Baseline:** `origin/main` at `ff843ce403932de2ff3f77532e60448c789e3aec`
 **Owner:** Account/Auth frontend driver (to be named at G3)
 **Surface:** Customer authentication and owned-record return only
 **Inputs:** `AUTH-01`/`AUTH-02`/`AUTH-03`/`ACC-01`, QA-01–QA-05, DS-01A/DS-01B,
@@ -69,4 +69,9 @@ G3/G4, commit, push, PR, thread resolution, merge, and readiness are separate.
 - [x] Safe return, privacy, and projection constraints are explicit.
 - [x] No identity/provider or backend capability activation is implied.
 
-**Self-review result:** Pass as a candidate G3 task card.
+**Execution record:** The amended Customer Login/recovery scope was executed
+and merged as PR [#288](https://github.com/batakers/Niuva/pull/288). Staff login,
+provider activation, and broader Account/Auth expansion remain separate.
+
+**Self-review result:** Pass as a historical bounded execution record; this
+umbrella card does not authorize a new source slice.

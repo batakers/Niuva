@@ -1,7 +1,7 @@
 # MIG-05 — Candidate foundation task cards
 
 **Status:** Candidate planning-only foundation register — no source migration
-**Baseline:** `origin/main` at `814a46329b8de7775c2de8b1ee34536d73df63e1`
+**Baseline:** `origin/main` at `ff843ce403932de2ff3f77532e60448c789e3aec`
 **Authority:** `DESIGN_TOKENS.md`, DS-01A, DS-02–DS-05, QA-05, and the
 two-real-consumer promotion rule
 
@@ -16,12 +16,13 @@ two-real-consumer promotion rule
 
 ## Post-pilot evidence reconciliation
 
-PR #288 (Account/Auth) and PR #290 (Operations) provide two additional
-consumer families for review, but they do not by themselves authorize a
-foundation migration. Their changes stayed page/surface-owned: auth copy and
-safe-return behavior remain in Auth, while Operations record labels remain in
-Operations. No identical-purpose token or shared component contract has been
-promoted by those pilots.
+PR #288 (Account/Auth), PR #290 (Operations), and the later bounded pilots
+provide additional consumer families for review, but they do not by themselves
+authorize a foundation migration. Their changes stayed page/surface-owned:
+auth copy and safe-return behavior remain in Auth, while Operations record
+labels remain in Operations. PR #276 is the only merged semantic foundation
+slice; no later identical-purpose token or shared component contract has been
+promoted by the pilots.
 
 The next foundation G3 must re-run exact consumer searches at the baseline
 above and prove two same-meaning consumers before changing `index.css`, the
