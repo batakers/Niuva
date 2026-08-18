@@ -6,7 +6,7 @@ remain explicitly held
 **Date:** 19 August 2026 (Asia/Jakarta)
 
 **Selected baseline:** `origin/main` at
-`f90bb7a71848c4f69563583fc685d1da0ea1fd41` (after documentation PR #303)
+`ce3cc7633ef794050b40baeba42624979782a2c1` (after Not Found PR #305)
 
 **Scope:** Reconcile the apparent unfinished items in the Frontend Experience
 and Design-System Blueprint against merged source evidence and current
@@ -27,10 +27,10 @@ reported as complete.
 
 | Item | Evidence at selected baseline | Decision in this Goal | Result |
 | --- | --- | --- | --- |
-| `SRC-PUB-02` Privacy/Not Found G3 | Exact runtime/test paths and state contract are recorded in [`PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`](../migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md); FAQ is already PR #301. | Close the documentation G3 review as **PASS WITH CONDITIONS**, then split follow-up into `SRC-PUB-02A` Not Found and `SRC-PUB-02B` Privacy. | Documentation task closed; Not Found has a separate G4 card, while Privacy remains held. |
-| `SRC-PUB-02A` Not Found G4 companion | [`PUBLIC_NOT_FOUND_G4_TASK_CARD.md`](../migration/public/PUBLIC_NOT_FOUND_G4_TASK_CARD.md) limits source/test changes to `NotFoundPage.jsx` and `NotFoundPage.test.jsx`. | Select the Not Found recovery slice as the next exact-file source task; preserve wildcard route and Layout metadata ownership. | G4 source work may proceed only within the companion card and its delivery evidence. |
+| `SRC-PUB-02` Privacy/Not Found G3 | Exact runtime/test paths and state contract are recorded in [`PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`](../migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md); FAQ is already PR #301. | Close the documentation G3 review as **PASS WITH CONDITIONS**, then split follow-up into delivered `SRC-PUB-02A` Not Found and held `SRC-PUB-02B` Privacy. | Documentation task closed; Not Found G4 is delivered in PR #305, while Privacy remains held. |
+| `SRC-PUB-02A` Not Found G4 companion | [`PUBLIC_NOT_FOUND_G4_TASK_CARD.md`](../migration/public/PUBLIC_NOT_FOUND_G4_TASK_CARD.md) limits source/test changes to `NotFoundPage.jsx` and `NotFoundPage.test.jsx`; PR #305 delivered the exact two-file slice. | Record the bounded implementation and its proportional evidence; preserve wildcard route and Layout metadata ownership. | G4 delivered in PR #305; no further Not Found source work is implied. |
 | `SRC-PUB-02B` Privacy legal/content hold | `PrivacyPolicyPage.jsx` visibly remains Draft and not legally reviewed; no approved revision is present. | Keep `/privasi` and `/en/privacy` source work blocked until content owner/legal review supplies an approved revision. | No Privacy G4, publication, or legal-readiness claim. |
-| `SRC-EXPAND-01` route-family expansion | Merged pilots cover one bounded family at a time: PRs #279, #281, #284, #288, #290, #296, #299, and #301. | Close the planning ambiguity by recording one-family-at-a-time expansion and selecting the Not Found companion, not the held Privacy page, as the next candidate. | Planning task closed; future G3/G4 slices remain gated. |
+| `SRC-EXPAND-01` route-family expansion | Merged pilots cover one bounded family at a time through PR #305. | Close the planning ambiguity by recording one-family-at-a-time expansion; Not Found is delivered and Privacy remains the next candidate only after its legal/content hold. | Planning task closed; Privacy and future families remain gated. |
 | Historical Account/Auth cards | PR #288 (login/recovery) and PR #296 (gated registration/dormant Google seams) are merged. | Reconcile headers and execution records to the merged evidence. Provider credentials, activation flags, and backend policy remain separate. | Stale status removed. |
 | Customer-owned Order card | PR #299 is merged with read-only, customer-safe recovery states. | Reconcile the historical G3 wording to the delivered G4 record. No new order, payment, upload, or permission authority is implied. | Stale status removed. |
 | Operations card | PR #290 is merged with the bounded Operations presentation pilot. | Reconcile “complete locally” wording to the merged PR record. | Stale status removed. |
@@ -43,9 +43,9 @@ reported as complete.
 1. Documentation status follows the strongest attributable evidence: merged PR
    and exact commit records are execution evidence; a candidate card is not
    runtime authority.
-2. `SRC-PUB-02A` is the next bounded Public support source candidate, with its
-   exact Not Found card separate from the `SRC-PUB-02B` Privacy legal/content
-   hold. Its G4 implementation remains bounded to the named exact files.
+2. `SRC-PUB-02A` Not Found is delivered in PR #305 from its exact card; the
+   `SRC-PUB-02B` Privacy legal/content hold remains the next Public support
+   decision. No further Not Found source work is implied.
 3. The route-family expansion policy is complete as a planning decision. Future
    source work remains one family per branch/worktree with proportional tests
    and review; there is no “redesign everything” task.

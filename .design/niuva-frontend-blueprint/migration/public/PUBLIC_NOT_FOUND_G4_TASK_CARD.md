@@ -1,9 +1,12 @@
 # SRC-PUB-02A — Public Not Found G4 exact-file task card
 
-**Status:** G4 exact-file scope — Not Found only; implementation is bounded to
-the autonomous Goal and remains separate from Privacy legal/content approval
+**Status:** G4 delivered — Not Found-only exact-file implementation merged in
+PR #305; Privacy remains a separate legal/content hold
 **Date:** 19 August 2026 (Asia/Jakarta)
 **G4 baseline:** `origin/main` at `f90bb7a71848c4f69563583fc685d1da0ea1fd41`
+**Source commit:** `c25ffeb2aefa43e5cb70c32b0a59ebd56ddfcf83`
+**Merge commit:** `ce3cc7633ef794050b40baeba42624979782a2c1`
+**PR:** [#305](https://github.com/batakers/Niuva/pull/305), merged 19 August 2026
 **Parent G3 card:** [`PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`](PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md)
 **Parent design task:** `PUB-06` — FAQ, Privacy, and Not Found support family
 **Surface:** Public support/recovery
@@ -132,6 +135,27 @@ If browser or assistive-technology tooling is unavailable, report that as an
 evidence limitation. Green source tests do not prove server routing, staging,
 production, provider, readiness, or go-live behavior.
 
+## Delivered evidence
+
+The exact two-file implementation was delivered without expanding the card:
+
+- `NotFoundPage.jsx` now renders the missing pathname through an overflow-safe
+  text span while preserving localized ID/EN recovery and page-local title/
+  description behavior;
+- `NotFoundPage.test.jsx` covers both localized metadata values, all four
+  canonical recovery destinations, accessible target classes, and a very long
+  missing path;
+- focused tests passed 4/4 and the full frontend passed 74 suites / 483 tests;
+- production build, production dependency audit, and `git diff --check` passed;
+- browser ID/EN checks passed at 320, 390, 768, 1024, and 1440px with zero
+  horizontal overflow, no sub-44px recovery target, `noindex, follow`, and
+  Axe WCAG A/AA violations; reduced-motion was checked; and
+- the Impeccable detector returned `[]` for the two changed paths.
+
+These are source, test, and preview/browser evidence only. They do not prove
+server enforcement, staging, production readiness, provider behavior, or
+go-live.
+
 ## Rollback and delivery boundary
 
 Rollback is a revert of the one Not Found source/test commit and may touch only
@@ -139,10 +163,10 @@ the two exact paths above. No dependency, route, metadata owner, Privacy file,
 backend, API, schema, session, payment, upload, or business-rule file may be
 included.
 
-The autonomous Goal may stage exact paths, create one corrective commit, push a
-dedicated branch, open a PR, review CI and review threads, repair bounded
-findings, and merge the exact tested head. Those delivery actions do not imply
-canonical promotion, staging/production enforcement, readiness, or go-live.
+The autonomous Goal staged only the exact paths, created one corrective commit,
+pushed a dedicated branch, opened PR #305, reviewed CI and review threads, and
+merged the exact tested head. Those delivery actions do not imply canonical
+promotion, staging/production enforcement, readiness, or go-live.
 
 Privacy remains a separate next task after legal/content review; it is not
 unblocked by this Not Found implementation.

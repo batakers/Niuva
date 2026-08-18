@@ -1,7 +1,7 @@
 # SRC-PUB-02 — Privacy and Not Found support-family G3 task card
 
 **Status:** Historical G3 candidate review — documentation PASS WITH
-CONDITIONS; source implementation remains split and separately gated
+CONDITIONS; Not Found G4 delivered, Privacy remains separately gated
 **Date:** 19 August 2026 (Asia/Jakarta)
 **G3 baseline:** `origin/main` at
 `f90bb7a71848c4f69563583fc685d1da0ea1fd41` (after documentation PR #303)
@@ -220,9 +220,10 @@ The combined G3 review is now split into two separately governed follow-ups:
   supplies an approved revision. No Privacy G4 is implied by the Not Found
   companion.
 
-The next source gate is therefore the Not Found companion only. G3 does not
-change source, stage files, activate routes, publish policy, establish
-provider/server behavior, or imply readiness/go-live.
+The Not Found companion has now been delivered in PR #305. The next source gate
+is Privacy only after its legal/content hold is cleared. G3 does not change
+source, stage files, activate routes, publish policy, establish provider/server
+behavior, or imply readiness/go-live.
 
 ## Rollback and exclusions
 
