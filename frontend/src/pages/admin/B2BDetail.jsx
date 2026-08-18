@@ -140,7 +140,7 @@ function B2BDetail({ kind }) {
         acceptance.evidence_reference.trim().length < 3
       )
     ) {
-      toast.error("Identitas approver, waktu, channel, dan evidence wajib diisi.");
+      toast.error(t("b2b.acceptanceIncomplete"));
       return;
     }
     setBusyAction(action);
@@ -188,7 +188,7 @@ function B2BDetail({ kind }) {
     setBusyAction("create_portfolio");
     try {
       const response = await api.post(`/admin/portfolio/from-project/${id}`);
-      toast.success("Draft portfolio dibuat dari Project selesai.");
+      toast.success(t("b2b.portfolioDraftSuccess"));
       navigate(`/admin/portfolio/${response.data.id}`);
     } catch (requestError) {
       setError(formatApiError(requestError.response?.data?.detail));
@@ -352,7 +352,7 @@ function B2BDetail({ kind }) {
                   disabled={Boolean(busyAction)}
                   onClick={createPortfolioDraft}
                 >
-                  Buat draft portfolio
+                  {t("b2b.portfolioDraftAction")}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
@@ -371,7 +371,7 @@ function B2BDetail({ kind }) {
                 {kind === "quote" && actionable.includes("accept") && (
                   <div className="space-y-3 rounded-control border border-border-default p-3">
                     <p className="type-label text-text-secondary">
-                      Evidence penerimaan offline
+                      {t("b2b.acceptanceEvidenceTitle")}
                     </p>
                     <Input
                       value={acceptance.approver_name}
@@ -381,8 +381,8 @@ function B2BDetail({ kind }) {
                           approver_name: event.target.value,
                         }))
                       }
-                      placeholder="Nama approver customer"
-                      aria-label="Nama approver customer"
+                      placeholder={t("b2b.approverNamePlaceholder")}
+                      aria-label={t("b2b.approverNameAria")}
                     />
                     <Input
                       value={acceptance.approver_identity}
@@ -392,8 +392,8 @@ function B2BDetail({ kind }) {
                           approver_identity: event.target.value,
                         }))
                       }
-                      placeholder="Email atau identitas approver"
-                      aria-label="Identitas approver customer"
+                      placeholder={t("b2b.approverIdentityPlaceholder")}
+                      aria-label={t("b2b.approverIdentityAria")}
                     />
                     <Input
                       type="datetime-local"
@@ -405,7 +405,7 @@ function B2BDetail({ kind }) {
                           accepted_at: event.target.value,
                         }))
                       }
-                      aria-label="Waktu penerimaan"
+                      aria-label={t("b2b.acceptedAtAria")}
                     />
                     <select
                       value={acceptance.channel}
@@ -416,13 +416,17 @@ function B2BDetail({ kind }) {
                         }))
                       }
                       className="min-h-11 w-full rounded-control border border-border-default bg-surface-default px-3 text-sm"
-                      aria-label="Channel penerimaan"
+                      aria-label={t("b2b.acceptanceChannelAria")}
                     >
-                      <option value="email">Email</option>
-                      <option value="signed_document">Dokumen bertanda tangan</option>
-                      <option value="meeting_minutes">Notulen rapat</option>
-                      <option value="messaging">Pesan</option>
-                      <option value="other">Lainnya</option>
+                      <option value="email">{t("b2b.channel.email")}</option>
+                      <option value="signed_document">
+                        {t("b2b.channel.signedDocument")}
+                      </option>
+                      <option value="meeting_minutes">
+                        {t("b2b.channel.meetingMinutes")}
+                      </option>
+                      <option value="messaging">{t("b2b.channel.messaging")}</option>
+                      <option value="other">{t("b2b.channel.other")}</option>
                     </select>
                     <Input
                       value={acceptance.evidence_reference}
@@ -432,8 +436,8 @@ function B2BDetail({ kind }) {
                           evidence_reference: event.target.value,
                         }))
                       }
-                      placeholder="Referensi evidence (ID/path/URL)"
-                      aria-label="Referensi evidence"
+                      placeholder={t("b2b.evidenceReferencePlaceholder")}
+                      aria-label={t("b2b.evidenceReferenceAria")}
                     />
                   </div>
                 )}

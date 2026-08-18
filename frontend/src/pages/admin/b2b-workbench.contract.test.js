@@ -22,6 +22,10 @@ const detailSource = fs.readFileSync(
   path.join(__dirname, "B2BDetail.jsx"),
   "utf8"
 );
+const i18nSource = fs.readFileSync(
+  path.join(__dirname, "..", "..", "i18n.js"),
+  "utf8"
+);
 
 describe("B2B Admin workbench routes", () => {
   test.each([
@@ -66,6 +70,31 @@ describe("B2B Admin workbench routes", () => {
     expect(detailSource).toContain("record.history");
     expect(detailSource).toContain("expected_version");
     expect(detailSource).toContain("operation_id");
+  });
+
+  test("localizes Operations record context and acceptance evidence", () => {
+    for (const key of [
+      "b2b.quoteRecord",
+      "b2b.inquiryReference",
+      "b2b.projectRecord",
+      "b2b.projectReference",
+      "b2b.workOrderRecord",
+      "b2b.workOrderReference",
+      "b2b.retailRecordReference",
+      "b2b.acceptanceEvidenceTitle",
+      "b2b.acceptanceIncomplete",
+      "b2b.portfolioDraftSuccess",
+      "b2b.portfolioDraftAction",
+    ]) {
+      expect(i18nSource.match(new RegExp(`"${key}":`, "g"))).toHaveLength(2);
+    }
+    expect(listSource).toContain('t("b2b.quoteRecord")');
+    expect(listSource).toContain('t("b2b.inquiryReference")');
+    expect(detailSource).toContain('t("b2b.acceptanceEvidenceTitle")');
+    expect(detailSource).toContain('t("b2b.acceptanceIncomplete")');
+    expect(detailSource).toContain('t("b2b.portfolioDraftAction")');
+    expect(detailSource).not.toContain("Evidence penerimaan offline");
+    expect(detailSource).not.toContain("Nama approver customer");
   });
 });
 

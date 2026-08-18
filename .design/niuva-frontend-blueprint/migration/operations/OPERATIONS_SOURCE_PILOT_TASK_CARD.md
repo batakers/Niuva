@@ -1,8 +1,8 @@
 # MIG-04 — Candidate Operations source pilot task card
 
-**Status:** G3 reviewed — PASS WITH CONDITIONS; G4 exact-file source pilot
-candidate authorized by the active Goal; delivery remains evidence-gated
-**Baseline:** `origin/main` at `0cc824f522e00190a16db5c73d4d7615acf2b698`
+**Status:** G4 implementation complete locally — delivery evidence recorded;
+no backend or capability activation in this card
+**Baseline:** `origin/main` at `29daf0765d5da8c11843c1d619b17cb385d5d6cf`
 **Owner:** Operations frontend driver under the active Goal
 **Surface:** Inquiry queue/detail calibration only
 **Inputs:** `OPS-01` through `OPS-08`, QA-01–QA-05, DS-01A/DS-01B,
@@ -109,3 +109,49 @@ separate.
 
 **Self-review result:** Pass with conditions as a G3 task card; G4 remains a
 bounded source pilot, not a general Operations redesign or capability launch.
+
+## G4 execution record
+
+The bounded pilot was implemented in the isolated Operations worktree from the
+baseline above. The implementation:
+
+- localizes existing B2B list record prefixes/references for ID and EN without
+  changing payloads, resource identity, or status meaning;
+- localizes the Quote acceptance evidence fields, channel options, incomplete
+  validation feedback, and completed-project portfolio-draft action;
+- localizes the Admin breadcrumb accessible name; and
+- adds only the corresponding ID/EN translation keys in `frontend/src/i18n.js`.
+
+Exact changed paths:
+
+- `frontend/src/i18n.js`
+- `frontend/src/pages/admin/B2BList.jsx`
+- `frontend/src/pages/admin/B2BDetail.jsx`
+- `frontend/src/pages/admin/AdminLayout.jsx`
+- `frontend/src/pages/admin/b2b-workbench.contract.test.js`
+- `frontend/src/pages/admin/admin-studio-convergence.contract.test.js`
+
+Intentionally unchanged: `App.js`, permission maps, API/client contracts,
+backend handlers, `OperationalNavigation.jsx`, `B2BStatusBadge.jsx`, all
+status/lifecycle enums, customer projections, and shared Public navigation.
+
+Verification completed locally:
+
+- focused Operations/Admin: 5 suites, 42 tests passed;
+- full frontend regression: 73 suites, 467 tests passed;
+- production build passed; report-only gzip total 625.70 kB and entry 167.34
+  kB;
+- browser/Axe matrix: 32/32 ID/EN × 390/768/1024/1440 cases across work home,
+  Inquiry list/detail, and Quote detail; zero overflow, page errors, or
+  serious/critical Axe findings;
+- Impeccable detector on changed runtime files: `[]`;
+- `git diff --check` passed; and
+- preview server stopped and port 3000 verified not listening.
+
+`npm audit --omit=dev --audit-level=high` continues to report two existing
+React Router 7.18.1 RSC advisory entries from the repository dependency
+baseline. No dependency change is included or implied by this pilot.
+
+This execution record is source/test evidence only. It does not activate a new
+Operations capability, change authorization, or establish staging,
+production-readiness, deployment, or go-live.

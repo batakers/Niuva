@@ -25,6 +25,7 @@ describe("Admin Studio shell convergence", () => {
     expect(layoutSource).toContain('id="admin-navigation-drawer"');
     expect(layoutSource).toContain('inert={!desktopNav && !sidebarOpen');
     expect(layoutSource).toContain('aria-hidden={!sidebarOpen}');
+    expect(layoutSource).toContain('aria-label={t("common.breadcrumb")}');
   });
 
   test("keeps legacy labels and their compatibility state readable", () => {
