@@ -3,11 +3,20 @@
 **Status:** Candidate G3 contract — documentation-only; G4 source and provider
 implementation not authorized by this card
 
+**Follow-up status:** This historical G3 contract was followed by the separately
+approved G4 scope and merged implementation in [PR #296](https://github.com/batakers/Niuva/pull/296).
+The runtime slice is now source-present but remains disabled by
+`CUSTOMER_REGISTRATION_ENABLED=false` and `CUSTOMER_GOOGLE_OIDC_ENABLED=false`;
+no provider credentials or activation are implied here.
+
 **Parent:** Account/Auth route family; separate from the completed MIG-03A
 Customer Login/recovery pilot
 
 **Baseline:** `origin/main` at
 `e0e43e5ca3126acc7604e2f312abcd7723ed70e4`
+
+**Follow-up baseline:** `origin/main` at
+`b1142f1d0bf1edcad33498e71b6a950aa6039450` after PR #296.
 
 **Surface:** Customer Account entry for the Retail journey
 
@@ -21,8 +30,9 @@ Define the smallest truthful Customer Registration contract for `/register`,
 with email/password and an optional Google Identity path, before any runtime
 route, provider, session, API, schema, or secret is activated.
 
-`/register` remains canonical but inactive until this contract and its separate
-security/provider implementation gates are approved. Google is an optional
+At the reviewed G3 baseline, `/register` was canonical but inactive. The later
+G4 slice adds the route and its verification path, while the feature flags keep
+public registration and Google OIDC disabled. Google remains an optional
 identity provider, not a new Customer lifecycle and not a checkout shortcut.
 
 ## Existing boundary
