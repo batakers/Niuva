@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const read = (...segments) =>
-  fs.readFileSync(path.resolve(__dirname, ...segments), "utf8");
+  fs.readFileSync(path.resolve(__dirname, ...segments), "utf8").replace(/\r\n/g, "\n");
 
 const homeSource = read("HomePage.jsx");
 const gallerySource = read("home", "NiuvaProjectGallery.jsx");
@@ -143,6 +143,7 @@ describe("NDS 2.0 Homepage R4 production pilot contract", () => {
 
   test("preserves B2B, Retail, Contact, and fail-closed route boundaries", () => {
     expect(homeSource).toContain('getPublicPath("contact", locale)');
+    expect(homeSource).toContain('hash: "form-konsultasi"');
     expect(homeSource).toContain('getPublicPath("retail", locale)');
     expect(homeSource).toContain('getPublicPath("projects", locale)');
     expect(normalizeWhitespace(homeSource)).toContain(
