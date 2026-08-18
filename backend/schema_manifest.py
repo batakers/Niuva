@@ -376,6 +376,55 @@ CORE_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
     },
 )
 
+# Customer registration/Google identity indexes are staged contract evidence.
+# They are intentionally excluded from INDEX_DECLARATIONS until a separate
+# migration, rehearsal, and readiness gate is approved. The runtime routes
+# remain dormant unless their explicit feature/provider gates are enabled.
+CUSTOMER_REGISTRATION_INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
+    {
+        "collection": "customer_registration_tokens",
+        "keys": "token_hash",
+        "options": {"name": "uq_customer_registration_token_hash", "unique": True},
+    },
+    {
+        "collection": "customer_registration_tokens",
+        "keys": "expires_at",
+        "options": {
+            "name": "ttl_customer_registration_token_expiry",
+            "expireAfterSeconds": 0,
+        },
+    },
+    {
+        "collection": "customer_registration_tokens",
+        "keys": "user_id",
+        "options": {
+            "name": "uq_active_customer_registration_token_user",
+            "unique": True,
+            "partialFilterExpression": {"active": True},
+        },
+    },
+    {
+        "collection": "auth_identities",
+        "keys": [("provider", 1), ("subject", 1)],
+        "options": {"name": "uq_auth_identity_provider_subject", "unique": True},
+    },
+    {
+        "collection": "auth_identities",
+        "keys": "user_id",
+        "options": {"name": "ix_auth_identity_user"},
+    },
+    {
+        "collection": "auth_oidc_states",
+        "keys": "state_hash",
+        "options": {"name": "uq_auth_oidc_state_hash", "unique": True},
+    },
+    {
+        "collection": "auth_oidc_states",
+        "keys": "expires_at",
+        "options": {"name": "ttl_auth_oidc_state_expiry", "expireAfterSeconds": 0},
+    },
+)
+
 INDEX_DECLARATIONS: tuple[dict[str, Any], ...] = (
     CORE_INDEX_DECLARATIONS + CATALOG_INDEX_DECLARATIONS
 )

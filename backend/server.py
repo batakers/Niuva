@@ -6,9 +6,12 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import asyncio  # noqa: E402
+import base64  # noqa: E402
 import csv  # noqa: E402
+import hashlib  # noqa: E402
 import html  # noqa: E402
 import io  # noqa: E402
+import json  # noqa: E402
 import logging  # noqa: E402
 import os  # noqa: E402
 import re  # noqa: E402
@@ -18,10 +21,12 @@ import uuid  # noqa: E402
 from contextlib import asynccontextmanager  # noqa: E402
 from datetime import datetime, timedelta, timezone  # noqa: E402
 from typing import List, Literal, Optional  # noqa: E402
-from urllib.parse import quote, urlsplit  # noqa: E402
+from urllib.parse import quote, urlencode, urlsplit  # noqa: E402
 
 import bcrypt  # noqa: E402
 import emailer  # noqa: E402
+import httpx  # noqa: E402
+import jwt  # noqa: E402
 import storage  # noqa: E402
 from api_contract import (  # noqa: E402
     error_response,
@@ -121,6 +126,8 @@ from pydantic import (  # noqa: E402
     ValidationError,
     field_validator,
 )
+from pymongo import ReturnDocument  # noqa: E402
+from pymongo.errors import DuplicateKeyError  # noqa: E402
 from readiness_health import (  # noqa: E402
     TOTAL_TIMEOUT_SECONDS,
     ReadinessProbeCoordinator,
@@ -140,7 +147,11 @@ from settings_domain import (  # noqa: E402
     project_public_settings,
 )
 from starlette.middleware.cors import CORSMiddleware  # noqa: E402
-from starlette.responses import JSONResponse, StreamingResponse  # noqa: E402
+from starlette.responses import (  # noqa: E402
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from transaction_api import transaction_unavailable_handler  # noqa: E402
 from transaction_execution import (  # noqa: E402
     TransactionExecutor,
@@ -236,6 +247,22 @@ CUSTOMER_QUERY = {
         {"role": "client"},
     ]
 }
+
+# Customer registration is an independently gated capability.  The source
+# contract is present for review and tests, but no environment enables it by
+# default.  Google remains opt-in even when registration itself is enabled.
+REGISTRATION_TOKEN_TTL = timedelta(minutes=30)
+OIDC_STATE_TTL = timedelta(minutes=10)
+REGISTRATION_CONSENT_VERSION = "customer-account-privacy-v1"
+REGISTRATION_GENERIC_MESSAGE = (
+    "Jika alamat email dapat digunakan, instruksi verifikasi akan dikirim."
+)
+GOOGLE_ISSUER = "https://accounts.google.com"
+GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+GOOGLE_JWKS_ENDPOINT = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_ALLOWED_ALGORITHMS = ("RS256",)
+REGISTRATION_RETURN_PATHS = frozenset({"/dashboard", "/order", "/retail"})
 
 
 @asynccontextmanager
@@ -926,6 +953,38 @@ class LoginReq(StrictModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+class CustomerRegistrationReq(StrictModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+    privacy_consent: Literal[True]
+    return_to: str = Field(default="/dashboard", max_length=200)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        candidate = value.strip()
+        if len(candidate) < 2 or any(
+            ord(character) < 32 or ord(character) == 127 for character in candidate
+        ):
+            raise ValueError("name_invalid")
+        return candidate
+
+
+class RegistrationTokenReq(StrictModel):
+    token: str = Field(min_length=43, max_length=256)
+
+
+class RegistrationResendReq(StrictModel):
+    email: EmailStr
+
+
+class GoogleStartReq(StrictModel):
+    mode: Literal["login", "register", "link"] = "login"
+    return_to: str = Field(default="/dashboard", max_length=200)
+    privacy_consent: bool = False
+
+
 class AdminLoginReq(LoginReq):
     remember_me: bool = False
 
@@ -1097,6 +1156,11 @@ async def authenticate_credentials(req: LoginReq, *, surface: str) -> dict:
         )
     )
     eligible_roles = canonical_roles(user) if user else ()
+    account_ready = bool(
+        user
+        and user.get("status", "active") == "active"
+        and user.get("access_state", "approved") == "approved"
+    )
     correct_surface = bool(
         user
         and (
@@ -1111,6 +1175,7 @@ async def authenticate_credentials(req: LoginReq, *, surface: str) -> dict:
         or explicitly_blocked
         or not eligible_roles
         or not correct_surface
+        or not account_ready
         or user.get("role_policy_version") != ROLE_POLICY_VERSION
     ):
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -1319,12 +1384,769 @@ async def store_upload(
 
 
 # ----------------------------- Auth routes -----------------------------
-@api.post("/auth/register", responses=error_responses(403))
-async def register():
-    raise HTTPException(
-        status_code=403,
-        detail="Public registration is disabled. Client accounts must be provisioned by an administrator.",
+def _registration_enabled() -> bool:
+    return _environment_flag("CUSTOMER_REGISTRATION_ENABLED")
+
+
+def _require_registration_gate(request: Request) -> None:
+    """Preserve the legacy disabled response before parsing registration input."""
+    # The flag is intentionally absent from existing deployments until the
+    # separately gated activation step. Keep the historical 403 in that case;
+    # an explicit false flag is the new fail-closed 503 state.
+    if "CUSTOMER_REGISTRATION_ENABLED" not in os.environ:
+        raise HTTPException(
+            status_code=403,
+            detail="Public registration is disabled. Client accounts must be provisioned by an administrator.",
+        )
+    verify_auth_origin(request)
+    if not _registration_enabled() or _public_site_origin() is None:
+        raise _registration_unavailable()
+
+
+def _google_oidc_config() -> dict[str, str] | None:
+    if not _environment_flag("CUSTOMER_GOOGLE_OIDC_ENABLED"):
+        return None
+    values = {
+        "client_id": os.environ.get("GOOGLE_OIDC_CLIENT_ID", "").strip(),
+        "client_secret": os.environ.get("GOOGLE_OIDC_CLIENT_SECRET", "").strip(),
+        "redirect_uri": os.environ.get("GOOGLE_OIDC_REDIRECT_URI", "").strip(),
+    }
+    if not all(values.values()):
+        return None
+    parsed = urlsplit(values["redirect_uri"])
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+    return values
+
+
+def _safe_registration_return(value: object) -> str:
+    candidate = value if isinstance(value, str) else "/dashboard"
+    parsed = urlsplit(candidate)
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or not parsed.path.startswith("/")
+        or parsed.path.startswith("//")
+    ):
+        return "/dashboard"
+    # Only the allowlisted path is carried across auth. Query and fragment
+    # values are deliberately discarded so caller-controlled parameters cannot
+    # become a second redirect or state channel.
+    path = parsed.path
+    if path in REGISTRATION_RETURN_PATHS:
+        return path
+    if re.fullmatch(r"/orders/[^/?#]+", path):
+        return path
+    if re.fullmatch(r"/retail/products/[^/?#]+", path):
+        return path
+    return "/dashboard"
+
+
+def _opaque_secret_hash(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _pkce_challenge(verifier: str) -> str:
+    return (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest())
+        .rstrip(b"=")
+        .decode("ascii")
     )
+
+
+def _registration_unavailable(code: str = "registration_unavailable") -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail={
+            "code": code,
+            "message": "Registrasi belum tersedia. Coba lagi nanti.",
+        },
+    )
+
+
+def _registration_verification_url(raw_token: str) -> str | None:
+    origin = _public_site_origin()
+    if origin is None:
+        return None
+    return f"{origin.value}/register/verify?{urlencode({'token': raw_token})}"
+
+
+def _registration_token_document(
+    *, user_id: str, raw_token: str, now: datetime, return_to: str
+) -> dict:
+    return {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "token_hash": _opaque_secret_hash(raw_token),
+        "active": True,
+        "purpose": "customer_registration",
+        "return_to": return_to,
+        "created_at": now,
+        "expires_at": now + REGISTRATION_TOKEN_TTL,
+        "used_at": None,
+        "invalidated_at": None,
+    }
+
+
+async def _deactivate_registration_token(token_id: str, reason: str) -> None:
+    try:
+
+        async def deactivate(session):
+            await db.customer_registration_tokens.update_one(
+                {"id": token_id, "active": True},
+                {
+                    "$set": {
+                        "active": False,
+                        "invalidated_at": datetime.now(timezone.utc),
+                        "invalidation_reason": reason,
+                    }
+                },
+                session=session,
+            )
+
+        await app.state.transaction_guard.run(
+            deactivate,
+            operation_name="auth.customer_registration.invalidate_token",
+            retry_safe=True,
+        )
+    except Exception:
+        logger.error("customer_registration_token_invalidation_failed")
+
+
+async def _send_registration_verification(
+    *, email: str, name: str, raw_token: str, token_id: str
+) -> None:
+    verification_url = _registration_verification_url(raw_token)
+    if verification_url is None:
+        raise _registration_unavailable()
+    safe_name = html.escape(name, quote=True)
+    safe_url = html.escape(verification_url, quote=True)
+    result = await emailer.send_email(
+        email,
+        "Verifikasi akun NIUVA",
+        "Verifikasi akun pelanggan",
+        (
+            f"<p>Halo {safe_name},</p>"
+            "<p>Gunakan link berikut untuk memverifikasi akun pelanggan NIUVA:</p>"
+            f'<p><a href="{safe_url}">{safe_url}</a></p>'
+            "<p>Link ini berlaku selama 30 menit dan hanya dapat digunakan sekali.</p>"
+        ),
+        idempotency_key=f"customer-registration:{token_id}",
+    )
+    if not isinstance(result, dict) or result.get("status") == "error":
+        raise _registration_unavailable("registration_email_unavailable")
+
+
+async def _issue_customer_registration(
+    req: CustomerRegistrationReq,
+) -> tuple[dict, str | None, str | None]:
+    email = str(req.email).strip().lower()
+    now = datetime.now(timezone.utc)
+    raw_token = secrets.token_urlsafe(32)
+    return_to = _safe_registration_return(req.return_to)
+
+    async def create(session):
+        existing = await db.users.find_one(
+            {"email": email}, {"_id": 0}, session=session
+        )
+        if existing:
+            account_verified = bool(
+                existing.get("email_verified_at")
+                or (
+                    existing.get("status") == "active"
+                    and existing.get("access_state") == "approved"
+                )
+            )
+            if account_verified:
+                return {"status": "existing"}, None, None
+            if not existing.get("password_hash"):
+                return {"status": "existing"}, None, None
+            await db.customer_registration_tokens.update_many(
+                {"user_id": existing["id"], "active": True},
+                {
+                    "$set": {
+                        "active": False,
+                        "invalidated_at": now,
+                        "invalidation_reason": "superseded",
+                    }
+                },
+                session=session,
+            )
+            token = _registration_token_document(
+                user_id=existing["id"],
+                raw_token=raw_token,
+                now=now,
+                return_to=return_to,
+            )
+            await db.customer_registration_tokens.insert_one(token, session=session)
+            return {"status": "pending"}, raw_token, token["id"]
+
+        password_hash = hash_new_password(
+            req.password,
+            context_terms=(email, req.name),
+        )
+        user = {
+            "id": str(uuid.uuid4()),
+            "name": req.name,
+            "email": email,
+            "password_hash": password_hash,
+            "phone": "",
+            "company": "",
+            "roles": ["retail_customer"],
+            "status": "pending_verification",
+            "access_state": "verification_pending",
+            "email_verified_at": None,
+            "registration_source": "email",
+            "consent_version": REGISTRATION_CONSENT_VERSION,
+            "consented_at": now,
+            "role_policy_version": ROLE_POLICY_VERSION,
+            "token_version": 0,
+            "version": 1,
+            "created_at": now_iso(),
+        }
+        await db.users.insert_one(user, session=session)
+        token = _registration_token_document(
+            user_id=user["id"],
+            raw_token=raw_token,
+            now=now,
+            return_to=return_to,
+        )
+        await db.customer_registration_tokens.insert_one(token, session=session)
+        return {"status": "pending"}, raw_token, token["id"]
+
+    try:
+        return await app.state.transaction_guard.run(
+            create,
+            operation_name="auth.customer_registration.create",
+        )
+    except DuplicateKeyError:
+        # A concurrent request may win the existing users.email unique index.
+        # Keep the response indistinguishable from an already-known address.
+        return {"status": "existing"}, None, None
+
+
+async def _resend_customer_registration(
+    email: str,
+) -> tuple[str | None, str | None, str | None]:
+    normalized = email.strip().lower()
+    now = datetime.now(timezone.utc)
+    raw_token = secrets.token_urlsafe(32)
+
+    async def resend(session):
+        user = await db.users.find_one(
+            {
+                "email": normalized,
+                "status": "pending_verification",
+                "access_state": "verification_pending",
+            },
+            {"_id": 0},
+            session=session,
+        )
+        if not user or not user.get("password_hash"):
+            return None, None, None
+        await db.customer_registration_tokens.update_many(
+            {"user_id": user["id"], "active": True},
+            {
+                "$set": {
+                    "active": False,
+                    "invalidated_at": now,
+                    "invalidation_reason": "superseded",
+                }
+            },
+            session=session,
+        )
+        token = _registration_token_document(
+            user_id=user["id"],
+            raw_token=raw_token,
+            now=now,
+            return_to="/dashboard",
+        )
+        await db.customer_registration_tokens.insert_one(token, session=session)
+        return user["name"], raw_token, token["id"]
+
+    try:
+        return await app.state.transaction_guard.run(
+            resend,
+            operation_name="auth.customer_registration.resend",
+        )
+    except DuplicateKeyError:
+        return None, None, None
+
+
+async def _verify_customer_registration(raw_token: str) -> dict | None:
+    token_hash = _opaque_secret_hash(raw_token)
+    now = datetime.now(timezone.utc)
+
+    async def verify(session):
+        token = await db.customer_registration_tokens.find_one(
+            {
+                "token_hash": token_hash,
+                "purpose": "customer_registration",
+                "active": True,
+                "expires_at": {"$gt": now},
+            },
+            {"_id": 0},
+            session=session,
+        )
+        if not token:
+            return None
+        user = await db.users.find_one(
+            {"id": token["user_id"]}, {"_id": 0}, session=session
+        )
+        if not user or not user.get("password_hash"):
+            return None
+        consumed = await db.customer_registration_tokens.update_one(
+            {"id": token["id"], "active": True},
+            {"$set": {"active": False, "used_at": now}},
+            session=session,
+        )
+        if not getattr(consumed, "matched_count", 0):
+            return None
+        if user.get("email_verified_at"):
+            return user
+        updated = await db.users.update_one(
+            {"id": user["id"], "status": "pending_verification"},
+            {
+                "$set": {
+                    "status": "active",
+                    "access_state": "approved",
+                    "email_verified_at": now,
+                    "verified_at": now,
+                },
+                "$inc": {"version": 1},
+            },
+            session=session,
+        )
+        if not getattr(updated, "matched_count", 0):
+            return None
+        user.update(
+            {
+                "status": "active",
+                "access_state": "approved",
+                "email_verified_at": now,
+                "verified_at": now,
+            }
+        )
+        return user
+
+    return await app.state.transaction_guard.run(
+        verify,
+        operation_name="auth.customer_registration.verify",
+        retry_safe=True,
+    )
+
+
+def _google_redirect(path: str, code: str) -> RedirectResponse:
+    separator = "&" if "?" in path else "?"
+    target = f"{path}{separator}{urlencode({'auth': code})}"
+    return RedirectResponse(target, status_code=303)
+
+
+def _google_failure_redirect(state: dict | None, code: str) -> RedirectResponse:
+    """Return provider failures to the owning auth surface with safe context."""
+    state = state or {}
+    entry = "/register" if state.get("intent") == "register" else "/login"
+    return_to = _safe_registration_return(state.get("return_to"))
+    return _google_redirect(
+        f"{entry}?{urlencode({'return_to': return_to})}",
+        code,
+    )
+
+
+async def _consume_google_state(raw_state: str) -> dict | None:
+    now = datetime.now(timezone.utc)
+    return await db.auth_oidc_states.find_one_and_update(
+        {
+            "state_hash": _opaque_secret_hash(raw_state),
+            "expires_at": {"$gt": now},
+            "$or": [{"consumed_at": None}, {"consumed_at": {"$exists": False}}],
+        },
+        {"$set": {"consumed_at": now}},
+        projection={"_id": 0},
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+async def _exchange_google_code(config: dict[str, str], code: str, state: dict) -> dict:
+    async with httpx.AsyncClient(timeout=5.0) as client_session:
+        response = await client_session.post(
+            GOOGLE_TOKEN_ENDPOINT,
+            data={
+                "code": code,
+                "client_id": config["client_id"],
+                "client_secret": config["client_secret"],
+                "redirect_uri": config["redirect_uri"],
+                "grant_type": "authorization_code",
+                "code_verifier": state["code_verifier"],
+            },
+        )
+        if response.status_code != 200:
+            raise ValueError("google_token_exchange_failed")
+        payload = response.json()
+        id_token = payload.get("id_token") if isinstance(payload, dict) else None
+        if not isinstance(id_token, str) or not id_token:
+            raise ValueError("google_id_token_missing")
+        jwks_response = await client_session.get(GOOGLE_JWKS_ENDPOINT)
+        if jwks_response.status_code != 200:
+            raise ValueError("google_jwks_unavailable")
+        jwks = jwks_response.json()
+
+    header = jwt.get_unverified_header(id_token)
+    if header.get("alg") not in GOOGLE_ALLOWED_ALGORITHMS:
+        raise ValueError("google_algorithm_not_allowed")
+    key = next(
+        (
+            item
+            for item in jwks.get("keys", [])
+            if item.get("kid") == header.get("kid")
+            and item.get("alg") == header.get("alg")
+        ),
+        None,
+    )
+    if not key:
+        raise ValueError("google_signing_key_missing")
+    signing_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(key))
+    claims = jwt.decode(
+        id_token,
+        signing_key,
+        algorithms=list(GOOGLE_ALLOWED_ALGORITHMS),
+        audience=config["client_id"],
+        issuer=GOOGLE_ISSUER,
+        options={"require": ["iss", "aud", "sub", "exp", "nonce", "email"]},
+    )
+    if claims.get("nonce") != state.get("nonce"):
+        raise ValueError("google_nonce_invalid")
+    if claims.get("email_verified") is not True:
+        raise ValueError("google_email_unverified")
+    return claims
+
+
+async def _resolve_google_identity(
+    claims: dict, state: dict
+) -> tuple[dict | None, str | None]:
+    subject = claims.get("sub")
+    email = claims.get("email")
+    if (
+        not isinstance(subject, str)
+        or not subject
+        or len(subject) > 256
+        or not isinstance(email, str)
+        or not email
+    ):
+        return None, "google_identity_invalid"
+    normalized_email = email.strip().lower()
+    now = datetime.now(timezone.utc)
+    intent = state.get("intent")
+
+    async def mutate(session):
+        identity = await db.auth_identities.find_one(
+            {"provider": "google", "subject": subject},
+            {"_id": 0},
+            session=session,
+        )
+        identity_user = None
+        if identity:
+            identity_user = await db.users.find_one(
+                {"id": identity.get("user_id")}, {"_id": 0}, session=session
+            )
+            if not identity_user:
+                return None, "google_identity_unavailable"
+
+        if intent == "link":
+            target = await db.users.find_one(
+                {"id": state.get("user_id")}, {"_id": 0}, session=session
+            )
+            if not target or target.get("status") != "active":
+                return None, "session_expired"
+            if identity_user and identity_user.get("id") != target.get("id"):
+                return None, "google_link_required"
+            if not identity_user:
+                other = await db.users.find_one(
+                    {"email": normalized_email}, {"_id": 0}, session=session
+                )
+                if other and other.get("id") != target.get("id"):
+                    return None, "google_link_required"
+                await db.auth_identities.insert_one(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "provider": "google",
+                        "subject": subject,
+                        "user_id": target["id"],
+                        "email_at_link": normalized_email,
+                        "created_at": now,
+                        "linked_at": now,
+                    },
+                    session=session,
+                )
+            return target, None
+
+        if identity_user:
+            if (
+                identity_user.get("status") != "active"
+                or identity_user.get("access_state") != "approved"
+            ):
+                return None, "account_ineligible"
+            return identity_user, None
+
+        existing_email_user = await db.users.find_one(
+            {"email": normalized_email}, {"_id": 0}, session=session
+        )
+        if existing_email_user:
+            # A verified email is not proof that two Niuva identities should be
+            # merged.  The authenticated linking flow is the only bridge.
+            return None, "google_link_required"
+        if intent == "login":
+            return None, "google_registration_required"
+        if intent != "register" or state.get("privacy_consent") is not True:
+            return None, "google_consent_required"
+
+        raw_name = claims.get("name")
+        name = raw_name.strip() if isinstance(raw_name, str) else ""
+        if len(name) < 2 or len(name) > 120:
+            name = normalized_email.split("@", 1)[0][:120] or "Niuva Customer"
+        user = {
+            "id": str(uuid.uuid4()),
+            "name": name,
+            "email": normalized_email,
+            "phone": "",
+            "company": "",
+            "roles": ["retail_customer"],
+            "status": "active",
+            "access_state": "approved",
+            "email_verified_at": now,
+            "registration_source": "google",
+            "consent_version": REGISTRATION_CONSENT_VERSION,
+            "consented_at": now,
+            "role_policy_version": ROLE_POLICY_VERSION,
+            "token_version": 0,
+            "version": 1,
+            "created_at": now_iso(),
+        }
+        await db.users.insert_one(user, session=session)
+        await db.auth_identities.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "provider": "google",
+                "subject": subject,
+                "user_id": user["id"],
+                "email_at_link": normalized_email,
+                "created_at": now,
+                "linked_at": now,
+            },
+            session=session,
+        )
+        return user, None
+
+    try:
+        return await app.state.transaction_guard.run(
+            mutate,
+            operation_name="auth.customer_registration.google_identity",
+        )
+    except DuplicateKeyError:
+        return None, "google_link_required"
+
+
+@api.post("/auth/register", responses=error_responses(400, 403, 422, 429, 500, 503))
+async def register(
+    req: CustomerRegistrationReq,
+    request: Request,
+    _: None = Depends(_require_registration_gate),
+):
+    peer_ip = client_ip(request)
+    await rate_limit(f"registration_ip:{peer_ip}", limit=3, window=900)
+    await rate_limit_cooldown("registration_email", str(req.email).lower(), 60)
+    await rate_limit(
+        f"registration_email_window:{str(req.email).lower()}", limit=3, window=900
+    )
+    result, raw_token, token_id = await _issue_customer_registration(req)
+    if raw_token and token_id:
+        try:
+            await _send_registration_verification(
+                email=str(req.email).lower(),
+                name=req.name,
+                raw_token=raw_token,
+                token_id=token_id,
+            )
+        except HTTPException:
+            await _deactivate_registration_token(token_id, "delivery_failed")
+            raise
+    await _emit_auth_security_event(
+        event_type="auth.registration_requested",
+        outcome="success",
+        reason_code="registration_processed",
+        subject_kind="unknown_identifier",
+        unknown_identifier=str(req.email),
+        surface="customer",
+        peer_identifier=peer_ip,
+    )
+    return {"status": "verification_pending", "message": REGISTRATION_GENERIC_MESSAGE}
+
+
+@api.post("/auth/register/resend", responses=error_responses(400, 422, 429, 503))
+async def resend_registration(req: RegistrationResendReq, request: Request):
+    verify_auth_origin(request)
+    if not _registration_enabled() or _public_site_origin() is None:
+        raise _registration_unavailable()
+    peer_ip = client_ip(request)
+    email = str(req.email).lower()
+    await rate_limit(f"registration_resend_ip:{peer_ip}", limit=3, window=900)
+    await rate_limit_cooldown("registration_resend_email", email, 60)
+    await rate_limit(f"registration_resend_window:{email}", limit=3, window=900)
+    name, raw_token, token_id = await _resend_customer_registration(email)
+    if name and raw_token and token_id:
+        try:
+            await _send_registration_verification(
+                email=email,
+                name=name,
+                raw_token=raw_token,
+                token_id=token_id,
+            )
+        except HTTPException:
+            await _deactivate_registration_token(token_id, "delivery_failed")
+            raise
+    return {"status": "verification_pending", "message": REGISTRATION_GENERIC_MESSAGE}
+
+
+@api.post("/auth/register/verify", responses=error_responses(400, 403, 503))
+async def verify_registration(req: RegistrationTokenReq, request: Request):
+    verify_auth_origin(request)
+    if not _registration_enabled():
+        raise _registration_unavailable()
+    try:
+        user = await _verify_customer_registration(req.token)
+    except DuplicateKeyError:
+        user = None
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "registration_verification_invalid",
+                "message": "Link verifikasi tidak valid atau sudah kedaluwarsa.",
+            },
+        )
+    await _emit_auth_security_event(
+        event_type="auth.registration_verified",
+        outcome="success",
+        reason_code="registration_verified",
+        subject_kind="known_user",
+        known_subject_id=user["id"],
+        surface="customer",
+    )
+    return {
+        "status": "verified",
+        "message": "Email berhasil diverifikasi. Silakan masuk ke akun Anda.",
+        "return_to": _safe_registration_return(
+            (
+                await db.customer_registration_tokens.find_one(
+                    {"token_hash": _opaque_secret_hash(req.token)}, {"return_to": 1}
+                )
+                or {}
+            ).get("return_to")
+        ),
+    }
+
+
+@api.post("/auth/google/start", responses=error_responses(400, 401, 403, 422, 503))
+async def google_start(req: GoogleStartReq, request: Request):
+    verify_auth_origin(request)
+    config = _google_oidc_config()
+    if config is None:
+        raise _registration_unavailable("google_provider_unavailable")
+    if req.mode == "register" and req.privacy_consent is not True:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "registration_consent_required"},
+        )
+    current_user = None
+    if req.mode == "link":
+        current_user = await get_current_user(request)
+        if not current_user or current_user.get("status") != "active":
+            raise SessionExpiredError()
+    raw_state = secrets.token_urlsafe(32)
+    nonce = secrets.token_urlsafe(32)
+    code_verifier = secrets.token_urlsafe(48)
+    state_document = {
+        "id": str(uuid.uuid4()),
+        "state_hash": _opaque_secret_hash(raw_state),
+        "nonce": nonce,
+        "code_verifier": code_verifier,
+        "intent": req.mode,
+        "user_id": current_user.get("id") if current_user else None,
+        "privacy_consent": req.privacy_consent is True,
+        "return_to": _safe_registration_return(req.return_to),
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + OIDC_STATE_TTL,
+        "consumed_at": None,
+    }
+
+    async def persist_state(session):
+        await db.auth_oidc_states.insert_one(state_document, session=session)
+
+    await app.state.transaction_guard.run(
+        persist_state,
+        operation_name="auth.customer_registration.google_state",
+    )
+    params = {
+        "client_id": config["client_id"],
+        "redirect_uri": config["redirect_uri"],
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": raw_state,
+        "nonce": nonce,
+        "code_challenge": _pkce_challenge(code_verifier),
+        "code_challenge_method": "S256",
+    }
+    return {"authorization_url": f"{GOOGLE_AUTHORIZATION_ENDPOINT}?{urlencode(params)}"}
+
+
+@api.get("/auth/google/callback", responses=error_responses(400, 503))
+async def google_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    config = _google_oidc_config()
+    fallback = "/login"
+    if config is None:
+        return _google_redirect(fallback, "google_provider_unavailable")
+    if error or not code or not state:
+        return _google_redirect(fallback, "google_verification_failed")
+    try:
+        state_document = await _consume_google_state(state)
+        if not state_document:
+            return _google_redirect(fallback, "google_state_invalid")
+        claims = await _exchange_google_code(config, code, state_document)
+        user, failure = await _resolve_google_identity(claims, state_document)
+    except Exception:
+        logger.error("google_oidc_callback_failed")
+        return _google_failure_redirect(
+            state_document if "state_document" in locals() else None,
+            "google_verification_failed",
+        )
+    return_to = _safe_registration_return(state_document.get("return_to"))
+    if failure or not user:
+        return _google_failure_redirect(
+            state_document, failure or "google_verification_failed"
+        )
+    response = _google_redirect(return_to, "success")
+    if state_document.get("intent") != "link":
+        await _session_service().issue(user, response)
+        await _emit_auth_security_event(
+            event_type="auth.provider_login_succeeded",
+            outcome="success",
+            reason_code="provider_verified",
+            subject_kind="known_user",
+            known_subject_id=user["id"],
+            surface="customer",
+        )
+    return response
 
 
 def _session_service() -> AuthSessionService:
