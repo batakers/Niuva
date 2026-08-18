@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Niuva Homepage Structure — Desktop Plate</title>
+    <style>
+      :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; background: #f7f5ef; color: #112233; }
+      body { margin: 0; padding: 24px; }
+      .plate { max-width: 1180px; margin: auto; display: grid; gap: 14px; }
+      .block { border: 2px solid #7d8b96; border-radius: 12px; padding: 20px; background: #fffdf7; }
+      .nav { display: flex; justify-content: space-between; gap: 24px; align-items: center; }
+      .nav span { padding: 8px 12px; border: 1px solid #aab5bb; border-radius: 999px; }
+      .hero { min-height: 240px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; align-items: end; }
+      .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .action { padding: 12px 16px; border-radius: 8px; background: #0e416b; color: white; }
+      .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+      .columns > div { min-height: 78px; border-left: 4px solid #0e416b; padding: 12px; background: #edf1ef; }
+      .rail { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+      .rail div { padding: 14px 8px; text-align: center; border-bottom: 3px solid #0e416b; }
+      .muted { color: #4a5b67; }
+      @media (max-width: 760px) { .hero, .columns, .rail { grid-template-columns: 1fr; } .nav { align-items: flex-start; flex-direction: column; } }
+    </style>
+  </head>
+  <body>
+    <main class="plate" aria-label="Static desktop wireframe plate">
+      <header class="block nav"><strong>ni · Niuva</strong><span>Services · Projects · About · Contact · Retail · ID/EN</span></header>
+      <section class="block hero"><div><p class="muted">HERO / positioning</p><h1>Studio partner for questions that need form.</h1><p>Factual supporting copy; no invented project proof.</p></div><div class="actions"><span class="action">Mulai dari kebutuhan bisnis</span><span class="action">Jelajahi Retail</span></div></section>
+      <section class="block"><h2>Dua cara memulai</h2><div class="columns"><div>B2B inquiry<br /><small>Form-first → Contact</small></div><div>Retail discovery<br /><small>Published products → Retail</small></div></div></section>
+      <section class="block"><h2>Cara kerja</h2><div class="rail"><div>Need</div><div>Research</div><div>Experiment</div><div>Prototype</div><div>Output</div></div></section>
+      <section class="block"><h2>Project evidence</h2><p>Context · challenge · contribution · output · capability proven</p><p class="muted">Archive or explicit non-link until detail route is active.</p></section>
+      <section class="block"><h2>Four equal Services</h2><div class="columns"><div>Research &amp; Development</div><div>Consultant &amp; Workshop</div><div>Design &amp; Prototyping</div><div>Apparel &amp; Merchandise</div></div></section>
+      <section class="block"><h2>Retail → Contact → FAQ → Closing</h2><p class="muted">Each route retains its own responsibility and recovery.</p></section>
+    </main>
+  </body>
+</html>

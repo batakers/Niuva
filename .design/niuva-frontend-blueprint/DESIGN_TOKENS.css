@@ -1,0 +1,288 @@
+/*
+ * Niuva Frontend Blueprint — Phase 4 token specimen
+ * Status: Candidate, Context Only, TOK-01 through TOK-12 owner approved
+ * Baseline: origin/main 8555685c29a3fde9976ae6499336e2eb45a330ba
+ *
+ * IMPORTANT:
+ * - This file is not imported by the application and is not a second runtime.
+ * - frontend/src/index.css remains the only runtime token source.
+ * - Values below preserve the approved/current NDS foundation unless a role is
+ *   explicitly described as candidate in DESIGN_TOKENS.md.
+ * - No dark theme, page art direction, lifecycle enum, or provider state is
+ *   introduced here.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ================================================================
+   * GLOBAL VALUES
+   * Route pages and components do not consume these values directly.
+   * ================================================================ */
+
+  --nds-blue-50: #F1F6FA;
+  --nds-blue-100: #E3EEF6;
+  --nds-blue-200: #C8DCEB;
+  --nds-blue-300: #A6C3DA;
+  --nds-blue-400: #7EA5C5;
+  --nds-blue-500: #6390BB;
+  --nds-blue-600: #4875A3;
+  --nds-blue-700: #315F8F;
+  --nds-blue-800: #244B73;
+  --nds-blue-900: #193753;
+  --nds-blue-950: #0E1B27;
+
+  --nds-canvas: #F8FAFC;
+  --nds-white: #FFFFFF;
+  --nds-ink-secondary: #44586B;
+  --nds-ink-muted: #566B7D;
+  --nds-ink-disabled: #627486;
+  --nds-border-control: #708BA3;
+  --nds-border-decorative: #C8D7E4;
+
+  --nds-space-0: 0;
+  --nds-space-1: 0.25rem;
+  --nds-space-2: 0.5rem;
+  --nds-space-3: 0.75rem;
+  --nds-space-4: 1rem;
+  --nds-space-5: 1.25rem;
+  --nds-space-6: 1.5rem;
+  --nds-space-8: 2rem;
+  --nds-space-10: 2.5rem;
+  --nds-space-12: 3rem;
+  --nds-space-16: 4rem;
+  --nds-space-20: 5rem;
+  --nds-space-24: 6rem;
+  --nds-space-30: 7.5rem;
+
+  --nds-radius-none: 0;
+  --nds-radius-sm: 0.5rem;
+  --nds-radius-control: 0.75rem;
+  --nds-radius-surface: 1rem;
+  --nds-radius-panel: 1.25rem;
+  --nds-radius-feature: 1.5rem;
+
+  /* ================================================================
+   * CORE SEMANTIC COLOR ROLES
+   * Status colors are presentation roles, never lifecycle authority.
+   * ================================================================ */
+
+  --color-identity-signature: var(--nds-blue-500);
+  --color-identity-signature-rgb: 99 144 187;
+  --color-identity-support: var(--nds-blue-300);
+  --color-identity-support-rgb: 166 195 218;
+
+  --color-action-primary: var(--nds-blue-700);
+  --color-action-primary-rgb: 49 95 143;
+  --color-action-primary-hover: var(--nds-blue-800);
+  --color-action-primary-hover-rgb: 36 75 115;
+  --color-action-primary-active: var(--nds-blue-900);
+  --color-action-primary-active-rgb: 25 55 83;
+
+  --color-surface-canvas: var(--nds-canvas);
+  --color-surface-canvas-rgb: 248 250 252;
+  --color-surface-default: var(--nds-white);
+  --color-surface-default-rgb: 255 255 255;
+  --color-surface-elevated: var(--color-surface-default);
+  --color-surface-muted: #EDF4F8;
+  --color-surface-muted-rgb: 237 244 248;
+  --color-surface-selected: var(--nds-blue-50);
+  --color-surface-selected-rgb: 241 246 250;
+  --color-surface-highlight: var(--nds-blue-100);
+  --color-surface-highlight-rgb: 227 238 246;
+  --color-surface-inverse: var(--nds-blue-950);
+  --color-surface-inverse-rgb: 14 27 39;
+
+  --color-text-primary: var(--nds-blue-950);
+  --color-text-primary-rgb: 14 27 39;
+  --color-text-secondary: var(--nds-ink-secondary);
+  --color-text-secondary-rgb: 68 88 107;
+  --color-text-muted: var(--nds-ink-muted);
+  --color-text-muted-rgb: 86 107 125;
+  --color-text-disabled: var(--nds-ink-disabled);
+  --color-text-disabled-rgb: 98 116 134;
+  --color-text-inverse: var(--nds-white);
+  --color-text-inverse-rgb: 255 255 255;
+  --color-text-technical: var(--color-text-secondary);
+  --color-text-technical-rgb: var(--color-text-secondary-rgb);
+
+  --color-border-control: var(--nds-border-control);
+  --color-border-control-rgb: 112 139 163;
+  --color-border-decorative: var(--nds-border-decorative);
+  --color-border-decorative-rgb: 200 215 228;
+  --color-focus-ring: var(--nds-blue-700);
+  --color-focus-ring-rgb: 49 95 143;
+  --color-border-focus: var(--color-focus-ring);
+  --color-border-focus-rgb: var(--color-focus-ring-rgb);
+
+  --color-status-info: #214C78;
+  --color-status-info-rgb: 33 76 120;
+  --color-status-info-surface: #E8F2FA;
+  --color-status-success: #23643A;
+  --color-status-success-rgb: 35 100 58;
+  --color-status-success-surface: #E8F5EC;
+  --color-status-warning: #6B4E00;
+  --color-status-warning-rgb: 107 78 0;
+  --color-status-warning-surface: #FFF3CC;
+  --color-status-error: #8F2430;
+  --color-status-error-rgb: 143 36 48;
+  --color-status-error-surface: #FBEAEC;
+
+  --color-disabled-surface: var(--nds-blue-100);
+  --color-disabled-surface-rgb: 227 238 246;
+  --color-action-disabled: var(--color-disabled-surface);
+  --color-action-disabled-rgb: var(--color-disabled-surface-rgb);
+  --color-overlay-scrim: rgba(14, 27, 39, 0.74);
+  --color-overlay-surface: var(--color-overlay-scrim);
+  --color-navigation-backdrop: rgba(248, 250, 252, 0.96);
+
+  /* ================================================================
+   * TYPOGRAPHY
+   * Mona Sans is the target shared family. Compatibility font delivery is
+   * documented separately and is not reproduced in this specimen.
+   * ================================================================ */
+
+  --font-family-nds-display: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-family-nds-body: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-family-nds-ui: 'Mona Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-family-nds-expression: 'Bona Nova', georgia, serif;
+  --font-family-nds-technical: ui-monospace, 'SFMono-Regular', consolas,
+    'Liberation Mono', monospace;
+
+  --type-weight-regular: 400;
+  --type-weight-medium: 500;
+  --type-weight-semibold: 600;
+  --type-weight-bold: 700;
+
+  --type-display-home-size: clamp(2.25rem, 4.6vw, 3.5rem);
+  --type-display-home-leading: clamp(2.625rem, 5.1vw, 3.875rem);
+  --type-heading-page-size: clamp(2.125rem, 4.2vw, 3rem);
+  --type-heading-page-leading: clamp(2.5rem, 4.8vw, 3.4375rem);
+  --type-heading-section-size: clamp(1.75rem, 3.4vw, 2.5rem);
+  --type-heading-section-leading: clamp(2.1875rem, 4vw, 3rem);
+  --type-heading-subsection-size: clamp(1.375rem, 2.4vw, 1.625rem);
+  --type-heading-subsection-leading: clamp(1.8125rem, 3vw, 2.125rem);
+  --type-heading-card-size: clamp(1.25rem, 2vw, 1.375rem);
+  --type-heading-card-leading: clamp(1.75rem, 2.6vw, 1.875rem);
+  --type-body-large-size: 1.125rem;
+  --type-body-large-leading: 1.875rem;
+  --type-body-size: 1rem;
+  --type-body-leading: 1.625rem;
+  --type-body-small-size: 0.875rem;
+  --type-body-small-leading: 1.375rem;
+  --type-label-size: 0.8125rem;
+  --type-label-leading: 1.125rem;
+  --type-technical-size: 0.75rem;
+  --type-technical-leading: 1.125rem;
+  --type-button-size: 0.9375rem;
+  --type-button-leading: 1.25rem;
+  --type-navigation-size: 0.9375rem;
+  --type-navigation-leading: 1.25rem;
+  --type-tracking-display: -0.02em;
+  --type-tracking-heading: -0.01em;
+  --type-tracking-normal: 0;
+
+  /* ================================================================
+   * SPACING AND LAYOUT
+   * Breakpoints remain build/layout configuration, not CSS variables used
+   * inside media queries.
+   * ================================================================ */
+
+  --space-0: var(--nds-space-0);
+  --space-1: var(--nds-space-1);
+  --space-2: var(--nds-space-2);
+  --space-3: var(--nds-space-3);
+  --space-4: var(--nds-space-4);
+  --space-5: var(--nds-space-5);
+  --space-6: var(--nds-space-6);
+  --space-8: var(--nds-space-8);
+  --space-10: var(--nds-space-10);
+  --space-12: var(--nds-space-12);
+  --space-16: var(--nds-space-16);
+  --space-20: var(--nds-space-20);
+  --space-24: var(--nds-space-24);
+  --space-30: var(--nds-space-30);
+
+  --space-control-block: var(--nds-space-3);
+  --space-control-inline: var(--nds-space-4);
+  --space-stack-compact: var(--nds-space-2);
+  --space-stack-default: var(--nds-space-4);
+  --space-stack-relaxed: var(--nds-space-6);
+  --space-cluster-default: var(--nds-space-3);
+  --space-page-gutter-mobile: var(--nds-space-4);
+  --space-page-gutter-tablet: var(--nds-space-6);
+  --space-page-gutter-desktop: var(--nds-space-8);
+  --space-section-standard-mobile: var(--nds-space-16);
+  --space-section-standard-desktop: var(--nds-space-24);
+  --space-section-compact-mobile: var(--nds-space-12);
+  --space-section-compact-desktop: var(--nds-space-16);
+
+  --container-wide: 84rem;
+  --container-content: 70rem;
+  --container-narrow: 48rem;
+  --measure-prose: 65ch;
+  --measure-prose-extended: 70ch;
+  --control-target-min: 2.75rem;
+  --control-target-comfortable: 3rem;
+
+  /* ================================================================
+   * SHAPE, ELEVATION, FOCUS, AND MOTION
+   * ================================================================ */
+
+  --radius-none: var(--nds-radius-none);
+  --radius-sm: var(--nds-radius-sm);
+  --radius-control: var(--nds-radius-control);
+  --radius-card: var(--nds-radius-surface);
+  --radius-panel: var(--nds-radius-panel);
+  --radius-feature: var(--nds-radius-feature);
+  --radius-full: 999px;
+
+  --shadow-none: none;
+  --shadow-surface: 0 1px 2px rgba(14, 27, 39, 0.06);
+  --shadow-navigation: 0 8px 24px rgba(14, 27, 39, 0.09);
+  --shadow-overlay: 0 18px 48px rgba(14, 27, 39, 0.16);
+  --shadow-focus-ring: 0 0 0 3px rgba(49, 95, 143, 0.22);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 3px;
+
+  --motion-instant: 0ms;
+  --motion-fast: 120ms;
+  --motion-standard: 180ms;
+  --motion-deliberate: 280ms;
+  --motion-ambient: 15s;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 0.3);
+
+  /* ================================================================
+   * SURFACE ALIASES
+   * These change composition and density, never lifecycle meaning.
+   * ================================================================ */
+
+  --public-canvas: var(--color-surface-canvas);
+  --public-content-surface: var(--color-surface-default);
+  --public-evidence-surface: var(--color-surface-inverse);
+  --public-expression-color: var(--color-identity-signature);
+  --public-prose-measure: var(--measure-prose-extended);
+
+  --commerce-canvas: var(--color-surface-canvas);
+  --commerce-summary-surface: var(--color-surface-default);
+  --commerce-selected-surface: var(--color-surface-selected);
+  --commerce-specification-border: var(--color-border-control);
+  --commerce-prose-measure: var(--measure-prose);
+
+  --account-canvas: var(--color-surface-canvas);
+  --account-task-surface: var(--color-surface-default);
+  --account-recovery-surface: var(--color-surface-muted);
+  --account-prose-measure: var(--measure-prose);
+
+  --operations-canvas: var(--color-surface-canvas);
+  --operations-row-surface: var(--color-surface-default);
+  --operations-row-selected: var(--color-surface-selected);
+  --operations-data-border: var(--color-border-decorative);
+  --operations-density-row: 3rem;
+
+  /* No component tokens are promoted by this Phase 4 candidate. */
+  /* No page-local or art-direction token belongs in this root specimen. */
+  /* No [data-theme="dark"] contract is approved or generated. */
+}
