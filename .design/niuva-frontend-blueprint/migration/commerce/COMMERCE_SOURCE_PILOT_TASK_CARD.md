@@ -1,11 +1,14 @@
-# MIG-02 — Candidate Commerce source pilot task card
+# MIG-02 — Commerce source pilot task card
 
-**Status:** Candidate exact-file G3 review — passed with a scope amendment;
-G4 runtime implementation remains ungranted
+**Status:** Bounded source pilot executed; G4 implementation and G5 delivery
+complete in PR #284
 **G3 review baseline:** `origin/main` at
 `8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe`, reviewed 18 August 2026
-**Owner:** Commerce frontend driver (to be named only when a separate G4 is
-authorized)
+**Execution base:** `origin/main` at `ed5fbac73463382381b183b2a3a6f1514c323d14`
+**Merged execution:** source commits `808558b` and `af05810`; merge commit
+`d8438b2e4e4d6b97eb147f4866b0890e85f0de06`
+**Owner:** Commerce frontend driver (execution recorded; individual driver name
+is not part of the repository contract)
 **Surface:** Retail discovery and product detail only
 **Inputs:** `COM-01`/`COM-02`/`COM-03`, QA-01–QA-05, DS-01A/DS-01B,
 `DEC-UX-003`, `DEC-OFFER-01`, `DEC-RT-02`, and current source/tests
@@ -18,7 +21,7 @@ tracking capability.
 
 ## G3-reviewed exact-file scope
 
-**Potential G4 change paths — no source change is authorized by this card:**
+**Exact G3-reviewed paths executed only under separate G4 authorization:**
 
 - `frontend/src/pages/retail/RetailCatalogPage.jsx`
 - `frontend/src/pages/retail/RetailProductPage.jsx`
@@ -78,12 +81,12 @@ The G3 baseline check at the reviewed SHA passed five focused Commerce suites
 and catalog helper. It is source evidence only and does not prove browser,
 provider, staging, production, or go-live behavior.
 
-Any separately authorized G4 must run the focused suites above, full frontend
-regression, production build, dependency audit, `git diff --check`, browser
-interaction, axe, and an Impeccable Product-register critique. It begins from
-a freshly fetched `origin/main` in an isolated worktree. Rollback reverts only
-the named G4 paths; it preserves routes, compatibility aliases, and historical
-evidence.
+The separately authorized G4 ran the five focused Commerce suites (22 tests),
+the full frontend suite (72 suites, 460 tests), production build, production
+dependency audit, `git diff --check`, browser interaction and Axe checks at
+320, 390, 768, 1024, and 1440px, English localized return-path verification,
+and the Impeccable detector. Rollback remains limited to the named G4 paths;
+routes, compatibility aliases, and historical evidence are preserved.
 
 ## Exclusions and gates
 
@@ -115,10 +118,11 @@ push, PR, review, merge, and readiness remain separate.
       locale, route, state, and read-only contract are named.
 - [x] Retail lifecycle, account, route, and commercial-authority boundaries
       are preserved.
-- [x] No transaction capability, provider, route activation, or source change
-      occurred during G3.
-- [x] Runtime/browser evidence and rollback are required but not claimed.
+- [x] No transaction capability, provider, route activation, or unrelated
+      source capability was introduced by the executed slice.
+- [x] Runtime/browser evidence and rollback are recorded for the bounded G4/G5
+      execution.
 
-**Self-review result:** G3 pass with the exact-scope amendment above. This is
-not G4 authorization and does not establish implementation, readiness, or
+**Self-review result:** G3 scope amendment, G4 implementation, and G5 delivery
+are complete for PR #284. This does not establish production readiness or
 go-live.
