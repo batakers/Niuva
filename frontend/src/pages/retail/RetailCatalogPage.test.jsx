@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import RetailCatalogPage from "./RetailCatalogPage";
 import { publicCatalogApi } from "@/lib/catalog";
+import { I18nProvider } from "@/i18n";
 
 jest.mock("@/components/layout/Layout", () => ({
   MarketingLayout: ({ children }) => <main>{children}</main>,
@@ -62,23 +63,35 @@ const publications = [
   },
 ];
 
-function renderCatalog({ strict = false } = {}) {
+function renderCatalog({ strict = false, lang = "id" } = {}) {
+  window.history.pushState(
+    {},
+    "",
+    lang === "en" ? "/en/retail" : "/retail",
+  );
   const page = (
-    <MemoryRouter>
-      <RetailCatalogPage />
-    </MemoryRouter>
+    <I18nProvider>
+      <MemoryRouter>
+        <RetailCatalogPage />
+      </MemoryRouter>
+    </I18nProvider>
   );
   return render(strict ? <React.StrictMode>{page}</React.StrictMode> : page);
 }
 
 beforeEach(() => {
+  localStorage.clear();
   publicCatalogApi.categories.mockResolvedValue(categories);
   publicCatalogApi.products.mockResolvedValue({
     items: publications,
     next_cursor: null,
   });
 });
-afterEach(() => jest.resetAllMocks());
+afterEach(() => {
+  jest.resetAllMocks();
+  localStorage.clear();
+  window.history.pushState({}, "", "/");
+});
 
 test("loads the public catalog once and exposes category selection semantics", async () => {
   renderCatalog({ strict: true });
@@ -130,4 +143,23 @@ test("keeps loaded products visible and offers retry after pagination fails", as
   expect(publicCatalogApi.products).toHaveBeenNthCalledWith(3, {
     cursor: "cursor-2",
   });
+});
+
+test("localizes discovery copy while keeping the product route unprefixed", async () => {
+  renderCatalog({ lang: "en" });
+
+  expect(await screen.findByTestId("retail-product-grid")).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", {
+      name: "Products you can review before any transaction.",
+    }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
+  expect(
+    screen.getAllByRole("link", { name: "View details" })[0],
+  ).toHaveAttribute("href", "/retail/products/desk-sign");
+  expect(
+    screen.getByRole("link", { name: "Discuss a specific need" }),
+  ).toHaveAttribute("href", "/en/contact");
+  expect(document.title).toBe("Retail discovery - Niuva");
 });

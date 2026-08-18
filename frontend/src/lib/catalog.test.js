@@ -3,6 +3,8 @@ import {
   categoryDraftFrom,
   emptyCategoryDraft,
   emptyProductDraft,
+  availabilityLabel,
+  formatCatalogPrice,
   normalizeValidationErrors,
   validCategoryDraft,
   visibleCatalogActions,
@@ -78,4 +80,32 @@ test("category drafts support safe create and edit payloads", () => {
   });
   expect(validCategoryDraft({ ...draft, name: "R" })).toBe(false);
   expect(validCategoryDraft(draft)).toBe(true);
+});
+
+test("public catalog labels localize without changing price authority", () => {
+  const product = {
+    pricing_mode: "fixed",
+    price_from: 125000,
+    currency: "IDR",
+  };
+
+  expect(formatCatalogPrice(product)).toBe("Mulai Rp\u00a0125.000");
+  expect(formatCatalogPrice(product, [], "en")).toBe(
+    "Starting at IDR\u00a0125,000",
+  );
+  expect(
+    formatCatalogPrice({ ...product, pricing_mode: "quote_required" }, [], "en"),
+  ).toBe("Price available after discussion");
+  expect(availabilityLabel([{ stock_status: "in_stock" }])).toBe("Tersedia");
+  expect(availabilityLabel([{ stock_status: "in_stock" }], "en")).toBe("In stock");
+  expect(availabilityLabel([{ stock_status: "low_stock" }])).toBe("Stok terbatas");
+  expect(availabilityLabel([{ stock_status: "low_stock" }], "en")).toBe("Limited stock");
+  expect(availabilityLabel([{ stock_status: "made_to_order" }])).toBe(
+    "Dibuat sesuai pesanan",
+  );
+  expect(availabilityLabel([{ stock_status: "made_to_order" }], "en")).toBe(
+    "Made to order",
+  );
+  expect(availabilityLabel()).toBe("Belum tersedia");
+  expect(availabilityLabel([], "en")).toBe("Not available");
 });

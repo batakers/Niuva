@@ -22,12 +22,12 @@ import {
   publicCatalogApi,
 } from "@/lib/catalog";
 
-function ProductTile({ publication }) {
+function ProductTile({ publication, lang, copy }) {
   const { product, variants, category } = publication;
 
   return (
     <article className="flex h-full flex-col border-t-2 border-brand-secondary pt-4">
-      <RetailProductVisual product={product} />
+      <RetailProductVisual product={product} {...copy.visual} />
       <div className="flex flex-1 flex-col pt-5">
         <p className="type-label text-text-secondary">{category.name}</p>
         <h3 className="mt-2 font-heading text-xl font-bold text-text-primary">
@@ -38,21 +38,23 @@ function ProductTile({ publication }) {
         </p>
         <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border-default pt-4 text-sm">
           <div>
-            <dt className="text-xs text-text-secondary">Harga publikasi</dt>
+            <dt className="text-xs text-text-secondary">{copy.priceLabel}</dt>
             <dd className="mt-1 font-semibold text-text-primary">
-              {formatCatalogPrice(product, variants)}
+              {formatCatalogPrice(product, variants, lang)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-text-secondary">Ketersediaan</dt>
+            <dt className="text-xs text-text-secondary">
+              {copy.availabilityLabel}
+            </dt>
             <dd className="mt-1 font-semibold text-text-primary">
-              {availabilityLabel(variants)}
+              {availabilityLabel(variants, lang)}
             </dd>
           </div>
         </dl>
         <Button asChild variant="outline" className="mt-5 w-full">
           <Link to={`/retail/products/${product.slug}`}>
-            Lihat detail
+            {copy.viewDetail}
             <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
           </Link>
         </Button>
@@ -74,8 +76,19 @@ function ProductTileSkeleton() {
 }
 
 export default function RetailCatalogPage() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const contactPath = getPublicPath("contact", lang);
+  const homePath = getPublicPath("home", lang);
+  const copy = {
+    priceLabel: t("retail.discovery.priceLabel"),
+    availabilityLabel: t("retail.discovery.availabilityLabel"),
+    viewDetail: t("retail.discovery.viewDetail"),
+    visual: {
+      fallbackProductName: t("retail.visual.fallbackProductName"),
+      visualAltPrefix: t("retail.visual.altPrefix"),
+      missingVisualLabel: t("retail.visual.unavailable"),
+    },
+  };
   const [state, setState] = useState({
     status: HAS_CONFIGURED_BACKEND ? "loading" : "unavailable",
     items: [],
@@ -118,7 +131,10 @@ export default function RetailCatalogPage() {
   }, []);
 
   useEffect(() => {
-    document.title = "Retail Discovery - Niuva";
+    document.title = t("retail.discovery.documentTitle");
+  }, [t]);
+
+  useEffect(() => {
     load();
   }, [load]);
 
@@ -167,16 +183,15 @@ export default function RetailCatalogPage() {
               <div className="max-w-3xl">
                 <p className="type-label text-action-primary">Niuva Retail</p>
                 <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight text-text-primary sm:text-5xl">
-                  Produk yang dapat Anda pelajari sebelum bertransaksi.
+                  {t("retail.discovery.title")}
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-8 text-text-secondary sm:text-lg">
-                  Bandingkan produk, harga publikasi, dan status ketersediaan.
-                  Checkout, pembayaran, dan fulfilment belum diaktifkan.
+                  {t("retail.discovery.intro")}
                 </p>
               </div>
               <Button asChild variant="outline" className="w-full lg:w-auto">
                 <Link to={contactPath}>
-                  {lang === "en" ? "Discuss a specific need" : "Diskusikan kebutuhan khusus"}
+                  {t("retail.discovery.discuss")}
                 </Link>
               </Button>
             </div>
@@ -187,11 +202,10 @@ export default function RetailCatalogPage() {
           <PageContainer>
             <div className="mb-8 max-w-3xl">
               <h2 className="font-heading text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-                Katalog produk terpublikasi
+                {t("retail.discovery.catalogTitle")}
               </h2>
               <p className="mt-3 leading-7 text-text-secondary">
-                Informasi berasal dari publication snapshot dan status inventory
-                yang aman untuk ditampilkan kepada publik.
+                {t("retail.discovery.catalogDescription")}
               </p>
             </div>
 
@@ -199,7 +213,7 @@ export default function RetailCatalogPage() {
               <div
                 className="grid gap-x-7 gap-y-12 md:grid-cols-2 xl:grid-cols-3"
                 role="status"
-                aria-label="Memuat katalog Retail"
+                aria-label={t("retail.discovery.loading")}
               >
                 {[1, 2, 3, 4, 5, 6].map((item) => (
                   <ProductTileSkeleton key={item} />
@@ -208,17 +222,25 @@ export default function RetailCatalogPage() {
             )}
 
             {state.status === "unavailable" && (
-              <EmptyState frame="dashed">
-                Katalog belum terhubung pada environment ini.
-              </EmptyState>
+              <div className="space-y-5">
+                <OperationalState
+                  state="empty"
+                  title={t("retail.discovery.unavailableTitle")}
+                  description={t("retail.discovery.unavailableDescription")}
+                  className="rounded-panel"
+                />
+                <Button asChild variant="outline">
+                  <Link to={homePath}>{t("retail.discovery.backToNiuva")}</Link>
+                </Button>
+              </div>
             )}
 
             {state.status === "error" && (
               <OperationalState
                 state="error"
-                title="Katalog belum berhasil dimuat"
-                description="Data katalog tidak diubah. Periksa koneksi Anda lalu coba lagi."
-                retryLabel="Coba lagi"
+                title={t("retail.discovery.errorTitle")}
+                description={t("retail.discovery.errorDescription")}
+                retryLabel={t("retail.discovery.retry")}
                 onRetry={load}
                 className="rounded-panel"
               />
@@ -226,7 +248,7 @@ export default function RetailCatalogPage() {
 
             {state.status === "ready" && state.items.length === 0 && (
               <EmptyState frame="dashed">
-                Belum ada produk Retail yang dipublikasikan.
+                {t("retail.discovery.empty")}
               </EmptyState>
             )}
 
@@ -235,14 +257,14 @@ export default function RetailCatalogPage() {
                 <div
                   className="mb-9 flex flex-wrap gap-2"
                   role="group"
-                  aria-label="Filter kategori"
+                  aria-label={t("retail.discovery.categoryFilter")}
                 >
                   <Button
                     variant={selectedCategory === "all" ? "default" : "outline"}
                     aria-pressed={selectedCategory === "all"}
                     onClick={() => setSelectedCategory("all")}
                   >
-                    Semua
+                    {t("retail.discovery.all")}
                   </Button>
                   {state.categories.map((category) => (
                     <Button
@@ -260,7 +282,7 @@ export default function RetailCatalogPage() {
 
                 {visibleItems.length === 0 ? (
                   <EmptyState frame="dashed">
-                    Tidak ada produk pada kategori ini.
+                    {t("retail.discovery.emptyCategory")}
                   </EmptyState>
                 ) : (
                   <div
@@ -271,6 +293,8 @@ export default function RetailCatalogPage() {
                       <ProductTile
                         key={item.product.id}
                         publication={item}
+                        lang={lang}
+                        copy={copy}
                       />
                     ))}
                   </div>
@@ -283,8 +307,7 @@ export default function RetailCatalogPage() {
                         className="mx-auto mb-4 max-w-xl text-left"
                         data-testid="retail-load-more-error"
                       >
-                        Produk berikutnya belum berhasil dimuat. Produk yang
-                        sudah tampil tetap tersedia.
+                        {t("retail.discovery.loadMoreError")}
                       </Alert>
                     )}
                     <Button
@@ -293,10 +316,10 @@ export default function RetailCatalogPage() {
                       disabled={loadingMore}
                     >
                       {loadingMore
-                        ? "Memuat…"
+                        ? t("retail.discovery.loadingMore")
                         : loadMoreError
-                          ? "Coba muat lagi"
-                          : "Muat produk berikutnya"}
+                          ? t("retail.discovery.retryLoadMore")
+                          : t("retail.discovery.loadMore")}
                     </Button>
                   </div>
                 )}

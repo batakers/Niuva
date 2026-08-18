@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 
 import RetailProductPage from "./RetailProductPage";
 import { publicCatalogApi } from "@/lib/catalog";
+import { I18nProvider } from "@/i18n";
 
 jest.mock("@/components/layout/Layout", () => ({
   MarketingLayout: ({ children }) => <main>{children}</main>,
@@ -41,13 +42,22 @@ const publication = {
   cta_state: "discovery_only",
 };
 
-function renderProduct() {
+function setLanguage(lang) {
+  localStorage.clear();
+  localStorage.setItem("niuva_lang", lang);
+  window.history.pushState({}, "", "/retail/products/desk-sign");
+}
+
+function renderProduct({ lang = "id" } = {}) {
+  setLanguage(lang);
   return render(
-    <MemoryRouter initialEntries={["/retail/products/desk-sign"]}>
-      <Routes>
-        <Route path="/retail/products/:slug" element={<RetailProductPage />} />
-      </Routes>
-    </MemoryRouter>,
+    <I18nProvider>
+      <MemoryRouter initialEntries={["/retail/products/desk-sign"]}>
+        <Routes>
+          <Route path="/retail/products/:slug" element={<RetailProductPage />} />
+        </Routes>
+      </MemoryRouter>
+    </I18nProvider>,
   );
 }
 
@@ -71,7 +81,11 @@ function ProductRouteWithSwitcher() {
   );
 }
 
-afterEach(() => jest.resetAllMocks());
+afterEach(() => {
+  jest.resetAllMocks();
+  localStorage.clear();
+  window.history.pushState({}, "", "/");
+});
 
 test("presents discovery-only state as information rather than a dead CTA", async () => {
   publicCatalogApi.product.mockResolvedValue(publication);
@@ -84,6 +98,9 @@ test("presents discovery-only state as information rather than a dead CTA", asyn
   expect(publicCatalogApi.product).toHaveBeenCalledWith("desk-sign");
   expect(screen.getByRole("status")).toHaveTextContent(
     "Transaksi Retail belum aktif",
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "akun dan revalidasi server",
   );
   expect(
     screen.queryByRole("button", { name: "Transaksi Retail belum aktif" }),
@@ -99,9 +116,9 @@ test("keeps the approved contact handoff limited to quote-required products", as
   renderProduct();
 
   expect(
-    await screen.findByRole("link", { name: "Minta penawaran" }),
+    await screen.findByRole("link", { name: "Diskusikan kebutuhan ini" }),
   ).toHaveAttribute("href", "/kontak");
-  expect(screen.getByText(/tidak langsung membuat pesanan/i)).toBeInTheDocument();
+  expect(screen.getByText(/tidak membuat Retail Request/i)).toBeInTheDocument();
 });
 test("keeps a failed product read generic and recoverable", async () => {
   publicCatalogApi.product
@@ -142,12 +159,15 @@ test("ignores an older response after the product route slug changes", async () 
     requestedSlug === "desk-sign" ? first.promise : second.promise,
   );
 
+  setLanguage("id");
   render(
-    <MemoryRouter initialEntries={["/retail/products/desk-sign"]}>
-      <Routes>
-        <Route path="/retail/products/:slug" element={<ProductRouteWithSwitcher />} />
-      </Routes>
-    </MemoryRouter>,
+    <I18nProvider>
+      <MemoryRouter initialEntries={["/retail/products/desk-sign"]}>
+        <Routes>
+          <Route path="/retail/products/:slug" element={<ProductRouteWithSwitcher />} />
+        </Routes>
+      </MemoryRouter>
+    </I18nProvider>,
   );
 
   fireEvent.click(screen.getByRole("button", { name: "Buka produk kedua" }));
@@ -167,4 +187,23 @@ test("ignores an older response after the product route slug changes", async () 
   });
   expect(screen.getByRole("heading", { name: "Desk Lamp" })).toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: "Desk Sign" })).not.toBeInTheDocument();
+});
+
+test("keeps a stored English preference on the unprefixed product route", async () => {
+  publicCatalogApi.product.mockResolvedValue({
+    ...publication,
+    cta_state: "quote_required",
+  });
+
+  renderProduct({ lang: "en" });
+
+  expect(
+    await screen.findByRole("link", { name: "Discuss this requirement" }),
+  ).toHaveAttribute("href", "/en/contact");
+  expect(screen.getByRole("link", { name: "Back to Retail" })).toHaveAttribute(
+    "href",
+    "/en/retail",
+  );
+  expect(screen.getByText("Published price")).toBeInTheDocument();
+  expect(screen.getByText("Availability")).toBeInTheDocument();
 });

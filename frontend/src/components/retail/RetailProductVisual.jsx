@@ -8,11 +8,14 @@ export function RetailProductVisual({
   product,
   eager = false,
   className,
+  fallbackProductName = "Produk Niuva",
+  visualAltPrefix = "Visual",
+  missingVisualLabel = "Visual produk belum tersedia",
 }) {
   const media = product?.media?.[0];
   const image = resolveMediaUrl(media?.storage_path);
-  const productName = product?.name || "Produk Niuva";
-  const alt = media?.alt || `Visual ${productName}`;
+  const productName = product?.name || fallbackProductName;
+  const alt = media?.alt || `${visualAltPrefix} ${productName}`;
 
   return (
     <div
@@ -42,7 +45,7 @@ export function RetailProductVisual({
             {productName}
           </p>
           <p className="mt-1 text-xs text-text-secondary">
-            Visual produk belum tersedia
+            {missingVisualLabel}
           </p>
         </div>
       )}

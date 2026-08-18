@@ -20,19 +20,18 @@ import {
   publicCatalogApi,
 } from "@/lib/catalog";
 
-function RetailCtaState({ state, contactPath, lang }) {
+function RetailCtaState({ state, contactPath, t }) {
   if (state === "quote_required") {
     return (
-      <div className="border-l-2 border-action-primary pl-5">
+      <div className="border border-border-default p-5">
         <h2 className="font-heading text-lg font-semibold text-text-primary">
-          Produk ini memerlukan penawaran
+          {t("retail.detail.quoteTitle")}
         </h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-text-secondary">
-          Harga final dan komitmen pengerjaan ditetapkan setelah kebutuhan
-          ditinjau. Permintaan ini tidak langsung membuat pesanan atau pembayaran.
+          {t("retail.detail.quoteDescription")}
         </p>
         <Button asChild className="mt-5 w-full sm:w-auto">
-          <Link to={contactPath}>{lang === "en" ? "Request a quote" : "Minta penawaran"}</Link>
+          <Link to={contactPath}>{t("retail.detail.quoteAction")}</Link>
         </Button>
       </div>
     );
@@ -42,11 +41,10 @@ function RetailCtaState({ state, contactPath, lang }) {
     return (
       <Alert tone="default" role="status" className="px-4 py-4">
         <p className="font-semibold text-text-primary">
-          Transaksi Retail belum aktif
+          {t("retail.detail.discoveryOnlyTitle")}
         </p>
         <p className="mt-1 leading-6 text-text-secondary">
-          Produk dapat dipelajari, tetapi checkout, pembayaran, upload,
-          reservasi, dan fulfilment belum tersedia.
+          {t("retail.detail.discoveryOnlyDescription")}
         </p>
       </Alert>
     );
@@ -55,19 +53,19 @@ function RetailCtaState({ state, contactPath, lang }) {
   return (
     <Alert tone="warning" role="status" className="px-4 py-4">
       <p className="font-semibold text-text-primary">
-        Permintaan Retail belum tersedia
+        {t("retail.detail.inactiveTitle")}
       </p>
       <p className="mt-1 leading-6 text-text-secondary">
-        Produk ini tetap dapat dilihat, tetapi tidak sedang menerima tindakan
-        Retail dari halaman ini.
+        {t("retail.detail.inactiveDescription")}
       </p>
     </Alert>
   );
 }
 
 export default function RetailProductPage() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const contactPath = getPublicPath("contact", lang);
+  const retailPath = getPublicPath("retail", lang);
   const { slug } = useParams();
   const [state, setState] = useState({
     status: HAS_CONFIGURED_BACKEND ? "loading" : "unavailable",
@@ -121,8 +119,8 @@ export default function RetailProductPage() {
   useEffect(() => {
     document.title = state.value?.product?.name
       ? `${state.value.product.name} - Niuva Retail`
-      : "Produk Retail - Niuva";
-  }, [state.value]);
+      : t("retail.detail.documentTitle");
+  }, [state.value, t]);
 
   return (
     <MarketingLayout>
@@ -134,9 +132,9 @@ export default function RetailProductPage() {
         >
           <PageContainer>
             <Button asChild variant="ghost" className="-ml-3">
-              <Link to="/retail">
+              <Link to={retailPath}>
                 <span aria-hidden="true">←</span>
-                Kembali ke Retail
+                {t("retail.detail.back")}
               </Link>
             </Button>
 
@@ -144,7 +142,7 @@ export default function RetailProductPage() {
               <div
                 className="mt-8 grid gap-10 lg:grid-cols-2"
                 role="status"
-                aria-label="Memuat detail produk"
+                aria-label={t("retail.detail.loading")}
               >
                 <Skeleton className="aspect-[4/3] rounded-panel" />
                 <div className="space-y-5">
@@ -159,8 +157,8 @@ export default function RetailProductPage() {
             {state.status === "unavailable" && (
               <OperationalState
                 state="empty"
-                title="Detail produk belum terhubung"
-                description="Environment ini belum memiliki koneksi ke katalog publik."
+                title={t("retail.detail.unavailableTitle")}
+                description={t("retail.detail.unavailableDescription")}
                 className="mt-8 rounded-panel"
               />
             )}
@@ -168,9 +166,9 @@ export default function RetailProductPage() {
             {state.status === "error" && (
               <OperationalState
                 state="error"
-                title="Detail produk belum berhasil dimuat"
-                description="Periksa koneksi Anda lalu coba memuat produk kembali."
-                retryLabel="Coba lagi"
+                title={t("retail.detail.errorTitle")}
+                description={t("retail.detail.errorDescription")}
+                retryLabel={t("retail.detail.retry")}
                 onRetry={load}
                 className="mt-8 rounded-panel"
               />
@@ -179,8 +177,8 @@ export default function RetailProductPage() {
             {state.status === "not_found" && (
               <OperationalState
                 state="empty"
-                title="Produk tidak tersedia"
-                description="Produk ini tidak ditemukan atau tidak lagi dipublikasikan."
+                title={t("retail.detail.notFoundTitle")}
+                description={t("retail.detail.notFoundDescription")}
                 className="mt-8 rounded-panel"
               />
             )}
@@ -191,6 +189,9 @@ export default function RetailProductPage() {
                   product={state.value.product}
                   eager
                   className="lg:sticky lg:top-28"
+                  fallbackProductName={t("retail.visual.fallbackProductName")}
+                  visualAltPrefix={t("retail.visual.altPrefix")}
+                  missingVisualLabel={t("retail.visual.unavailable")}
                 />
 
                 <div>
@@ -207,21 +208,22 @@ export default function RetailProductPage() {
                   <dl className="mt-7 divide-y divide-border-default border-y border-border-default">
                     <div className="grid gap-2 py-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
                       <dt className="text-sm text-text-secondary">
-                        Harga publikasi
+                        {t("retail.detail.priceLabel")}
                       </dt>
                       <dd className="font-semibold text-text-primary">
                         {formatCatalogPrice(
                           state.value.product,
                           state.value.variants,
+                          lang,
                         )}
                       </dd>
                     </div>
                     <div className="grid gap-2 py-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
                       <dt className="text-sm text-text-secondary">
-                        Ketersediaan
+                        {t("retail.detail.availabilityLabel")}
                       </dt>
                       <dd className="font-semibold text-text-primary">
-                        {availabilityLabel(state.value.variants)}
+                        {availabilityLabel(state.value.variants, lang)}
                       </dd>
                     </div>
                   </dl>
@@ -230,7 +232,7 @@ export default function RetailProductPage() {
                     <RetailCtaState
                       state={state.value.cta_state}
                       contactPath={contactPath}
-                      lang={lang}
+                      t={t}
                     />
                   </div>
 
@@ -240,7 +242,7 @@ export default function RetailProductPage() {
                         id="retail-variants-title"
                         className="font-heading text-xl font-bold text-text-primary"
                       >
-                        Varian terpublikasi
+                        {t("retail.detail.variantsTitle")}
                       </h2>
                       <ul className="mt-4 divide-y divide-border-default border-y border-border-default">
                         {state.value.variants.map((variant) => (
@@ -252,7 +254,7 @@ export default function RetailProductPage() {
                               {variant.name}
                             </span>
                             <span className="text-text-secondary">
-                              {availabilityLabel([variant])}
+                              {availabilityLabel([variant], lang)}
                             </span>
                           </li>
                         ))}
