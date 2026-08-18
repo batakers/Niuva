@@ -69,7 +69,7 @@ function validateBrief(form, messages) {
   // The backend refuses an inquiry without consent, so catching it here keeps
   // the visitor on the checkbox instead of on a 422.
   if (!form.consent) {
-    errors.consent = "Centang persetujuan penggunaan data sebelum mengirim brief.";
+    errors.consent = messages.consent;
   }
 
   return errors;
@@ -101,6 +101,7 @@ const CONTACT_COPY = {
       phoneInvalid: "Nomor WhatsApp terlihat terlalu pendek.",
       briefRequired: "Jelaskan kebutuhan proyek Anda.",
       briefShort: (length) => `Mohon jelaskan kebutuhan proyek minimal ${length} karakter.`,
+      consent: "Centang persetujuan penggunaan data sebelum mengirim brief.",
     },
     needOptions: [
       "Research & Development",
@@ -119,7 +120,7 @@ const CONTACT_COPY = {
     responseSteps: responseStepsId,
     sentLabel: "Brief terkirim",
     sentTitle: "Brief Anda sudah diterima.",
-    sentBody: "Tim Niuva akan meninjau konteks awal dan menghubungi Anda melalui kontak yang diberikan. Target respons pertama adalah satu hari kerja (Senin–Jumat, 09.00–17.00 WIB, di luar hari libur nasional). Ini bukan penawaran harga atau jaminan pengiriman.",
+    sentBody: "Inquiry Anda sudah tersimpan dan menjadi nomor referensi untuk tindak lanjut. Tim Niuva akan meninjau konteks awal dan menghubungi Anda melalui kontak yang diberikan. Target respons pertama adalah satu hari kerja (Senin–Jumat, 09.00–17.00 WIB, di luar hari libur nasional). Ini bukan penawaran harga atau jaminan pengiriman.",
     reference: "Nomor referensi inquiry",
     another: "Kirim brief lain",
     whatsappContinue: "Ingin melanjutkan percakapan lebih cepat? Anda dapat meneruskan nomor referensi di atas melalui WhatsApp. Langkah ini opsional.",
@@ -143,7 +144,16 @@ const CONTACT_COPY = {
     submit: "Kirim brief project",
     sending: "Mengirim brief",
     formCopy: {
+      consent: "Saya setuju Niuva menggunakan data ini untuk meninjau inquiry dan menghubungi saya terkait kebutuhan yang saya kirim. Data tidak digunakan untuk marketing tanpa persetujuan terpisah.",
       privacy: "Target respons pertama dari tim: satu hari kerja (Senin–Jumat, 09.00–17.00 WIB, di luar hari libur nasional). Ini bukan penawaran harga atau jaminan pengiriman.",
+    },
+    dependencyError: {
+      eyebrow: "Brief belum tersimpan",
+      title: "Kami tidak dapat menyimpan brief Anda saat ini.",
+      body: "Isian Anda masih tersimpan di formulir. Periksa pesan berikut, lalu pilih tindakan secara manual.",
+      retry: "Tekan Kirim Brief Project sekali lagi untuk mencoba ulang. Jika masih gagal, hubungi tim Niuva melalui kanal di bawah ini.",
+      whatsapp: "Hubungi lewat WhatsApp",
+      email: "Kirim lewat email",
     },
     responseTitle: "Tiga langkah menuju diskusi lanjutan.",
     responseBody: "Respons awal difokuskan pada konteks kebutuhan, kecocokan kapabilitas, dan informasi yang masih perlu dilengkapi.",
@@ -161,6 +171,7 @@ const CONTACT_COPY = {
       phoneInvalid: "The WhatsApp number appears to be too short.",
       briefRequired: "Describe your project need.",
       briefShort: (length) => `Describe your project need in at least ${length} characters.`,
+      consent: "Accept the data-use consent before sending your brief.",
     },
     needOptions: [
       "Research & Development",
@@ -183,7 +194,7 @@ const CONTACT_COPY = {
     ],
     sentLabel: "Brief submitted",
     sentTitle: "We have received your brief.",
-    sentBody: "The Niuva team will review the initial context and contact you using the details provided. The initial response target is one business day (Monday-Friday, 09:00-17:00 WIB, excluding national holidays). This is not a price quotation or a delivery guarantee.",
+    sentBody: "Your Inquiry has been stored and its reference can be used for follow-up. The Niuva team will review the initial context and contact you using the details provided. The initial response target is one business day (Monday-Friday, 09:00-17:00 WIB, excluding national holidays). This is not a price quotation or a delivery guarantee.",
     reference: "Inquiry reference",
     another: "Send another brief",
     whatsappContinue: "Want to continue the conversation faster? You can forward the reference number above via WhatsApp. This step is optional.",
@@ -222,7 +233,16 @@ const CONTACT_COPY = {
       timeline: "Estimated timeline",
       message: "Additional message",
       messagePlaceholder: "Describe the context, goal, scope, target users, expected output, or project constraints.",
+      consent: "I agree that Niuva may use this data to review my inquiry and contact me about the need I submitted. The data will not be used for marketing without separate consent.",
       privacy: "Target first response from the team: one business day (Monday-Friday, 09:00-17:00 WIB, excluding national holidays). This is not a price quotation or delivery guarantee.",
+    },
+    dependencyError: {
+      eyebrow: "Brief not stored",
+      title: "We could not store your brief right now.",
+      body: "Your entries are still in the form. Review the message below, then choose a next step manually.",
+      retry: "Select Send project brief once more to try again. If it still fails, contact the Niuva team through one of the channels below.",
+      whatsapp: "Contact via WhatsApp",
+      email: "Send by email",
     },
     responseTitle: "Three steps toward a follow-up discussion.",
     responseBody: "The initial response focuses on your context, the relevant capability, and the information that still needs clarification.",
@@ -240,7 +260,13 @@ function readInquiryReference(response) {
 // A dependency failure is not a field mistake, so it never marks a valid field
 // invalid. It stays on screen until the visitor acts, because a toast that
 // fades takes the only record of a lost brief with it.
-function InquiryDependencyError({ message, dependencyErrorRef, whatsappHref, email }) {
+function InquiryDependencyError({
+  message,
+  dependencyErrorRef,
+  whatsappHref,
+  email,
+  copy,
+}) {
   return (
     <div
       ref={dependencyErrorRef}
@@ -249,27 +275,24 @@ function InquiryDependencyError({ message, dependencyErrorRef, whatsappHref, ema
       data-testid="contact-dependency-error"
       className="mb-6 rounded-card border border-status-error/40 bg-status-error/5 p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 sm:p-6"
     >
-      <p className="brand-eyebrow text-status-error">Brief belum tersimpan</p>
+      <p className="brand-eyebrow text-status-error">{copy.eyebrow}</p>
       <h3 className="type-heading-card mt-3 text-text-primary">
-        Kami tidak dapat menyimpan brief Anda saat ini.
+        {copy.title}
       </h3>
       <p className="mt-3 text-base leading-7 text-text-secondary">{message}</p>
       <p className="mt-3 text-sm leading-6 text-text-secondary">
-        Isian Anda masih tersimpan di formulir di bawah. Tekan{" "}
-        <span className="font-semibold text-text-primary">Kirim Brief Project</span>{" "}
-        sekali lagi untuk mencoba ulang. Jika masih gagal, hubungi tim Niuva
-        melalui kanal di bawah ini.
+        {copy.body} {copy.retry}
       </p>
       {(whatsappHref || email) && (
         <div className="mt-5 flex flex-wrap gap-3">
           {whatsappHref && (
             <BrandButton href={whatsappHref} variant="secondary" data-testid="contact-error-whatsapp">
-              Hubungi lewat WhatsApp
+              {copy.whatsapp}
             </BrandButton>
           )}
           {email && (
             <BrandButton href={`mailto:${email}`} variant="secondary" data-testid="contact-error-email">
-              Kirim lewat email
+              {copy.email}
             </BrandButton>
           )}
         </div>
@@ -336,6 +359,7 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(false);
   const [submission, setSubmission] = useState(null);
   const [dependencyError, setDependencyError] = useState("");
+  const submissionInFlight = useRef(false);
   const acknowledgementRef = useRef(null);
   const dependencyErrorRef = useRef(null);
   const hadSubmission = useRef(false);
@@ -377,6 +401,11 @@ export default function ContactPage() {
   const submit = async (event) => {
     event.preventDefault();
 
+    // The disabled button prevents normal duplicate clicks, while this ref
+    // also guards keyboard/scripted submits that can arrive before React has
+    // committed the loading state. A second POST could create a second Inquiry.
+    if (submissionInFlight.current) return;
+
     // The canonical Inquiry requires a brief long enough to triage. Checking it
     // here keeps the visitor on a written sentence instead of a 422.
     const nextErrors = validateBrief(form, copy.errors);
@@ -391,6 +420,7 @@ export default function ContactPage() {
 
     setErrors({});
     setDependencyError("");
+    submissionInFlight.current = true;
     setLoading(true);
     // Each field lands on its own Inquiry attribute. The previous flattening
     // into subject/message made the brief unqueryable and untriageable.
@@ -417,6 +447,7 @@ export default function ContactPage() {
       // automatic retry that could store the same lead twice.
       setDependencyError(formatApiError(error.response?.data?.detail));
     } finally {
+      submissionInFlight.current = false;
       setLoading(false);
     }
   };
@@ -511,6 +542,7 @@ export default function ContactPage() {
                       dependencyErrorRef={dependencyErrorRef}
                       whatsappHref={contact.whatsappHref}
                       email={contact.email}
+                      copy={copy.dependencyError}
                     />
                   )}
                   <ContactForm

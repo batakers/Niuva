@@ -133,6 +133,7 @@ describe("Public project intake", () => {
     });
 
     expect(acknowledgement).toHaveTextContent("Nomor referensi inquiry");
+    expect(acknowledgement).toHaveTextContent("Inquiry Anda sudah tersimpan");
     expect(acknowledgement).toHaveTextContent("inq-1");
     expect(screen.queryByTestId("contact-form")).not.toBeInTheDocument();
     expect(document.activeElement).toBe(acknowledgement);
@@ -191,6 +192,24 @@ describe("Public project intake", () => {
     expect(payload.consent).toBe(true);
   });
 
+  test("does not create a duplicate Inquiry while the first request is pending", async () => {
+    let resolvePost;
+    api.post.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePost = resolve;
+      }),
+    );
+
+    renderPage();
+    fillBrief();
+    submitForm();
+    submitForm();
+
+    expect(api.post).toHaveBeenCalledTimes(1);
+    resolvePost({ data: { id: "inq-pending" } });
+    await screen.findByTestId("contact-success");
+  });
+
   test("keeps a dependency failure on screen instead of in a toast", async () => {
     api.post.mockRejectedValue({
       response: { status: 429, data: { detail: "Terlalu banyak permintaan." } },
@@ -207,6 +226,22 @@ describe("Public project intake", () => {
       "  Membutuhkan validasi desain dan prototype fungsional.  "
     );
     expect(screen.queryByTestId("contact-success")).not.toBeInTheDocument();
+  });
+
+  test("keeps dependency-error framing localized in English", async () => {
+    window.history.replaceState({}, "", "/en/contact");
+    api.post.mockRejectedValue({
+      response: { status: 503, data: { detail: "Service unavailable." } },
+    });
+
+    renderPage();
+    fillBrief();
+    submitForm();
+
+    const failure = await screen.findByTestId("contact-dependency-error");
+    expect(failure).toHaveTextContent("We could not store your brief right now.");
+    expect(failure).toHaveTextContent("Select Send project brief once more to try again.");
+    expect(failure).not.toHaveTextContent("Brief belum tersimpan");
   });
 
   test("moves focus to the dependency failure so it cannot be missed", async () => {
@@ -252,10 +287,24 @@ describe("Public project intake", () => {
     expect(screen.getByLabelText(/^Name/)).toBeRequired();
     expect(screen.getByLabelText(/^Company \/ Institution/)).toBeRequired();
     expect(screen.getByLabelText(/^WhatsApp number/)).toBeRequired();
+    expect(screen.getByLabelText(/I agree that Niuva may use this data/)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Other collaboration" })).toHaveValue(
       "Kolaborasi lainnya",
     );
     expect(screen.getByRole("button", { name: "Send project brief" })).toBeEnabled();
     expect(screen.queryByText("Kirim brief project")).not.toBeInTheDocument();
+  });
+
+  test("localizes the consent validation message in English", async () => {
+    window.history.replaceState({}, "", "/en/contact");
+    renderPage();
+    fillBrief({ consent: false });
+    submitForm();
+
+    await waitFor(() => expect(screen.getByText("Accept the data-use consent before sending your brief.")).toBeInTheDocument());
+    expect(screen.getByText("Accept the data-use consent before sending your brief.")).toHaveAttribute(
+      "id",
+      "contact-consent-error",
+    );
   });
 });
