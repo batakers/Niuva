@@ -95,3 +95,49 @@ The next gate is G4 implementation in a fresh source worktree from the updated
 path staging, commit, push, PR review/thread handling, and merge without a new
 interactive approval. A passing G4 does not establish staging, production
 readiness, or go-live.
+
+## 7. G4 implementation and delivery evidence
+
+**Status:** G4 implementation complete and delivered as PR #299; this record
+does not promote the route family, activate a provider, or establish staging,
+production readiness, or go-live.
+
+**Source baseline:** `origin/main` at
+`0488515597719152e2de449dcbd13314e629b855` after PR #298. The implementation
+commit was `92dfbda5c0ba847a73461e17ab61d7fcb0d2a027`; PR #299 merged at exact
+head with merge commit `0488515597719152e2de449dcbd13314e629b855`.
+
+The six approved paths were the only source/test files changed:
+
+- `frontend/src/i18n.js`
+- `frontend/src/pages/operational/ClientDashboard.jsx`
+- `frontend/src/pages/operational/ClientDashboard.test.jsx`
+- `frontend/src/pages/operational/OrderDetail.jsx`
+- `frontend/src/pages/operational/OrderDetail.test.jsx`
+- `frontend/src/pages/operational/customer-portal-surface.contract.test.js`
+
+The implementation fails closed on a malformed `/orders` collection and maps
+403/404 detail responses to localized customer-safe unavailable states without
+retrying a non-retryable access boundary. Generic dependency failures retain a
+bounded retry. No backend, route, shared primitive, token, dependency, API
+schema, session, role, permission, payment, upload, checkout, provider, or
+lifecycle behavior changed.
+
+Verification completed before delivery:
+
+- focused: 3 suites, 16 tests passed;
+- full frontend: 74 suites, 479 tests passed;
+- production build passed; gzip total 638.39 kB and entry 169.06 kB;
+- `npm run audit:production` passed with the repository's two accepted exact
+  RSC-only advisory entries;
+- `git diff --check` passed and the Impeccable detector returned `[]`;
+- browser ID/EN checks at 320, 390, 768, 1024, and 1440px: 24 passed, 6
+  non-representative Axe checks skipped; representative mobile/desktop Axe
+  checks passed, with no overflow, page error, lost action, or unsafe raw
+  backend detail;
+- required CI rerun passed for frontend, backend, secret-scan, and CodeRabbit;
+  no actionable inline review thread remained. ESLint was not run because the
+  repository has no ESLint 9 flat-config file or lint script.
+
+The customer-owned order pilot is now delivery evidence for this exact slice;
+`SRC-EXPAND-01` remains a separate, unchecked route-family expansion task.

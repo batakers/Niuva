@@ -8,7 +8,7 @@ consolidated owner review; locked `SRC-*` pilots remain separately gated
 **Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`b1142f1d0bf1edcad33498e71b6a950aa6039450`
+`0488515597719152e2de449dcbd13314e629b855`
 
 ## Purpose
 
@@ -64,7 +64,7 @@ If this directory conflicts with higher authority, the higher authority wins.
 | 3. Information architecture | Route families, navigation, flow maps, page responsibilities, and state ownership | Owner approved on 18 August 2026 |
 | 4. Design tokens | Reviewable token proposal aligned to the approved semantic tiers | `TOK-01` through `TOK-12` owner approved on 18 August 2026 |
 | 5. Brief to tasks | Ordered wireframe, component-contract, visual-study, prototype, and validation slices | Owner approved on 18 August 2026 |
-| 6. Frontend design | Separately authorized bounded design or source slices | `DS-01A` owner approved; `DS-01B` through `DS-05` and executable Wave B–F candidate artifacts completed; bounded source pilots are recorded through PR #296; only `SRC-EXPAND-01` remains unchecked |
+| 6. Frontend design | Separately authorized bounded design or source slices | `DS-01A` owner approved; `DS-01B` through `DS-05` and executable Wave B–F candidate artifacts completed; bounded source pilots are recorded through PR #299; only `SRC-EXPAND-01` remains unchecked |
 | 7. Design review | Evidence-bound critique on owner request only | Not authorized |
 
 Advancing from one phase never authorizes the next phase automatically. Source
@@ -118,13 +118,13 @@ migration remains a separately gated implementation task.
   self-review evidence.
 - [`decisions/PROMOTION_REVIEW.md`](decisions/PROMOTION_REVIEW.md) — candidate
   component/token/pattern promotion ledger; no runtime promotion.
-- [`migration/`](migration/) — six exact-file candidate source-pilot,
+- [`migration/`](migration/) — exact-file candidate source-pilot,
   foundation, and compatibility/retirement cards; planning-only until G3/G4.
 - `README.md` — scope, authority, phase map, and working-set rules.
 
 The executable design, validation, and planning files for Wave B–F are complete
 in this working set. The bounded source pilots are delivery evidence, not broad
-redesign authority: PRs #279, #281, #284, #288, #290, and #296 each cover one
+redesign authority: PRs #279, #281, #284, #288, #290, #296, and #299 each cover one
 isolated slice. Section 11 of `TASKS.md` remains locked only for
 `SRC-EXPAND-01`, which still requires a new route-family-specific G3/G4 review.
 
