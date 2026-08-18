@@ -1,7 +1,7 @@
 # MIG-03B — Candidate G4 exact-file scope for Customer Registration
 
-**Status:** Candidate planning-only; G4 source, dependency, provider, and
-runtime activation are not authorized by this document
+**Status:** Historical G4 scope record — bounded implementation merged in PR
+#296; provider activation and any new change remain separately gated
 
 **Follow-up status:** The exact-file G4 scope was subsequently authorized and
 implemented in [PR #296](https://github.com/batakers/Niuva/pull/296). This card
@@ -14,7 +14,7 @@ exclusions still apply.
 `652418ebc4fcd049eeb020f7e00bdbe78515bfbb`
 
 **Follow-up implementation baseline:** `origin/main` at
-`b1142f1d0bf1edcad33498e71b6a950aa6039450`.
+`ff843ce403932de2ff3f77532e60448c789e3aec` after PR #302.
 
 **G3 review:**
 [`CUSTOMER_REGISTRATION_GOOGLE_G3_REVIEW.md`](../../validation/CUSTOMER_REGISTRATION_GOOGLE_G3_REVIEW.md)

@@ -2,13 +2,14 @@
 
 **Status:** Candidate — Context Only — Phase 5 and all executable blueprint
 tasks Wave B–F completed; bounded source pilots are recorded through PR #301;
-`SRC-PUB-02` and `SRC-EXPAND-01` remain separately gated; no broad source or
-delivery authority
+the documentation backlog disposition is recorded in
+`validation/REMAINING_BACKLOG_RECONCILIATION.md`; no broad source or delivery
+authority
 
 **Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`518f951d2dd7aa94c45b65b0f8944bee7b20fe11`
+`ff843ce403932de2ff3f77532e60448c789e3aec`
 
 **Scope:** Convert the owner-approved Design Brief, Information Architecture,
 and `TOK-01` through `TOK-12` into bounded, dependency-ordered tasks for the
@@ -28,9 +29,10 @@ consolidated owner-report on 18 August 2026. `DS-01B` through `DS-05` and
 Wave B–F are complete only as candidate records for owner review. The bounded
 Public, Commerce discovery, Account/Auth, Operations, Customer Registration,
 customer-owned order, and FAQ source pilots are recorded in their task cards
-and merged PRs #279, #281, #284, #288, #290, #296, #299, and #301. The next
-candidate card `SRC-PUB-02` covers Privacy/Not Found G3 review; `SRC-EXPAND-01`
-remains separately gated for future route-family expansion.
+and merged PRs #279, #281, #284, #288, #290, #296, #299, and #301. The
+documentation-only backlog reconciliation records `SRC-PUB-02` as a bounded
+G3 PASS WITH CONDITIONS and `SRC-EXPAND-01` as a completed planning decision
+whose future source work remains route-family-specific and separately gated.
 These approvals do not authorize broad application redesign, canonical
 promotion, deployment, readiness, or go-live.
 
@@ -1113,8 +1115,8 @@ that may be frozen, migrated, or retired without deleting historical evidence.
 
 The following entries show the intended continuation. The completed
 `SRC-PUB-01A`, `SRC-PUB-01B`, `SRC-COM-01`, `SRC-ACC-01`, and `SRC-OPS-01`
-pilots are recorded for traceability; the remaining unchecked entry remains
-**not executable** without its own authorization:
+pilots are recorded for traceability; future source entries are executable
+only after their own exact-file authorization:
 
 - [x] **SRC-PUB-01A:** Homepage shell/navigation pilot implemented in its own
   worktree and merged as PR #279; this does not activate Contact/Inquiry.
@@ -1142,18 +1144,22 @@ pilots are recorded for traceability; the remaining unchecked entry remains
   PR #301; FAQ remains a browseable support surface with localized fallback,
   visible loading/empty/disabled/invalid/dependency-error states, and no
   route, CMS, backend, or lifecycle change.
-- [ ] **SRC-PUB-02:** Privacy and Not Found support-family G3 exact-file review
+- [x] **SRC-PUB-02:** Privacy and Not Found support-family G3 exact-file review
   is recorded in
   [`migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`](migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md).
-  Privacy content/legal review and any later G4 source work remain separately
-  gated; FAQ is not re-opened.
-- [ ] **SRC-EXPAND-01:** expand only accepted patterns route family by route
-  family after pilot evidence; never redesign all surfaces in one PR.
+  The documentation review is PASS WITH CONDITIONS; Privacy content/legal
+  review and any later G4 source work remain separately gated; FAQ is not
+  re-opened.
+- [x] **SRC-EXPAND-01:** the route-family expansion policy is recorded: expand
+  accepted patterns one family at a time after pilot evidence, never redesign
+  all surfaces in one PR. The next candidate family is Privacy/Not Found; each
+  later family still requires its own exact-file G3/G4 and delivery gates.
 
-The remaining source expansion requires its own G3 and G4, proportional tests,
+Future source expansion still requires its own G3 and G4, proportional tests,
 production build, dependency and diff checks, browser interaction,
 responsive/accessibility evidence, Impeccable critique, and a separate
-delivery gate.
+delivery gate. The two planning entries above are not runtime completion
+claims.
 
 ## 12. Route and responsibility coverage
 
@@ -1223,9 +1229,10 @@ authorized MIG-01B Contact/Inquiry pilot was implemented and merged as PR #281.
 The Account/Auth pilot was merged as PR #288, the Operations pilot as PR #290,
 the Customer Registration slice as PR #296, the customer-owned order
 workspace pilot as PR #299, and the FAQ consumer-state pilot as PR #301. The
-Privacy/Not Found candidate G3 card is the next bounded Public support slice;
-the remaining locked `SRC-EXPAND-01` route-family expansion remains unchecked
-and requires its own route-family-specific G3/G4 exact-file authorization.
+Privacy/Not Found candidate G3 card is the next bounded Public support slice.
+The backlog reconciliation records the route-family expansion policy; each
+future family still requires its own route-family-specific G3/G4 exact-file
+authorization.
 
 ## 15. Explicit exclusions
 

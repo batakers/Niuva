@@ -1,7 +1,7 @@
 # MIG-03B G3 exact-SHA review — Customer Registration with optional Google
 
-**Status:** Candidate G3 review — PASS WITH CONDITIONS; no G4 source,
-dependency, provider, or runtime activation authority
+**Status:** Historical G3 review — PASS WITH CONDITIONS; bounded G4 execution
+is recorded in PR #296, while provider activation remains held
 
 **Follow-up execution:** The G3 conditions were owner-approved, the exact-file
 G4 scope was implemented in [PR #296](https://github.com/batakers/Niuva/pull/296),
@@ -14,7 +14,10 @@ gate; it does not claim provider activation or production readiness.
 `151cbe8c2636c7a8f1d4b19b8f71393193b7198c`
 
 **Current follow-up baseline:** `origin/main` at
-`b1142f1d0bf1edcad33498e71b6a950aa6039450`.
+`b1142f1d0bf1edcad33498e71b6a950aa6039450` (PR #296).
+
+**Current ledger baseline:** `origin/main` at
+`ff843ce403932de2ff3f77532e60448c789e3aec` (after PR #302).
 
 **Primary contract:**
 [`CUSTOMER_REGISTRATION_GOOGLE_G3_TASK_CARD.md`](../migration/account/CUSTOMER_REGISTRATION_GOOGLE_G3_TASK_CARD.md)
@@ -103,10 +106,11 @@ These boundaries are sufficiently supported for candidate planning:
 6. Niuva's existing session, recovery, consent, security-event, and safe-return
    boundaries remain authoritative over any external provider.
 
-## 6. Conditions still open before G4
+## 6. Conditions held for provider activation or a new source change
 
-The G3 task card intentionally leaves these as owner decisions. They must not
-be invented from the external template or from current implementation values:
+The original G3 task card left these as owner decisions. The bounded PR #296
+execution does not settle them, and they must not be invented from the external
+template or from current implementation values:
 
 - exact email/password registration fields and retention rules;
 - exact privacy/terms consent wording and when consent is recorded;
@@ -122,15 +126,16 @@ be invented from the external template or from current implementation values:
 - exact G4 source paths, dependency decision, migration/rollback plan, and
   required frontend/backend tests.
 
-Until these conditions are explicitly approved, the result is **G3 PASS WITH
-CONDITIONS**, not G4 authorization.
+Until these conditions are explicitly approved, Google activation or a new
+registration change remains held. The historical result is **G3 PASS WITH
+CONDITIONS** and PR #296 is the bounded G4 execution record.
 
 ## 7. Next gate
 
-The next decision is owner review of the conditions above and of the exact G4
-file/dependency scope. After that approval, a separate G4 implementation may
-be performed in an isolated worktree with proportional tests and browser,
-accessibility, localization, security, and recovery evidence.
+The next decision is approval of the held provider/activation conditions or a
+new exact-file change. Any new implementation must be performed in an isolated
+worktree with proportional tests and browser, accessibility, localization,
+security, and recovery evidence.
 
 Autonomous staging, commit, push, PR review/thread handling, and merge are
 permitted for the documentation record under the active Goal. They do not

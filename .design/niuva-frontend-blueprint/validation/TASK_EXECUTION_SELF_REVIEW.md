@@ -1,20 +1,23 @@
 # Consolidated executable-task self-review
 
-**Status:** Candidate working-set evidence — consolidated owner review pending
+**Status:** Candidate working-set evidence — autonomous self-review complete;
+owner review remains optional and no runtime gate is inferred
 **Planning SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
 **Historical alignment baseline:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Current alignment baseline:** `origin/main` at
-`518f951d2dd7aa94c45b65b0f8944bee7b20fe11`
+`ff843ce403932de2ff3f77532e60448c789e3aec`
 **Post-merge execution baseline:** `origin/main` at
-`518f951d2dd7aa94c45b65b0f8944bee7b20fe11` (PR #301)
+`ff843ce403932de2ff3f77532e60448c789e3aec` (PR #302 documentation
+rebaseline)
 **MIG-02 G3 review baseline:** `origin/main` at
 `8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe`
 **Execution authorization:** Owner authorized all executable Wave B–F entries
 as one Goal with independent self-review and one final report on 18 August 2026.
 
 This ledger records completion of the executable entries in `TASKS.md`. The
-remaining locked `SRC-EXPAND-01` entry and candidate `SRC-PUB-02` G3 card are
-intentionally excluded from source execution; the completed Public, Commerce,
+backlog reconciliation separately records the documentation disposition for
+`SRC-EXPAND-01` and the candidate `SRC-PUB-02` G3 card; both remain excluded
+from source execution. The completed Public, Commerce,
 Account/Auth, Operations, Customer Registration, customer-owned Order, and
 FAQ exceptions are recorded below.
 
@@ -193,9 +196,11 @@ separately and are not included in the executable count.
   dependency audit; browser ID/EN × 320/390/768/1024/1440; Axe 0;
   reduced-motion check; Impeccable detector `[]`; and `git diff --check`.
 
-The next candidate route-family record is
-`migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`. It is a
-G3 planning artifact only; no Privacy/Not Found source work is implied.
+The backlog reconciliation at
+`validation/REMAINING_BACKLOG_RECONCILIATION.md` closes the planning ambiguity:
+the Privacy/Not Found card is a bounded G3 PASS WITH CONDITIONS, and future
+route-family expansion is explicitly one-family-at-a-time. No Privacy/Not
+Found source work or broad route expansion is implied.
 
 ## Cross-task checks
 
@@ -224,16 +229,15 @@ G3 planning artifact only; no Privacy/Not Found source work is implied.
 - [x] All 35 executable task IDs in `TASKS.md` are represented above; the
       MIG-01B executed split is recorded separately.
 - [x] All primary artifacts exist in this `.design/` working set.
-- [x] Remaining locked `SRC-EXPAND-01` and candidate `SRC-PUB-02` remain
-      explicitly out of source scope; merged Public, Commerce, Account/Auth,
-      Operations, Customer Registration, customer-owned Order, and FAQ
-      exceptions are recorded above.
+- [x] `SRC-PUB-02` and `SRC-EXPAND-01` have an explicit documentation
+      disposition in `validation/REMAINING_BACKLOG_RECONCILIATION.md`; their
+      future G4/source slices remain out of scope.
 - [x] No delivery or canonical gate is inferred from documentation completion.
 - [x] Remaining holds are named rather than silently treated as failures or
   successes.
 
 **Self-review result:** Pass for consolidated owner review; the ledger is
-aligned to `origin/main` through PR #301 and records all bounded source
-exceptions with their evidence. Privacy/Not Found G3, route-family expansion,
-canonical promotion, readiness, go-live, and all other future source-pilot
+aligned to `origin/main` through PR #302 and records all bounded source
+exceptions with their evidence. Privacy/Not Found G4, future route-family
+source work, canonical promotion, readiness, go-live, and all other external
 gates remain separate.

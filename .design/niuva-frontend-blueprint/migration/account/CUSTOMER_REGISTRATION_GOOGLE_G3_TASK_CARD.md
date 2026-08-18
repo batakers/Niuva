@@ -1,7 +1,7 @@
 # MIG-03B — Customer Registration with optional Google identity
 
-**Status:** Candidate G3 contract — documentation-only; G4 source and provider
-implementation not authorized by this card
+**Status:** Historical G3 contract — reconciled against merged PR #296;
+provider activation and any new source change remain separately gated
 
 **Follow-up status:** This historical G3 contract was followed by the separately
 approved G4 scope and merged implementation in [PR #296](https://github.com/batakers/Niuva/pull/296).
@@ -16,7 +16,7 @@ Customer Login/recovery pilot
 `e0e43e5ca3126acc7604e2f312abcd7723ed70e4`
 
 **Follow-up baseline:** `origin/main` at
-`b1142f1d0bf1edcad33498e71b6a950aa6039450` after PR #296.
+`ff843ce403932de2ff3f77532e60448c789e3aec` after PR #302.
 
 **Surface:** Customer Account entry for the Retail journey
 
@@ -161,22 +161,25 @@ service/repository boundaries where a new provider module is approved, validate
 all external input, and test the critical service and route paths. A working
 local callback is not staging, production, readiness, or go-live evidence.
 
-## Candidate G3 acceptance criteria
+## Post-merge reconciliation of the former G3 criteria
 
-- [ ] Exact current source/test consumers are revalidated against the selected
-  `origin/main` SHA.
-- [ ] Registration fields, consent, password policy, verification, recovery,
-  abuse control, and account states are explicitly approved.
-- [ ] Google provider protocol, callback, claims, subject mapping, linking,
-  cancel/error/retry, and provider outage behavior are explicitly approved.
-- [ ] Niuva session/customer projection and Customer/Admin boundaries are
-  preserved; no provider creates business authority.
-- [ ] Safe return, ID/EN copy, accessibility, responsive, and reduced-motion
-  requirements are complete.
-- [ ] The template compatibility review is recorded with exact external SHA,
-  license, adopt/amend/reject/defer disposition, and no copied runtime code.
-- [ ] G4 exact-file source scope, dependency decision, and rollback are named
-  in a separate approval.
+The original G3 checklist is retained as historical contract evidence. Its
+current disposition is explicit rather than leaving a stale set of unchecked
+items:
+
+| Criterion | Current disposition |
+| --- | --- |
+| Exact consumers and source/test paths | **Recorded:** revalidated against the merged PR #296 implementation and current `origin/main` `ff843ce`. |
+| Registration fields, consent, password, verification, recovery, abuse, and account states | **Recorded in bounded source/tests:** the feature remains flag-gated and backend-authoritative. |
+| Google protocol, callback, claims, subject mapping, linking, cancel/error/retry, and outage | **Held:** dormant provider-neutral seams exist, but credentials, activation, and final provider policy are not approved by this ledger. |
+| Niuva session/customer projection and Customer/Admin boundaries | **Recorded:** no provider creates role, permission, Retail, order, or payment authority. |
+| Safe return, ID/EN, accessibility, responsive, and reduced motion | **Recorded for the merged bounded slice;** broader runtime/readiness evidence remains source/CI evidence only. |
+| External template compatibility and no copied runtime code | **Recorded:** compatibility review remains documentation evidence; no template code is vendored. |
+| G4 exact-file scope, dependency, and rollback | **Recorded in the companion scope and PR #296;** any new change requires a fresh exact-file review. |
+
+This reconciliation closes the stale documentation checklist. It does not
+activate Google OIDC or claim legal, staging, production, readiness, or
+go-live approval.
 
 ## Explicit exclusions
 

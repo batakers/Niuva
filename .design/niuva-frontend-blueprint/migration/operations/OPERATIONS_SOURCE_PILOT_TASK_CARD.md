@@ -1,8 +1,8 @@
 # MIG-04 — Candidate Operations source pilot task card
 
-**Status:** G4 implementation complete locally — delivery evidence recorded;
+**Status:** Historical bounded source pilot — G4/G5 complete in PR #290;
 no backend or capability activation in this card
-**Baseline:** `origin/main` at `29daf0765d5da8c11843c1d619b17cb385d5d6cf`
+**Baseline:** `origin/main` at `ff843ce403932de2ff3f77532e60448c789e3aec`
 **Owner:** Operations frontend driver under the active Goal
 **Surface:** Inquiry queue/detail calibration only
 **Inputs:** `OPS-01` through `OPS-08`, QA-01–QA-05, DS-01A/DS-01B,
@@ -107,8 +107,9 @@ separate.
   excluded from source edits.
 - [x] Current `origin/main` baseline and exact test consumers are recorded.
 
-**Self-review result:** Pass with conditions as a G3 task card; G4 remains a
-bounded source pilot, not a general Operations redesign or capability launch.
+**Self-review result:** Pass as a historical bounded execution record; the
+G4/G5 pilot was delivered in [PR #290](https://github.com/batakers/Niuva/pull/290)
+and is not a general Operations redesign or capability launch.
 
 ## G4 execution record
 

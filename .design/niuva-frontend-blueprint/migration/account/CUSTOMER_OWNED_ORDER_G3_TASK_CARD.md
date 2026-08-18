@@ -1,11 +1,11 @@
 # SRC-ACC-03 — Customer-owned order workspace source pilot
 
-**Status:** G3 candidate exact-file review — PASS WITH CONDITIONS; no G4
-implementation or delivery authority is implied by this card alone
+**Status:** Historical bounded source pilot — G4/G5 complete in PR #299;
+the original G3 conditions are retained as the review record
 **Parent:** `SRC-EXPAND-01` route-family expansion and `ACC-01` customer
 dashboard-to-owned-order prototype
 **Baseline:** `origin/main` at
-`deeb30af708c50aae5c8954b938c96d66d7071f3`
+`ff843ce403932de2ff3f77532e60448c789e3aec`
 **Surface:** Customer Account only — `/dashboard` and `/orders/:id`
 
 ## Objective

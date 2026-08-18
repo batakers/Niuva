@@ -1,6 +1,6 @@
 # MIG-03A — Account/Auth customer safe-return pilot
 
-**Status:** G4 implementation complete locally — delivery evidence recorded;
+**Status:** Historical bounded source pilot — G4/G5 complete in PR #288;
 no backend or capability activation in this card
 **Parent:** `MIG-03` Account/Auth source pilot task card
 **Baseline:** `origin/main` at
@@ -206,6 +206,7 @@ bounded `min-w-0` constraints in `AuthShell.jsx`; no lifecycle or route
 contract changed. A production/readiness/go-live claim is not made.
 
 **Self-review result:** G4 implementation is PASS for the amended exact-file
-scope. Delivery remains limited to this source/test slice and this execution
-record; Dashboard Customer, Order Detail, staff login, Operations,
-registration, provider activation, and backend authority remain excluded.
+scope and was delivered in [PR #288](https://github.com/batakers/Niuva/pull/288).
+Delivery remains limited to this source/test slice and this execution record;
+Dashboard Customer, Order Detail, staff login, Operations, registration,
+provider activation, and backend authority remain excluded.

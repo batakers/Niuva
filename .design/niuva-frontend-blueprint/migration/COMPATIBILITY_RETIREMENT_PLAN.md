@@ -1,7 +1,7 @@
 # MIG-06 — Candidate compatibility and retirement plan
 
 **Status:** Candidate planning-only register — no retirement or deletion
-**Baseline:** `origin/main` at `814a46329b8de7775c2de8b1ee34536d73df63e1`
+**Baseline:** `origin/main` at `ff843ce403932de2ff3f77532e60448c789e3aec`
 **Authority:** DS-01A/DS-01B, canonical route/localization decisions,
 `DESIGN_TOKENS.md`, current imports/tests/history, and delivery-boundary rules
 

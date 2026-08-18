@@ -4,12 +4,13 @@
 owner-approved; Phase 6 `DS-01A` owner-approved as an exact-SHA ledger;
 `DS-01B` through `DS-05` and all executable Wave B–F tasks completed for one
 consolidated owner review; merged source pilots are recorded through PR #301;
-`SRC-PUB-02` and locked `SRC-EXPAND-01` remain separately gated
+the remaining backlog was reconciled in a documentation-only Goal after PR
+#302; runtime G4 work remains separately gated
 
 **Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`518f951d2dd7aa94c45b65b0f8944bee7b20fe11`
+`ff843ce403932de2ff3f77532e60448c789e3aec`
 
 ## Purpose
 
@@ -65,7 +66,7 @@ If this directory conflicts with higher authority, the higher authority wins.
 | 3. Information architecture | Route families, navigation, flow maps, page responsibilities, and state ownership | Owner approved on 18 August 2026 |
 | 4. Design tokens | Reviewable token proposal aligned to the approved semantic tiers | `TOK-01` through `TOK-12` owner approved on 18 August 2026 |
 | 5. Brief to tasks | Ordered wireframe, component-contract, visual-study, prototype, and validation slices | Owner approved on 18 August 2026 |
-| 6. Frontend design | Separately authorized bounded design or source slices | `DS-01A` owner approved; `DS-01B` through `DS-05` and executable Wave B–F candidate artifacts completed; bounded source pilots are recorded through PR #301; `SRC-PUB-02` and `SRC-EXPAND-01` remain separately gated |
+| 6. Frontend design | Separately authorized bounded design or source slices | `DS-01A` owner approved; `DS-01B` through `DS-05` and executable Wave B–F candidate artifacts completed; bounded source pilots are recorded through PR #301; backlog disposition is recorded in [`REMAINING_BACKLOG_RECONCILIATION.md`](validation/REMAINING_BACKLOG_RECONCILIATION.md); runtime G4 slices remain separately gated |
 | 7. Design review | Evidence-bound critique on owner request only | Not authorized |
 
 Advancing from one phase never authorizes the next phase automatically. Source
@@ -117,6 +118,9 @@ migration remains a separately gated implementation task.
 - [`validation/`](validation/) — responsive/localization, accessibility/state,
   truth/privacy/lifecycle, Impeccable critique, and consolidated execution
   self-review evidence.
+- [`validation/REMAINING_BACKLOG_RECONCILIATION.md`](validation/REMAINING_BACKLOG_RECONCILIATION.md)
+  — autonomous Goal ledger separating merged execution evidence from deferred
+  runtime, legal, provider, migration, and retirement gates.
 - [`decisions/PROMOTION_REVIEW.md`](decisions/PROMOTION_REVIEW.md) — candidate
   component/token/pattern promotion ledger; no runtime promotion.
 - [`migration/`](migration/) — exact-file candidate source-pilot,
@@ -129,9 +133,9 @@ migration remains a separately gated implementation task.
 The executable design, validation, and planning files for Wave B–F are complete
 in this working set. The bounded source pilots are delivery evidence, not broad
 redesign authority: PRs #279, #281, #284, #288, #290, #296, #299, and #301 each
-cover one isolated slice. `SRC-PUB-02` records the next candidate G3 review for
-Privacy/Not Found; Section 11 of `TASKS.md` remains locked for that card and
-for `SRC-EXPAND-01`, which still requires route-family-specific G3/G4 review.
+cover one isolated slice. The remaining backlog ledger records Privacy/Not
+Found as the next candidate G3 family and preserves route-family expansion as
+a future one-family-at-a-time sequence; no broad source work is implied.
 
 The Account Registration planning cards and the DS-01B route matrix retain
 their original exact-SHA review records. Their post-PR #296 status is

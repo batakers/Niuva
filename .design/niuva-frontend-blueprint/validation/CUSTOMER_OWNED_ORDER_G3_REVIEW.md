@@ -140,4 +140,5 @@ Verification completed before delivery:
   repository has no ESLint 9 flat-config file or lint script.
 
 The customer-owned order pilot is now delivery evidence for this exact slice;
-`SRC-EXPAND-01` remains a separate, unchecked route-family expansion task.
+route-family expansion is governed by the one-family-at-a-time policy in
+`validation/REMAINING_BACKLOG_RECONCILIATION.md` and remains separately gated.
