@@ -32,6 +32,7 @@ const RetailProduct = lazy(() => import("@/pages/retail/RetailProductPage"));
 const AdminLogin = lazy(() => import("@/pages/admin/AdminLogin"));
 const StaffInvitationAccept = lazy(() => import("@/pages/auth/StaffInvitationAccept"));
 const CustomerLogin = lazy(() => import("@/pages/auth/CustomerLogin"));
+const CustomerRegistration = lazy(() => import("@/pages/auth/CustomerRegistration"));
 const ForgotPassword = lazy(() => import("@/pages/auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/auth/ResetPassword"));
 const ResetPasswordState = lazy(() => import("@/pages/auth/ResetPasswordState"));
@@ -240,6 +241,8 @@ function App() {
                   <Route path="/order" element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
                   <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
                   <Route path="/login" element={<CustomerLogin />} />
+                  <Route path="/register" element={<CustomerRegistration />} />
+                  <Route path="/register/verify" element={<CustomerRegistration />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/staff-invitation" element={<StaffInvitationAccept />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -28,6 +28,26 @@ function loginError(requestError, copy) {
   return copy.errors.generic;
 }
 
+function googleLoginError(requestError, copy) {
+  const code = requestError?.response?.data?.detail?.code;
+  if (code === "google_provider_unavailable") return copy.providerUnavailable;
+  if (code === "google_link_required") return copy.googleLinkRequired;
+  if (code === "google_registration_required") return copy.googleRegistrationRequired;
+  if (code === "google_state_invalid") return copy.googleStateInvalid;
+  if (code === "google_verification_failed") return copy.googleVerificationFailed;
+  if (!requestError?.response || requestError.response.status >= 500) return copy.providerUnavailable;
+  return copy.errors.generic;
+}
+
+function googleCallbackError(code, copy) {
+  if (code === "google_provider_unavailable") return copy.providerUnavailable;
+  if (code === "google_link_required") return copy.googleLinkRequired;
+  if (code === "google_registration_required") return copy.googleRegistrationRequired;
+  if (code === "google_state_invalid") return copy.googleStateInvalid;
+  if (code === "google_verification_failed") return copy.googleVerificationFailed;
+  return "";
+}
+
 
 export default function CustomerLogin() {
   const { user, loading, login } = useAuth();
@@ -37,9 +57,12 @@ export default function CustomerLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const searchParams = new URLSearchParams(location.search);
+  const callbackCode = searchParams.get("auth");
+  const [error, setError] = useState(() => googleCallbackError(callbackCode, copy));
   const [submitting, setSubmitting] = useState(false);
-  const requestedDestination = location.state?.from;
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const requestedDestination = location.state?.from || searchParams.get("return_to");
   const destination = getCustomerDestination(requestedDestination);
 
   useEffect(() => {
@@ -62,6 +85,22 @@ export default function CustomerLogin() {
       setError(loginError(requestError, copy));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const startGoogleLogin = async () => {
+    setError("");
+    setGoogleSubmitting(true);
+    try {
+      const { data } = await api.post("/auth/google/start", {
+        mode: "login",
+        return_to: destination,
+      });
+      if (!data?.authorization_url) throw new Error("google_authorization_missing");
+      window.location.assign(data.authorization_url);
+    } catch (requestError) {
+      setError(googleLoginError(requestError, copy));
+      setGoogleSubmitting(false);
     }
   };
 
@@ -97,9 +136,18 @@ export default function CustomerLogin() {
           <Button type="submit" className="w-full" size="lg" disabled={submitting || loading}>
             {submitting ? copy.verifying : copy.submit}
           </Button>
+          <Button type="button" variant="outline" className="w-full" size="lg" onClick={startGoogleLogin} disabled={submitting || googleSubmitting || loading}>
+            {copy.google}
+          </Button>
           <Button asChild variant="link" className="w-full">
             <Link to="/forgot-password?audience=customer">{copy.forgot}</Link>
           </Button>
+          <p className="text-center text-sm leading-6 text-text-secondary">
+            {copy.registerPrompt} {" "}
+            <Link className="font-semibold text-action-primary underline-offset-4 hover:underline" to="/register" state={{ from: destination }}>
+              {copy.register}
+            </Link>
+          </p>
         </form>
       </AuthCard>
     </AuthShell>

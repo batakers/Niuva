@@ -7,6 +7,7 @@ const read = (...segments) =>
 const migratedSources = [
   ["AuthShell.jsx", read("..", "..", "components", "auth", "AuthShell.jsx")],
   ["CustomerLogin.jsx", read("CustomerLogin.jsx")],
+  ["CustomerRegistration.jsx", read("CustomerRegistration.jsx")],
   ["AdminLogin.jsx", read("..", "admin", "AdminLogin.jsx")],
   ["ForgotPassword.jsx", read("ForgotPassword.jsx")],
   ["ResetPassword.jsx", read("ResetPassword.jsx")],
@@ -36,6 +37,18 @@ test("customer and staff entry points declare separate presentation audiences", 
   expect(customer).toContain('/forgot-password?audience=customer');
   expect(staff).toContain('<AuthShell audience="staff">');
   expect(staff).toContain('/forgot-password?audience=staff');
+});
+
+test("customer registration keeps identity creation separate from transaction routes", () => {
+  const registration = read("CustomerRegistration.jsx");
+
+  expect(registration).toContain('api.post("/auth/register"');
+  expect(registration).toContain('api.post("/auth/register/verify"');
+  expect(registration).toContain('api.post("/auth/google/start"');
+  expect(registration).toContain('privacy_consent: true');
+  expect(registration).not.toContain('api.post("/orders"');
+  expect(registration).not.toContain('api.post("/checkout"');
+  expect(registration).not.toContain('api.post("/payments"');
 });
 test("recovery keeps the approved shared API paths", () => {
   const forgot = read("ForgotPassword.jsx");
