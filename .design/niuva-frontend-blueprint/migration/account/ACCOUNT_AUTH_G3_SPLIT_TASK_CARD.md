@@ -1,9 +1,10 @@
 # MIG-03A — Account/Auth customer safe-return pilot
 
-**Status:** G3 reviewed — PASS WITH CONDITIONS; no G4 source authorization
+**Status:** G4 exact-file scope amended — implementation authorized by the
+owner Goal; no runtime change in this card
 **Parent:** `MIG-03` Account/Auth source pilot task card
 **Baseline:** `origin/main` at
-`a73ea886a6bb317b19ded629cb88bbea885188ec`
+`2cb2c69e4d8b13232045857616d3c89f954a418b`
 **Surface:** Customer login and recovery only
 
 ## Objective
@@ -20,26 +21,31 @@ Runtime candidates:
 - `frontend/src/pages/auth/CustomerLogin.jsx`
 - `frontend/src/pages/auth/ForgotPassword.jsx`
 - `frontend/src/pages/auth/ResetPassword.jsx`
+- `frontend/src/pages/auth/ResetPasswordState.jsx`
 - `frontend/src/components/auth/ProtectedRoute.jsx`
+- `frontend/src/components/auth/AuthShell.jsx` (copy/presentation only; no
+  authentication mechanics or staff-flow change)
 
 Existing test and contract paths:
 
 - `frontend/src/components/auth/ProtectedRoute.test.jsx`
 - `frontend/src/pages/auth/ForgotPassword.test.jsx`
 - `frontend/src/pages/auth/ResetPassword.test.jsx`
+- `frontend/src/pages/auth/ResetPasswordState.test.jsx`
 - `frontend/src/pages/auth/auth-surface.contract.test.js`
+- `frontend/src/components/auth/AuthShell.test.jsx`
 
 Candidate coverage path, only if G4 identifies the gap as real:
 
 - `frontend/src/pages/auth/CustomerLogin.test.jsx`
 
-The following are read-only consumer and regression references, not default
-change paths: `frontend/src/components/auth/AuthShell.jsx`,
-`frontend/src/components/auth/AuthShell.test.jsx`,
+The following remain read-only consumer and regression references:
 `frontend/src/pages/admin/AdminLogin.jsx`,
-`frontend/src/pages/auth/StaffInvitationAccept.jsx`,
-`frontend/src/pages/auth/ResetPasswordState.jsx`, `frontend/src/App.js`, and
-the existing auth/customer route tests.
+`frontend/src/pages/auth/StaffInvitationAccept.jsx`, `frontend/src/App.js`,
+and the existing auth/customer route tests. AuthShell and ResetPasswordState
+are now bounded change paths only for localized presentation and dedicated
+recovery-state copy; their authentication, authorization, and route mechanics
+remain unchanged.
 
 ## Acceptance criteria
 
@@ -71,13 +77,12 @@ the existing auth/customer route tests.
 
 **Review date:** 18 August 2026 (Asia/Jakarta)
 
-**Owner disposition:** The MIG-03A split is approved for owner review and G3
-exact-file review. This record does not grant G4 runtime implementation
-authority. Dashboard Customer, Order Detail, staff login, and Operations remain
-outside the slice.
+**Owner disposition:** The MIG-03A split and this amended exact-file G4 scope
+are approved through the owner Goal. Dashboard Customer, Order Detail, staff
+login, and Operations remain outside the slice.
 
-**G3 result:** **PASS WITH CONDITIONS** at `origin/main`
-`a73ea886a6bb317b19ded629cb88bbea885188ec`. The scope is bounded and its
+**G3 result:** **PASS WITH CONDITIONS**, amended for G4 exact-file review at
+`origin/main` `2cb2c69e4d8b13232045857616d3c89f954a418b`. The scope is bounded and its
 consumers, route owners, state obligations, and rollback boundary are
 reviewable. Runtime source remains unchanged by this review.
 
@@ -94,34 +99,48 @@ reviewable. Runtime source remains unchanged by this review.
 
 ### Conditions carried to G4
 
-1. **Localization:** The current Customer Login and recovery copy is
-   Indonesian-first and does not yet demonstrate complete ID/EN system,
-   validation, recovery, and error copy. G4 must resolve this against the
-   stored-language and Account/Auth contract before claiming localized
-   completion; it must not silently invent an `/en` private counterpart.
-2. **Recovery context:** The current recovery flow preserves audience and
-   dedicated state routes, but does not establish preservation of an arbitrary
-   protected `location.state.from` target across forgot/reset screens. G4 must
-   either implement an explicitly allowlisted, non-open-redirect context
-   handoff or record the intentional rule that recovery returns to the
-   customer-login destination without promising the protected target. It must
-   not silently discard or fabricate owned-resource context.
-3. **Focused coverage:** There is no current `CustomerLogin.test.jsx` in the
-   reviewed baseline. If G4 changes Customer Login behavior, add focused
-   coverage for safe return, generic failure, loading/duplicate-submit, and
-   keyboard/focus behavior. Do not add a test merely to imply runtime
-   completion without the corresponding behavior.
+1. **Localization resolution:** G4 exact scope now includes AuthShell and
+   ResetPasswordState so customer/recovery shell, system, validation, and
+   dedicated state copy can use the existing stored ID/EN preference. No new
+   private `/en` route, translation dependency, or i18n authority is added.
+2. **Recovery-context resolution:** The bounded rule is intentional: the
+   protected allowlist is preserved through Customer Login, while recovery
+   returns to the explicit customer or staff login destination and does not
+   promise an arbitrary protected target after an email handoff. Copy must make
+   this rule clear; no open redirect or fabricated owned-resource context is
+   allowed.
+3. **Focused coverage resolution:** G4 adds `CustomerLogin.test.jsx` and
+   extends the existing AuthShell and ResetPasswordState tests for ID/EN copy,
+   safe audience separation, generic failure, loading/duplicate-submit, and
+   keyboard/focus behavior as applicable.
 4. **Authority boundary:** UI state, route visibility, or a successful browser
    response must not be treated as authentication, recovery, session,
    permission, or customer-projection authority. Backend/API verification and
-   any source change remain separately gated.
+   any source change remain outside this frontend G4 scope.
+
+### G4 exact-file amendment result
+
+**Result:** PASS for the amended exact-file scope, with implementation limited
+to the paths below and the exclusions that follow. The amendment is a
+documentation gate record; runtime source is still unchanged in this worktree.
+
+| Exact path | Allowed change | Explicitly unchanged |
+| --- | --- | --- |
+| `CustomerLogin.jsx`, `ForgotPassword.jsx`, `ResetPassword.jsx` | Customer/recovery presentation, safe destination handling, state copy, and ID/EN content | API paths, identity provider, registration, session schema, role/permission, backend authority |
+| `ResetPasswordState.jsx` | Localized success/error state copy and explicit login destinations | Route ownership, token/session behavior |
+| `AuthShell.jsx` | Localized shell copy selected by stored language and existing audience | Customer/staff audience separation and authentication mechanics |
+| Named auth tests and new `CustomerLogin.test.jsx` | Contract and focused state/keyboard coverage | No test-only implication of backend or provider readiness |
+
+The owner Goal authorizes staging, commit, push, PR, review-thread handling,
+and merge for this bounded slice. It does not authorize any path outside this
+table.
 
 ### G4 exact-file gate
 
-G4 may be requested only after this G3 record is accepted. A future G4 request
-must name the exact runtime/test paths, the chosen resolution for all four
-conditions above, and the proportional browser/accessibility/security checks.
-It must continue to exclude Dashboard Customer, Order Detail, staff login,
+The owner Goal accepts this amended G4 scope. Implementation must name the
+exact runtime/test paths below, preserve the four resolutions above, and pass
+the proportional browser/accessibility/security checks before delivery. It
+must continue to exclude Dashboard Customer, Order Detail, staff login,
 Operations, registration, identity-provider activation, session-schema or
 role/permission changes, backend authorization, customer-projection
 migration, provider activation, new dependencies, deployment, readiness, and
@@ -129,11 +148,11 @@ go-live.
 
 ## G4 boundary and exclusions
 
-G3 review does not authorize source changes. G4 requires a separate exact-file
-authorization after this card is accepted. No identity provider, registration,
-session schema, role/permission mutation, backend authorization, customer
-projection migration, dashboard/order-detail implementation, staff-login
-change, provider, or new dependency is included.
+G4 source implementation is authorized only for the amended exact paths above.
+No identity provider, registration, session schema, role/permission mutation,
+backend authorization, customer projection migration, dashboard/order-detail
+implementation, staff-login flow change, provider, or new dependency is
+included.
 
 ## Verification and rollback
 
@@ -142,7 +161,7 @@ dependency and diff checks, keyboard/return-path browser checks, Axe, and the
 Impeccable Product-register critique. Use a fresh isolated worktree from
 `origin/main`; rollback only the approved pilot paths and preserve auth history.
 
-**Self-review result:** G3 exact-file review is bounded and recorded as PASS
-WITH CONDITIONS at the current `origin/main` SHA. Only this documentation card
-is changed; no runtime source, route, API, dependency, or capability has been
-implemented or authorized.
+**Self-review result:** Amended G4 exact-file review is bounded and recorded as
+PASS at the current `origin/main` SHA. Only this documentation card is changed
+in the scope-amendment worktree; runtime implementation follows in a separate
+source worktree and PR.
