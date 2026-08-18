@@ -104,8 +104,6 @@ from inventory_routes import build_inventory_router  # noqa: E402
 from inventory_service import InventoryService  # noqa: E402
 from material_routes import build_material_router  # noqa: E402
 from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
-from pymongo import ReturnDocument  # noqa: E402
-from pymongo.errors import DuplicateKeyError  # noqa: E402
 from notification_service import NotificationError, NotificationService  # noqa: E402
 from notification_worker import NotificationDeliveryWorker  # noqa: E402
 from observability import Observability, route_template_for_request  # noqa: E402
@@ -128,6 +126,8 @@ from pydantic import (  # noqa: E402
     ValidationError,
     field_validator,
 )
+from pymongo import ReturnDocument  # noqa: E402
+from pymongo.errors import DuplicateKeyError  # noqa: E402
 from readiness_health import (  # noqa: E402
     TOTAL_TIMEOUT_SECONDS,
     ReadinessProbeCoordinator,
@@ -147,7 +147,11 @@ from settings_domain import (  # noqa: E402
     project_public_settings,
 )
 from starlette.middleware.cors import CORSMiddleware  # noqa: E402
-from starlette.responses import JSONResponse, RedirectResponse, StreamingResponse  # noqa: E402
+from starlette.responses import (  # noqa: E402
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from transaction_api import transaction_unavailable_handler  # noqa: E402
 from transaction_execution import (  # noqa: E402
     TransactionExecutor,
@@ -1450,9 +1454,11 @@ def _opaque_secret_hash(value: str) -> str:
 
 
 def _pkce_challenge(verifier: str) -> str:
-    return base64.urlsafe_b64encode(
-        hashlib.sha256(verifier.encode("ascii")).digest()
-    ).rstrip(b"=").decode("ascii")
+    return (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest())
+        .rstrip(b"=")
+        .decode("ascii")
+    )
 
 
 def _registration_unavailable(code: str = "registration_unavailable") -> HTTPException:
@@ -1491,6 +1497,7 @@ def _registration_token_document(
 
 async def _deactivate_registration_token(token_id: str, reason: str) -> None:
     try:
+
         async def deactivate(session):
             await db.customer_registration_tokens.update_one(
                 {"id": token_id, "active": True},
@@ -1546,7 +1553,9 @@ async def _issue_customer_registration(
     return_to = _safe_registration_return(req.return_to)
 
     async def create(session):
-        existing = await db.users.find_one({"email": email}, {"_id": 0}, session=session)
+        existing = await db.users.find_one(
+            {"email": email}, {"_id": 0}, session=session
+        )
         if existing:
             account_verified = bool(
                 existing.get("email_verified_at")
@@ -1623,7 +1632,9 @@ async def _issue_customer_registration(
         return {"status": "existing"}, None, None
 
 
-async def _resend_customer_registration(email: str) -> tuple[str | None, str | None, str | None]:
+async def _resend_customer_registration(
+    email: str,
+) -> tuple[str | None, str | None, str | None]:
     normalized = email.strip().lower()
     now = datetime.now(timezone.utc)
     raw_token = secrets.token_urlsafe(32)
@@ -1686,7 +1697,9 @@ async def _verify_customer_registration(raw_token: str) -> dict | None:
         )
         if not token:
             return None
-        user = await db.users.find_one({"id": token["user_id"]}, {"_id": 0}, session=session)
+        user = await db.users.find_one(
+            {"id": token["user_id"]}, {"_id": 0}, session=session
+        )
         if not user or not user.get("password_hash"):
             return None
         consumed = await db.customer_registration_tokens.update_one(
@@ -1792,7 +1805,8 @@ async def _exchange_google_code(config: dict[str, str], code: str, state: dict) 
         (
             item
             for item in jwks.get("keys", [])
-            if item.get("kid") == header.get("kid") and item.get("alg") == header.get("alg")
+            if item.get("kid") == header.get("kid")
+            and item.get("alg") == header.get("alg")
         ),
         None,
     )
@@ -1814,7 +1828,9 @@ async def _exchange_google_code(config: dict[str, str], code: str, state: dict) 
     return claims
 
 
-async def _resolve_google_identity(claims: dict, state: dict) -> tuple[dict | None, str | None]:
+async def _resolve_google_identity(
+    claims: dict, state: dict
+) -> tuple[dict | None, str | None]:
     subject = claims.get("sub")
     email = claims.get("email")
     if (
@@ -1872,7 +1888,10 @@ async def _resolve_google_identity(claims: dict, state: dict) -> tuple[dict | No
             return target, None
 
         if identity_user:
-            if identity_user.get("status") != "active" or identity_user.get("access_state") != "approved":
+            if (
+                identity_user.get("status") != "active"
+                or identity_user.get("access_state") != "approved"
+            ):
                 return None, "account_ineligible"
             return identity_user, None
 
@@ -1943,7 +1962,9 @@ async def register(
     peer_ip = client_ip(request)
     await rate_limit(f"registration_ip:{peer_ip}", limit=3, window=900)
     await rate_limit_cooldown("registration_email", str(req.email).lower(), 60)
-    await rate_limit(f"registration_email_window:{str(req.email).lower()}", limit=3, window=900)
+    await rate_limit(
+        f"registration_email_window:{str(req.email).lower()}", limit=3, window=900
+    )
     result, raw_token, token_id = await _issue_customer_registration(req)
     if raw_token and token_id:
         try:
@@ -2022,10 +2043,12 @@ async def verify_registration(req: RegistrationTokenReq, request: Request):
         "status": "verified",
         "message": "Email berhasil diverifikasi. Silakan masuk ke akun Anda.",
         "return_to": _safe_registration_return(
-            (await db.customer_registration_tokens.find_one(
-                {"token_hash": _opaque_secret_hash(req.token)}, {"return_to": 1}
-            )
-            or {}).get("return_to")
+            (
+                await db.customer_registration_tokens.find_one(
+                    {"token_hash": _opaque_secret_hash(req.token)}, {"return_to": 1}
+                )
+                or {}
+            ).get("return_to")
         ),
     }
 
@@ -2109,7 +2132,9 @@ async def google_callback(
         )
     return_to = _safe_registration_return(state_document.get("return_to"))
     if failure or not user:
-        return _google_failure_redirect(state_document, failure or "google_verification_failed")
+        return _google_failure_redirect(
+            state_document, failure or "google_verification_failed"
+        )
     response = _google_redirect(return_to, "success")
     if state_document.get("intent") != "link":
         await _session_service().issue(user, response)
