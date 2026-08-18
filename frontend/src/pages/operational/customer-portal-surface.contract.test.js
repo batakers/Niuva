@@ -47,6 +47,16 @@ describe("Customer Portal design-system contract", () => {
     );
   });
 
+  test("keeps dependency and access-boundary outcomes customer-safe", () => {
+    expect(dashboardSource).toContain("invalid_orders_projection");
+    expect(detailSource).toContain('"forbidden"');
+    expect(detailSource).toContain('"not_found"');
+    expect(detailSource).toContain(
+      'state={boundaryState ? "unavailable" : "error"}',
+    );
+    expect(detailSource).not.toContain("error.response.data.detail");
+  });
+
   test("does not render ambiguous legacy notes or internal projection fields", () => {
     expect(detailSource).not.toContain("order.notes");
     expect(detailSource).not.toContain("order.estimate.note");

@@ -28,12 +28,17 @@ function DetailRow({ label, children }) {
   );
 }
 
+const DETAIL_ERROR_COPY = {
+  forbidden: "forbidden",
+  not_found: "notFound",
+};
+
 export default function OrderDetail() {
   const { t } = useI18n();
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const loadRequestRef = useRef(null);
   const latestIdRef = useRef(id);
   latestIdRef.current = id;
@@ -52,8 +57,17 @@ export default function OrderDetail() {
       .then((response) => {
         if (latestIdRef.current === requestId) setOrder(response.data);
       })
-      .catch(() => {
-        if (latestIdRef.current === requestId) setLoadError(true);
+      .catch((error) => {
+        if (latestIdRef.current !== requestId) return;
+
+        const status = error?.response?.status;
+        setLoadError(
+          status === 403
+            ? "forbidden"
+            : status === 404
+              ? "not_found"
+              : "error",
+        );
       })
       .finally(() => {
         const currentRequest = loadRequestRef.current;
@@ -100,6 +114,10 @@ export default function OrderDetail() {
   }
 
   if (loadError || !order) {
+    const boundaryState =
+      loadError === "forbidden" || loadError === "not_found";
+    const copyKey = DETAIL_ERROR_COPY[loadError] || "error";
+
     return (
       <OperationalLayout>
         <div className="mx-auto w-full max-w-5xl space-y-4">
@@ -110,11 +128,11 @@ export default function OrderDetail() {
             </Link>
           </Button>
           <OperationalState
-            state="error"
-            title={t("detail.errorTitle")}
-            description={t("detail.errorDescription")}
-            retryLabel={t("common.retry")}
-            onRetry={load}
+            state={boundaryState ? "unavailable" : "error"}
+            title={t(`detail.${copyKey}Title`)}
+            description={t(`detail.${copyKey}Description`)}
+            retryLabel={boundaryState ? undefined : t("common.retry")}
+            onRetry={boundaryState ? undefined : load}
             className="rounded-panel"
           />
         </div>
