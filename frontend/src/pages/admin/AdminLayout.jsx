@@ -246,7 +246,10 @@ export function AdminLayout({ children, title, subtitle }) {
           </button>
 
           {/* Breadcrumb / Page title */}
-          <nav className="flex min-w-0 items-center gap-1.5 text-text-secondary" aria-label="Breadcrumb">
+          <nav
+            className="flex min-w-0 items-center gap-1.5 text-text-secondary"
+            aria-label={t("common.breadcrumb")}
+          >
             <Link
               to="/admin"
               className="inline-flex min-h-11 shrink-0 items-center type-body-small transition-colors duration-fast hover:text-action-primary"

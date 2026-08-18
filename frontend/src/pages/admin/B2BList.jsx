@@ -41,8 +41,12 @@ const CONFIG = {
     subtitleKey: "b2b.quotesSubtitle",
     emptyKey: "b2b.quotesEmpty",
     icon: FileText,
-    primary: (record) => `Quote · ${record.id.slice(0, 8)}`,
-    secondary: (record) => `Inquiry ${record.inquiry_id.slice(0, 8)} · Rev ${record.current_revision}`,
+    primary: (record, t) =>
+      t("b2b.quoteRecord").replace("{id}", record.id.slice(0, 8)),
+    secondary: (record, t) =>
+      t("b2b.inquiryReference")
+        .replace("{id}", record.inquiry_id.slice(0, 8))
+        .replace("{revision}", record.current_revision),
   },
   project: {
     paginated: true,
@@ -52,8 +56,10 @@ const CONFIG = {
     subtitleKey: "b2b.projectsSubtitle",
     emptyKey: "b2b.projectsEmpty",
     icon: BriefcaseBusiness,
-    primary: (record) => `Project · ${record.id.slice(0, 8)}`,
-    secondary: (record) => `Quote ${record.quote_id.slice(0, 8)}`,
+    primary: (record, t) =>
+      t("b2b.projectRecord").replace("{id}", record.id.slice(0, 8)),
+    secondary: (record, t) =>
+      t("b2b.projectReference").replace("{id}", record.quote_id.slice(0, 8)),
   },
   retail_order: {
     paginated: false,
@@ -64,8 +70,10 @@ const CONFIG = {
     emptyKey: "retail.empty",
     icon: ShoppingBag,
     primary: (record) => record.order_number,
-    secondary: (record) =>
-      `${record.customer?.name || "—"} · ${record.items?.length || 0} item`,
+    secondary: (record, t) =>
+      t("b2b.retailRecordReference")
+        .replace("{customer}", record.customer?.name || "—")
+        .replace("{count}", record.items?.length || 0),
   },
   work_order: {
     paginated: true,
@@ -75,9 +83,12 @@ const CONFIG = {
     subtitleKey: "workOrder.subtitle",
     emptyKey: "workOrder.empty",
     icon: Factory,
-    primary: (record) => `WO · ${record.id.slice(0, 8)}`,
-    secondary: (record) =>
-      `Project ${record.project_id.slice(0, 8)} · ${record.quantity} unit`,
+    primary: (record, t) =>
+      t("b2b.workOrderRecord").replace("{id}", record.id.slice(0, 8)),
+    secondary: (record, t) =>
+      t("b2b.workOrderReference")
+        .replace("{id}", record.project_id.slice(0, 8))
+        .replace("{quantity}", record.quantity),
   },
 };
 
@@ -168,12 +179,12 @@ function B2BList({ kind }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-3">
                     <h2 className="font-heading text-base font-semibold text-text-primary">
-                      {config.primary(record)}
+                      {config.primary(record, t)}
                     </h2>
                     <LifecycleStatusBadge kind={kind} status={record.status} />
                   </div>
                   <p className="mt-1 truncate text-sm text-text-secondary">
-                    {config.secondary(record)}
+                    {config.secondary(record, t)}
                   </p>
                 </div>
                 <div className="hidden text-right sm:block">
