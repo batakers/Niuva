@@ -48,6 +48,15 @@ test("renders the centered R4 story and the five-stage process", () => {
   expect(screen.getByText("Cara kerja")).toBeInTheDocument();
   expect(screen.getByText("Layanan Niuva")).toBeInTheDocument();
 
+  expect(screen.getAllByRole("link", { name: /Diskusikan project/i })[0]).toHaveAttribute(
+    "href",
+    "/kontak#form-konsultasi",
+  );
+  expect(screen.getByRole("link", { name: /Mulai partnership/i })).toHaveAttribute(
+    "href",
+    "/kontak#form-konsultasi",
+  );
+
   const editorialIntros = [...container.querySelectorAll(".home-r4-editorial-intro")];
   expect(editorialIntros).toHaveLength(4);
   expect(editorialIntros.map((intro) => intro.parentElement?.closest("section")?.className)).toEqual(
@@ -188,7 +197,7 @@ test("shows public-settings loading and recoverable error states without hiding 
   expect(screen.getByRole("status")).toHaveTextContent("Memuat detail kontak publik");
   expect(screen.getByRole("link", { name: /Buka halaman Kontak/i })).toHaveAttribute(
     "href",
-    "/kontak",
+    "/kontak#form-konsultasi",
   );
 
   mockPublicSettings = { status: "error", contact: {} };

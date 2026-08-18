@@ -279,6 +279,13 @@ function PageLink({ to, children, variant = "default", className = "" }) {
   );
 }
 
+function getContactFormPath(locale) {
+  return {
+    pathname: getPublicPath("contact", locale),
+    hash: "form-konsultasi",
+  };
+}
+
 function useMotionReady(threshold = 0.22) {
   const targetRef = useRef(null);
   const [motionReady, setMotionReady] = useState(
@@ -322,7 +329,7 @@ function HeroSection({ copy, locale }) {
           {copy.heroBody}
         </p>
         <div className="home-r4-actions home-r4-hero-enter home-r4-hero-enter-actions">
-          <PageLink to={getPublicPath("contact", locale)}>{copy.discuss}</PageLink>
+          <PageLink to={getContactFormPath(locale)}>{copy.discuss}</PageLink>
           <PageLink to={getPublicPath("retail", locale)} variant="link">
             {copy.exploreRetail}
           </PageLink>
@@ -346,7 +353,7 @@ function OrientationSection({ copy, locale }) {
           <article className="home-r4-orientation-partnership">
             <h3>{copy.partnershipTitle}</h3>
             <p>{copy.partnershipBody}</p>
-            <Link to={getPublicPath("contact", locale)}>{copy.partnershipAction} <ArrowDownRight aria-hidden="true" /></Link>
+            <Link to={getContactFormPath(locale)}>{copy.partnershipAction} <ArrowDownRight aria-hidden="true" /></Link>
           </article>
           <article className="home-r4-orientation-retail">
             <h3>Retail</h3>
@@ -511,7 +518,7 @@ function ContactSection({ copy, locale }) {
           <p>
             {copy.contactBody}
           </p>
-          <PageLink to={getPublicPath("contact", locale)} className="home-r4-contact-action">
+          <PageLink to={getContactFormPath(locale)} className="home-r4-contact-action">
             {copy.contactAction}
           </PageLink>
         </div>
@@ -570,7 +577,7 @@ function ClosingSection({ copy, locale }) {
           {copy.closingBody}
         </p>
         <div className="home-r4-actions">
-          <PageLink to={getPublicPath("contact", locale)} variant="outline">{copy.discuss}</PageLink>
+          <PageLink to={getContactFormPath(locale)} variant="outline">{copy.discuss}</PageLink>
           <PageLink to={getPublicPath("retail", locale)} variant="link" className="home-r4-closing-link">
             {copy.exploreRetail}
           </PageLink>
