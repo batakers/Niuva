@@ -1,14 +1,15 @@
 # Niuva Phase 6 Frontend Migration Closure Ledger
 
-**Status:** Candidate closure ledger — Phase 6 remains **OPEN**; Phase 7 is
-explicitly frozen until this ledger reaches a reviewed closure verdict
+**Status:** Candidate closure ledger — all former `PENDING_G3` rows are
+reconciled; Phase 6 awaits final owner closure review and Phase 7 remains
+**explicitly frozen**
 
 **Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`b38ae61532647cec4ef3b259c0909195e0ae3bff`
+`1c018b3c95de086ad107e9d32d56b973a2329b6c`
 
-**Worktree:** `docs/niuva-phase6-closure-ledger-20260819`
+**Worktree:** `docs/niuva-phase6-pending-g3-review-20260819`
 
 **Scope:** Reconcile the complete Niuva frontend migration boundary across
 Public, Commerce/Retail, Account/Auth, Customer-owned records, Operations,
@@ -77,7 +78,10 @@ The working evidence set for this ledger is:
 - [`REMAINING_BACKLOG_RECONCILIATION.md`](REMAINING_BACKLOG_RECONCILIATION.md),
   the post-pilot hold and expansion disposition; and
 - [`FOUNDATION_TASK_CARDS.md`](../migration/FOUNDATION_TASK_CARDS.md), the
-  planning-only MIG-05 foundation groups.
+  planning-only MIG-05 foundation groups; and
+- [`PHASE_6_PENDING_G3_SELF_REVIEW.md`](PHASE_6_PENDING_G3_SELF_REVIEW.md),
+  the one-by-one exact-source review and disposition for every former
+  `PENDING_G3` row.
 
 ## 3. Inventory baseline
 
@@ -103,8 +107,8 @@ never authorization, and a component's existence is never adoption proof.
 | Frontend family | Current closure status | Evidence or exact next gate | Exclusion / reason |
 | --- | --- | --- | --- |
 | Public Home and public shell | `DELIVERED_BOUNDED` | MIG-01 bounded Homepage shell/navigation pilot, merged PR #279 | Does not claim that every future Homepage art-direction iteration or Public route is migrated. |
-| About and Services ID/EN | `PENDING_G3` | PUB-04 candidate wireframe; requires a route-family exact-file G3 and then G4 card | Four equal Services and Indonesian-first fallback remain mandatory. |
-| Projects ID/EN archive | `PENDING_G3` | PUB-05 and EXP-03 evidence language; requires exact source scope and provenance review | Reserved `/proyek/:slug` and `/en/projects/:slug` detail prefixes remain inactive. |
+| About and Services ID/EN | `DELIVERED_BOUNDED` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current `AboutPage`, `CapabilitiesPage`, route registry, and state tests | English remains an intentional Indonesian fallback until approved translated content is supplied. |
+| Projects ID/EN archive | `DELIVERED_BOUNDED` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current `ProjectsPage`, schema/state tests, and route registry | Reserved `/proyek/:slug` and `/en/projects/:slug` detail prefixes remain inactive. |
 | Contact/Inquiry ID/EN | `DELIVERED_BOUNDED` | MIG-01B exact source pilot, merged PR #281 | No public upload, Quote/Project creation, price, ETA, or automatic WhatsApp. |
 | FAQ ID/EN | `DELIVERED_BOUNDED` | SRC-PUB-01C consumer-state pilot, merged PR #301 | FAQ remains support content; it does not become policy, lifecycle, or provider authority. |
 | Not Found wildcard recovery | `DELIVERED_BOUNDED` | SRC-PUB-02A exact Not Found slice, merged PR #305 | Wildcard recovery does not activate aliases, reserved paths, or new content ownership. |
@@ -114,14 +118,14 @@ never authorization, and a component's existence is never adoption proof.
 | Customer Login and recovery | `DELIVERED_BOUNDED` | MIG-03 Account/Auth pilot, merged PR #288 | Backend session, identity, provider, and activation boundaries remain unchanged. |
 | Customer Registration email/password | `DELIVERED_BOUNDED` | Registration slice, merged PR #296 | Verification and dormant Google OIDC seams do not activate registration flags or provider credentials. |
 | Customer-owned dashboard/order detail | `DELIVERED_BOUNDED` | SRC-ACC-03 read-only order recovery pilot, merged PR #299 | Customer-safe projection only; no new order, payment, upload, or permission authority. |
-| Staff login and invitation acceptance | `PENDING_G3` | AUTH-01 and AUTH-03 candidate records; exact source ownership is not covered by the bounded customer pilot | Must remain distinct from Customer identity and Operations authorization. |
+| Staff login and invitation acceptance | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current `AdminLogin`, `StaffInvitationAccept`, AuthShell/ProtectedRoute tests | Invitation validity/identity and staff lifecycle require a separately approved staff API/source card; customer identity remains distinct. |
 | Operations Inquiry queue/detail | `DELIVERED_BOUNDED` | MIG-04 bounded Operations presentation pilot, merged PR #290 | Backend authorization, projection, and lifecycle remain the authority. |
-| Operations Quotes and B2B Projects | `PENDING_G3` | OPS-03 candidate wireframe and lifecycle record | Quote/Project resources, revision history, and permissions require their own exact-file slice. |
-| Operations Retail Orders and after-sales | `PENDING_G3` | OPS-04 candidate family and after-sales decisions | Finance/provider, permission, API, and activation gates remain open. |
-| Operations catalog, materials, inventory, work orders | `PENDING_G3` | OPS-05 candidate family | Product/production state is domain-owned; no provider or production readiness is implied. |
-| Operations publishing/CMS | `PENDING_G3` | OPS-06 candidate family | Content, locale, version, publish, and rollback authority require separate source evidence. |
-| Operations governance, settings, notifications | `PENDING_G3` | OPS-07 candidate family | Recipient scope, permissions, notification policy, and provider boundaries remain separate. |
-| Operations work home/grid | `PENDING_G3` | OPS-02 and OPS-08 candidate visual study | Bento/grid remains optional and LOCAL; it is not a universal composition. |
+| Operations Quotes and B2B Projects | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current B2B list/detail/revision source and contract tests | Quote/Project lifecycle transitions, revision authority, and permissions require their own Operations G4. |
+| Operations Retail Orders and after-sales | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current Retail Order presentation and contract tests | Finance/provider, refund/reprint, fulfillment, permission, API, and activation gates remain open. |
+| Operations catalog, materials, inventory, work orders | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current Catalog/Materials/Inventory/Work Order source and tests | Product/production state is domain-owned; no provider or production readiness is implied. |
+| Operations publishing/CMS | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current CMS/Portfolio source and lifecycle tests | Content owner, locale, version, publish, rollback, and asset authority require separate source evidence. |
+| Operations governance, settings, notifications | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current utility source and contract tests | Recipient scope, notification policy, and provider boundaries remain separate. |
+| Operations work home/grid | `DELIVERED_BOUNDED` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current AdminDashboard source/tests | Bento/grid remains optional and LOCAL; it is not a universal composition. |
 | Account compatibility `/order` | `INVENTORY_ONLY` | DS-01B and MIG-06 compatibility record | Recovery destination only; no create-order activation. |
 | Public compatibility aliases | `INVENTORY_ONLY` | DS-01B alias matrix and MIG-06 | Application navigation does not prove the separately gated HTTP `308` contract. |
 | Reserved project-detail paths | `INVENTORY_ONLY` | DS-01B reserved-path matrix | No active link, sitemap entry, CMS owner, canonical tag, or analytics identity. |
@@ -139,10 +143,10 @@ current baseline before G4 source authorization.
 
 | Foundation group | Current status | Required closure evidence | Prohibited shortcut |
 | --- | --- | --- | --- |
-| Runtime semantic token bridge | `PENDING_G3` | `index.css`, Tailwind bridge, named tests, two real same-purpose consumers, contrast/long-content/fallback and bundle evidence | Promoting LOCAL art direction or a preview token without two real consumers. |
-| Shared action/form compatibility | `PENDING_G3` | Button/Label/Input/Textarea/FormField/Select/Switch exact files, NDS 13 fields, API compatibility, two consumers across allowed surfaces, keyboard/focus/error evidence | Broad rename, breaking API, or destructive removal. |
-| Shared feedback/state compatibility | `PENDING_G3` | Dialog/Alert/Skeleton/EmptyState/ErrorState/OperationalState/SurfacePanel exact files, visible critical states, focus return, reduced motion, resource adapters, two consumers | Replacing domain lifecycle meaning with a generic status component. |
-| Collection/status mechanics | `PENDING_G3` | DS-04 named collection/table/filter/status files, distinct resources, narrow-layout alternative, stable return context, two consumers | Zero-consumer promotion or universal status labels. |
+| Runtime semantic token bridge | `DELIVERED_BOUNDED` | Merged PR #276 and `PHASE_6_PENDING_G3_SELF_REVIEW.md` | Do not duplicate the already merged bridge or promote LOCAL art direction. |
+| Shared action/form compatibility | `DELIVERED_BOUNDED` | Current NDS primitive contract tests and cross-surface consumers recorded in `PHASE_6_PENDING_G3_SELF_REVIEW.md` | Broad rename, breaking API, or destructive removal remains separately gated. |
+| Shared feedback/state compatibility | `DELIVERED_BOUNDED` | Current state primitives, resource adapters, tests, and cross-surface consumers recorded in `PHASE_6_PENDING_G3_SELF_REVIEW.md` | Shared presentation never replaces domain lifecycle meaning. |
+| Collection/status mechanics | `DEFERRED_WITH_OWNER_REASON` | Current domain tables/status adapters plus zero-consumer `ResponsiveTable` evidence in `PHASE_6_PENDING_G3_SELF_REVIEW.md` | No zero-consumer promotion or universal status labels; a named second consumer and mobile contract are required first. |
 | Compatibility and retirement | `DEFERRED_WITH_OWNER_REASON` | MIG-06 inventory and later exact retirement cards | File existence, green tests, or one pilot does not authorize deletion or alias retirement. |
 
 <!-- markdownlint-enable MD013 -->
@@ -153,8 +157,9 @@ Phase 6 must proceed in this order:
 
 1. Reconcile this ledger and all referenced cards against `origin/main` at the
    selected SHA.
-2. Resolve or formally retain every route-family status. `PENDING_G3` is not a
-   failure, but it is not closure.
+2. Resolve or formally retain every route-family status. All former
+   `PENDING_G3` rows must become a bounded delivery, inactive contract, or
+   explicit owner-reasoned deferral.
 3. For each eligible family, create one exact-file G3 card, review current
    source/tests, and authorize only the named G4 slice.
 4. Implement in one owned worktree per slice without changing unrelated
@@ -166,7 +171,9 @@ Phase 6 must proceed in this order:
    with unchanged files, exclusions, rollback, and remaining holds.
 7. Repeat until every eligible row is `DELIVERED_BOUNDED` or has an explicit
    owner-approved `HOLD_LEGAL_CONTENT`, `CONTRACT_ONLY_INACTIVE`,
-   `INVENTORY_ONLY`, or `DEFERRED_WITH_OWNER_REASON` disposition.
+   `INVENTORY_ONLY`, or `DEFERRED_WITH_OWNER_REASON` disposition. The
+   one-by-one reconciliation is recorded in
+   `PHASE_6_PENDING_G3_SELF_REVIEW.md`.
 8. Perform a final Phase 6 closure review. Only after that review may Phase 7
    be separately requested.
 
@@ -198,9 +205,11 @@ token-promotion mechanism.
 - [x] Every open eligible area has an exact next gate instead of an implicit
       “finish everything” instruction.
 - [x] G3/G4, verification, rollback, and delivery gates remain separate.
-- [ ] Owner review of this closure ledger.
-- [ ] All eligible route-family and foundation rows closed or owner-approved
-      with a documented hold/defer reason.
+- [x] Owner authorized one-goal autonomous G3 self-review and bounded delivery
+      for all former `PENDING_G3` rows.
+- [x] All eligible route-family and foundation rows are closed or explicitly
+      deferred with a documented owner/domain reason.
 - [ ] Final Phase 6 closure verdict.
 
-**Current verdict:** `OPEN — Phase 6 migration closure work remains.`
+**Current verdict:** `CANDIDATE CLOSURE — no `PENDING_G3` rows remain; final
+owner closure review is still required before Phase 7 can be requested.`
