@@ -1013,8 +1013,12 @@ catalog or product-detail contracts without activating transaction capability.
 
 - **Execution record:** completed and self-reviewed on 18 August 2026 in
   [`migration/commerce/COMMERCE_SOURCE_PILOT_TASK_CARD.md`](migration/commerce/COMMERCE_SOURCE_PILOT_TASK_CARD.md).
-  Catalog/product files and tests are bounded without checkout, upload,
-  payment, provider, or source activation.
+  The 18 August G3 review rebaselined the card to
+  `8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe`, added the necessary locale
+  helper, translation, and Retail surface-contract test paths, and recorded
+  the retained unprefixed product-detail route. G4 remains a separate source
+  authorization; no checkout, upload, payment, provider, route, or source
+  activation occurred.
 
 ### - [x] MIG-03 — Plan the Account/Auth source pilot
 
