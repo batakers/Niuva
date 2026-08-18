@@ -5,10 +5,10 @@ owner review remains optional and no runtime gate is inferred
 **Planning SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
 **Historical alignment baseline:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Current alignment baseline:** `origin/main` at
-`f90bb7a71848c4f69563583fc685d1da0ea1fd41`
+`ce3cc7633ef794050b40baeba42624979782a2c1`
 **Post-merge execution baseline:** `origin/main` at
-`f90bb7a71848c4f69563583fc685d1da0ea1fd41` (PR #303 documentation
-rebaseline)
+`ce3cc7633ef794050b40baeba42624979782a2c1` (PR #305 Not Found source
+delivery)
 **MIG-02 G3 review baseline:** `origin/main` at
 `8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe`
 **Execution authorization:** Owner authorized all executable Wave B–F entries
@@ -17,8 +17,8 @@ as one Goal with independent self-review and one final report on 18 August 2026.
 This ledger records completion of the executable entries in `TASKS.md`. The
 backlog reconciliation separately records the documentation disposition for
 `SRC-EXPAND-01` and the candidate `SRC-PUB-02` G3 card. Its follow-up is split:
-`SRC-PUB-02A` has a Not Found-only G4 card, while `SRC-PUB-02B` remains a
-Privacy legal/content hold. The completed Public, Commerce,
+`SRC-PUB-02A` has a Not Found-only G4 card delivered in PR #305, while
+`SRC-PUB-02B` remains a Privacy legal/content hold. The completed Public, Commerce,
 Account/Auth, Operations, Customer Registration, customer-owned Order, and
 FAQ exceptions are recorded below.
 
@@ -71,8 +71,8 @@ FAQ exceptions are recorded below.
 Wave F). **Completed:** 35. **Locked and intentionally not executed:** the
 remaining route-family expansion and the new candidate `SRC-PUB-02` G3 review
 (these are source-pilot gates, not executable Wave tasks). The Not Found
-companion `SRC-PUB-02A` is tracked in its separate G4 card; Privacy
-`SRC-PUB-02B` remains held. The executed
+companion `SRC-PUB-02A` is delivered in PR #305; Privacy `SRC-PUB-02B`
+remains held. The executed
 `SRC-PUB-01A`, `SRC-PUB-01B`, `SRC-PUB-01C`, `SRC-ACC-01`, `SRC-ACC-02`,
 `SRC-ACC-03`, `SRC-COM-01`, and `SRC-OPS-01` exceptions are recorded
 separately and are not included in the executable count.
@@ -201,10 +201,30 @@ separately and are not included in the executable count.
 
 The backlog reconciliation at
 `validation/REMAINING_BACKLOG_RECONCILIATION.md` closes the planning ambiguity:
-  the Privacy/Not Found card is a bounded G3 PASS WITH CONDITIONS, its Not
-  Found follow-up is a bounded G4 companion, and Privacy remains a
-  legal/content hold. Future route-family expansion is explicitly
-  one-family-at-a-time; no broad route expansion is implied.
+the Privacy/Not Found card is a bounded G3 PASS WITH CONDITIONS, its Not
+Found follow-up was delivered as bounded G4 PR #305, and Privacy remains a
+legal/content hold. Future route-family expansion is explicitly
+one-family-at-a-time; no broad route expansion is implied.
+
+## Public Not Found G4 execution record — PR #305
+
+- **Source commit:** `c25ffeb2aefa43e5cb70c32b0a59ebd56ddfcf83`.
+- **Merge commit:** `ce3cc7633ef794050b40baeba42624979782a2c1`.
+- **Exact paths:** `frontend/src/pages/marketing/NotFoundPage.jsx` and
+  `frontend/src/pages/marketing/NotFoundPage.test.jsx` only.
+- **Scope:** overflow-safe missing-path presentation, localized page-owned
+  title/description, canonical Home/Services/Projects/Contact recovery links,
+  accessible targets, and long-path tests. No route, Layout metadata, Privacy,
+  dependency, backend, provider, or business-rule change.
+- **Verification:** focused 4/4; full frontend 74 suites / 483 tests;
+  production build; production dependency audit; `git diff --check`; browser
+  ID/EN × 320/390/768/1024/1440 with zero overflow, no sub-44px recovery
+  target, `noindex, follow`, and Axe 0; reduced-motion check; Impeccable
+  detector `[]`; CI backend/frontend/secret-scan passed; no unresolved review
+  threads.
+- **Boundary:** source/browser/CI evidence only; server enforcement, staging,
+  production readiness, and go-live remain unproven. Privacy `SRC-PUB-02B`
+  remains held for legal/content review.
 
 ## Cross-task checks
 
@@ -235,14 +255,14 @@ The backlog reconciliation at
 - [x] All primary artifacts exist in this `.design/` working set.
   - [x] `SRC-PUB-02`, its `SRC-PUB-02A`/`SRC-PUB-02B` split, and
       `SRC-EXPAND-01` have an explicit documentation disposition in
-      `validation/REMAINING_BACKLOG_RECONCILIATION.md`; source slices remain
-      bounded to their separate gates.
+      `validation/REMAINING_BACKLOG_RECONCILIATION.md`; Not Found delivery is
+      recorded and Privacy remains bounded to its separate hold.
 - [x] No delivery or canonical gate is inferred from documentation completion.
 - [x] Remaining holds are named rather than silently treated as failures or
   successes.
 
 **Self-review result:** Pass for consolidated owner review; the ledger is
-aligned to `origin/main` through PR #302 and records all bounded source
-exceptions with their evidence. Privacy/Not Found G4, future route-family
-source work, canonical promotion, readiness, go-live, and all other external
-gates remain separate.
+aligned to `origin/main` through PR #305 and records all bounded source
+exceptions with their evidence. Privacy G4, future route-family source work,
+canonical promotion, readiness, go-live, and all other external gates remain
+separate.
