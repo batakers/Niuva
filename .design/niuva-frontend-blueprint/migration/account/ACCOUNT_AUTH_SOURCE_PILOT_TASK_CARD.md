@@ -1,7 +1,8 @@
 # MIG-03 — Candidate Account/Auth source pilot task card
 
-**Status:** Candidate planning-only card — G3/G4 not granted
-**Baseline:** `origin/main` at `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Status:** Candidate planning-only umbrella — G3/G4 not granted; the bounded
+MIG-03A split card is the proposed next G3 scope
+**Baseline:** `origin/main` at `d8438b2e4e4d6b97eb147f4866b0890e85f0de06`
 **Owner:** Account/Auth frontend driver (to be named at G3)
 **Surface:** Customer authentication and owned-record return only
 **Inputs:** `AUTH-01`/`AUTH-02`/`AUTH-03`/`ACC-01`, QA-01–QA-05, DS-01A/DS-01B,
@@ -9,9 +10,10 @@
 
 ## Objective
 
-Test safe return, non-enumerating recovery, and customer-safe owned-order
-projection in one bounded Account/Auth slice. Customer and staff destinations
-remain separate.
+The original candidate inventory covers safe return, non-enumerating recovery,
+and customer-safe owned-order projection. It is too broad for one source slice;
+the proposed MIG-03A card isolates customer login and recovery first. Staff
+login and owned-order projection remain a later MIG-03B scope.
 
 ## Candidate exact-file scope
 
@@ -29,6 +31,10 @@ remain separate.
   `OrderDetail.test.jsx`
 
 ## Acceptance criteria
+
+The exact executable G3 scope is defined in
+[`ACCOUNT_AUTH_G3_SPLIT_TASK_CARD.md`](ACCOUNT_AUTH_G3_SPLIT_TASK_CARD.md).
+The broader file list below remains inventory only until that split is reviewed.
 
 - Safe return preserves only an allowlisted owned route/context; no external
   open redirect or invented private `/en` counterpart appears.

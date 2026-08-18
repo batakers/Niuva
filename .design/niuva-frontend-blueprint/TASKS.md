@@ -1103,20 +1103,21 @@ that may be frozen, migrated, or retired without deleting historical evidence.
   fonts/tokens, and prototypes have non-destructive candidate plans; no
   deletion, redirect, or source change occurred.
 
-## 11. Locked future source pilots and executed Public exception
+## 11. Locked future source pilots and executed Public/Commerce exceptions
 
 The following entries show the intended continuation. The completed
-`SRC-PUB-01A` and `SRC-PUB-01B` exceptions are recorded for traceability; all
-remaining unchecked entries remain **not executable** without their own
-authorization:
+`SRC-PUB-01A`, `SRC-PUB-01B`, and `SRC-COM-01` pilots are recorded for
+traceability; all remaining unchecked entries remain **not executable** without
+their own authorization:
 
 - [x] **SRC-PUB-01A:** Homepage shell/navigation pilot implemented in its own
   worktree and merged as PR #279; this does not activate Contact/Inquiry.
 - [x] **SRC-PUB-01B:** Contact/Inquiry pilot implemented in its own worktree
   and four exact-file scope, then merged as PR #281; this does not activate
   another Public, Commerce, Account, or Operations capability.
-- [ ] **SRC-COM-01:** implement one separately approved Commerce pilot without
-  activating checkout, upload, payment, or providers.
+- [x] **SRC-COM-01:** Retail discovery and product-detail pilot implemented in
+  its own worktree and merged as PR #284; checkout, upload, payment, and
+  providers remain inactive.
 - [ ] **SRC-ACC-01:** implement one separately approved Account/Auth pilot with
   customer-safe projection and safe return.
 - [ ] **SRC-OPS-01:** implement one separately approved Operations pilot with
