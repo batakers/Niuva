@@ -2,18 +2,21 @@
 
 **Status:** Candidate working-set evidence — consolidated owner review pending
 **Planning SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
-**Current alignment baseline:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
+**Historical alignment baseline:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
+**Current alignment baseline:** `origin/main` at
+`518f951d2dd7aa94c45b65b0f8944bee7b20fe11`
 **Post-merge execution baseline:** `origin/main` at
-`814a46329b8de7775c2de8b1ee34536d73df63e1`
+`518f951d2dd7aa94c45b65b0f8944bee7b20fe11` (PR #301)
 **MIG-02 G3 review baseline:** `origin/main` at
 `8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe`
 **Execution authorization:** Owner authorized all executable Wave B–F entries
 as one Goal with independent self-review and one final report on 18 August 2026.
 
 This ledger records completion of the executable entries in `TASKS.md`. The
-remaining locked `SRC-EXPAND-01` entry is intentionally excluded and remains
-unchecked; the completed `SRC-PUB-01A`, `SRC-PUB-01B`, `SRC-ACC-01`, and
-`SRC-OPS-01` exceptions are recorded below.
+remaining locked `SRC-EXPAND-01` entry and candidate `SRC-PUB-02` G3 card are
+intentionally excluded from source execution; the completed Public, Commerce,
+Account/Auth, Operations, Customer Registration, customer-owned Order, and
+FAQ exceptions are recorded below.
 
 ## Task ledger
 
@@ -52,19 +55,21 @@ unchecked; the completed `SRC-PUB-01A`, `SRC-PUB-01B`, `SRC-ACC-01`, and
 | E — Validation | QA-05 | `decisions/PROMOTION_REVIEW.md` | Pass; no runtime promotion |
 | F — Migration | MIG-01 | `migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #279 |
 | F — Migration | MIG-01B | `migration/public/PUBLIC_CONTACT_INQUIRY_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #281 |
-| F — Migration | MIG-02 | `migration/commerce/COMMERCE_SOURCE_PILOT_TASK_CARD.md` | G3 pass with exact-scope amendment at `8372c4e`; G4 holds |
+| F — Migration | MIG-02 | `migration/commerce/COMMERCE_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #284 |
 | F — Migration | MIG-03 | `migration/account/ACCOUNT_AUTH_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #288 |
 | F — Migration | MIG-04 | `migration/operations/OPERATIONS_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #290 |
-| F — Migration | MIG-05 | `migration/FOUNDATION_TASK_CARDS.md` | Pass; G3/G4 hold |
+| F — Migration | MIG-05 | `migration/FOUNDATION_TASK_CARDS.md` | Pass; equivalent foundation source slice merged in PR #276; remaining groups remain separately gated |
 | F — Migration | MIG-06 | `migration/COMPATIBILITY_RETIREMENT_PLAN.md` | Pass; separate retirement gate |
 
 <!-- markdownlint-enable MD013 -->
 
 **Executable task count:** 35 (8 Wave B + 13 Wave C + 3 Wave D + 5 Wave E + 6
-Wave F). **Completed:** 35. **Locked and intentionally not executed:** 1
-remaining `SRC-EXPAND-01` entry; the executed `SRC-PUB-01A`, `SRC-PUB-01B`,
-`SRC-ACC-01`, and `SRC-OPS-01` exceptions are recorded separately and are not
-included in the executable count.
+Wave F). **Completed:** 35. **Locked and intentionally not executed:** the
+remaining route-family expansion and the new candidate `SRC-PUB-02` G3 review
+(these are source-pilot gates, not executable Wave tasks). The executed
+`SRC-PUB-01A`, `SRC-PUB-01B`, `SRC-PUB-01C`, `SRC-ACC-01`, `SRC-ACC-02`,
+`SRC-ACC-03`, `SRC-COM-01`, and `SRC-OPS-01` exceptions are recorded
+separately and are not included in the executable count.
 
 ## MIG-01B execution record
 
@@ -142,6 +147,56 @@ included in the executable count.
   preview bounded; backend authorization, projection, staging, production,
   and readiness remain outside this evidence.
 
+## Later source execution records on the current baseline
+
+### Commerce discovery/detail — PR #284
+
+- **Merge commit:** `d8438b2e4e4d6b97eb147f4866b0890e85f0de06`.
+- **Scope:** localized Retail discovery/detail and inactive, non-transactional
+  `quote_required` explanation; no checkout, upload, payment, reservation,
+  provider, API/schema, or route change.
+- **Verification:** 5 focused suites / 22 tests; 72 suites / 460 tests;
+  production build; browser/axe matrix; dependency and diff checks; and
+  Impeccable detector `[]`.
+
+### Customer Registration — PR #296
+
+- **Merge commit:** `b1142f1d0bf1edcad33498e71b6a950aa6039450`.
+- **Scope:** gated email/password registration and dormant provider-neutral
+  Google OIDC seams with bilingual verification/recovery states; feature flags
+  and provider credentials remain disabled.
+- **Verification:** 4 focused suites / 33 tests; 74 suites / 475 tests;
+  backend auth/security/schema checks; production build; browser ID/EN matrix;
+  Axe 0; and diff/compile checks.
+
+### Customer-owned Order recovery — PR #299
+
+- **Source commit:** `92dfbda5c0ba847a73461e17ab61d7fcb0d2a027`.
+- **Merge commit:** `0488515597719152e2de449dcbd13314e629b855`.
+- **Scope:** customer-safe read-only dashboard/order recovery and malformed,
+  forbidden, and not-found handling; no new lifecycle, payment, provider,
+  upload, or permission authority. Detailed evidence remains in
+  `validation/CUSTOMER_OWNED_ORDER_G3_REVIEW.md`.
+
+### FAQ consumer states — PR #301
+
+- **Source commit:** `21c740facbc1d6cc1aabe892a753d9bfe6cef92f`.
+- **Merge commit:** `518f951d2dd7aa94c45b65b0f8944bee7b20fe11`.
+- **Exact paths:** `frontend/src/pages/marketing/FaqPage.jsx`,
+  `frontend/src/pages/marketing/FaqPage.states.test.jsx`, and
+  `frontend/src/i18n.js`.
+- **Scope:** visible ready/loading/empty/disabled/invalid/dependency-error
+  states, browseable FAQ behavior, localized fallback, and static content
+  reveal; no route, CMS, backend, dependency, lifecycle, or business-rule
+  change.
+- **Verification:** 6 focused tests; 74 suites / 481 tests; production build;
+  dependency audit; browser ID/EN × 320/390/768/1024/1440; Axe 0;
+  reduced-motion check; Impeccable detector `[]`; and `git diff --check`.
+
+The next candidate route-family record is
+`migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`. It is a
+G3 planning artifact only; no Privacy/Not Found source work is implied.
+
 ## Cross-task checks
 
 - Canonical authority and selected SHA are recorded in each Wave E/F artifact.
@@ -157,9 +212,9 @@ included in the executable count.
   readiness, and go-live evidence remains pending wherever it was not run.
 - This documentation alignment does not modify application source, runtime
   tokens, routes, APIs, schemas, dependencies, capabilities, or business
-  rules. The bounded MIG-01/MIG-01B, MIG-03, and MIG-04 source/test changes
-  are recorded in merged PRs #279, #281, #288, and #290; no other source pilot
-  is implied.
+  rules. The bounded source/test changes are recorded in merged PRs #279,
+  #281, #284, #288, #290, #296, #299, and #301; no other source pilot is
+  implied.
 - The earlier MIG-01 shell card remains unchanged as the PR #279 handoff
   record; its historical MIG-01B candidate wording is superseded for current
   status by the MIG-01B card and execution record in this alignment.
@@ -169,14 +224,16 @@ included in the executable count.
 - [x] All 35 executable task IDs in `TASKS.md` are represented above; the
       MIG-01B executed split is recorded separately.
 - [x] All primary artifacts exist in this `.design/` working set.
-- [x] Remaining locked `SRC-EXPAND-01` remains unchecked and explicitly out of
-  scope; the merged Public, Account/Auth, and Operations exceptions are
-  recorded above.
+- [x] Remaining locked `SRC-EXPAND-01` and candidate `SRC-PUB-02` remain
+      explicitly out of source scope; merged Public, Commerce, Account/Auth,
+      Operations, Customer Registration, customer-owned Order, and FAQ
+      exceptions are recorded above.
 - [x] No delivery or canonical gate is inferred from documentation completion.
 - [x] Remaining holds are named rather than silently treated as failures or
   successes.
 
-**Self-review result:** Pass for consolidated owner review; merged Public,
-Account/Auth, and Operations pilots are recorded with bounded evidence, while
-Commerce G4, route-family expansion, canonical promotion, readiness, go-live,
-and all other source-pilot gates remain separate.
+**Self-review result:** Pass for consolidated owner review; the ledger is
+aligned to `origin/main` through PR #301 and records all bounded source
+exceptions with their evidence. Privacy/Not Found G3, route-family expansion,
+canonical promotion, readiness, go-live, and all other future source-pilot
+gates remain separate.
