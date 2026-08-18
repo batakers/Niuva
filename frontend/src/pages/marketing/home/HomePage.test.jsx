@@ -48,10 +48,11 @@ test("renders the centered R4 story and the five-stage process", () => {
   expect(screen.getByText("Cara kerja")).toBeInTheDocument();
   expect(screen.getByText("Layanan Niuva")).toBeInTheDocument();
 
-  expect(screen.getAllByRole("link", { name: /Diskusikan project/i })[0]).toHaveAttribute(
-    "href",
-    "/kontak#form-konsultasi",
-  );
+  const discussionLinks = screen.getAllByRole("link", { name: /Diskusikan project/i });
+  expect(discussionLinks).toHaveLength(2);
+  for (const link of discussionLinks) {
+    expect(link).toHaveAttribute("href", "/kontak#form-konsultasi");
+  }
   expect(screen.getByRole("link", { name: /Mulai partnership/i })).toHaveAttribute(
     "href",
     "/kontak#form-konsultasi",
