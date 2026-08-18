@@ -1,12 +1,14 @@
 # Consolidated executable-task self-review
 
 **Status:** Candidate working-set evidence — consolidated owner review pending
-**Selected SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Planning SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Current alignment baseline:** `46708524bfade1dec22a7a8747165fe221cd85f1`
 **Execution authorization:** Owner authorized all executable Wave B–F entries
 as one Goal with independent self-review and one final report on 18 August 2026.
 
 This ledger records completion of the executable entries in `TASKS.md`. The
-locked `SRC-*` entries are intentionally excluded and remain unchecked.
+remaining locked `SRC-*` entries are intentionally excluded and remain
+unchecked; the completed `SRC-PUB-01A` exception is recorded below.
 
 ## Task ledger
 
@@ -41,7 +43,8 @@ locked `SRC-*` entries are intentionally excluded and remain unchecked.
 | E — Validation | QA-03 | `validation/TRUTH_PRIVACY_LIFECYCLE_AUDIT.md` | Pass with server/runtime hold |
 | E — Validation | QA-04 | `validation/VISUAL_CRITIQUE_REGISTER.md` | Pass at static artifact level |
 | E — Validation | QA-05 | `decisions/PROMOTION_REVIEW.md` | Pass; no runtime promotion |
-| F — Migration | MIG-01 | `migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
+| F — Migration | MIG-01 | `migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #279 |
+| F — Migration | MIG-01B | `migration/public/PUBLIC_CONTACT_INQUIRY_SOURCE_PILOT_TASK_CARD.md` | Pass as lifecycle-separated candidate; G3/G4 hold |
 | F — Migration | MIG-02 | `migration/commerce/COMMERCE_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
 | F — Migration | MIG-03 | `migration/account/ACCOUNT_AUTH_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
 | F — Migration | MIG-04 | `migration/operations/OPERATIONS_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
@@ -50,7 +53,8 @@ locked `SRC-*` entries are intentionally excluded and remain unchecked.
 
 **Executable task count:** 35 (8 Wave B + 13 Wave C + 3 Wave D + 5 Wave E + 6
 Wave F). **Completed:** 35. **Locked and intentionally not executed:** 5
-`SRC-*` entries.
+remaining `SRC-*` entries; MIG-01B is a candidate split and is not included in
+the executable count.
 
 ## Cross-task checks
 
@@ -64,17 +68,22 @@ Wave F). **Completed:** 35. **Locked and intentionally not executed:** 5
   promoted.
 - Runtime/browser/axe/assistive-technology evidence is marked pending wherever
   it was not actually run.
-- Application source, tests, runtime tokens, routes, APIs, schemas,
-  dependencies, capabilities, and business rules were not modified.
+- This documentation alignment does not modify application source, runtime
+  tokens, routes, APIs, schemas, dependencies, capabilities, or business
+  rules. The bounded MIG-01 source/test change is recorded in merged PR #279;
+  MIG-01B Contact/Inquiry source remains unimplemented.
 
 ## Self-review
 
-- [x] All 35 executable task IDs in `TASKS.md` are represented above.
+- [x] All 35 executable task IDs in `TASKS.md` are represented above; the
+      MIG-01B candidate split is recorded separately.
 - [x] All primary artifacts exist in this `.design/` working set.
-- [x] Locked `SRC-*` tasks remain unchecked and explicitly out of scope.
+- [x] Remaining locked `SRC-*` tasks remain unchecked and explicitly out of
+      scope; the merged `SRC-PUB-01A` exception is recorded above.
 - [x] No delivery or canonical gate is inferred from documentation completion.
 - [x] Remaining holds are named rather than silently treated as failures or
   successes.
 
-**Self-review result:** Pass for consolidated owner review; source-pilot and
-delivery gates remain separate.
+**Self-review result:** Pass for consolidated owner review; MIG-01 shell/
+navigation delivery is recorded as merged, while MIG-01B and all other
+source-pilot gates remain separate.

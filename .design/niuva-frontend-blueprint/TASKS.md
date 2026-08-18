@@ -963,7 +963,9 @@ LOCAL values only after consumer and validation evidence exists.
 ## 10. Wave F — later migration planning
 
 These tasks are planning-only until G3. They may create exact-file task cards
-but may not change application source.
+but may not change application source. A later, separately authorized source
+execution is recorded explicitly where it occurred; this planning ledger does
+not grant runtime authority by itself.
 
 ### - [x] MIG-01 — Plan the Public source pilot
 
@@ -973,7 +975,9 @@ accepted contracts without mixing another surface.
 - **Reuse:** accepted designs, QA evidence, route/component ledger, current
   source/tests, and actual consumer ownership.
 - **Modify:** no source.
-- **Create:** one exact-file candidate task card under `migration/public/`.
+- **Create:** bounded exact-file candidate task cards under `migration/public/`
+  when a Public slice crosses a distinct lifecycle owner; MIG-01 is the shell/
+  navigation card and MIG-01B is the Contact/Inquiry split card.
 - **Complete when:** the card has objective, exact files, exclusions,
   acceptance criteria, tests/browser evidence, rollback, owner, and delivery
   gates.
@@ -982,9 +986,13 @@ accepted contracts without mixing another surface.
 - **Depends on:** QA-05.
 
 - **Execution record:** completed and self-reviewed on 18 August 2026 in
-  [`migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md`](migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md).
-  Exact Public files, tests, exclusions, evidence, rollback, and G3/G4/G5
-  delivery gates are bounded; no source implementation occurred.
+  [`migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md`](migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md)
+  and the lifecycle-separated
+  [`migration/public/PUBLIC_CONTACT_INQUIRY_SOURCE_PILOT_TASK_CARD.md`](migration/public/PUBLIC_CONTACT_INQUIRY_SOURCE_PILOT_TASK_CARD.md).
+  The amendment narrows MIG-01 to Homepage shell/navigation and gives Contact/
+  Inquiry its own exact files, tests, failure states, and lifecycle boundary.
+  MIG-01 shell/navigation was then implemented and merged in PR #279; MIG-01B
+  remains candidate-only and no Contact/Inquiry source was changed.
 
 ### - [x] MIG-02 — Plan the Commerce source pilot
 
@@ -1090,13 +1098,16 @@ that may be frozen, migrated, or retired without deleting historical evidence.
   fonts/tokens, and prototypes have non-destructive candidate plans; no
   deletion, redirect, or source change occurred.
 
-## 11. Locked future source pilots
+## 11. Locked future source pilots and executed Public exception
 
-The following entries show the intended continuation but are **not executable**
-under the current authorization:
+The following entries show the intended continuation. The completed
+`SRC-PUB-01A` exception is recorded for traceability; all unchecked entries
+remain **not executable** without their own authorization:
 
-- [ ] **SRC-PUB-01:** implement one separately approved Public pilot in its own
-  worktree and exact-file scope.
+- [x] **SRC-PUB-01A:** Homepage shell/navigation pilot implemented in its own
+  worktree and merged as PR #279; this does not activate Contact/Inquiry.
+- [ ] **SRC-PUB-01B:** implement one separately approved Contact/Inquiry pilot
+  in its own worktree and exact-file scope.
 - [ ] **SRC-COM-01:** implement one separately approved Commerce pilot without
   activating checkout, upload, payment, or providers.
 - [ ] **SRC-ACC-01:** implement one separately approved Account/Auth pilot with
@@ -1106,8 +1117,8 @@ under the current authorization:
 - [ ] **SRC-EXPAND-01:** expand only accepted patterns route family by route
   family after pilot evidence; never redesign all surfaces in one PR.
 
-Each source pilot requires G3 and G4, proportional tests, production build,
-dependency and diff checks, browser interaction, responsive/accessibility
+Each remaining source pilot requires G3 and G4, proportional tests, production
+build, dependency and diff checks, browser interaction, responsive/accessibility
 evidence, Impeccable critique, and a separate delivery gate.
 
 ## 12. Route and responsibility coverage
@@ -1172,9 +1183,10 @@ The owner subsequently authorized `DS-01B`, then authorized `DS-02` through
 candidate records for `DS-01B` through `DS-05` and all executable Wave B–F
 tasks are now complete and await one consolidated owner review. Wave B–D
 artifacts, Wave E validation/promotion records, and Wave F planning cards are
-candidate-only. The locked `SRC-*` source pilots remain unchecked and require
-their own G3/G4 exact-file authorization; no application source implementation
-has started.
+candidate-only. The MIG-01 Homepage shell/navigation exception was implemented
+and merged as PR #279. MIG-01B and all other locked `SRC-*` source pilots remain
+unchecked and require their own G3/G4 exact-file authorization; no Contact/
+Inquiry source implementation has started.
 
 ## 15. Explicit exclusions
 
