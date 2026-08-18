@@ -53,7 +53,7 @@ absence is recorded as a G4 coverage gap, not silently filled during G3.
 | Concern | Evidence | Result |
 | --- | --- | --- |
 | Staff/customer separation | `AdminLogin` and `CustomerLogin` use distinct `AuthShell` audiences and recovery destinations; `auth-surface.contract.test.js` asserts the boundary. | Pass |
-| Staff safe return | `AdminLogin` accepts only a local `/admin*` destination, rejects `/admin/login`, and falls back to `/admin`. | Pass; keep read-only in G4 |
+| Staff safe return | `AdminLogin` rejects `/admin/login` and falls back to `/admin`, but the current `startsWith("/admin")` check does not prove the exact `/admin` or `/admin/` boundary (for example, `/administrator`). | Hold; G4 must add exact boundary evidence and focused tests |
 | Permission boundary | `ProtectedRoute` checks authenticated identity and permission; route visibility is not treated as authorization. | Pass; backend remains authoritative |
 | Admin session semantics | Login sends `remember_me` and uses the existing auth context; no browser token or provider logic is added by this review. | Pass with capability hold |
 | Password policy | Invitation loads the backend-owned policy, fails closed when unavailable, and exposes a bounded retry. Existing test covers this path. | Pass |
@@ -91,6 +91,8 @@ scope is:
 - `frontend/src/pages/auth/StaffInvitationAccept.jsx`
 - `frontend/src/components/auth/AuthShell.jsx` only if staff copy needs a
   shared presentation adjustment
+- `frontend/src/components/auth/AuthShell.test.jsx` only if `AuthShell.jsx`
+  changes
 - `frontend/src/i18n.js` for the missing ID/EN staff invitation strings
 - `frontend/src/pages/admin/AdminLogin.test.jsx` (new focused coverage)
 - `frontend/src/pages/auth/StaffInvitationAccept.test.jsx`
@@ -98,7 +100,9 @@ scope is:
 
 `App.js`, `ProtectedRoute.jsx`, backend identity/session files, provider
 configuration, role/permission files, secrets, and dependencies remain
-unchanged unless a new exact-file decision explicitly expands the scope.
+unchanged unless a new exact-file decision explicitly expands the scope. This
+list is identical to the candidate list in the G3 task card; any other file
+requires separate authorization.
 
 ## 5. Stop conditions and handover
 

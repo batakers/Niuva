@@ -71,11 +71,16 @@ The likely bounded G4 set is:
 - `frontend/src/pages/auth/StaffInvitationAccept.jsx`
 - `frontend/src/components/auth/AuthShell.jsx` only for staff-safe presentation
   continuity
-- the two existing staff-focused test/contract paths above
+- `frontend/src/components/auth/AuthShell.test.jsx` only if the shell changes
+- `frontend/src/i18n.js` for the missing ID/EN staff invitation strings
+- `frontend/src/pages/admin/AdminLogin.test.jsx` (new focused coverage)
+- `frontend/src/pages/auth/StaffInvitationAccept.test.jsx`
+- `frontend/src/pages/auth/auth-surface.contract.test.js`
 
-`frontend/src/App.js`, `ProtectedRoute.jsx`, backend identity/session files,
-provider configuration, secrets, and role/permission files remain read-only
-references unless a later exact-file card explicitly changes the scope.
+These are the complete candidate G4 paths. Any additional file requires a new
+exact-file authorization; in particular, `App.js`, `ProtectedRoute.jsx`,
+backend identity/session files, provider configuration, secrets, and
+role/permission files remain read-only references.
 
 ## 4. Required G3 review questions
 
@@ -91,8 +96,10 @@ references unless a later exact-file card explicitly changes the scope.
 
 - Are email/password labels, autocomplete, validation, loading, generic failure,
   disabled, retry, and success states visible and keyboard reachable?
-- Does safe return accept only a validated local `/admin*` destination and
-  reject `/admin/login`, external URLs, and malformed state?
+- Does safe return accept only exactly `/admin` or a path beginning `/admin/`,
+  and reject `/admin/login`, `/administrator`, malformed state, external URLs,
+  and other non-owned destinations? If exact boundary evidence is absent, the
+  result remains a hold.
 - Does remember-me remain a local UI choice governed by the Admin session
   authority rather than becoming a frontend permission claim?
 - Are password, session, CSRF, and provider details excluded from user-facing
