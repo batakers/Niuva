@@ -16,6 +16,9 @@ import { getPublicPath } from "@/lib/publicRoutes";
 
 const FAQ_ROW = "grid gap-3 border-b border-border-default py-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10";
 
+const FAQ_EMPTY_TITLE = "Pertanyaan yang sering diajukan akan tampil di sini.";
+const FAQ_EMPTY_BODY = "Hubungi tim Niuva langsung untuk pertanyaan spesifik mengenai proyek Anda.";
+
 function FaqSkeleton() {
   return (
     <>
@@ -48,10 +51,11 @@ export default function FaqPage() {
       .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)),
     [cmsBlocks]
   );
+  const settledWithoutItems = (status === "ready" || status === "disabled") && faqs.length === 0;
 
   return (
     <MarketingLayout>
-      <BrandPage>
+      <BrandPage revealSections={false}>
         <PageHero
           eyebrow="FAQ"
           title="Pertanyaan yang sering diajukan."
@@ -63,39 +67,40 @@ export default function FaqPage() {
 
         <MarketingSection tone="default">
           <PageContainer>
-            {/* Three distinct outcomes. Previously all of them rendered the
-                "no questions yet" copy, including the in-flight one. */}
             {status === "loading" && <FaqSkeleton />}
 
             {status === "error" && (
-              <SectionHeader
-                title="Daftar pertanyaan belum bisa dimuat."
-                body="Muat ulang halaman untuk mencoba lagi, atau hubungi tim Niuva langsung jika pertanyaan Anda mendesak."
-                align="stacked"
-              />
+              <div role="alert" aria-live="assertive" data-faq-state="error">
+                <SectionHeader
+                  title="Daftar pertanyaan belum bisa dimuat."
+                  body="Muat ulang halaman untuk mencoba lagi, atau hubungi tim Niuva langsung jika pertanyaan Anda mendesak."
+                  align="stacked"
+                />
+              </div>
             )}
 
             {status === "invalid" && (
-              <SectionHeader
-                title="Data FAQ tidak dapat diverifikasi."
-                body="Muat ulang halaman. Jika masalah berlanjut, hubungi tim Niuva melalui kanal resmi."
-                align="stacked"
-              />
+              <div role="alert" aria-live="assertive" data-faq-state="invalid">
+                <SectionHeader
+                  title="Data FAQ tidak dapat diverifikasi."
+                  body="Muat ulang halaman. Jika masalah berlanjut, hubungi tim Niuva melalui kanal resmi."
+                  align="stacked"
+                />
+              </div>
             )}
 
-            {status !== "loading" &&
-              status !== "error" &&
-              status !== "invalid" &&
-              faqs.length === 0 && (
-              <SectionHeader
-                title="Pertanyaan yang sering diajukan akan tampil di sini."
-                body="Hubungi tim Niuva langsung untuk pertanyaan spesifik mengenai proyek Anda."
-                align="stacked"
-              />
+            {settledWithoutItems && (
+              <div role="status" aria-live="polite" data-faq-state={status}>
+                <SectionHeader
+                  title={FAQ_EMPTY_TITLE}
+                  body={FAQ_EMPTY_BODY}
+                  align="stacked"
+                />
+              </div>
             )}
 
-            {faqs.length > 0 && (
-              <ul className="border-t border-border-default">
+            {status === "ready" && faqs.length > 0 && (
+              <ul className="border-t border-border-default" data-faq-state="ready">
                 {faqs.map((faq, index) => (
                   <li key={`${faq.question}-${index}`} className={`brand-reveal ${FAQ_ROW}`}>
                     <h3 className="type-heading-card text-text-primary">{faq.question}</h3>
