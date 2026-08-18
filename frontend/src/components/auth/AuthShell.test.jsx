@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-import { AuthCard, AuthShell } from "./AuthShell";
+import { AuthCard, AuthShell, getAuthCopy } from "./AuthShell";
 
 function renderShell(audience) {
   return render(
@@ -34,4 +34,13 @@ test("recovery presentation is neutral across account types", () => {
   ).toBeInTheDocument();
   expect(screen.queryByText(/portal pelanggan/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Admin Studio/i)).not.toBeInTheDocument();
+});
+
+test("exposes complete English copy for the shared account and recovery surfaces", () => {
+  const copy = getAuthCopy("en");
+
+  expect(copy.shell.customer.heading).toBe("Your orders, in one place.");
+  expect(copy.login.errors.invalidCredentials).toBe("Invalid email or password.");
+  expect(copy.recovery.requestTitle).toBe("Forgot password?");
+  expect(copy.resetState.successTitle).toBe("Password changed");
 });

@@ -2,11 +2,10 @@ import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ForgotPassword from "./ForgotPassword";
-import { api, formatApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 
 jest.mock("@/lib/api", () => ({
   api: { post: jest.fn() },
-  formatApiError: jest.fn(() => "Terjadi kesalahan. Coba lagi."),
 }));
 
 function renderPage(path = "/forgot-password") {
@@ -19,8 +18,6 @@ function renderPage(path = "/forgot-password") {
     </MemoryRouter>,
   );
 }
-
-beforeEach(() => formatApiError.mockReturnValue("Terjadi kesalahan. Coba lagi."));
 
 afterEach(() => jest.resetAllMocks());
 
@@ -63,7 +60,7 @@ test("shows a resend failure while keeping the sent state recoverable", async ()
     fireEvent.click(resend);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Terjadi kesalahan. Coba lagi.",
+      "Permintaan reset belum berhasil. Coba lagi.",
     );
     expect(screen.getByTestId("forgot-password-sent")).toBeInTheDocument();
   } finally {
