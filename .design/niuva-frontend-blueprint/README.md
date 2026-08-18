@@ -5,10 +5,10 @@ owner-approved; Phase 6 `DS-01A` owner-approved as an exact-SHA ledger;
 `DS-01B` through `DS-05` and all executable Wave B–F tasks completed for one
 consolidated owner review; locked `SRC-*` pilots remain separately gated
 
-**Date:** 18 August 2026
+**Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`8555685c29a3fde9976ae6499336e2eb45a330ba`
+`b1142f1d0bf1edcad33498e71b6a950aa6039450`
 
 ## Purpose
 
@@ -64,7 +64,7 @@ If this directory conflicts with higher authority, the higher authority wins.
 | 3. Information architecture | Route families, navigation, flow maps, page responsibilities, and state ownership | Owner approved on 18 August 2026 |
 | 4. Design tokens | Reviewable token proposal aligned to the approved semantic tiers | `TOK-01` through `TOK-12` owner approved on 18 August 2026 |
 | 5. Brief to tasks | Ordered wireframe, component-contract, visual-study, prototype, and validation slices | Owner approved on 18 August 2026 |
-| 6. Frontend design | Separately authorized bounded design or source slices | `DS-01A` owner approved; `DS-01B` through `DS-05` and executable Wave B–F candidate artifacts completed for consolidated owner review on 18 August 2026; locked `SRC-*` pilots remain unchecked |
+| 6. Frontend design | Separately authorized bounded design or source slices | `DS-01A` owner approved; `DS-01B` through `DS-05` and executable Wave B–F candidate artifacts completed; bounded source pilots are recorded through PR #296; only `SRC-EXPAND-01` remains unchecked |
 | 7. Design review | Evidence-bound critique on owner request only | Not authorized |
 
 Advancing from one phase never authorizes the next phase automatically. Source
@@ -123,9 +123,15 @@ migration remains a separately gated implementation task.
 - `README.md` — scope, authority, phase map, and working-set rules.
 
 The executable design, validation, and planning files for Wave B–F are complete
-in this working set and await one consolidated owner review. Section 11 of
-`TASKS.md` remains locked: `SRC-*` source pilots are intentionally unchecked and
-still require separate exact-file G3/G4 authorization.
+in this working set. The bounded source pilots are delivery evidence, not broad
+redesign authority: PRs #279, #281, #284, #288, #290, and #296 each cover one
+isolated slice. Section 11 of `TASKS.md` remains locked only for
+`SRC-EXPAND-01`, which still requires a new route-family-specific G3/G4 review.
+
+The Account Registration planning cards and the DS-01B route matrix retain
+their original exact-SHA review records. Their post-PR #296 status is
+reconciled by follow-up notes in those artifacts: `/register` is now
+source-present but feature-gated off, and Google OIDC remains dormant.
 
 ## Working-set rules
 

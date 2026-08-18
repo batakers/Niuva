@@ -21,6 +21,16 @@ record does not start `DS-02`, redesign a page, activate a route, or authorize
 application source, stage, commit, push, PR, merge, deployment, readiness, or
 go-live work.
 
+## 0.1 Post-DS-01B runtime follow-up
+
+This matrix is an exact-SHA historical inventory at `8555685c`. After the
+separate Customer Registration G4 implementation merged in PR #296, the current
+runtime contains `/register` and `/register/verify` plus the corresponding
+registration API routes. They remain fail-closed by default through
+`CUSTOMER_REGISTRATION_ENABLED=false` and `CUSTOMER_GOOGLE_OIDC_ENABLED=false`.
+This follow-up does not promote the route, activate Google OIDC, or change the
+historical counts and responsibilities recorded below.
+
 ## 1. Authority and evidence boundary
 
 Read this matrix after:

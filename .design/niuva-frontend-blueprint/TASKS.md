@@ -1,14 +1,13 @@
 # Phase 5 Tasks: Niuva Frontend Experience and Design-System Blueprint
 
 **Status:** Candidate — Context Only — Phase 5 and all executable blueprint
-tasks Wave B–F completed for consolidated owner review; bounded source pilots
-are recorded through PR #290; `SRC-EXPAND-01` remains separately gated; no
-broad source or delivery authority
+tasks Wave B–F completed; bounded source pilots are recorded through PR #296;
+`SRC-EXPAND-01` remains separately gated; no broad source or delivery authority
 
-**Date:** 18 August 2026
+**Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`814a46329b8de7775c2de8b1ee34536d73df63e1`
+`b1142f1d0bf1edcad33498e71b6a950aa6039450`
 
 **Scope:** Convert the owner-approved Design Brief, Information Architecture,
 and `TOK-01` through `TOK-12` into bounded, dependency-ordered tasks for the
@@ -26,11 +25,11 @@ owner-report. The owner then authorized execution of all executable Wave B–F
 entries in this file as one Goal with independent self-review and one
 consolidated owner-report on 18 August 2026. `DS-01B` through `DS-05` and
 Wave B–F are complete only as candidate records for owner review. The bounded
-Public, Commerce discovery, Account/Auth, and Operations source pilots are
-recorded in their task cards and merged PRs #279, #281, #284, #288, and #290;
-`SRC-EXPAND-01` remains untouched and separately gated. These approvals do not
-authorize broad application redesign, canonical promotion, deployment,
-readiness, or go-live.
+Public, Commerce discovery, Account/Auth, Operations, and Customer Registration
+source pilots are recorded in their task cards and merged PRs #279, #281, #284,
+#288, #290, and #296; `SRC-EXPAND-01` remains untouched and separately gated.
+These approvals do not authorize broad application redesign, canonical
+promotion, deployment, readiness, or go-live.
 
 ## 1. Inputs and precedence
 
@@ -1125,6 +1124,10 @@ pilots are recorded for traceability; the remaining unchecked entry remains
 - [x] **SRC-ACC-01:** Customer Login/recovery pilot implemented and merged as
   PR #288; customer-safe return and recovery only, with backend/session and
   identity-provider boundaries unchanged.
+- [x] **SRC-ACC-02:** Customer Registration email/password slice implemented and
+  merged as PR #296; verification, abuse controls, safe return, and dormant
+  Google OIDC seams are present, while registration and provider feature flags
+  remain off and no provider credentials are active.
 - [x] **SRC-OPS-01:** Operations queue/detail presentation pilot implemented and
   merged as PR #290; backend authorization, projection, and lifecycle remain
   unchanged.
@@ -1201,8 +1204,9 @@ artifacts, Wave E validation/promotion records, and the remaining Wave F
 planning cards are candidate-only. The MIG-01 Homepage shell/navigation
 exception was implemented and merged as PR #279, and the separately
 authorized MIG-01B Contact/Inquiry pilot was implemented and merged as PR #281.
-The Account/Auth pilot was merged as PR #288 and the Operations pilot as PR
-#290. The remaining locked `SRC-EXPAND-01` route-family expansion remains
+The Account/Auth pilot was merged as PR #288, the Operations pilot as PR #290,
+and the Customer Registration slice as PR #296. The remaining locked
+`SRC-EXPAND-01` route-family expansion remains
 unchecked and requires its own G3/G4 exact-file authorization.
 
 ## 15. Explicit exclusions

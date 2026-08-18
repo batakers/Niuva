@@ -3,10 +3,18 @@
 **Status:** Candidate G3 review — PASS WITH CONDITIONS; no G4 source,
 dependency, provider, or runtime activation authority
 
+**Follow-up execution:** The G3 conditions were owner-approved, the exact-file
+G4 scope was implemented in [PR #296](https://github.com/batakers/Niuva/pull/296),
+and all PR checks passed. This review remains historical evidence for the G3
+gate; it does not claim provider activation or production readiness.
+
 **Review date:** 18 August 2026 (Asia/Jakarta)
 
 **Niuva baseline:** `origin/main`
 `151cbe8c2636c7a8f1d4b19b8f71393193b7198c`
+
+**Current follow-up baseline:** `origin/main` at
+`b1142f1d0bf1edcad33498e71b6a950aa6039450`.
 
 **Primary contract:**
 [`CUSTOMER_REGISTRATION_GOOGLE_G3_TASK_CARD.md`](../migration/account/CUSTOMER_REGISTRATION_GOOGLE_G3_TASK_CARD.md)
@@ -21,8 +29,10 @@ the current `origin/main` after the documentation-only PR that introduced the
 G3 task card. It records source ownership, current inactive behavior, and the
 decisions that still need owner approval before G4.
 
-This review does not activate `/register`, public registration, Google
-Identity, OAuth/OIDC, a callback, a provider secret, a session change, an API,
+At this review's original baseline, `/register` was absent. The later G4 slice
+adds a feature-gated route and verification path, but this review does not
+activate public registration, Google Identity, OAuth/OIDC, a callback, a
+provider secret, a session change, an API,
 a schema/index, a dependency, staging, production, readiness, or go-live.
 It does not copy or vendor the external FARM template.
 

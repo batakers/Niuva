@@ -3,10 +3,18 @@
 **Status:** Candidate planning-only; G4 source, dependency, provider, and
 runtime activation are not authorized by this document
 
+**Follow-up status:** The exact-file G4 scope was subsequently authorized and
+implemented in [PR #296](https://github.com/batakers/Niuva/pull/296). This card
+is retained as the reviewed scope record; its provider and runtime activation
+exclusions still apply.
+
 **Date:** 18 August 2026 (Asia/Jakarta)
 
 **Baseline:** `origin/main`
 `652418ebc4fcd049eeb020f7e00bdbe78515bfbb`
+
+**Follow-up implementation baseline:** `origin/main` at
+`b1142f1d0bf1edcad33498e71b6a950aa6039450`.
 
 **G3 review:**
 [`CUSTOMER_REGISTRATION_GOOGLE_G3_REVIEW.md`](../../validation/CUSTOMER_REGISTRATION_GOOGLE_G3_REVIEW.md)
