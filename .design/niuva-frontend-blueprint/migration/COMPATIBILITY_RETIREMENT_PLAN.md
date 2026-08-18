@@ -1,7 +1,7 @@
 # MIG-06 — Candidate compatibility and retirement plan
 
 **Status:** Candidate planning-only register — no retirement or deletion
-**Baseline:** `origin/main` at `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Baseline:** `origin/main` at `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Authority:** DS-01A/DS-01B, canonical route/localization decisions,
 `DESIGN_TOKENS.md`, current imports/tests/history, and delivery-boundary rules
 
@@ -28,6 +28,21 @@
    and historical evidence.
 5. Retire only after a separate approved task proves zero consumers and safe
    rollback. Never treat route visibility or file absence as authorization.
+
+## Post-pilot evidence reconciliation
+
+The merged Account/Auth PR #288 and Operations PR #290 were reviewed against
+the baseline above. They do not retire or migrate compatibility candidates:
+
+- Auth preserved existing route compatibility and changed only bounded
+  customer login/recovery consumers.
+- Operations preserved `OperationalNavigation`, `B2BStatusBadge`, route
+  permissions, and status/lifecycle mappings; no shared compatibility adapter
+  became a retirement candidate.
+
+The next retirement G3 must refresh exact imports, routes, tests, and history
+after any new source pilot. No alias, font, token, component, prototype, or
+historical evidence is safe to delete from these two pilot merges alone.
 
 ## Required gates and exclusions
 

@@ -2,18 +2,18 @@
 
 **Status:** Candidate working-set evidence — consolidated owner review pending
 **Planning SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
-**Current alignment baseline:** `46708524bfade1dec22a7a8747165fe221cd85f1`
+**Current alignment baseline:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Post-merge execution baseline:** `origin/main` at
-`b35b5bafafa8efaa8afb1f1626c865fb831c6810`
+`814a46329b8de7775c2de8b1ee34536d73df63e1`
 **MIG-02 G3 review baseline:** `origin/main` at
 `8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe`
 **Execution authorization:** Owner authorized all executable Wave B–F entries
 as one Goal with independent self-review and one final report on 18 August 2026.
 
 This ledger records completion of the executable entries in `TASKS.md`. The
-remaining locked `SRC-*` entries are intentionally excluded and remain
-unchecked; the completed `SRC-PUB-01A` and `SRC-PUB-01B` exceptions are
-recorded below.
+remaining locked `SRC-EXPAND-01` entry is intentionally excluded and remains
+unchecked; the completed `SRC-PUB-01A`, `SRC-PUB-01B`, `SRC-ACC-01`, and
+`SRC-OPS-01` exceptions are recorded below.
 
 ## Task ledger
 
@@ -53,18 +53,18 @@ recorded below.
 | F — Migration | MIG-01 | `migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #279 |
 | F — Migration | MIG-01B | `migration/public/PUBLIC_CONTACT_INQUIRY_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #281 |
 | F — Migration | MIG-02 | `migration/commerce/COMMERCE_SOURCE_PILOT_TASK_CARD.md` | G3 pass with exact-scope amendment at `8372c4e`; G4 holds |
-| F — Migration | MIG-03 | `migration/account/ACCOUNT_AUTH_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
-| F — Migration | MIG-04 | `migration/operations/OPERATIONS_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
+| F — Migration | MIG-03 | `migration/account/ACCOUNT_AUTH_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #288 |
+| F — Migration | MIG-04 | `migration/operations/OPERATIONS_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #290 |
 | F — Migration | MIG-05 | `migration/FOUNDATION_TASK_CARDS.md` | Pass; G3/G4 hold |
 | F — Migration | MIG-06 | `migration/COMPATIBILITY_RETIREMENT_PLAN.md` | Pass; separate retirement gate |
 
 <!-- markdownlint-enable MD013 -->
 
 **Executable task count:** 35 (8 Wave B + 13 Wave C + 3 Wave D + 5 Wave E + 6
-Wave F). **Completed:** 35. **Locked and intentionally not executed:** 4
-remaining `SRC-*` entries; the executed `SRC-PUB-01A` and `SRC-PUB-01B`
-exceptions are recorded separately and are not included in the executable
-count.
+Wave F). **Completed:** 35. **Locked and intentionally not executed:** 1
+remaining `SRC-EXPAND-01` entry; the executed `SRC-PUB-01A`, `SRC-PUB-01B`,
+`SRC-ACC-01`, and `SRC-OPS-01` exceptions are recorded separately and are not
+included in the executable count.
 
 ## MIG-01B execution record
 
@@ -103,6 +103,45 @@ count.
 - **Next gate:** a separately authorized G4 source implementation in the
   amended exact paths; this G3 documentation review grants none.
 
+## MIG-03 Account/Auth execution record
+
+- **Source commit:** `18821fd5039b7edf4c3c475f7455effd1a576a3e`
+- **Merge commit:** `0cc824f522e00190a16db5c73d4d7615acf2b698`
+- **PR:** [#288](https://github.com/batakers/Niuva/pull/288), merged 18 August
+  2026 from the exact Customer Login/recovery paths in its task card.
+- **Scope:** Customer Login, Forgot Password, Reset Password, AuthShell
+  responsive floor, safe customer return, and localized ID/EN feedback only.
+  No staff login, registration, identity provider, backend, API, role, or
+  session contract change.
+- **Verification:** 7 focused suites / 49 tests; 73 frontend suites / 466
+  tests; production build; `git diff --check`; production dependency audit
+  with existing React Router RSC advisory hold; Impeccable detector `[]`;
+  browser ID/EN × 320/390/1440 for login/recovery; no overflow, Axe 0, and
+  keyboard/reduced-motion smoke.
+- **Observed limitation:** browser API/auth behavior was mocked or preview
+  bounded; backend session, identity, provider, staging, production, and
+  readiness remain outside this evidence.
+
+## MIG-04 Operations execution record
+
+- **Source commit:** `d5f6877689d148acf20e37a5a64e454ac703edcc`
+- **Merge commit:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
+- **PR:** [#290](https://github.com/batakers/Niuva/pull/290), merged 18 August
+  2026 from the seven exact paths in the amended Operations task card.
+- **Scope:** Operations B2B list/detail record context, Quote acceptance
+  evidence copy, completed-project draft action copy, and Admin breadcrumb
+  localization. No shared `OperationalNavigation`, status adapter, route,
+  permission, API, backend, role, or lifecycle change.
+- **Verification:** 5 focused suites / 42 tests; 73 frontend suites / 467
+  tests; production build; `git diff --check`; production dependency audit
+  with existing React Router RSC advisory hold; Impeccable detector `[]`;
+  browser ID/EN × 390/768/1024/1440 across work home, Inquiry list/detail,
+  and Quote detail; 32/32 no overflow, page errors, or serious/critical Axe
+  findings.
+- **Observed limitation:** browser API/authorization behavior was mocked or
+  preview bounded; backend authorization, projection, staging, production,
+  and readiness remain outside this evidence.
+
 ## Cross-task checks
 
 - Canonical authority and selected SHA are recorded in each Wave E/F artifact.
@@ -113,12 +152,14 @@ count.
 - Page-local art direction, donor experiments, Operations grid, and token
   previews remain LOCAL/held; no component, token, route, or dependency was
   promoted.
-- Runtime/browser/axe/assistive-technology evidence is marked pending wherever
-  it was not actually run.
+- Runtime/browser/Axe evidence is attached to the exact merged Account/Auth and
+  Operations pilots; screen-reader, contrast, server, staging, production,
+  readiness, and go-live evidence remains pending wherever it was not run.
 - This documentation alignment does not modify application source, runtime
   tokens, routes, APIs, schemas, dependencies, capabilities, or business
-  rules. The bounded MIG-01 and MIG-01B source/test changes are recorded in
-  merged PRs #279 and #281; no other source pilot is implied.
+  rules. The bounded MIG-01/MIG-01B, MIG-03, and MIG-04 source/test changes
+  are recorded in merged PRs #279, #281, #288, and #290; no other source pilot
+  is implied.
 - The earlier MIG-01 shell card remains unchanged as the PR #279 handoff
   record; its historical MIG-01B candidate wording is superseded for current
   status by the MIG-01B card and execution record in this alignment.
@@ -128,14 +169,14 @@ count.
 - [x] All 35 executable task IDs in `TASKS.md` are represented above; the
       MIG-01B executed split is recorded separately.
 - [x] All primary artifacts exist in this `.design/` working set.
-- [x] Remaining locked `SRC-*` tasks remain unchecked and explicitly out of
-      scope; the merged `SRC-PUB-01A` and `SRC-PUB-01B` exceptions are recorded
-      above.
+- [x] Remaining locked `SRC-EXPAND-01` remains unchecked and explicitly out of
+  scope; the merged Public, Account/Auth, and Operations exceptions are
+  recorded above.
 - [x] No delivery or canonical gate is inferred from documentation completion.
 - [x] Remaining holds are named rather than silently treated as failures or
   successes.
 
-**Self-review result:** Pass for consolidated owner review; MIG-01 shell/
-navigation and MIG-01B Contact/Inquiry delivery are recorded as merged, while
-canonical promotion, readiness, go-live, and all other source-pilot gates
-remain separate.
+**Self-review result:** Pass for consolidated owner review; merged Public,
+Account/Auth, and Operations pilots are recorded with bounded evidence, while
+Commerce G4, route-family expansion, canonical promotion, readiness, go-live,
+and all other source-pilot gates remain separate.

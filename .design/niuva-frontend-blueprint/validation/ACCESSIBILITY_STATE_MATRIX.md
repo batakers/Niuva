@@ -1,7 +1,8 @@
 # QA-02 — Accessibility and complete-state validation matrix
 
-**Status:** Candidate artifact validation — no runtime assertion
-**Selected SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Status:** Candidate artifact validation with bounded source-pilot evidence —
+not a complete runtime or readiness assertion
+**Selected SHA:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Scope:** One calibration flow per surface, mapped to DS-02–DS-05 contracts
 **Authority:** Niuva canonical reading order, complete-state grammar, WCAG
 floors in `DESIGN_BRIEF.md`, and current component tests as evidence
@@ -50,11 +51,19 @@ required before G4.
 ## Findings and dispositions
 
 No P0/P1 semantic or complete-state gap is introduced by the artifacts. The
-runtime evidence line is held: axe, keyboard traversal, screen-reader review,
-contrast measurement, reduced-motion browser checks, and focus telemetry were
-not run because this Goal is documentation/prototype-only. A later source
-pilot must attach those results to its exact SHA and not reuse this matrix as
-proof.
+runtime evidence line remains held for the unimplemented rows. The merged
+Account/Auth and Operations pilots now have bounded axe, keyboard, reduced
+motion, responsive, and focus smoke evidence attached to their exact commits;
+screen-reader sessions, contrast measurement, server behavior, and production
+telemetry remain outside this record. A later source pilot must attach its own
+results to its exact SHA and must not reuse this matrix as general proof.
+
+## Bounded source-pilot accessibility addendum
+
+| Pilot | Exact evidence | Measured accessibility result | Remaining hold |
+| --- | --- | --- | --- |
+| `AUTH-01` | PR [#288](https://github.com/batakers/Niuva/pull/288), source `18821fd` | ID/EN × 320/390/1440; Axe 0 across login/recovery routes; keyboard smoke reached the site-return control; reduced-motion state remained static | Full screen-reader and contrast review, backend/session enforcement, and readiness remain held |
+| `OPS-01` | PR [#290](https://github.com/batakers/Niuva/pull/290), source `d5f6877` | ID/EN × 390/768/1024/1440; 32/32 mocked-API cases had no overflow, page error, or serious/critical Axe finding | Full screen-reader and contrast review, backend authorization/projection, and readiness remain held |
 
 ## Self-review
 
@@ -65,5 +74,6 @@ proof.
 - [x] Reduced-motion and keyboard/focus behavior are explicit.
 - [x] Runtime checks are honestly marked pending rather than inferred.
 
-**Self-review result:** Pass with browser/assistive-technology evidence held for
-the later source gate.
+**Self-review result:** Pass with bounded browser/Axe evidence recorded for
+`AUTH-01` and `OPS-01`; assistive-technology and server-enforcement evidence
+remain held for later source gates.

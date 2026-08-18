@@ -1,7 +1,7 @@
 # QA-03 — Truth, privacy, lifecycle, and authorization audit
 
 **Status:** Candidate artifact audit — not domain or production approval
-**Selected SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Selected SHA:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Scope:** Wave B calibration set plus COM-03 quote boundary
 **Authority:** canonical Niuva reading order, `DEC-UX-003`, `DEC-UX-004`,
 `DEC-OFFER-01`, `DEC-RT-02`, `DESIGN_BRIEF.md`, and current source/tests
@@ -14,9 +14,9 @@
 | `COM-01` catalog | `/retail` and `/en/retail` | Retail discovery/request | Discovery is not guest checkout; price, stock, ETA, eligibility remain authoritative | Catalog hierarchy and state plate | **Pass; runtime/data proof held** |
 | `COM-02` product detail | Retail product responsibility | Retail configuration | File, material, price, and eligibility require account/server revalidation before authority | Product-detail contract | **Pass; source gate required** |
 | `COM-03` transaction/quote boundary | Future Retail Request/Offer/Order handoff | Retail Request, Assisted Retail Offer, Retail Order | `quote_required` creates no Order, reservation, payment attempt, paid state, or checkout total; context is preserved | `flows/commerce/TRANSACTION_QUOTE_BOUNDARY.md` | **Pass; no capability activation** |
-| `AUTH-01/02/03` auth | Customer/staff login, recovery, invitation | Session, Customer, staff authority | No identity-provider activation; non-enumerating recovery; safe return is allowlisted | Login/recovery/invitation wireframes | **Pass; provider/identity gate held** |
+| `AUTH-01/02/03` auth | Customer/staff login, recovery, invitation | Session, Customer, staff authority | No identity-provider activation; non-enumerating recovery; safe return is allowlisted | Login/recovery/invitation wireframes plus bounded `AUTH-01` source evidence | **Pass; provider/identity/server gate held** |
 | `ACC-01` account | Owned dashboard/order detail | Customer and owned resources | Projection excludes internal cost, margin, supplier, profit, and internal notes | Projection checklist and flow | **Pass; server enforcement remains required** |
-| `OPS-01` Inquiry queue/detail | Operations Inquiry work | Inquiry and role-owned queue | Role projection, permission, conflict, and audit history are visible without inventing access | Role projection matrix | **Pass; backend authorization unchanged** |
+| `OPS-01` Inquiry queue/detail | Operations Inquiry work | Inquiry and role-owned queue | Role projection, permission, conflict, and audit history are visible without inventing access | Role projection matrix plus bounded `OPS-01` source evidence | **Pass; backend authorization unchanged** |
 | `OPS-03/04/05` work families | Quotes/Projects, Retail Orders, Production | Domain-owned operational records | Separate resources and states; provider/payment/production truth is not a UI promise | Route-family wireframes | **Pass; implementation separately gated** |
 | `EXP-03` evidence language | Public and Commerce visual evidence | Content owner and factual record | Real approved assets require provenance; supporting/stock/generated visuals cannot prove Niuva work | Evidence visual language | **Pass; no asset migration** |
 | Locale behavior | Public translated pairs and private unprefixed routes | Route/content ownership | Indonesian-first; exact counterpart; no invented `/en` private route; incomplete English shows approved notice | IA and route matrix | **Pass; delivery contract held** |
@@ -43,6 +43,19 @@ state machines, provider behavior, storage, payment, and delivery evidence
 remain outside this Goal. A later source pilot must re-run the relevant audit
 against the exact implementation SHA.
 
+## Bounded source-pilot addendum
+
+- `AUTH-01` PR [#288](https://github.com/batakers/Niuva/pull/288) retained
+  customer/staff separation, bounded customer return, non-enumerating recovery,
+  and no provider/registration change. Browser fixtures and client tests do not
+  prove server session or identity enforcement.
+- `OPS-01` PR [#290](https://github.com/batakers/Niuva/pull/290) retained
+  role-filtered navigation, permission checks, resource-specific status/history,
+  and no backend/API change. Mocked API browser evidence does not prove backend
+  authorization or customer/internal projection.
+
+The addendum narrows the remaining holds; it does not close them.
+
 ## Self-review
 
 - [x] Inquiry persistence, UUID, consent, WhatsApp ordering, and no-upload rule
@@ -54,4 +67,6 @@ against the exact implementation SHA.
 - [x] Evidence provenance and supporting-visual separation are included.
 - [x] No artifact claims provider, API, schema, payment, or production success.
 
-**Self-review result:** Pass with server/runtime enforcement held for G3/G4.
+**Self-review result:** Pass with bounded client evidence recorded for
+`AUTH-01` and `OPS-01`; server/runtime enforcement and provider gates remain
+held for their owning decisions.

@@ -1,7 +1,7 @@
 # MIG-05 — Candidate foundation task cards
 
 **Status:** Candidate planning-only foundation register — no source migration
-**Baseline:** `origin/main` at `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Baseline:** `origin/main` at `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Authority:** `DESIGN_TOKENS.md`, DS-01A, DS-02–DS-05, QA-05, and the
 two-real-consumer promotion rule
 
@@ -13,6 +13,21 @@ two-real-consumer promotion rule
 | Shared action/form compatibility | Existing Button/Label/Input/Textarea/FormField/Select/Switch source and their tests, identified by DS-01A | NDS 13 fields, API compatibility, two same-meaning consumers across allowed surfaces, keyboard/focus/error evidence | Revert exact API/style change; no broad rename or destructive removal |
 | Shared feedback/state compatibility | Existing Dialog/Alert/Skeleton/EmptyState/ErrorState/OperationalState/SurfacePanel source/tests | Visible critical state, focus return, reduced motion, resource-specific adapters, two consumers | Revert exact state presentation; domain lifecycle remains unchanged |
 | Collection/status mechanics | Existing collection/table/filter/status files and tests named in DS-01A/DS-04 | Distinct resource semantics, narrow-screen alternative, stable return context, no zero-consumer promotion | Revert adapter/presentation only; retain resource-specific labels |
+
+## Post-pilot evidence reconciliation
+
+PR #288 (Account/Auth) and PR #290 (Operations) provide two additional
+consumer families for review, but they do not by themselves authorize a
+foundation migration. Their changes stayed page/surface-owned: auth copy and
+safe-return behavior remain in Auth, while Operations record labels remain in
+Operations. No identical-purpose token or shared component contract has been
+promoted by those pilots.
+
+The next foundation G3 must re-run exact consumer searches at the baseline
+above and prove two same-meaning consumers before changing `index.css`, the
+Tailwind bridge, or a shared primitive. The existing React Router audit hold,
+long-content evidence, fallback mapping, and rollback requirements remain
+unchanged.
 
 ## Rules
 
