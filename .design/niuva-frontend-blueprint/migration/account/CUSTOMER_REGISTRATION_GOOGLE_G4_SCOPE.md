@@ -77,6 +77,10 @@ change: `frontend/src/pages/auth/CustomerLogin.jsx`,
 | `backend/auth_sessions.py` | Reuse the existing host-only Secure HttpOnly-cookie session issuance and revocation. | No parallel JWT/cookie/bearer authority. Changes require exact session review. |
 | `backend/auth_recovery.py` | Integrate approved verification/recovery outcomes only through the existing recovery contract. | No raw token persistence, automatic login after reset, or non-atomic mutation. |
 | `backend/auth_security_events.py` and `backend/auth_security_alerts.py` | Emit approved redacted registration/provider/linking/abuse outcomes. | Event vocabulary, retention, and operational owner must be approved. |
+| `backend/identity_routes.py` | Reuse only for its existing staff invitation and internal identity ownership. | Do not generalize its Admin routes or role assumptions into Customer registration. |
+| `backend/notification_service.py`, `backend/notification_worker.py`, and `backend/emailer.py` | Reuse the existing provider-neutral notification/outbox seams if verification delivery is approved. | Delivery provider, templates, retry, retention, and worker readiness remain separate decisions. |
+| `backend/audit.py` | Reuse approved identity-governance/audit seams where registration or linking events require them. | Do not expose raw secrets, tokens, provider assertions, or unapproved event payloads. |
+| `backend/schema_manifest.py` | Change only if an approved provider-subject, verification-token, or linking index is required. | Any new collection/index requires a separately approved migration, rehearsal, and rollback plan. |
 | `backend/.env.example` | Add only approved non-secret provider configuration names, if needed. | Never add credentials or copy real values; provider activation remains separate. |
 
 Provider-specific new modules are intentionally **not selected** here. A
