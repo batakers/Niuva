@@ -133,3 +133,30 @@ documentation/source sequence: exact-path staging, one commit per coherent
 PR, push, PR opening, CI/thread review, and merge after all checks pass. That
 authorization does not broaden this card, activate an inactive capability, or
 replace backend authorization and production evidence.
+
+## G4 implementation and delivery record
+
+G4 was implemented only in the six exact paths listed above and merged as PR
+[#299](https://github.com/batakers/Niuva/pull/299) at exact head
+`92dfbda5c0ba847a73461e17ab61d7fcb0d2a027` (merge commit
+`0488515597719152e2de449dcbd13314e629b855`). The source worktree was based on
+`origin/main` after PR #298.
+
+The delivered behavior fails closed on malformed collection data, distinguishes
+customer-safe forbidden/not-found detail outcomes in ID/EN, and keeps generic
+dependency retry bounded. Dashboard and detail remain read-only; no backend,
+route, projection, shared primitive, token, dependency, API schema, session,
+role, permission, payment, upload, checkout, provider, or lifecycle change was
+made.
+
+Evidence recorded for this bounded slice:
+
+- 3 focused suites / 16 tests and 74 full frontend suites / 479 tests passed;
+- production build and production dependency audit passed;
+- browser ID/EN at 320/390/768/1024/1440px passed (24 checks; representative
+  mobile/desktop Axe passed; 6 non-representative Axe checks were skipped);
+- `git diff --check` passed and Impeccable detector returned `[]`;
+- required CI checks passed and no actionable review thread remained.
+
+These results are source and CI evidence only. They do not activate a broader
+route-family expansion, staging, production readiness, or go-live.
