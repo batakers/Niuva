@@ -579,6 +579,7 @@ export function ContactForm({
     timeline: "Estimasi timeline",
     message: "Pesan tambahan",
     messagePlaceholder: "Jelaskan konteks, tujuan, ruang lingkup, target pengguna, bentuk hasil, atau batasan proyek.",
+    consent: "Saya setuju Niuva menggunakan data ini untuk meninjau inquiry dan menghubungi saya terkait kebutuhan yang saya kirim. Data tidak digunakan untuk marketing tanpa persetujuan terpisah.",
     privacy: "Tim Niuva akan menggunakan informasi ini hanya untuk menanggapi permintaan proyek.",
     ...copy,
   };
@@ -744,8 +745,8 @@ export function ContactForm({
         <FieldError id="contact-message-error" message={errors.message} />
       </div>
 
-      {/* DEC-UX-003 fixes this copy. It is the consent the backend now requires,
-          so it stays verbatim rather than being reworded per surface. */}
+      {/* DEC-UX-003 fixes this copy. The Indonesian source remains verbatim;
+          the English counterpart is supplied by the localized page copy. */}
       <div className="mt-8 border-t border-border-default pt-7">
         <div className="flex gap-3">
           <input
@@ -764,9 +765,7 @@ export function ContactForm({
             htmlFor="contact-consent"
             className="cursor-pointer text-sm font-normal leading-6 text-text-secondary"
           >
-            Saya setuju Niuva menggunakan data ini untuk meninjau inquiry dan
-            menghubungi saya terkait kebutuhan yang saya kirim. Data tidak
-            digunakan untuk marketing tanpa persetujuan terpisah.
+            {labels.consent}
           </Label>
         </div>
         <FieldError id="contact-consent-error" message={errors.consent} />

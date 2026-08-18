@@ -22,6 +22,7 @@ const form = {
   needType: "Research & Development",
   timeline: "Belum ditentukan",
   message: "",
+  consent: false,
 };
 
 test("renders translated form chrome without changing canonical option values", () => {
@@ -66,6 +67,7 @@ test("renders translated form chrome without changing canonical option values", 
     "autocomplete",
     "tel",
   );
+  expect(screen.getByLabelText(/Saya setuju Niuva menggunakan data ini/)).toBeInTheDocument();
   expect(screen.getByLabelText(/^Type of need/)).toHaveValue(
     "Research & Development",
   );
