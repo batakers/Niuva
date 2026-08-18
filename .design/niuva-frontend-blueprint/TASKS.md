@@ -1,13 +1,14 @@
 # Phase 5 Tasks: Niuva Frontend Experience and Design-System Blueprint
 
 **Status:** Candidate — Context Only — Phase 5 and all executable blueprint
-tasks Wave B–F completed for consolidated owner review; `DS-01A` owner-approved;
-locked `SRC-*` pilots remain separately gated; no source or delivery authority
+tasks Wave B–F completed for consolidated owner review; bounded source pilots
+are recorded through PR #290; `SRC-EXPAND-01` remains separately gated; no
+broad source or delivery authority
 
 **Date:** 18 August 2026
 
 **Repository baseline:** `origin/main`
-`8555685c29a3fde9976ae6499336e2eb45a330ba`
+`814a46329b8de7775c2de8b1ee34536d73df63e1`
 
 **Scope:** Convert the owner-approved Design Brief, Information Architecture,
 and `TOK-01` through `TOK-12` into bounded, dependency-ordered tasks for the
@@ -24,10 +25,12 @@ documentation-only goal with independent self-review and one consolidated
 owner-report. The owner then authorized execution of all executable Wave B–F
 entries in this file as one Goal with independent self-review and one
 consolidated owner-report on 18 August 2026. `DS-01B` through `DS-05` and
-Wave B–F are complete only as candidate records for owner review. Locked
-`SRC-*` pilots remain untouched. These approvals do not authorize application
-source changes, canonical promotion, stage, commit, push, PR, merge,
-deployment, readiness, or go-live.
+Wave B–F are complete only as candidate records for owner review. The bounded
+Public, Commerce discovery, Account/Auth, and Operations source pilots are
+recorded in their task cards and merged PRs #279, #281, #284, #288, and #290;
+`SRC-EXPAND-01` remains untouched and separately gated. These approvals do not
+authorize broad application redesign, canonical promotion, deployment,
+readiness, or go-live.
 
 ## 1. Inputs and precedence
 
@@ -1059,8 +1062,9 @@ queue/detail hierarchy without changing authorization or lifecycle behavior.
 
 - **Execution record:** completed and self-reviewed on 18 August 2026 in
   [`migration/operations/OPERATIONS_SOURCE_PILOT_TASK_CARD.md`](migration/operations/OPERATIONS_SOURCE_PILOT_TASK_CARD.md).
-  Inquiry queue/detail files/tests and role/data exclusions are bounded; no
-  authorization or lifecycle implementation occurred.
+  Inquiry queue/detail files/tests and role/data exclusions were bounded; the
+  source pilot was later implemented and merged as PR #290 without changing
+  authorization or lifecycle.
 
 ### - [x] MIG-05 — Plan proven foundation changes
 
@@ -1106,9 +1110,9 @@ that may be frozen, migrated, or retired without deleting historical evidence.
 ## 11. Locked future source pilots and executed Public/Commerce exceptions
 
 The following entries show the intended continuation. The completed
-`SRC-PUB-01A`, `SRC-PUB-01B`, and `SRC-COM-01` pilots are recorded for
-traceability; all remaining unchecked entries remain **not executable** without
-their own authorization:
+`SRC-PUB-01A`, `SRC-PUB-01B`, `SRC-COM-01`, `SRC-ACC-01`, and `SRC-OPS-01`
+pilots are recorded for traceability; the remaining unchecked entry remains
+**not executable** without its own authorization:
 
 - [x] **SRC-PUB-01A:** Homepage shell/navigation pilot implemented in its own
   worktree and merged as PR #279; this does not activate Contact/Inquiry.
@@ -1118,14 +1122,16 @@ their own authorization:
 - [x] **SRC-COM-01:** Retail discovery and product-detail pilot implemented in
   its own worktree and merged as PR #284; checkout, upload, payment, and
   providers remain inactive.
-- [ ] **SRC-ACC-01:** implement one separately approved Account/Auth pilot with
-  customer-safe projection and safe return.
-- [ ] **SRC-OPS-01:** implement one separately approved Operations pilot with
-  backend authorization unchanged.
+- [x] **SRC-ACC-01:** Customer Login/recovery pilot implemented and merged as
+  PR #288; customer-safe return and recovery only, with backend/session and
+  identity-provider boundaries unchanged.
+- [x] **SRC-OPS-01:** Operations queue/detail presentation pilot implemented and
+  merged as PR #290; backend authorization, projection, and lifecycle remain
+  unchanged.
 - [ ] **SRC-EXPAND-01:** expand only accepted patterns route family by route
   family after pilot evidence; never redesign all surfaces in one PR.
 
-Each remaining source pilot requires its own G3 and G4, proportional tests,
+The remaining source expansion requires its own G3 and G4, proportional tests,
 production build, dependency and diff checks, browser interaction,
 responsive/accessibility evidence, Impeccable critique, and a separate
 delivery gate.
@@ -1195,9 +1201,9 @@ artifacts, Wave E validation/promotion records, and the remaining Wave F
 planning cards are candidate-only. The MIG-01 Homepage shell/navigation
 exception was implemented and merged as PR #279, and the separately
 authorized MIG-01B Contact/Inquiry pilot was implemented and merged as PR #281.
-The remaining locked `SRC-*`
-source pilots remain unchecked and require their own G3/G4 exact-file
-authorization.
+The Account/Auth pilot was merged as PR #288 and the Operations pilot as PR
+#290. The remaining locked `SRC-EXPAND-01` route-family expansion remains
+unchecked and requires its own G3/G4 exact-file authorization.
 
 ## 15. Explicit exclusions
 

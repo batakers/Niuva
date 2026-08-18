@@ -1,7 +1,7 @@
 # QA-04 — Impeccable and anti-template critique register
 
 **Status:** Candidate static-artifact critique — no browser screenshot claim
-**Selected SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Selected SHA:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Scope:** Wave B visual calibration, route-family structure, motion and
 evidence studies
 **Method:** Impeccable primary workflow; Brand register for Public/marketing;
@@ -39,10 +39,12 @@ Frontend Design, UI/UX Pro Max, and Emil guidance filtered through Niuva authori
 
 ## Findings and dispositions
 
-The artifact set passes the anti-template checks at the blueprint level. This
-is not a visual screenshot verdict: no current source route was launched and
-no browser capture was taken in this Goal. A later source pilot must repeat
-the logo-hidden and side-by-side surface critique at 390px and 1440px.
+The artifact set passes the anti-template checks at the blueprint level. The
+Account/Auth and Operations source pilots also passed bounded interaction,
+overflow, and Axe checks, but those runs did not produce a complete visual
+screenshot critique. A later source pilot must repeat the logo-hidden and
+side-by-side surface critique at 390px and 1440px before claiming visual
+closure.
 
 ## Self-review
 
@@ -53,5 +55,6 @@ the logo-hidden and side-by-side surface critique at 390px and 1440px.
 - [x] Preferred, held, and deferred directions are clearly separated.
 - [x] No new visual identity, runtime dependency, or source change is implied.
 
-**Self-review result:** Pass at static blueprint level; browser screenshot
-critique remains a later source-pilot requirement.
+**Self-review result:** Pass at static blueprint level with bounded runtime
+interaction evidence for the merged pilots; browser screenshot critique
+remains a later source-pilot requirement.

@@ -1,7 +1,8 @@
 # QA-01 — Responsive and localization validation matrix
 
-**Status:** Candidate artifact validation — not runtime or readiness evidence
-**Selected SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
+**Status:** Candidate artifact validation with bounded source-pilot evidence —
+not server, production, or readiness evidence
+**Selected SHA:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Scope:** Wave B calibration artifacts and their static plates/specifications
 **Owner:** Frontend blueprint workstream
 **Authority:** `AGENTS.md` → canonical Niuva reading order → `DESIGN_BRIEF.md` →
@@ -13,8 +14,10 @@ This register checks whether the design artifacts state a complete responsive
 and localization contract. It does not claim that the current application or
 the static HTML plates were exercised in a browser. No source files were
 changed and no screenshots, axe run, or measured DOM inspection was performed
-for this documentation-only pass. Browser validation remains a G3/G4
-requirement for any later source pilot.
+for this documentation-only pass. The bounded source-pilot addendum below
+records measured browser runs for Account/Auth and Operations only; it does not
+promote the remaining rows or establish server, staging, production, or
+readiness evidence.
 
 ## Width and locale matrix
 
@@ -28,9 +31,21 @@ requirement for any later source pilot.
 | `ACC-01` Owned order flow | Record summary stacks; no protected detail leak | Status/reference and next owned action remain visible | List/detail relationship stays understandable | Density may increase only with projection safety | Customer record hierarchy remains task-oriented | No loss of record identity or action | ID/EN status labels and empty/error copy wrap | Customer-safe projection and owned-resource return | **Pass as artifact / runtime hold** |
 | `OPS-01` Inquiry queue/detail | Queue controls become a readable stack; no invented KPI | Role-aware action remains visible | Queue/detail split remains explicit | Operational density can increase with role boundaries | Work-home/detail context remains auditable | Critical state and permission copy reflow | Staff labels and history fields may grow | Authorization is not inferred from route visibility | **Pass as artifact / runtime hold** |
 
+## Bounded source-pilot runtime addendum
+
+| Pilot | Exact source evidence | Browser matrix | Measured result | Remaining hold |
+| --- | --- | --- | --- | --- |
+| `AUTH-01` Customer Login/recovery | Source `18821fd`; PR [#288](https://github.com/batakers/Niuva/pull/288); merge `0cc824f522e00190a16db5c73d4d7615acf2b698` | ID/EN × 320/390/1440; `/login`, `/forgot-password`, `/reset-password` | No overflow or page exception; Axe 0; reset token removed from the URL; keyboard smoke reached the site-return control | Backend session, identity, provider, staging, and production enforcement remain held |
+| `OPS-01` Inquiry queue/detail | Source `d5f6877`; PR [#290](https://github.com/batakers/Niuva/pull/290); merge `814a46329b8de7775c2de8b1ee34536d73df63e1` | ID/EN × 390/768/1024/1440; work home, Inquiry list/detail, Quote detail with mocked API boundary | 32/32 cases: no overflow, page errors, or serious/critical Axe findings | Backend authorization, API truth, server projection, staging, and production remain held |
+
+These measurements are source-pilot evidence attached to exact merged commits.
+The mocked API boundary proves only client rendering and interaction under the
+supplied fixtures; it does not prove backend behavior or readiness.
+
 ## Measurement checklist for later browser evidence
 
-- [ ] Capture each accepted artifact at 320, 390, 768, 1024, and 1440px.
+- [ ] Capture each remaining unimplemented artifact at 320, 390, 768, 1024,
+  and 1440px.
 - [ ] Check horizontal overflow, clipped focus, lost primary action, and fixed
   height/width assumptions.
 - [ ] Repeat at 200% zoom/reflow with keyboard access to the same action.
@@ -41,11 +56,11 @@ requirement for any later source pilot.
 
 ## Findings and dispositions
 
-No P0/P1 defect is observable from the static structures. The remaining hold
-is evidence-related: runtime/browser measurements have not been performed, so
-these artifacts must not be promoted to implementation proof or readiness
-evidence. Any future measured defect returns to the owning task rather than
-being silently fixed in a later surface.
+No P0/P1 defect is observable from the static structures or the two bounded
+source-pilot matrices above. The remaining hold is evidence-related for the
+unimplemented rows: runtime/browser measurements, server behavior, and
+readiness evidence have not been performed. Any future measured defect returns
+to the owning task rather than being silently fixed in a later surface.
 
 ## Self-review
 
@@ -55,6 +70,10 @@ being silently fixed in a later surface.
 - [x] Public, Commerce, Account/Auth, and Operations responsibilities remain
   separate.
 - [x] Artifact review is explicitly distinguished from browser/runtime proof.
-- [x] No route, token, API, lifecycle, or application source was changed.
+- [x] No route, token, API, lifecycle, or application source was changed by
+  this ledger reconciliation.
+- [x] Account/Auth and Operations runtime measurements are tied to exact merged
+  source commits without being generalized to other rows.
 
-**Self-review result:** Pass with runtime evidence held for G3/G4.
+**Self-review result:** Pass with bounded runtime evidence recorded for
+`AUTH-01` and `OPS-01`; remaining artifacts retain their runtime hold.
