@@ -5,6 +5,8 @@
 **Current alignment baseline:** `46708524bfade1dec22a7a8747165fe221cd85f1`
 **Post-merge execution baseline:** `origin/main` at
 `b35b5bafafa8efaa8afb1f1626c865fb831c6810`
+**MIG-02 G3 review baseline:** `origin/main` at
+`8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe`
 **Execution authorization:** Owner authorized all executable Wave B–F entries
 as one Goal with independent self-review and one final report on 18 August 2026.
 
@@ -14,6 +16,8 @@ unchecked; the completed `SRC-PUB-01A` and `SRC-PUB-01B` exceptions are
 recorded below.
 
 ## Task ledger
+
+<!-- markdownlint-disable MD013 -->
 
 | Wave | Task IDs | Primary artifact(s) | Self-review |
 | --- | --- | --- | --- |
@@ -48,11 +52,13 @@ recorded below.
 | E — Validation | QA-05 | `decisions/PROMOTION_REVIEW.md` | Pass; no runtime promotion |
 | F — Migration | MIG-01 | `migration/public/PUBLIC_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #279 |
 | F — Migration | MIG-01B | `migration/public/PUBLIC_CONTACT_INQUIRY_SOURCE_PILOT_TASK_CARD.md` | Pass; G4/G5 complete in PR #281 |
-| F — Migration | MIG-02 | `migration/commerce/COMMERCE_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
+| F — Migration | MIG-02 | `migration/commerce/COMMERCE_SOURCE_PILOT_TASK_CARD.md` | G3 pass with exact-scope amendment at `8372c4e`; G4 holds |
 | F — Migration | MIG-03 | `migration/account/ACCOUNT_AUTH_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
 | F — Migration | MIG-04 | `migration/operations/OPERATIONS_SOURCE_PILOT_TASK_CARD.md` | Pass; G3/G4 hold |
 | F — Migration | MIG-05 | `migration/FOUNDATION_TASK_CARDS.md` | Pass; G3/G4 hold |
 | F — Migration | MIG-06 | `migration/COMPATIBILITY_RETIREMENT_PLAN.md` | Pass; separate retirement gate |
+
+<!-- markdownlint-enable MD013 -->
 
 **Executable task count:** 35 (8 Wave B + 13 Wave C + 3 Wave D + 5 Wave E + 6
 Wave F). **Completed:** 35. **Locked and intentionally not executed:** 4
@@ -74,6 +80,28 @@ count.
 - **Observed limitation:** preview-only `/api/auth/me` 404s without a backend
   were not page exceptions. Production readiness, provider activation, and
   go-live were not established.
+
+## MIG-02 G3 exact-file review record
+
+- **Review baseline:** `8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe` on
+  18 August 2026 in a fresh, isolated worktree.
+- **Scope result:** the existing catalog/detail/visual files and their three
+  tests remain bounded; `frontend/src/lib/catalog.js`,
+  `frontend/src/i18n.js`, `frontend/src/lib/catalog.test.js`, and
+  `frontend/src/pages/retail/retail-surface.contract.test.js` are additionally
+  required for a truthful complete-locale and route-contract implementation.
+- **Route result:** `/retail` and `/en/retail` are the localized entry pair;
+  `/retail/products/:slug` remains an unprefixed downstream Retail route.
+  G4 must not invent an English-prefixed detail route.
+- **Lifecycle result:** `quote_required` remains an inactive informational
+  manual/B2B handoff in this pilot. No Retail Request, Order, reservation,
+  payment attempt, paid state, private upload, provider, or context-persistence
+  capability is authorized.
+- **Baseline verification:** 5 focused Commerce suites / 17 tests passed. This
+  is not browser, provider, staging, production, readiness, or go-live
+  evidence.
+- **Next gate:** a separately authorized G4 source implementation in the
+  amended exact paths; this G3 documentation review grants none.
 
 ## Cross-task checks
 
