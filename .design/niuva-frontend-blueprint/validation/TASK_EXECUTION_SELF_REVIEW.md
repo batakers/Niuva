@@ -5,9 +5,9 @@ owner review remains optional and no runtime gate is inferred
 **Planning SHA:** `8555685c29a3fde9976ae6499336e2eb45a330ba`
 **Historical alignment baseline:** `814a46329b8de7775c2de8b1ee34536d73df63e1`
 **Current alignment baseline:** `origin/main` at
-`ff843ce403932de2ff3f77532e60448c789e3aec`
+`f90bb7a71848c4f69563583fc685d1da0ea1fd41`
 **Post-merge execution baseline:** `origin/main` at
-`ff843ce403932de2ff3f77532e60448c789e3aec` (PR #302 documentation
+`f90bb7a71848c4f69563583fc685d1da0ea1fd41` (PR #303 documentation
 rebaseline)
 **MIG-02 G3 review baseline:** `origin/main` at
 `8372c4ecf3af69cf2c15e9b9f12a166a750b0cfe`
@@ -16,8 +16,9 @@ as one Goal with independent self-review and one final report on 18 August 2026.
 
 This ledger records completion of the executable entries in `TASKS.md`. The
 backlog reconciliation separately records the documentation disposition for
-`SRC-EXPAND-01` and the candidate `SRC-PUB-02` G3 card; both remain excluded
-from source execution. The completed Public, Commerce,
+`SRC-EXPAND-01` and the candidate `SRC-PUB-02` G3 card. Its follow-up is split:
+`SRC-PUB-02A` has a Not Found-only G4 card, while `SRC-PUB-02B` remains a
+Privacy legal/content hold. The completed Public, Commerce,
 Account/Auth, Operations, Customer Registration, customer-owned Order, and
 FAQ exceptions are recorded below.
 
@@ -69,7 +70,9 @@ FAQ exceptions are recorded below.
 **Executable task count:** 35 (8 Wave B + 13 Wave C + 3 Wave D + 5 Wave E + 6
 Wave F). **Completed:** 35. **Locked and intentionally not executed:** the
 remaining route-family expansion and the new candidate `SRC-PUB-02` G3 review
-(these are source-pilot gates, not executable Wave tasks). The executed
+(these are source-pilot gates, not executable Wave tasks). The Not Found
+companion `SRC-PUB-02A` is tracked in its separate G4 card; Privacy
+`SRC-PUB-02B` remains held. The executed
 `SRC-PUB-01A`, `SRC-PUB-01B`, `SRC-PUB-01C`, `SRC-ACC-01`, `SRC-ACC-02`,
 `SRC-ACC-03`, `SRC-COM-01`, and `SRC-OPS-01` exceptions are recorded
 separately and are not included in the executable count.
@@ -198,9 +201,10 @@ separately and are not included in the executable count.
 
 The backlog reconciliation at
 `validation/REMAINING_BACKLOG_RECONCILIATION.md` closes the planning ambiguity:
-the Privacy/Not Found card is a bounded G3 PASS WITH CONDITIONS, and future
-route-family expansion is explicitly one-family-at-a-time. No Privacy/Not
-Found source work or broad route expansion is implied.
+  the Privacy/Not Found card is a bounded G3 PASS WITH CONDITIONS, its Not
+  Found follow-up is a bounded G4 companion, and Privacy remains a
+  legal/content hold. Future route-family expansion is explicitly
+  one-family-at-a-time; no broad route expansion is implied.
 
 ## Cross-task checks
 
@@ -229,9 +233,10 @@ Found source work or broad route expansion is implied.
 - [x] All 35 executable task IDs in `TASKS.md` are represented above; the
       MIG-01B executed split is recorded separately.
 - [x] All primary artifacts exist in this `.design/` working set.
-- [x] `SRC-PUB-02` and `SRC-EXPAND-01` have an explicit documentation
-      disposition in `validation/REMAINING_BACKLOG_RECONCILIATION.md`; their
-      future G4/source slices remain out of scope.
+  - [x] `SRC-PUB-02`, its `SRC-PUB-02A`/`SRC-PUB-02B` split, and
+      `SRC-EXPAND-01` have an explicit documentation disposition in
+      `validation/REMAINING_BACKLOG_RECONCILIATION.md`; source slices remain
+      bounded to their separate gates.
 - [x] No delivery or canonical gate is inferred from documentation completion.
 - [x] Remaining holds are named rather than silently treated as failures or
   successes.

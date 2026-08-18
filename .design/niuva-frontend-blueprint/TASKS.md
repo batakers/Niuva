@@ -9,7 +9,7 @@ authority
 **Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`ff843ce403932de2ff3f77532e60448c789e3aec`
+`f90bb7a71848c4f69563583fc685d1da0ea1fd41`
 
 **Scope:** Convert the owner-approved Design Brief, Information Architecture,
 and `TOK-01` through `TOK-12` into bounded, dependency-ordered tasks for the
@@ -30,8 +30,9 @@ Wave B–F are complete only as candidate records for owner review. The bounded
 Public, Commerce discovery, Account/Auth, Operations, Customer Registration,
 customer-owned order, and FAQ source pilots are recorded in their task cards
 and merged PRs #279, #281, #284, #288, #290, #296, #299, and #301. The
-documentation-only backlog reconciliation records `SRC-PUB-02` as a bounded
-G3 PASS WITH CONDITIONS and `SRC-EXPAND-01` as a completed planning decision
+  documentation-only backlog reconciliation records `SRC-PUB-02` as a bounded
+  G3 PASS WITH CONDITIONS, now split into the Not Found companion `SRC-PUB-02A`
+  and the Privacy hold `SRC-PUB-02B`; `SRC-EXPAND-01` is a completed planning decision
 whose future source work remains route-family-specific and separately gated.
 These approvals do not authorize broad application redesign, canonical
 promotion, deployment, readiness, or go-live.
@@ -1145,15 +1146,19 @@ only after their own exact-file authorization:
   visible loading/empty/disabled/invalid/dependency-error states, and no
   route, CMS, backend, or lifecycle change.
 - [x] **SRC-PUB-02:** Privacy and Not Found support-family G3 exact-file review
-  is recorded in
+    is recorded in
   [`migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`](migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md).
-  The documentation review is PASS WITH CONDITIONS; Privacy content/legal
-  review and any later G4 source work remain separately gated; FAQ is not
-  re-opened.
+    The documentation review is PASS WITH CONDITIONS; the follow-up is split:
+    `SRC-PUB-02A` is the Not Found-only G4 companion in
+  [`migration/public/PUBLIC_NOT_FOUND_G4_TASK_CARD.md`](migration/public/PUBLIC_NOT_FOUND_G4_TASK_CARD.md),
+    while `SRC-PUB-02B` keeps Privacy content/legal review and any Privacy G4
+    source work separately gated. FAQ is not re-opened.
 - [x] **SRC-EXPAND-01:** the route-family expansion policy is recorded: expand
-  accepted patterns one family at a time after pilot evidence, never redesign
-  all surfaces in one PR. The next candidate family is Privacy/Not Found; each
-  later family still requires its own exact-file G3/G4 and delivery gates.
+    accepted patterns one family at a time after pilot evidence, never redesign
+    all surfaces in one PR. The next bounded source slice is the Not Found
+    companion `SRC-PUB-02A`; Privacy remains the separate `SRC-PUB-02B` legal/
+    content hold. Each later family still requires its own exact-file G3/G4 and
+    delivery gates.
 
 Future source expansion still requires its own G3 and G4, proportional tests,
 production build, dependency and diff checks, browser interaction,
@@ -1171,7 +1176,7 @@ claims.
 | About and Services ID/EN | PUB-04 | Four Services retain equal rank. |
 | Projects ID/EN | PUB-05, EXP-03 | Archive only; reserved detail paths remain inactive. |
 | Contact/Inquiry ID/EN | PUB-03 | Persistence-first, UUID success, optional post-persistence WhatsApp. |
-| FAQ, Privacy, Not Found | PUB-06 | FAQ consumer states are delivered in PR #301; Privacy/Not Found retain distinct content/recovery authority, with candidate G3 card `SRC-PUB-02`. |
+| FAQ, Privacy, Not Found | PUB-06 | FAQ consumer states are delivered in PR #301; the G3 record `SRC-PUB-02` is split into Not Found G4 companion `SRC-PUB-02A` and Privacy legal/content hold `SRC-PUB-02B`. |
 | Retail catalog ID/EN | COM-01 | Public-to-Commerce boundary; no guest checkout promise. |
 | Retail product detail | COM-02 | Unprefixed private-language behavior after entry. |
 | Future Retail transaction/quote flow | COM-03 | Contract-only; no URL or capability activation. |
@@ -1229,10 +1234,11 @@ authorized MIG-01B Contact/Inquiry pilot was implemented and merged as PR #281.
 The Account/Auth pilot was merged as PR #288, the Operations pilot as PR #290,
 the Customer Registration slice as PR #296, the customer-owned order
 workspace pilot as PR #299, and the FAQ consumer-state pilot as PR #301. The
-Privacy/Not Found candidate G3 card is the next bounded Public support slice.
-The backlog reconciliation records the route-family expansion policy; each
-future family still requires its own route-family-specific G3/G4 exact-file
-authorization.
+Privacy/Not Found candidate G3 card is now split: Not Found has the bounded
+`SRC-PUB-02A` G4 companion, while Privacy remains the `SRC-PUB-02B`
+legal/content hold. The backlog reconciliation records the route-family
+expansion policy; each future family still requires its own route-family-
+specific G3/G4 exact-file authorization.
 
 ## 15. Explicit exclusions
 

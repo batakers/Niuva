@@ -1,10 +1,10 @@
 # SRC-PUB-02 — Privacy and Not Found support-family G3 task card
 
 **Status:** Historical G3 candidate review — documentation PASS WITH
-CONDITIONS; source implementation remains unauthorized
+CONDITIONS; source implementation remains split and separately gated
 **Date:** 19 August 2026 (Asia/Jakarta)
 **G3 baseline:** `origin/main` at
-`ff843ce403932de2ff3f77532e60448c789e3aec` (after documentation PR #302)
+`f90bb7a71848c4f69563583fc685d1da0ea1fd41` (after documentation PR #303)
 **Parent design task:** `PUB-06` — FAQ, Privacy, and Not Found support family
 **Surface:** Public support/content
 **Owner:** Public frontend driver; exact individual name is not part of the
@@ -12,12 +12,13 @@ repository contract
 
 ## Objective
 
-Review the smallest remaining Public support-family slice after the FAQ
+Review the smallest remaining Public support-family candidate after the FAQ
 consumer-state pilot: the localized Privacy policy page and the locale-aware
-wildcard Not Found recovery page. The slice tests whether the existing Public
-composition, metadata, localization, recovery, and accessibility contracts
-can be carried by two distinct responsibilities without reopening FAQ,
-navigation, route activation, policy authority, or a shared component redesign.
+wildcard Not Found recovery page. The G3 review establishes two distinct
+responsibilities; it does not require them to share one implementation gate.
+The existing Public composition, metadata, localization, recovery, and
+accessibility contracts must remain bounded without reopening FAQ, navigation,
+route activation, policy authority, or a shared component redesign.
 
 This card is a planning and review artifact. It does not authorize source
 implementation, policy publication, legal approval, route activation, alias
@@ -203,18 +204,33 @@ the documentation review is closed by the backlog reconciliation ledger.
 The route owners, two-page exact-file boundary, read-only references, state
 contract, search decision, and content/legal hold were initially reviewed at
 `518f951d2dd7aa94c45b65b0f8944bee7b20fe11` and revalidated against the current
-`origin/main` `ff843ce403932de2ff3f77532e60448c789e3aec` during this Goal.
+`origin/main` `f90bb7a71848c4f69563583fc685d1da0ea1fd41` during this Goal.
 
-The next gate is a distinct G4 implementation authorization for the two named
-runtime files. G3 does not change source, stage files, activate routes, publish
-policy, establish provider/server behavior, or imply readiness/go-live.
+## G4 split disposition
+
+The combined G3 review is now split into two separately governed follow-ups:
+
+- **SRC-PUB-02A — Not Found:** a companion G4 task card
+  [`PUBLIC_NOT_FOUND_G4_TASK_CARD.md`](PUBLIC_NOT_FOUND_G4_TASK_CARD.md) covers
+  only `NotFoundPage.jsx` and `NotFoundPage.test.jsx`. Its scope is localized
+  recovery, long-path-safe presentation, page-local copy/metadata, and
+  proportional tests. It does not change route or shared metadata ownership.
+- **SRC-PUB-02B — Privacy:** `/privasi` and `/en/privacy`, their page/test
+  paths, and any policy publication remain held until legal/content review
+  supplies an approved revision. No Privacy G4 is implied by the Not Found
+  companion.
+
+The next source gate is therefore the Not Found companion only. G3 does not
+change source, stage files, activate routes, publish policy, establish
+provider/server behavior, or imply readiness/go-live.
 
 ## Rollback and exclusions
 
 This card is documentation-only and reversible by reverting its documentation
-commit. A later G4 rollback may touch only the two named runtime files and two
-named page tests, preserving route ownership, metadata owner, FAQ PR #301,
-historical prototypes, aliases, and all other surfaces.
+commit. The Not Found companion defines its own rollback limited to its two
+exact source/test paths. Any later Privacy task must define a separate exact
+scope after legal/content approval, preserving route ownership, metadata owner,
+FAQ PR #301, historical prototypes, aliases, and all other surfaces.
 
 Explicitly excluded:
 

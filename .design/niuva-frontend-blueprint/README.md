@@ -5,12 +5,12 @@ owner-approved; Phase 6 `DS-01A` owner-approved as an exact-SHA ledger;
 `DS-01B` through `DS-05` and all executable Wave B–F tasks completed for one
 consolidated owner review; merged source pilots are recorded through PR #301;
 the remaining backlog was reconciled in a documentation-only Goal after PR
-#302; runtime G4 work remains separately gated
+#303; runtime G4 work remains separately gated
 
 **Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`ff843ce403932de2ff3f77532e60448c789e3aec`
+`f90bb7a71848c4f69563583fc685d1da0ea1fd41`
 
 ## Purpose
 
@@ -125,17 +125,21 @@ migration remains a separately gated implementation task.
   component/token/pattern promotion ledger; no runtime promotion.
 - [`migration/`](migration/) — exact-file candidate source-pilot,
   foundation, and compatibility/retirement cards; planning-only until G3/G4.
-- [`migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`](migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md)
-  — candidate G3 exact-file review for the remaining Privacy/Not Found support
-  slice; no source implementation authority.
+  - [`migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md`](migration/public/PUBLIC_SUPPORT_PRIVACY_NOT_FOUND_G3_TASK_CARD.md)
+    — historical G3 record for the Privacy/Not Found support slice; its
+    follow-up is split into the Not Found-only
+    [`PUBLIC_NOT_FOUND_G4_TASK_CARD.md`](migration/public/PUBLIC_NOT_FOUND_G4_TASK_CARD.md)
+    and a separate Privacy legal/content hold. Neither card alone changes
+    source authority.
 - `README.md` — scope, authority, phase map, and working-set rules.
 
-The executable design, validation, and planning files for Wave B–F are complete
-in this working set. The bounded source pilots are delivery evidence, not broad
-redesign authority: PRs #279, #281, #284, #288, #290, #296, #299, and #301 each
-cover one isolated slice. The remaining backlog ledger records Privacy/Not
-Found as the next candidate G3 family and preserves route-family expansion as
-a future one-family-at-a-time sequence; no broad source work is implied.
+  The executable design, validation, and planning files for Wave B–F are complete
+  in this working set. The bounded source pilots are delivery evidence, not broad
+  redesign authority: PRs #279, #281, #284, #288, #290, #296, #299, and #301 each
+  cover one isolated slice. The remaining backlog ledger records the Not Found
+  companion as the next bounded source slice, while Privacy remains a separate
+  legal/content hold; route-family expansion remains one-family-at-a-time and no
+  broad source work is implied.
 
 The Account Registration planning cards and the DS-01B route matrix retain
 their original exact-SHA review records. Their post-PR #296 status is
