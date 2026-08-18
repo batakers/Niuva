@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Niuva Phase 4 — Design Tokens Specimen</title>
+    <link
+      rel="stylesheet"
+      href="../../frontend/public/fonts/niuva/fonts.css"
+    />
+    <link rel="stylesheet" href="DESIGN_TOKENS.css" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--color-surface-canvas);
+        color: var(--color-text-primary);
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font-family-nds-body);
+        font-size: var(--type-body-size);
+        line-height: var(--type-body-leading);
+        text-rendering: optimizeLegibility;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      a {
+        color: var(--color-action-primary);
+      }
+
+      a:focus-visible,
+      button:focus-visible,
+      input:focus-visible {
+        outline: var(--focus-ring-width) solid var(--color-focus-ring);
+        outline-offset: var(--focus-ring-offset);
+      }
+
+      .shell {
+        width: min(
+          calc(100% - (2 * var(--space-page-gutter-mobile))),
+          var(--container-wide)
+        );
+        margin-inline: auto;
+      }
+
+      .masthead {
+        padding-block: var(--space-4);
+        border-bottom: 1px solid var(--color-border-decorative);
+        background: rgb(var(--color-surface-canvas-rgb) / 0.96);
+      }
+
+      .masthead__inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-4);
+      }
+
+      .identity {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-3);
+        min-height: var(--control-target-min);
+        color: var(--color-text-primary);
+        text-decoration: none;
+        font-weight: var(--type-weight-semibold);
+      }
+
+      .identity img {
+        width: 2rem;
+        height: 2rem;
+        object-fit: contain;
+      }
+
+      .phase {
+        color: var(--color-text-secondary);
+        font-size: var(--type-body-small-size);
+      }
+
+      .hero {
+        padding-block: var(--space-16) var(--space-12);
+      }
+
+      .hero__grid {
+        display: grid;
+        gap: var(--space-8);
+        align-items: end;
+      }
+
+      .kicker {
+        margin: 0 0 var(--space-3);
+        color: var(--color-action-primary);
+        font-family: var(--font-family-nds-ui);
+        font-size: var(--type-label-size);
+        font-weight: var(--type-weight-semibold);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-family: var(--font-family-nds-display);
+        text-wrap: balance;
+      }
+
+      h1 {
+        max-width: 16ch;
+        font-size: var(--type-display-home-size);
+        line-height: var(--type-display-home-leading);
+        letter-spacing: var(--type-tracking-display);
+      }
+
+      h2 {
+        font-size: var(--type-heading-section-size);
+        line-height: var(--type-heading-section-leading);
+        letter-spacing: var(--type-tracking-heading);
+      }
+
+      h3 {
+        font-size: var(--type-heading-card-size);
+        line-height: var(--type-heading-card-leading);
+      }
+
+      .hero__summary {
+        max-width: var(--measure-prose);
+        margin: var(--space-5) 0 0;
+        color: var(--color-text-secondary);
+        font-size: var(--type-body-large-size);
+        line-height: var(--type-body-large-leading);
+      }
+
+      .boundary-note {
+        padding: var(--space-5);
+        border: 1px solid var(--color-border-control);
+        border-radius: var(--radius-panel);
+        background: var(--color-surface-default);
+      }
+
+      .boundary-note strong,
+      .boundary-note span {
+        display: block;
+      }
+
+      .boundary-note span {
+        margin-top: var(--space-2);
+        color: var(--color-text-secondary);
+        font-size: var(--type-body-small-size);
+        line-height: var(--type-body-small-leading);
+      }
+
+      .jump-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        padding-bottom: var(--space-8);
+      }
+
+      .jump-nav a {
+        min-height: var(--control-target-min);
+        display: inline-flex;
+        align-items: center;
+        flex: 0 0 auto;
+        padding-inline: var(--space-4);
+        border: 1px solid var(--color-border-control);
+        border-radius: var(--radius-full);
+        background: var(--color-surface-default);
+        color: var(--color-text-primary);
+        text-decoration: none;
+        font-size: var(--type-body-small-size);
+        font-weight: var(--type-weight-medium);
+      }
+
+      .section {
+        padding-block: var(--space-12);
+      }
+
+      .section + .section {
+        border-top: 1px solid var(--color-border-decorative);
+      }
+
+      .section__head {
+        display: grid;
+        gap: var(--space-3);
+        margin-bottom: var(--space-8);
+      }
+
+      .section__head p {
+        max-width: var(--measure-prose);
+        margin: 0;
+        color: var(--color-text-secondary);
+      }
+
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-3);
+      }
+
+      .swatch {
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--color-border-decorative);
+        border-radius: var(--radius-card);
+        background: var(--color-surface-default);
+      }
+
+      .swatch__color {
+        min-height: 5rem;
+        background: var(--swatch);
+      }
+
+      .swatch__meta {
+        display: grid;
+        gap: var(--space-1);
+        padding: var(--space-3);
+      }
+
+      .swatch__meta strong {
+        overflow-wrap: anywhere;
+        font-size: var(--type-body-small-size);
+      }
+
+      .swatch__meta code,
+      .token-code {
+        color: var(--color-text-secondary);
+        font-family: var(--font-family-nds-technical);
+        font-size: var(--type-technical-size);
+      }
+
+      .tone-strip {
+        display: grid;
+        grid-template-columns: repeat(11, minmax(2rem, 1fr));
+        margin-bottom: var(--space-6);
+        overflow: hidden;
+        border: 1px solid var(--color-border-decorative);
+        border-radius: var(--radius-card);
+      }
+
+      .tone-strip span {
+        min-height: 4.5rem;
+        background: var(--tone);
+      }
+
+      .type-specimen {
+        display: grid;
+        gap: var(--space-8);
+      }
+
+      .type-line {
+        display: grid;
+        gap: var(--space-2);
+        padding-bottom: var(--space-5);
+        border-bottom: 1px solid var(--color-border-decorative);
+      }
+
+      .type-line:last-child {
+        border-bottom: 0;
+      }
+
+      .type-line__sample {
+        margin: 0;
+      }
+
+      .type-line__sample--page {
+        font-family: var(--font-family-nds-display);
+        font-size: var(--type-heading-page-size);
+        line-height: var(--type-heading-page-leading);
+        letter-spacing: var(--type-tracking-display);
+      }
+
+      .type-line__sample--section {
+        font-family: var(--font-family-nds-display);
+        font-size: var(--type-heading-section-size);
+        line-height: var(--type-heading-section-leading);
+      }
+
+      .type-line__sample--body {
+        max-width: var(--measure-prose);
+        font-size: var(--type-body-size);
+        line-height: var(--type-body-leading);
+      }
+
+      .type-line__sample--expression {
+        max-width: 28ch;
+        font-family: var(--font-family-nds-expression);
+        font-size: var(--type-heading-subsection-size);
+        font-style: italic;
+        line-height: var(--type-heading-subsection-leading);
+      }
+
+      .type-line__sample--technical {
+        font-family: var(--font-family-nds-technical);
+        font-size: var(--type-technical-size);
+        line-height: var(--type-technical-leading);
+      }
+
+      .layout-grid {
+        display: grid;
+        gap: var(--space-8);
+      }
+
+      .spacing-list {
+        display: grid;
+        gap: var(--space-3);
+      }
+
+      .spacing-row {
+        display: grid;
+        grid-template-columns: 4.5rem minmax(0, 1fr) 3rem;
+        gap: var(--space-3);
+        align-items: center;
+      }
+
+      .spacing-bar {
+        height: 0.75rem;
+        width: min(var(--bar), 100%);
+        min-width: 0.25rem;
+        border-radius: var(--radius-full);
+        background: var(--color-identity-signature);
+      }
+
+      .shape-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-3);
+      }
+
+      .shape {
+        aspect-ratio: 1.5;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--color-border-control);
+        background: var(--color-surface-default);
+        color: var(--color-text-secondary);
+        font-size: var(--type-body-small-size);
+      }
+
+      .controls {
+        display: grid;
+        gap: var(--space-6);
+      }
+
+      .button-row,
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        align-items: center;
+      }
+
+      .button {
+        min-height: var(--control-target-min);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-control-block) var(--space-control-inline);
+        border: 1px solid transparent;
+        border-radius: var(--radius-control);
+        font-family: var(--font-family-nds-ui);
+        font-size: var(--type-button-size);
+        font-weight: var(--type-weight-semibold);
+        line-height: var(--type-button-leading);
+        cursor: pointer;
+        transition:
+          background-color var(--motion-fast) var(--ease-standard),
+          border-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard);
+      }
+
+      .button--primary {
+        background: var(--color-action-primary);
+        color: var(--color-text-inverse);
+      }
+
+      .button--primary:hover {
+        background: var(--color-action-primary-hover);
+      }
+
+      .button--secondary {
+        border-color: var(--color-border-control);
+        background: var(--color-surface-default);
+        color: var(--color-text-primary);
+      }
+
+      .button--secondary:hover {
+        border-color: var(--color-action-primary);
+        background: var(--color-surface-muted);
+      }
+
+      .button:disabled {
+        background: var(--color-disabled-surface);
+        color: var(--color-text-disabled);
+        cursor: not-allowed;
+      }
+
+      .field {
+        display: grid;
+        gap: var(--space-2);
+        max-width: 28rem;
+      }
+
+      .field label {
+        font-family: var(--font-family-nds-ui);
+        font-size: var(--type-label-size);
+        font-weight: var(--type-weight-semibold);
+      }
+
+      .field input {
+        min-height: var(--control-target-min);
+        width: 100%;
+        padding-inline: var(--space-3);
+        border: 1px solid var(--color-border-control);
+        border-radius: var(--radius-control);
+        background: var(--color-surface-default);
+        color: var(--color-text-primary);
+      }
+
+      .field small {
+        color: var(--color-text-secondary);
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-full);
+        color: var(--status-fg);
+        background: var(--status-bg);
+        font-size: var(--type-body-small-size);
+        font-weight: var(--type-weight-semibold);
+      }
+
+      .status::before {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: var(--radius-full);
+        background: currentColor;
+        content: "";
+      }
+
+      .surfaces {
+        display: grid;
+        gap: var(--space-8);
+      }
+
+      .surface {
+        overflow: hidden;
+        border: 1px solid var(--color-border-decorative);
+        border-radius: var(--radius-panel);
+      }
+
+      .surface__label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-5);
+        border-bottom: 1px solid var(--color-border-decorative);
+        background: var(--color-surface-muted);
+        font-size: var(--type-body-small-size);
+        font-weight: var(--type-weight-semibold);
+      }
+
+      .surface__body {
+        padding: var(--space-6);
+      }
+
+      .surface--public .surface__body {
+        min-height: 20rem;
+        display: grid;
+        align-content: space-between;
+        gap: var(--space-12);
+        background: var(--public-canvas);
+      }
+
+      .public-copy {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-5);
+        align-items: end;
+      }
+
+      .public-copy p {
+        max-width: var(--public-prose-measure);
+        margin: 0;
+        color: var(--color-text-secondary);
+      }
+
+      .evidence-band {
+        display: grid;
+        gap: var(--space-4);
+        padding: var(--space-6);
+        border-radius: var(--radius-feature);
+        background: var(--public-evidence-surface);
+        color: var(--color-text-inverse);
+      }
+
+      .evidence-band p {
+        max-width: var(--measure-prose);
+        margin: 0;
+        color: var(--nds-blue-300);
+      }
+
+      .surface--commerce .surface__body {
+        display: grid;
+        gap: var(--space-6);
+        background: var(--commerce-canvas);
+      }
+
+      .product-spec {
+        display: grid;
+        gap: var(--space-5);
+      }
+
+      .product-visual {
+        min-height: 12rem;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius-card);
+        background:
+          linear-gradient(
+            135deg,
+            var(--color-surface-muted),
+            var(--color-surface-selected)
+          );
+        color: var(--color-text-secondary);
+      }
+
+      .spec-list {
+        margin: 0;
+      }
+
+      .spec-list div {
+        display: grid;
+        grid-template-columns: 8rem minmax(0, 1fr);
+        gap: var(--space-4);
+        padding-block: var(--space-3);
+        border-bottom: 1px solid var(--commerce-specification-border);
+      }
+
+      .spec-list dt {
+        color: var(--color-text-secondary);
+      }
+
+      .spec-list dd {
+        margin: 0;
+        font-weight: var(--type-weight-semibold);
+      }
+
+      .surface--account .surface__body {
+        display: grid;
+        place-items: center;
+        min-height: 22rem;
+        background: var(--account-canvas);
+      }
+
+      .account-task {
+        width: min(100%, 28rem);
+        display: grid;
+        gap: var(--space-5);
+        padding: var(--space-6);
+        border: 1px solid var(--color-border-decorative);
+        border-radius: var(--radius-panel);
+        background: var(--account-task-surface);
+        box-shadow: var(--shadow-surface);
+      }
+
+      .account-task p {
+        margin: 0;
+        color: var(--color-text-secondary);
+      }
+
+      .surface--operations .surface__body {
+        padding: 0;
+        background: var(--operations-canvas);
+      }
+
+      .queue-note {
+        margin: 0;
+        padding: var(--space-4) var(--space-5);
+        color: var(--color-text-secondary);
+        font-size: var(--type-body-small-size);
+        text-align: left;
+      }
+
+      .queue {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--operations-row-surface);
+      }
+
+      .queue th,
+      .queue td {
+        height: var(--operations-density-row);
+        padding-inline: var(--space-4);
+        border-top: 1px solid var(--operations-data-border);
+        text-align: left;
+      }
+
+      .queue th {
+        color: var(--color-text-secondary);
+        font-size: var(--type-label-size);
+      }
+
+      .queue td:first-child {
+        font-family: var(--font-family-nds-technical);
+        font-size: var(--type-technical-size);
+      }
+
+      .local-boundary {
+        display: grid;
+        gap: var(--space-4);
+        padding: var(--space-6);
+        border: 2px dashed var(--color-border-control);
+        border-radius: var(--radius-panel);
+        background: var(--color-surface-default);
+      }
+
+      .local-boundary p {
+        max-width: var(--measure-prose);
+        margin: 0;
+        color: var(--color-text-secondary);
+      }
+
+      .footer {
+        padding-block: var(--space-8);
+        border-top: 1px solid var(--color-border-decorative);
+        color: var(--color-text-secondary);
+        font-size: var(--type-body-small-size);
+      }
+
+      @media (min-width: 48rem) {
+        .shell {
+          width: min(
+            calc(100% - (2 * var(--space-page-gutter-tablet))),
+            var(--container-wide)
+          );
+        }
+
+        .hero__grid {
+          grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 0.7fr);
+        }
+
+        .swatches {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .layout-grid {
+          grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.8fr);
+        }
+
+        .public-copy,
+        .product-spec {
+          grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.8fr);
+        }
+      }
+
+      @media (min-width: 64rem) {
+        .shell {
+          width: min(
+            calc(100% - (2 * var(--space-page-gutter-desktop))),
+            var(--container-wide)
+          );
+        }
+
+        .swatches {
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+
+        .surfaces {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .surface--public,
+        .surface--operations {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        .button {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="shell masthead__inner">
+        <a class="identity" href="#top" aria-label="Kembali ke awal specimen">
+          <img
+            src="../../frontend/public/niuva-mark.svg"
+            alt=""
+            aria-hidden="true"
+          />
+          <span>Niuva</span>
+        </a>
+        <span class="phase">Phase 4 · Owner-approved candidate · Context Only</span>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero shell" aria-labelledby="page-title">
+        <div class="hero__grid">
+          <div>
+            <p class="kicker">DESIGN TOKENS SPECIMEN</p>
+            <h1 id="page-title">Satu identitas. Empat cara bekerja.</h1>
+            <p class="hero__summary">
+              Token yang tahan lama menjelaskan tujuan. Komposisi Public,
+              Commerce, Account, dan Operations tetap mengikuti pekerjaan
+              masing-masing—tanpa menjadi empat UI kit yang terpisah.
+            </p>
+          </div>
+          <aside class="boundary-note" aria-label="Batas artefak">
+            <strong>Bukan runtime dan bukan final art direction.</strong>
+            <span>
+              Specimen ini tidak mengaktifkan dark mode, route, provider,
+              lifecycle, atau migrasi source.
+            </span>
+          </aside>
+        </div>
+      </section>
+
+      <nav class="jump-nav shell" aria-label="Bagian specimen">
+        <a href="#color">Color</a>
+        <a href="#type">Typography</a>
+        <a href="#layout">Spacing & shape</a>
+        <a href="#states">States</a>
+        <a href="#surfaces">Four surfaces</a>
+        <a href="#local">LOCAL boundary</a>
+      </nav>
+
+      <section class="section shell" id="color" aria-labelledby="color-title">
+        <header class="section__head">
+          <p class="kicker">01 · COLOR</p>
+          <h2 id="color-title">Niuva blue untuk identitas dan tindakan.</h2>
+          <p>
+            Canvas tetap ringan dan status tetap independen. Signature blue
+            tidak dipakai sebagai body text biasa karena kontrasnya hanya
+            3.22:1 terhadap canvas.
+          </p>
+        </header>
+
+        <div class="tone-strip" aria-label="Niuva blue tonal ramp">
+          <span style="--tone: var(--nds-blue-50)" title="Blue 50"></span>
+          <span style="--tone: var(--nds-blue-100)" title="Blue 100"></span>
+          <span style="--tone: var(--nds-blue-200)" title="Blue 200"></span>
+          <span style="--tone: var(--nds-blue-300)" title="Blue 300"></span>
+          <span style="--tone: var(--nds-blue-400)" title="Blue 400"></span>
+          <span style="--tone: var(--nds-blue-500)" title="Blue 500"></span>
+          <span style="--tone: var(--nds-blue-600)" title="Blue 600"></span>
+          <span style="--tone: var(--nds-blue-700)" title="Blue 700"></span>
+          <span style="--tone: var(--nds-blue-800)" title="Blue 800"></span>
+          <span style="--tone: var(--nds-blue-900)" title="Blue 900"></span>
+          <span style="--tone: var(--nds-blue-950)" title="Blue 950"></span>
+        </div>
+
+        <div class="swatches">
+          <article class="swatch">
+            <div class="swatch__color" style="--swatch: var(--color-surface-canvas)"></div>
+            <div class="swatch__meta">
+              <strong>Canvas</strong><code>#F8FAFC</code>
+            </div>
+          </article>
+          <article class="swatch">
+            <div class="swatch__color" style="--swatch: var(--color-surface-default)"></div>
+            <div class="swatch__meta">
+              <strong>Default surface</strong><code>#FFFFFF</code>
+            </div>
+          </article>
+          <article class="swatch">
+            <div class="swatch__color" style="--swatch: var(--color-surface-muted)"></div>
+            <div class="swatch__meta">
+              <strong>Muted surface</strong><code>#EDF4F8</code>
+            </div>
+          </article>
+          <article class="swatch">
+            <div class="swatch__color" style="--swatch: var(--color-text-primary)"></div>
+            <div class="swatch__meta">
+              <strong>Primary ink</strong><code>#0E1B27</code>
+            </div>
+          </article>
+          <article class="swatch">
+            <div class="swatch__color" style="--swatch: var(--color-identity-signature)"></div>
+            <div class="swatch__meta">
+              <strong>Signature</strong><code>#6390BB</code>
+            </div>
+          </article>
+          <article class="swatch">
+            <div class="swatch__color" style="--swatch: var(--color-action-primary)"></div>
+            <div class="swatch__meta">
+              <strong>Primary action</strong><code>#315F8F</code>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section shell" id="type" aria-labelledby="type-title">
+        <header class="section__head">
+          <p class="kicker">02 · TYPOGRAPHY</p>
+          <h2 id="type-title">Satu sans untuk membaca dan bekerja.</h2>
+          <p>
+            Mona Sans adalah target display, body, dan UI. Bona Nova hanya
+            satu interupsi singkat pada Public. Monospace hanya untuk data yang
+            benar-benar teknis.
+          </p>
+        </header>
+
+        <div class="type-specimen">
+          <article class="type-line">
+            <code class="token-code">Page heading · Mona Sans</code>
+            <p class="type-line__sample type-line__sample--page">
+              Dari pertanyaan menuju bukti.
+            </p>
+          </article>
+          <article class="type-line">
+            <code class="token-code">Section heading · Mona Sans</code>
+            <p class="type-line__sample type-line__sample--section">
+              Keputusan yang dapat ditinjau ulang.
+            </p>
+          </article>
+          <article class="type-line">
+            <code class="token-code">Body · Mona Sans · 65ch</code>
+            <p class="type-line__sample type-line__sample--body">
+              Setiap permukaan memakai bahasa visual yang sesuai dengan
+              tugasnya, tetapi tetap berbagi struktur interaksi, accessibility,
+              state, dan identitas Niuva yang sama.
+            </p>
+          </article>
+          <article class="type-line">
+            <code class="token-code">Public expression · Bona Nova Italic</code>
+            <p class="type-line__sample type-line__sample--expression">
+              Bentuk mengikuti apa yang perlu dibuktikan.
+            </p>
+          </article>
+          <article class="type-line">
+            <code class="token-code">Technical · system monospace</code>
+            <p class="type-line__sample type-line__sample--technical">
+              INQ-EXAMPLE-01 · REV-03 · 0.20 mm
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section shell" id="layout" aria-labelledby="layout-title">
+        <header class="section__head">
+          <p class="kicker">03 · SPACING & SHAPE</p>
+          <h2 id="layout-title">Empat piksel sebagai ritme, bukan penjara.</h2>
+          <p>
+            Alignment memakai 4/8/12 kolom. Public dapat asimetris; Commerce
+            berorientasi spesifikasi; Account fokus; Operations lebih padat.
+          </p>
+        </header>
+
+        <div class="layout-grid">
+          <div class="spacing-list" aria-label="Spacing scale">
+            <div class="spacing-row"><code>4px</code><span class="spacing-bar" style="--bar: 4px"></span><span>01</span></div>
+            <div class="spacing-row"><code>8px</code><span class="spacing-bar" style="--bar: 8px"></span><span>02</span></div>
+            <div class="spacing-row"><code>16px</code><span class="spacing-bar" style="--bar: 16px"></span><span>04</span></div>
+            <div class="spacing-row"><code>24px</code><span class="spacing-bar" style="--bar: 24px"></span><span>06</span></div>
+            <div class="spacing-row"><code>32px</code><span class="spacing-bar" style="--bar: 32px"></span><span>08</span></div>
+            <div class="spacing-row"><code>48px</code><span class="spacing-bar" style="--bar: 48px"></span><span>12</span></div>
+            <div class="spacing-row"><code>64px</code><span class="spacing-bar" style="--bar: 64px"></span><span>16</span></div>
+            <div class="spacing-row"><code>96px</code><span class="spacing-bar" style="--bar: 96px"></span><span>24</span></div>
+          </div>
+          <div class="shape-list" aria-label="Radius roles">
+            <div class="shape" style="border-radius: var(--radius-sm)">8px</div>
+            <div class="shape" style="border-radius: var(--radius-control)">12px</div>
+            <div class="shape" style="border-radius: var(--radius-card)">16px</div>
+            <div class="shape" style="border-radius: var(--radius-panel)">20px</div>
+            <div class="shape" style="border-radius: var(--radius-feature)">24px</div>
+            <div class="shape" style="border-radius: var(--radius-full)">Pill</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section shell" id="states" aria-labelledby="states-title">
+        <header class="section__head">
+          <p class="kicker">04 · INTERACTION & STATE</p>
+          <h2 id="states-title">Feedback yang terlihat dan dapat dipulihkan.</h2>
+          <p>
+            Warna membantu membaca state, tetapi copy, icon, referensi, dan
+            tindakan recovery tetap dimiliki domain.
+          </p>
+        </header>
+
+        <div class="controls">
+          <div class="button-row" aria-label="Button specimens">
+            <button class="button button--primary" type="button">Tindakan utama</button>
+            <button class="button button--secondary" type="button">Tindakan sekunder</button>
+            <button class="button" type="button" disabled aria-describedby="disabled-reason">Belum tersedia</button>
+            <span id="disabled-reason" class="token-code">Memerlukan otorisasi terpisah.</span>
+          </div>
+
+          <div class="field">
+            <label for="specimen-input">Nama kebutuhan</label>
+            <input id="specimen-input" value="Prototype pengujian" />
+            <small>Contoh kontrol 44px dengan border yang tetap terbaca.</small>
+          </div>
+
+          <div class="status-row" aria-label="Status presentation specimens">
+            <span class="status" style="--status-fg: var(--color-status-info); --status-bg: var(--color-status-info-surface)">Informasi</span>
+            <span class="status" style="--status-fg: var(--color-status-success); --status-bg: var(--color-status-success-surface)">Berhasil</span>
+            <span class="status" style="--status-fg: var(--color-status-warning); --status-bg: var(--color-status-warning-surface)">Perlu ditinjau</span>
+            <span class="status" style="--status-fg: var(--color-status-error); --status-bg: var(--color-status-error-surface)">Gagal</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section shell" id="surfaces" aria-labelledby="surfaces-title">
+        <header class="section__head">
+          <p class="kicker">05 · SURFACE REGISTERS</p>
+          <h2 id="surfaces-title">Berbagi token, tidak berbagi satu template.</h2>
+          <p>
+            Contoh berikut memakai fondasi warna dan type yang sama. Perbedaan
+            muncul dari hierarchy, density, evidence, dan job-to-be-done.
+          </p>
+        </header>
+
+        <div class="surfaces">
+          <article class="surface surface--public" data-nds-surface="public">
+            <header class="surface__label"><span>Public</span><span>Persuade / Experience</span></header>
+            <div class="surface__body">
+              <div class="public-copy">
+                <h3>Mulai dari kebutuhan yang belum selesai.</h3>
+                <p>
+                  Komposisi editorial memberi ruang pada posisi, proses, dan
+                  bukti—tanpa mengubahnya menjadi grid kartu universal.
+                </p>
+              </div>
+              <div class="evidence-band">
+                <strong>Evidence field</strong>
+                <p>
+                  Area inverse ini hanya menunjukkan peran token. Ia bukan
+                  bukti proyek, bukan dark mode, dan bukan production claim.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article class="surface surface--commerce" data-nds-surface="commerce">
+            <header class="surface__label"><span>Commerce</span><span>Specification first</span></header>
+            <div class="surface__body">
+              <div class="product-spec">
+                <div class="product-visual">Visual produk terverifikasi</div>
+                <div>
+                  <h3>Ringkasan konfigurasi</h3>
+                  <dl class="spec-list">
+                    <div><dt>Material</dt><dd>Menunggu pilihan</dd></div>
+                    <div><dt>Kuantitas</dt><dd>1 unit</dd></div>
+                    <div><dt>Harga</dt><dd>Perlu validasi server</dd></div>
+                  </dl>
+                </div>
+              </div>
+              <button class="button button--primary" type="button">Lanjutkan konfigurasi</button>
+            </div>
+          </article>
+
+          <article class="surface surface--account" data-nds-surface="account">
+            <header class="surface__label"><span>Account</span><span>Calm and private</span></header>
+            <div class="surface__body">
+              <div class="account-task">
+                <div>
+                  <h3>Masuk ke akun pelanggan</h3>
+                  <p>Akses record yang Anda miliki dan lanjutkan tugas dengan aman.</p>
+                </div>
+                <div class="field">
+                  <label for="account-email">Email</label>
+                  <input id="account-email" type="email" placeholder="nama@perusahaan.com" />
+                </div>
+                <button class="button button--primary" type="button">Lanjutkan</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="surface surface--operations" data-nds-surface="operations">
+            <header class="surface__label"><span>Operations</span><span>Dense, calm, audit-safe</span></header>
+            <div class="surface__body">
+              <table class="queue">
+                <caption class="queue-note">
+                  Data ilustratif untuk specimen token; bukan record operasional.
+                </caption>
+                <thead><tr><th>Referensi</th><th>Konteks</th><th>Status terlihat</th><th>Tindakan</th></tr></thead>
+                <tbody>
+                  <tr><td>EX-001</td><td>Contoh inquiry</td><td>Perlu ditinjau</td><td>Buka record</td></tr>
+                  <tr><td>EX-002</td><td>Contoh revision</td><td>Menunggu keputusan</td><td>Bandingkan</td></tr>
+                  <tr><td>EX-003</td><td>Contoh recovery</td><td>Konflik</td><td>Rekonsiliasi</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section shell" id="local" aria-labelledby="local-title">
+        <div class="local-boundary">
+          <p class="kicker">06 · LOCAL BOUNDARY</p>
+          <h2 id="local-title">Eksperimen boleh berubah tanpa mengguncang sistem.</h2>
+          <p>
+            Token hero, carousel, accordion gallery, donor motion, visual
+            signature, atau bento Operations tetap LOCAL. Ia baru boleh naik
+            tier setelah dua consumer nyata memakai makna yang sama dan seluruh
+            bukti kontrak, accessibility, migration, serta rollback tersedia.
+          </p>
+          <code class="token-code">LOCAL → evidence → contract triage → promote or retain</code>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell">
+        Owner-approved candidate direction · tidak diimpor aplikasi · tidak
+        mengaktifkan dark mode, source migration, deployment, readiness, atau
+        go-live.
+      </div>
+    </footer>
+  </body>
+</html>
