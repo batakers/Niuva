@@ -41,7 +41,13 @@ export default function ClientDashboard() {
 
     const request = api
       .get("/orders")
-      .then((response) => setOrders(response.data))
+      .then((response) => {
+        // A malformed projection must not become a false empty account.
+        if (!Array.isArray(response.data)) {
+          throw new Error("invalid_orders_projection");
+        }
+        setOrders(response.data);
+      })
       .catch(() => setLoadError(true))
       .finally(() => {
         if (loadRequestRef.current === request) {

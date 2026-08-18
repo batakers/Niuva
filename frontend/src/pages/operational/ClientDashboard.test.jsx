@@ -143,3 +143,15 @@ test("deduplicates the initial StrictMode read so failure and success cannot rac
   expect(api.get).toHaveBeenCalledTimes(1);
   expect(screen.getByText("Pesanan · 0")).toBeInTheDocument();
 });
+
+test("fails closed when the order projection is not a collection", async () => {
+  api.get.mockResolvedValueOnce({ data: { orders: [] } });
+
+  renderDashboard();
+
+  expect(
+    await screen.findByTestId("operational-state-error"),
+  ).toBeInTheDocument();
+  expect(screen.queryByTestId("no-orders")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("orders-list")).not.toBeInTheDocument();
+});

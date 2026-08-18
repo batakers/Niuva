@@ -33,6 +33,12 @@ jest.mock("@/i18n", () => ({
         "detail.download": "Unduh",
         "detail.errorDescription": "Periksa koneksi lalu coba lagi.",
         "detail.errorTitle": "Detail pesanan belum dapat dimuat",
+        "detail.notFoundDescription":
+          "Pesanan ini tidak tersedia untuk akun Anda atau sudah tidak dapat ditampilkan.",
+        "detail.notFoundTitle": "Pesanan tidak ditemukan",
+        "detail.forbiddenDescription":
+          "Akun ini tidak memiliki akses ke detail tersebut. Kembali ke daftar pesanan Anda.",
+        "detail.forbiddenTitle": "Detail pesanan tidak tersedia",
         "detail.estimatedAt": "Dicatat pada",
         "detail.eventLog": "Riwayat",
         "detail.historyDescription": "Pembaruan terbaru lebih dulu.",
@@ -158,6 +164,39 @@ test("keeps a failed detail read generic and recoverable", async () => {
     await screen.findByRole("heading", { name: "Detail Pesanan" }),
   ).toBeInTheDocument();
   expect(api.get).toHaveBeenCalledTimes(2);
+});
+
+test("renders a safe unavailable state for a missing order without retry", async () => {
+  api.get.mockRejectedValueOnce({ response: { status: 404 } });
+
+  renderDetail();
+
+  expect(
+    await screen.findByRole("heading", { name: "Pesanan tidak ditemukan" }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Kembali/ })).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Coba lagi" }),
+  ).not.toBeInTheDocument();
+});
+
+test("renders a safe access boundary for a forbidden order without backend detail", async () => {
+  api.get.mockRejectedValueOnce({
+    response: {
+      status: 403,
+      data: { detail: "supplier and margin must never render" },
+    },
+  });
+
+  renderDetail();
+
+  expect(
+    await screen.findByRole("heading", { name: "Detail pesanan tidak tersedia" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/supplier and margin/i)).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Coba lagi" }),
+  ).not.toBeInTheDocument();
 });
 
 test("ignores an older response after the order route id changes", async () => {

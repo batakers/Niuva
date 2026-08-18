@@ -292,6 +292,12 @@ const translations = {
     "detail.errorTitle": "Detail pesanan belum dapat dimuat",
     "detail.errorDescription":
       "Periksa koneksi Anda lalu coba lagi, atau kembali ke daftar pesanan.",
+    "detail.notFoundTitle": "Pesanan tidak ditemukan",
+    "detail.notFoundDescription":
+      "Pesanan ini tidak tersedia untuk akun Anda atau sudah tidak dapat ditampilkan.",
+    "detail.forbiddenTitle": "Detail pesanan tidak tersedia",
+    "detail.forbiddenDescription":
+      "Akun ini tidak memiliki akses ke detail tersebut. Kembali ke daftar pesanan Anda.",
     "detail.downloadError": "File tidak dapat diunduh",
     "detail.stepNumber": "Tahap",
     "detail.cancelledStatus": "Pesanan berhenti pada status dibatalkan.",
@@ -1196,6 +1202,12 @@ const translations = {
     "detail.errorTitle": "Order details could not be loaded",
     "detail.errorDescription":
       "Check your connection and try again, or return to the order list.",
+    "detail.notFoundTitle": "Order not found",
+    "detail.notFoundDescription":
+      "This order is not available to your account or can no longer be displayed.",
+    "detail.forbiddenTitle": "Order details unavailable",
+    "detail.forbiddenDescription":
+      "This account cannot access those details. Return to your order list.",
     "detail.downloadError": "The file could not be downloaded",
     "detail.stepNumber": "Stage",
     "detail.cancelledStatus": "This order stopped with a cancelled status.",
