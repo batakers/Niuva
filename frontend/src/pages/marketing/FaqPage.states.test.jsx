@@ -29,12 +29,16 @@ beforeAll(() => {
   window.scrollTo = jest.fn();
 });
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  window.history.replaceState({}, "", "/faq");
+});
 
-function renderPage() {
+function renderPage(pathname = "/faq") {
+  window.history.replaceState({}, "", pathname);
   render(
     <I18nProvider>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[pathname]}>
         <AuthProvider>
           <FaqPage />
         </AuthProvider>
@@ -63,7 +67,18 @@ describe("FAQ content states", () => {
         screen.getByText(/Pertanyaan yang sering diajukan akan tampil di sini/i)
       ).toBeInTheDocument()
     );
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveAttribute("data-faq-state", "ready");
+  });
+
+  test("keeps malformed content out of the empty state", async () => {
+    api.get.mockResolvedValue({ data: [{ fields: { question: "Tidak lengkap" } }] });
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText(/data faq tidak dapat diverifikasi/i)).toBeInTheDocument()
+    );
+    expect(screen.getByRole("alert")).toHaveAttribute("data-faq-state", "invalid");
+    expect(screen.queryByText(/akan tampil di sini/i)).not.toBeInTheDocument();
   });
 
   test("renders published questions as headings", async () => {
@@ -91,5 +106,20 @@ describe("FAQ content states", () => {
     await waitFor(() =>
       expect(screen.getByText(/belum bisa dimuat/i)).toBeInTheDocument()
     );
+    expect(screen.getByRole("alert")).toHaveAttribute("data-faq-state", "error");
+  });
+
+  test("keeps the English FAQ route in the canonical Indonesian fallback state", async () => {
+    api.get.mockResolvedValue({ data: [] });
+    renderPage("/en/faq");
+
+    expect(
+      screen.getByText(/English translation belum tersedia/i)
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText(/Pertanyaan yang sering diajukan akan tampil di sini/i)).toBeInTheDocument()
+    );
+    expect(document.documentElement.lang).toBe("en");
+    expect(screen.getByRole("main").querySelector('[lang="id"]')).not.toBeNull();
   });
 });

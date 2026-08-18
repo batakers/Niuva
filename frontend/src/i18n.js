@@ -935,7 +935,7 @@ const translations = {
     "nav.exploreRetail": "Explore Retail",
     "nav.customPrint": "Custom 3D Print",
     "nav.readyProducts": "Ready Products",
-    "nav.translationUnavailable": "English translation is not available yet. The following content remains in Bahasa Indonesia.",
+    "nav.translationUnavailable": "English translation belum tersedia. Konten berikut tetap ditampilkan dalam Bahasa Indonesia.",
     "nav.order": "Order 3D Printing",
     "nav.dashboard": "Dashboard",
     "nav.logout": "Logout",
