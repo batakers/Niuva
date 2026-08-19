@@ -135,6 +135,22 @@ describe("Work orders on the project spine", () => {
   test("refuses to open a run on a project that stopped moving", () => {
     expect(panelSource).toContain('["planned", "active"].includes(project.status)');
   });
+
+  test("distinguishes bootstrap loading, recovery, and authoritative empty", () => {
+    expect(panelSource).toContain('useState("loading")');
+    expect(panelSource).toContain('data-testid="work-order-loading"');
+    expect(panelSource).toContain('data-testid="work-order-load-error"');
+    expect(panelSource).toContain('data-testid="work-order-empty"');
+    expect(panelSource).toContain('aria-busy={loadState === "loading"}');
+    expect(panelSource).toContain("load({ focusOnReady: true })");
+    expect(panelSource).toContain("function isUncertainCreate");
+    expect(panelSource).toContain("createOperationIdRef");
+    expect(panelSource).toContain("operation_id: requestOperationId");
+    expect(panelSource).toContain("await load();");
+    expect(panelSource).toContain('data-state={createState}');
+    expect(panelSource).toContain('loadState === "ready" && canCreate');
+    expect(panelSource).toContain('disabled={createState === "uncertain"}');
+  });
 });
 
 describe("Work order localization", () => {
@@ -153,6 +169,9 @@ describe("Work order localization", () => {
       "workOrder.action.request_rework",
       "workOrder.event.materials_allocated",
       "workOrder.event.qc_recorded",
+      "common.loading",
+      "common.retry",
+      "b2b.loadFailed",
     ]) {
       expect(i18nSource.match(new RegExp(`"${key}":`, "g"))).toHaveLength(2);
     }
