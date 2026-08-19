@@ -1,15 +1,15 @@
 # Niuva Phase 6 Frontend Migration Closure Ledger
 
-**Status:** Candidate closure ledger — OPS-04 and OPS-05 G3 deliveries
-reconciled; remaining deferred families are reopened one at a time and Phase 7
-remains **explicitly frozen**
+**Status:** Candidate closure ledger — OPS-04 and OPS-05 deliveries reconciled;
+OPS-05 G4 contracts are candidate-only, remaining deferred families are
+reopened one at a time, and Phase 7 remains **explicitly frozen**
 
 **Date:** 20 August 2026
 
 **Repository baseline:** `origin/main`
-`db6667fda22f69b0935f4d40d018d4d25b490e11`
+`ffa30bf5ef26042abb75221c379aeed9711abae2`
 
-**Worktree:** `docs/niuva-ops05-closure-reconciliation-20260820`
+**Worktree:** `docs/niuva-ops05-g4-contracts-20260820`
 
 **Scope:** Reconcile the complete Niuva frontend migration boundary across
 Public, Commerce/Retail, Account/Auth, Customer-owned records, Operations,
@@ -127,7 +127,13 @@ The working evidence set for this ledger is:
   and [`OPS_05_CATALOG_PRODUCTION_G3_SELF_REVIEW.md`](OPS_05_CATALOG_PRODUCTION_G3_SELF_REVIEW.md),
   the current-baseline exact-source review and bounded G4 holds for OPS-05;
   the delivery is merged in [PR #316](https://github.com/batakers/Niuva/pull/316)
-  at `db6667fda22f69b0935f4d40d018d4d25b490e11`.
+  at `db6667fda22f69b0935f4d40d018d4d25b490e11`;
+- [`../migration/operations/OPS_05_CATALOG_PRODUCTION_G4_API_DOMAIN_CONTRACT.md`](../migration/operations/OPS_05_CATALOG_PRODUCTION_G4_API_DOMAIN_CONTRACT.md),
+  [`../migration/operations/OPS_05_CATALOG_PRODUCTION_G4_TASK_CARD.md`](../migration/operations/OPS_05_CATALOG_PRODUCTION_G4_TASK_CARD.md),
+  and [`OPS_05_CATALOG_PRODUCTION_G4_CONTRACT_SELF_REVIEW.md`](OPS_05_CATALOG_PRODUCTION_G4_CONTRACT_SELF_REVIEW.md),
+  the candidate six-contract reconciliation and exact-file G4 plan at
+  `ffa30bf5ef26042abb75221c379aeed9711abae2`; these artifacts require
+  owner/domain review and do not authorize runtime implementation.
 
 ## 3. Inventory baseline
 
@@ -168,7 +174,7 @@ never authorization, and a component's existence is never adoption proof.
 | Operations Inquiry queue/detail | `DELIVERED_BOUNDED` | `BOUNDED_ACTIVE` | `DELIVERED_BOUNDED` | MIG-04 bounded Operations presentation pilot, merged PR #290 | Backend authorization, projection, and lifecycle remain the authority. |
 | Operations Quotes and B2B Projects | `DELIVERED_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md`](../migration/operations/OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md), bounded G4 PR [#312](https://github.com/batakers/Niuva/pull/312), and [`OPS_03_B2B_QUOTE_PROJECT_G4_SELF_REVIEW.md`](OPS_03_B2B_QUOTE_PROJECT_G4_SELF_REVIEW.md) | Load-more recovery is bounded; Quote/Project lifecycle transitions, revision authority, permission/API truth, and mutation error taxonomy remain domain-owned. |
 | Operations Retail Orders and after-sales | `DELIVERED_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | OPS-04 exact G3/G4 cards and self-reviews; delivery PR [#314](https://github.com/batakers/Niuva/pull/314) and closure reconciliation PR [#315](https://github.com/batakers/Niuva/pull/315), merge commit `3e9b16caf1e56a14f64686b5925a5515a666d95d` | Read/query/projection and collection presentation are bounded; Finance/provider, refund/reprint, fulfillment, after-sales, and activation gates remain open. |
-| Operations catalog, materials, inventory, work orders | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`OPS_05_CATALOG_PRODUCTION_G3_TASK_CARD.md`](../migration/operations/OPS_05_CATALOG_PRODUCTION_G3_TASK_CARD.md) and [`OPS_05_CATALOG_PRODUCTION_G3_SELF_REVIEW.md`](OPS_05_CATALOG_PRODUCTION_G3_SELF_REVIEW.md); merged delivery PR [#316](https://github.com/batakers/Niuva/pull/316), merge commit `db6667fda22f69b0935f4d40d018d4d25b490e11`; six bounded G4 holds remain | Product/production state is domain-owned; no provider or production readiness is implied. |
+| Operations catalog, materials, inventory, work orders | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`OPS_05_CATALOG_PRODUCTION_G3_TASK_CARD.md`](../migration/operations/OPS_05_CATALOG_PRODUCTION_G3_TASK_CARD.md), [`OPS_05_CATALOG_PRODUCTION_G3_SELF_REVIEW.md`](OPS_05_CATALOG_PRODUCTION_G3_SELF_REVIEW.md), and candidate [`OPS_05_CATALOG_PRODUCTION_G4_API_DOMAIN_CONTRACT.md`](../migration/operations/OPS_05_CATALOG_PRODUCTION_G4_API_DOMAIN_CONTRACT.md) / [`OPS_05_CATALOG_PRODUCTION_G4_TASK_CARD.md`](../migration/operations/OPS_05_CATALOG_PRODUCTION_G4_TASK_CARD.md); merged G3 delivery PR [#316](https://github.com/batakers/Niuva/pull/316), merge commit `db6667fda22f69b0935f4d40d018d4d25b490e11`; G4 remains `OWNER/DOMAIN REVIEW REQUIRED` | Product/production state is domain-owned; no provider or production readiness is implied. |
 | Operations publishing/CMS | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current CMS/Portfolio source and lifecycle tests | Content owner, locale, version, publish, rollback, and asset authority require separate source evidence. |
 | Operations governance, settings, notifications | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current utility source and contract tests | Recipient scope, notification policy, and provider boundaries remain separate. |
 | Operations work home/grid | `DELIVERED_BOUNDED` | `BOUNDED_ACTIVE` | `DELIVERED_BOUNDED` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current AdminDashboard source/tests | Bento/grid remains optional and LOCAL; it is not a universal composition. |
@@ -209,7 +215,9 @@ Phase 6 must proceed in this order:
 3. Reopen one deferred family at a time. Staff login/invitation, Operations
    Quotes/B2B Projects, and Operations Retail Orders have bounded frontend G4
    evidence. OPS-05 now has an exact G3 `PASS WITH HOLD`; its query,
-   localization, state, and compound-save contracts must precede any G4.
+   localization, state, and compound-save contracts are recorded as a
+   candidate in the OPS-05 G4 contract artifacts, but owner/domain review must
+   precede any runtime G4.
    Remaining deferred families require their own exact G3 review before any new
    G4.
 4. For each eligible family, create one exact-file G3 card, review current
@@ -274,6 +282,9 @@ token-promotion mechanism.
       status remains deferred.
 - [x] Operations Catalog/Materials/Inventory/Work Order family has an exact
       G3 review with six named holds; no runtime G4 is implied.
+- [x] OPS-05 six-contract API/domain candidate and exact-file G4 task card are
+      recorded at the current baseline; owner/domain review and runtime G4
+      remain separate gates.
 - [ ] Final Phase 6 closure verdict.
 
 **Current verdict:** `CANDIDATE TWO-AXIS REOPEN — Staff login/invitation and
