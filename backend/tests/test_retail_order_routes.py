@@ -193,3 +193,141 @@ def test_the_legacy_surface_is_not_reachable_through_the_retail_router():
             assert missing.status_code == 404
 
     asyncio.run(scenario())
+
+
+def test_list_contract_uses_stable_cursor_and_preserves_query_filters():
+    async def scenario():
+        app, db = await build_app()
+        service = RetailOrderService(db=db, transaction_guard=EnabledGuard())
+        for index in range(3):
+            order = await service.create_order(
+                operation_id=f"historical-order-{index}",
+                customer={**CUSTOMER, "name": f"Customer {index}"},
+                items=[{"variant_id": "var-1", "quantity": 1}],
+                fulfilment_method="ship",
+                notes="Operations note",
+                actor={"id": "fixture-admin"},
+            )
+            db.retail_orders.items[-1]["updated_at"] = (
+                f"2026-08-20T10:0{index}:00+00:00"
+            )
+            db.retail_orders.items[-1]["order_number"] = f"NIV-R-2608-000{index}"
+
+        async with client(app) as api:
+            first = await api.get(
+                "/api/admin/retail-orders?limit=2&search=Customer",
+                headers={"X-Role": "order_admin"},
+            )
+            assert first.status_code == 200
+            first_payload = first.json()
+            assert len(first_payload["items"]) == 2
+            assert first_payload["next_cursor"]
+            assert all("notes" not in item for item in first_payload["items"])
+            assert first_payload["items"][0]["customer"]["phone"] == CUSTOMER["phone"]
+
+            second = await api.get(
+                "/api/admin/retail-orders",
+                params={
+                    "limit": 2,
+                    "search": "Customer",
+                    "cursor": first_payload["next_cursor"],
+                },
+                headers={"X-Role": "order_admin"},
+            )
+            assert second.status_code == 200
+            second_payload = second.json()
+            assert len(second_payload["items"]) == 1
+            assert {
+                item["id"] for item in first_payload["items"]
+            }.isdisjoint({item["id"] for item in second_payload["items"]})
+            assert second_payload["next_cursor"] is None
+
+            mismatch = await api.get(
+                "/api/admin/retail-orders",
+                params={
+                    "limit": 2,
+                    "search": "Other",
+                    "cursor": first_payload["next_cursor"],
+                },
+                headers={"X-Role": "order_admin"},
+            )
+            assert mismatch.status_code == 422
+            assert mismatch.json()["detail"]["code"] == "retail_cursor_invalid"
+
+            invalid_status = await api.get(
+                "/api/admin/retail-orders?status=not-a-retail-status",
+                headers={"X-Role": "order_admin"},
+            )
+            assert invalid_status.status_code == 422
+            assert invalid_status.json()["detail"]["code"] == "retail_status_invalid"
+
+            invalid_cursor = await api.get(
+                "/api/admin/retail-orders?cursor=not-a-cursor",
+                headers={"X-Role": "order_admin"},
+            )
+            assert invalid_cursor.status_code == 422
+            assert invalid_cursor.json()["detail"]["code"] == "retail_cursor_invalid"
+
+    asyncio.run(scenario())
+
+
+def test_detail_projection_redacts_unknown_and_role_sensitive_fields():
+    async def scenario():
+        app, db = await build_app()
+        order = await RetailOrderService(
+            db=db,
+            transaction_guard=EnabledGuard(),
+        ).create_order(
+            operation_id="historical-order-redaction",
+            customer=dict(CUSTOMER),
+            items=[{"variant_id": "var-1", "quantity": 1}],
+            fulfilment_method="ship",
+            notes="Internal operations note",
+            actor={"id": "fixture-admin"},
+        )
+        stored = db.retail_orders.items[0]
+        stored.update(
+            {
+                "creation_operation_id": "must-not-leak",
+                "actor_user_id": "must-not-leak",
+                "provider_payload": {"secret": "must-not-leak"},
+                "internal_margin_minor": 999,
+                "unknown_field": "must-not-leak",
+                "raw_storage_path": "s3://private/raw",
+            }
+        )
+
+        async with client(app) as api:
+            operations = await api.get(
+                f"/api/admin/retail-orders/{order['id']}",
+                headers={"X-Role": "order_admin"},
+            )
+            assert operations.status_code == 200
+            operations_payload = operations.json()
+            assert operations_payload["notes"] == "Internal operations note"
+            assert operations_payload["customer"]["phone"] == CUSTOMER["phone"]
+            assert "creation_operation_id" not in operations_payload
+            assert "provider_payload" not in operations_payload
+            assert "unknown_field" not in operations_payload
+            assert "actor_user_id" not in str(operations_payload)
+
+            finance = await api.get(
+                f"/api/admin/retail-orders/{order['id']}",
+                headers={"X-Role": "finance"},
+            )
+            assert finance.status_code == 200
+            finance_payload = finance.json()
+            assert finance_payload["customer"]["email"] == CUSTOMER["email"]
+            assert "phone" not in finance_payload["customer"]
+            assert "notes" not in finance_payload
+
+            manager = await api.get(
+                f"/api/admin/retail-orders/{order['id']}",
+                headers={"X-Role": "manager_approver"},
+            )
+            assert manager.status_code == 200
+            manager_payload = manager.json()
+            assert manager_payload["customer"] == {"name": CUSTOMER["name"]}
+            assert "notes" not in manager_payload
+
+    asyncio.run(scenario())

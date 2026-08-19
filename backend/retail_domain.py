@@ -9,6 +9,10 @@ lifecycle. Those records are classified on read here, never rewritten.
 from datetime import datetime
 from decimal import Decimal
 
+PROJECTION_PROFILE_OPERATIONS = "operations"
+PROJECTION_PROFILE_FINANCE = "finance"
+PROJECTION_PROFILE_MANAGER = "manager"
+
 # The canonical retail lifecycle, in order. A retail order walks this forward
 # and never backward; there is no edit-in-place on a stage that has passed.
 RETAIL_STATUSES = (
@@ -258,6 +262,196 @@ def _safe_status_history(value: object, *, include_notes: bool) -> list[dict]:
     return result
 
 
+def retail_projection_profile(actor: dict | None) -> str:
+    """Resolve the least-privileged explicit read projection for an actor."""
+    if actor is None:
+        # Direct service fixtures are internal callers, not HTTP authorization.
+        return PROJECTION_PROFILE_OPERATIONS
+    roles = set(actor.get("roles") or [])
+    if "super_admin" in roles or "order_admin" in roles:
+        return PROJECTION_PROFILE_OPERATIONS
+    if "finance" in roles:
+        return PROJECTION_PROFILE_FINANCE
+    if "manager_approver" in roles:
+        return PROJECTION_PROFILE_MANAGER
+    return PROJECTION_PROFILE_MANAGER
+
+
+def _safe_scalar(value: object) -> object | None:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return None
+
+
+def _safe_option_values(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, object] = {}
+    for key, item in list(value.items())[:32]:
+        if not isinstance(key, str) or len(key) > 80:
+            continue
+        safe = _safe_scalar(item)
+        if safe is not None:
+            result[key] = safe
+    return result
+
+
+def _safe_customer(value: object, *, profile: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    fields = ["name"]
+    if profile in {PROJECTION_PROFILE_OPERATIONS, PROJECTION_PROFILE_FINANCE}:
+        fields.append("email")
+    if profile == PROJECTION_PROFILE_OPERATIONS:
+        fields.append("phone")
+    result: dict[str, object] = {}
+    for key in fields:
+        safe = _safe_text(value.get(key))
+        if safe is not None:
+            result[key] = safe
+    return result
+
+
+def _safe_snapshot(value: object, *, kind: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    if kind == "product":
+        fields = ("product_id", "name", "slug")
+    elif kind == "configuration":
+        fields = ("variant_id", "sku", "name", "production_type")
+    else:
+        fields = ("currency", "unit_price_minor", "captured_at")
+    result: dict[str, object] = {}
+    for key in fields:
+        if key.endswith("_at"):
+            safe = _safe_time(value.get(key))
+        elif key.endswith("_minor"):
+            safe = _safe_amount(value.get(key))
+        else:
+            safe = _safe_text(value.get(key))
+        if safe is not None:
+            result[key] = safe
+    if kind == "configuration":
+        options = _safe_option_values(value.get("option_values"))
+        if options:
+            result["option_values"] = options
+    return result
+
+
+def _safe_items(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    result: list[dict[str, object]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        projected: dict[str, object] = {}
+        for key in ("variant_id", "quantity"):
+            safe = _safe_text(item.get(key)) if key == "variant_id" else item.get(key)
+            if key == "quantity" and (
+                isinstance(safe, bool) or not isinstance(safe, int) or safe < 1
+            ):
+                safe = None
+            if safe is not None:
+                projected[key] = safe
+        for key in ("unit_price_minor", "line_total_minor"):
+            safe = _safe_amount(item.get(key))
+            if safe is not None:
+                projected[key] = safe
+        for source_key, kind in (
+            ("product_snapshot", "product"),
+            ("configuration_snapshot", "configuration"),
+            ("price_snapshot", "price"),
+        ):
+            snapshot = _safe_snapshot(item.get(source_key), kind=kind)
+            if snapshot:
+                projected[source_key] = snapshot
+        result.append(projected)
+    return result
+
+
+def _safe_retail_history(value: object, *, profile: str) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    result: list[dict[str, object]] = []
+    for event in value:
+        if not isinstance(event, dict):
+            continue
+        projected: dict[str, object] = {}
+        for key in ("event", "from_status", "to_status", "reason"):
+            safe = _safe_text(event.get(key))
+            if safe is not None:
+                projected[key] = safe
+        timestamp = _safe_time(event.get("timestamp"))
+        if timestamp is not None:
+            projected["timestamp"] = timestamp
+        if profile == PROJECTION_PROFILE_OPERATIONS:
+            operation_id = _safe_text(event.get("operation_id"))
+            if operation_id is not None:
+                projected["operation_id"] = operation_id
+        if projected:
+            result.append(projected)
+    return result
+
+
+def _project_retail_order(
+    document: dict,
+    *,
+    profile: str,
+    detail: bool,
+) -> dict:
+    value: dict[str, object] = {}
+    for key in (
+        "id",
+        "order_number",
+        "record_class",
+        "status",
+        "version",
+        "currency",
+        "total_minor",
+        "fulfilment_method",
+        "created_at",
+        "updated_at",
+    ):
+        if key.endswith("_at"):
+            safe = _safe_time(document.get(key))
+        elif key == "total_minor":
+            safe = _safe_amount(document.get(key))
+        elif key == "version":
+            safe = document.get(key)
+            if isinstance(safe, bool) or not isinstance(safe, int) or safe < 1:
+                safe = None
+        else:
+            safe = _safe_text(document.get(key))
+        if safe is not None:
+            value[key] = safe
+
+    status = document.get("status")
+    if isinstance(status, str):
+        value["permitted_next_actions"] = retail_next_actions(status)
+    else:
+        value["permitted_next_actions"] = []
+    value["suspended_actions"] = sorted(SUSPENDED_ACTIONS)
+    value["record_class"] = "retail_order"
+
+    customer = _safe_customer(document.get("customer"), profile=profile)
+    if customer:
+        value["customer"] = customer
+    items = _safe_items(document.get("items"))
+    if detail:
+        value["items"] = items
+        value["history"] = _safe_retail_history(
+            document.get("history"), profile=profile
+        )
+        if profile == PROJECTION_PROFILE_OPERATIONS:
+            notes = _safe_text(document.get("notes"))
+            if notes is not None:
+                value["notes"] = notes
+    else:
+        value["item_count"] = len(items)
+    return value
+
+
 def project_customer_legacy_order(document: dict) -> dict:
     """Return the read-only legacy history a customer is allowed to see.
 
@@ -359,9 +553,15 @@ def project_internal_legacy_order(
     return value
 
 
-def project_retail_order(document: dict) -> dict:
-    value = {key: item for key, item in document.items() if key != "_id"}
-    value["record_class"] = "retail_order"
-    value["permitted_next_actions"] = retail_next_actions(value["status"])
-    value["suspended_actions"] = sorted(SUSPENDED_ACTIONS)
-    return value
+def project_retail_order(
+    document: dict,
+    *,
+    actor: dict | None = None,
+    detail: bool = True,
+) -> dict:
+    """Return an explicit role-aware projection, never the stored document."""
+    return _project_retail_order(
+        document,
+        profile=retail_projection_profile(actor),
+        detail=detail,
+    )

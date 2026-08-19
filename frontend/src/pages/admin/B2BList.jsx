@@ -6,7 +6,7 @@ import {
   Inbox,
   ShoppingBag,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { B2BStatusBadge } from "@/components/admin/B2BStatusBadge";
@@ -62,7 +62,7 @@ const CONFIG = {
       t("b2b.projectReference").replace("{id}", record.quote_id.slice(0, 8)),
   },
   retail_order: {
-    paginated: false,
+    paginated: true,
     endpoint: "/admin/retail-orders",
     basePath: "/admin/retail-orders",
     titleKey: "admin.retailOrders",
@@ -72,8 +72,8 @@ const CONFIG = {
     primary: (record) => record.order_number,
     secondary: (record, t) =>
       t("b2b.retailRecordReference")
-        .replace("{customer}", record.customer?.name || "—")
-        .replace("{count}", record.items?.length || 0),
+        .replace("{customer}", record.customer?.name || t("common.notAvailable"))
+        .replace("{count}", record.item_count || 0),
   },
   work_order: {
     paginated: true,
@@ -92,6 +92,28 @@ const CONFIG = {
   },
 };
 
+const RETAIL_ORDER_STATUSES = [
+  "created",
+  "awaiting_payment",
+  "paid",
+  "file_review",
+  "queued",
+  "in_production",
+  "quality_control",
+  "ready_to_ship",
+  "ready_to_pickup",
+  "shipped",
+  "picked_up",
+  "completed",
+];
+
+const EMPTY_RETAIL_FILTERS = {
+  status: "",
+  search: "",
+  updated_from: "",
+  updated_to: "",
+};
+
 function LifecycleStatusBadge({ kind, status }) {
   if (kind === "retail_order") {
     return <RetailOrderStatusBadge status={status} />;
@@ -106,29 +128,45 @@ function B2BList({ kind }) {
   const { t } = useI18n();
   const config = CONFIG[kind];
   const Icon = config.icon;
+  const isRetailOrder = kind === "retail_order";
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
   const [error, setError] = useState("");
   const [loadMoreError, setLoadMoreError] = useState("");
+  const [draftRetailFilters, setDraftRetailFilters] = useState(
+    EMPTY_RETAIL_FILTERS
+  );
+  const [retailFilters, setRetailFilters] = useState(EMPTY_RETAIL_FILTERS);
+  const requestSequence = useRef(0);
+
+  const hasActiveRetailFilters = isRetailOrder && Object.values(retailFilters).some(Boolean);
 
   const load = useCallback((cursor = null) => {
+    const requestId = ++requestSequence.current;
     if (cursor) {
       setLoadingMore(true);
       setLoadMoreError("");
     } else {
       setLoading(true);
+      setLoadingMore(false);
       setError("");
       setLoadMoreError("");
     }
+    const params = config.paginated
+      ? {
+          limit: 50,
+          ...(isRetailOrder ? retailFilters : {}),
+          ...(cursor ? { cursor } : {}),
+        }
+      : undefined;
     api
       .get(config.endpoint, {
-        params: config.paginated
-          ? { limit: 50, ...(cursor ? { cursor } : {}) }
-          : undefined,
+        params,
       })
       .then((response) => {
+        if (requestId !== requestSequence.current) return;
         if (!config.paginated) {
           setRecords(response.data);
           setNextCursor(null);
@@ -141,15 +179,17 @@ function B2BList({ kind }) {
         setNextCursor(page.nextCursor);
       })
       .catch((requestError) => {
+        if (requestId !== requestSequence.current) return;
         const message = formatApiError(requestError.response?.data?.detail);
         if (cursor) setLoadMoreError(message);
         else setError(message);
       })
       .finally(() => {
+        if (requestId !== requestSequence.current) return;
         setLoading(false);
         setLoadingMore(false);
       });
-  }, [config.endpoint, config.paginated]);
+  }, [config.endpoint, config.paginated, isRetailOrder, retailFilters]);
 
   useEffect(() => {
     load();
@@ -157,13 +197,110 @@ function B2BList({ kind }) {
 
   return (
     <AdminLayout title={t(config.titleKey)} subtitle={t(config.subtitleKey)}>
-      <SurfacePanel>
+      <SurfacePanel className="overflow-hidden">
         <SurfacePanelHeader className="flex items-center justify-between">
           <p className="type-label text-text-secondary">
             {t("b2b.records")}: {records.length}
           </p>
           <Icon className="h-4 w-4 text-action-primary" aria-hidden="true" />
         </SurfacePanelHeader>
+        {isRetailOrder && (
+          <form
+            className="grid gap-4 border-b border-border-default p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setRetailFilters({ ...draftRetailFilters });
+            }}
+            aria-label={t("retail.filterTitle")}
+          >
+            <div className="sm:col-span-2 lg:col-span-4">
+              <h2 className="font-heading text-base font-semibold text-text-primary">
+                {t("retail.filterTitle")}
+              </h2>
+              <p className="mt-1 text-sm text-text-secondary">
+                {t("retail.filterHint")}
+              </p>
+            </div>
+            <label className="grid gap-2 text-sm font-medium text-text-primary">
+              {t("retail.searchLabel")}
+              <input
+                type="search"
+                value={draftRetailFilters.search}
+                maxLength={80}
+                placeholder={t("retail.searchPlaceholder")}
+                onChange={(event) =>
+                  setDraftRetailFilters((current) => ({
+                    ...current,
+                    search: event.target.value,
+                  }))
+                }
+                className="h-11 rounded-control border border-border-control bg-surface-default px-3 text-base text-text-primary shadow-sm focus-visible:border-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring md:text-sm"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-text-primary">
+              {t("retail.statusFilter")}
+              <select
+                value={draftRetailFilters.status}
+                onChange={(event) =>
+                  setDraftRetailFilters((current) => ({
+                    ...current,
+                    status: event.target.value,
+                  }))
+                }
+                className="h-11 rounded-control border border-border-control bg-surface-default px-3 text-base text-text-primary shadow-sm focus-visible:border-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring md:text-sm"
+              >
+                <option value="">{t("common.all")}</option>
+                {RETAIL_ORDER_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {t(`status.${status}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-text-primary">
+              {t("retail.updatedFrom")}
+              <input
+                type="date"
+                value={draftRetailFilters.updated_from}
+                onChange={(event) =>
+                  setDraftRetailFilters((current) => ({
+                    ...current,
+                    updated_from: event.target.value,
+                  }))
+                }
+                className="h-11 rounded-control border border-border-control bg-surface-default px-3 text-base text-text-primary shadow-sm focus-visible:border-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring md:text-sm"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-text-primary">
+              {t("retail.updatedTo")}
+              <input
+                type="date"
+                value={draftRetailFilters.updated_to}
+                onChange={(event) =>
+                  setDraftRetailFilters((current) => ({
+                    ...current,
+                    updated_to: event.target.value,
+                  }))
+                }
+                className="h-11 rounded-control border border-border-control bg-surface-default px-3 text-base text-text-primary shadow-sm focus-visible:border-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring md:text-sm"
+              />
+            </label>
+            <div className="flex flex-wrap items-end gap-3 sm:col-span-2 lg:col-span-4">
+              <Button type="submit">{t("retail.applyFilters")}</Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!Object.values(draftRetailFilters).some(Boolean)}
+                onClick={() => {
+                  setDraftRetailFilters(EMPTY_RETAIL_FILTERS);
+                  setRetailFilters(EMPTY_RETAIL_FILTERS);
+                }}
+              >
+                {t("retail.clearFilters")}
+              </Button>
+            </div>
+          </form>
+        )}
         {loading ? (
           <OperationalState state="loading" title={t("common.loading")} />
         ) : error ? (
@@ -175,7 +312,10 @@ function B2BList({ kind }) {
             onRetry={() => load()}
           />
         ) : records.length === 0 ? (
-          <OperationalState state="empty" title={t(config.emptyKey)} />
+          <OperationalState
+            state={hasActiveRetailFilters ? "no-match" : "empty"}
+            title={t(hasActiveRetailFilters ? "retail.noMatch" : config.emptyKey)}
+          />
         ) : (
           <div className="divide-y divide-border-default">
             {records.map((record) => (

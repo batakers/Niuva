@@ -18,6 +18,17 @@ const listSource = fs.readFileSync(
   path.join(__dirname, "B2BList.jsx"),
   "utf8"
 );
+const surfacePanelSource = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "..",
+    "components",
+    "ui",
+    "surface-panel.jsx"
+  ),
+  "utf8"
+);
 const detailSource = fs.readFileSync(
   path.join(__dirname, "B2BDetail.jsx"),
   "utf8"
@@ -54,6 +65,16 @@ describe("B2B Admin workbench routes", () => {
     expect(listSource).toContain("<Link");
     expect(listSource).not.toContain("<Dialog");
   });
+
+  test(
+    "clips the shared collection composition without changing the primitive default",
+    () => {
+      expect(listSource).toContain(
+        '<SurfacePanel className="overflow-hidden">'
+      );
+      expect(surfacePanelSource).not.toContain("overflow-hidden");
+    }
+  );
 
   test("consumes the bounded cursor page and exposes explicit continuation", () => {
     expect(listSource).toContain("readB2BPage(response.data)");

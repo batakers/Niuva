@@ -11,6 +11,7 @@ const read = (...segments) =>
   fs.readFileSync(path.resolve(__dirname, ...segments), "utf8");
 
 const appSource = read("..", "..", "App.js");
+const listSource = read("B2BList.jsx");
 const detailSource = read("RetailOrderDetail.jsx");
 const legacySource = read("Orders.jsx");
 const i18nSource = read("..", "..", "i18n.js");
@@ -105,7 +106,9 @@ describe("Retail order detail surface", () => {
   });
 
   test("keeps historical orders read-only", () => {
-    expect(detailSource).toContain("Retail transaction inactive");
+    expect(detailSource).toContain('t("retail.inactiveTitle")');
+    expect(detailSource).toContain('t("retail.inactiveDescription")');
+    expect(detailSource).not.toContain("Retail transaction inactive");
     expect(detailSource).not.toContain("/transitions");
     expect(detailSource).not.toContain("retail-action-");
   });
@@ -118,6 +121,42 @@ describe("Retail order detail surface", () => {
 
   test("offers no command even when the record advertises historical actions", () => {
     expect(detailSource).not.toContain("permitted_next_actions");
+  });
+});
+
+describe("Retail order collection contract", () => {
+  test("uses the paginated query contract and keeps filters Retail-only", () => {
+    expect(listSource).toContain('endpoint: "/admin/retail-orders"');
+    expect(listSource).toContain("paginated: true");
+    expect(listSource).toContain("updated_from");
+    expect(listSource).toContain("updated_to");
+    expect(listSource).toContain("retailFilters");
+    expect(listSource).toContain("nextCursor");
+  });
+
+  test("keeps no-match, filter, and inactive copy localized in both languages", () => {
+    for (const key of [
+      "common.notAvailable",
+      "retail.noMatch",
+      "retail.filterTitle",
+      "retail.filterHint",
+      "retail.searchLabel",
+      "retail.searchPlaceholder",
+      "retail.statusFilter",
+      "retail.updatedFrom",
+      "retail.updatedTo",
+      "retail.applyFilters",
+      "retail.clearFilters",
+      "retail.inactiveTitle",
+      "retail.inactiveDescription",
+    ]) {
+      expect(i18nSource.match(new RegExp(`"${key}":`, "g"))).toHaveLength(2);
+    }
+  });
+
+  test("does not introduce Retail mutation calls", () => {
+    expect(listSource).not.toMatch(/api\.(post|put|patch|delete)\s*\(/);
+    expect(detailSource).not.toMatch(/api\.(post|put|patch|delete)\s*\(/);
   });
 });
 
