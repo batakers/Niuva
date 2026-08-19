@@ -11,6 +11,46 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { useI18n } from "../../i18n";
 
+const ADMIN_LOGIN_PATH = "/admin/login";
+const SAFE_URL_ORIGIN = "https://niuva.local";
+
+export function getAdminDestination(requestedDestination) {
+  if (typeof requestedDestination !== "string" || !requestedDestination.startsWith("/")) {
+    return "/admin";
+  }
+
+  if (requestedDestination.startsWith("//") || requestedDestination.includes("\\")) {
+    return "/admin";
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(requestedDestination, SAFE_URL_ORIGIN);
+  } catch {
+    return "/admin";
+  }
+
+  if (
+    parsed.origin !== SAFE_URL_ORIGIN
+    || parsed.username
+    || parsed.password
+  ) {
+    return "/admin";
+  }
+
+  const { pathname } = parsed;
+  if (
+    /%(?:2f|5c|2e)/i.test(pathname)
+    || (pathname !== "/admin" && !pathname.startsWith("/admin/"))
+    || pathname === ADMIN_LOGIN_PATH
+    || pathname.startsWith(`${ADMIN_LOGIN_PATH}/`)
+  ) {
+    return "/admin";
+  }
+
+  return `${pathname}${parsed.search}${parsed.hash}`;
+}
+
 export default function AdminLogin() {
   const { t } = useI18n();
   const { user, loading: authLoading, login } = useAuth();
@@ -22,12 +62,8 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const requestedDestination = location.state?.from;
-  const destination =
-    typeof requestedDestination === "string" &&
-    requestedDestination.startsWith("/admin") &&
-    !requestedDestination.startsWith("/admin/login")
-      ? requestedDestination
-      : "/admin";
+  const destination = getAdminDestination(requestedDestination);
+  const invitationAccepted = location.state?.invitationAccepted === true;
 
   useEffect(() => {
     document.title = `${t("auth.adminLogin")} - Niuva`;
@@ -109,9 +145,15 @@ export default function AdminLogin() {
               className="h-4 w-4 rounded-control border-border-strong text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
             />
             <Label htmlFor="admin-login-remember-me" className="type-body-small text-text-secondary">
-              Ingat saya
+              {t("auth.rememberMe")}
             </Label>
           </div>
+
+          {invitationAccepted && (
+            <Alert tone="success" data-testid="admin-login-invitation-success">
+              {t("auth.invitationAccepted")}
+            </Alert>
+          )}
 
           {error && (
             <Alert className="type-body-small" data-testid="admin-login-error">
