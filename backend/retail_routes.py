@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from retail_domain import RetailDomainError
 from retail_service import RetailOrderService
@@ -80,10 +80,25 @@ def build_retail_router(
 
     @router.get("")
     async def list_orders(
-        status_filter: str | None = None,
-        _actor: dict = Depends(require_permission("orders.read")),
+        status_filter: str | None = Query(default=None, alias="status"),
+        search: str | None = Query(default=None),
+        updated_from: str | None = Query(default=None),
+        updated_to: str | None = Query(default=None),
+        limit: int = Query(default=50),
+        cursor: str | None = Query(default=None),
+        actor: dict = Depends(require_permission("orders.read")),
     ):
-        return await invoke(service().list_orders(status=status_filter))
+        return await invoke(
+            service().list_orders(
+                status=status_filter,
+                search=search,
+                updated_from=updated_from,
+                updated_to=updated_to,
+                limit=limit,
+                cursor=cursor,
+                actor=actor,
+            )
+        )
 
     @router.post("", status_code=status.HTTP_201_CREATED)
     async def create_order(
@@ -104,9 +119,9 @@ def build_retail_router(
     @router.get("/{order_id}")
     async def get_order(
         order_id: str,
-        _actor: dict = Depends(require_permission("orders.read")),
+        actor: dict = Depends(require_permission("orders.read")),
     ):
-        return await invoke(service().get_order(order_id))
+        return await invoke(service().get_order(order_id, actor=actor))
 
     @router.post("/{order_id}/transitions")
     async def transition_order(

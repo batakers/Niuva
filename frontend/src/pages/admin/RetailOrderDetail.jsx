@@ -102,10 +102,13 @@ export default function RetailOrderDetail() {
               </p>
             </SurfacePanelHeader>
             <dl className="grid gap-px bg-border-default sm:grid-cols-2">
-              <Fact label={t("retail.customer")} value={record.customer?.name} />
+              <Fact
+                label={t("retail.customer")}
+                value={record.customer?.name || t("common.notAvailable")}
+              />
               <Fact
                 label={t("common.email")}
-                value={record.customer?.email}
+                value={record.customer?.email || t("common.notAvailable")}
               />
               <Fact
                 label={t("retail.fulfilment")}
@@ -213,12 +216,11 @@ export default function RetailOrderDetail() {
             <div className="flex items-center gap-2">
               <Lock className="h-4 w-4 text-text-secondary" aria-hidden="true" />
               <p className="type-label text-text-secondary">
-                Retail transaction inactive
+                {t("retail.inactiveTitle")}
               </p>
             </div>
             <p className="mt-3 text-sm leading-6 text-text-secondary">
-              Order historis ini hanya dapat dibaca. Payment, production,
-              fulfilment, refund, dan return belum diaktifkan.
+              {t("retail.inactiveDescription")}
             </p>
           </SurfacePanel>
 

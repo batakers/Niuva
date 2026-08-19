@@ -7,6 +7,8 @@ and that the canonical lifecycle is walked one stage at a time.
 """
 
 import asyncio
+import re
+import types
 
 import pytest
 from retail_domain import (
@@ -18,6 +20,93 @@ from retail_domain import (
 from retail_service import RetailOrderService
 
 from tests.test_b2b_quote_conversion import EnabledGuard, FakeCollection, FakeDatabase
+
+
+def _nested_value(item, path):
+    value = item
+    for part in path.split("."):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(part)
+    return value
+
+
+def _matches_retail(item, query):
+    for key, condition in query.items():
+        if key == "$and":
+            if not all(_matches_retail(item, child) for child in condition):
+                return False
+            continue
+        if key == "$or":
+            if not any(_matches_retail(item, child) for child in condition):
+                return False
+            continue
+        value = _nested_value(item, key)
+        if not isinstance(condition, dict):
+            if value != condition:
+                return False
+            continue
+        for operator, expected in condition.items():
+            if operator == "$options":
+                continue
+            if operator == "$in" and value not in expected:
+                return False
+            if operator == "$ne" and value == expected:
+                return False
+            if operator == "$lt" and not (value is not None and value < expected):
+                return False
+            if operator == "$lte" and not (value is not None and value <= expected):
+                return False
+            if operator == "$gt" and not (value is not None and value > expected):
+                return False
+            if operator == "$gte" and not (value is not None and value >= expected):
+                return False
+            if operator == "$regex":
+                flags = re.IGNORECASE if condition.get("$options") == "i" else 0
+                if not isinstance(value, str) or re.search(expected, value, flags) is None:
+                    return False
+    return True
+
+
+class RetailCursor:
+    def __init__(self, items):
+        self.items = [dict(item) for item in items]
+
+    def sort(self, key, direction=None):
+        fields = key if isinstance(key, list) else [(key, direction)]
+        for field, field_direction in reversed(fields):
+            self.items.sort(
+                key=lambda item: _nested_value(item, field) or "",
+                reverse=field_direction < 0,
+            )
+        return self
+
+    def limit(self, value):
+        self.items = self.items[:value]
+        return self
+
+    async def to_list(self, length):
+        return [dict(item) for item in self.items[:length]]
+
+
+class RetailCollection(FakeCollection):
+    async def find_one(self, query, projection=None, **_options):
+        for item in self.items:
+            if _matches_retail(item, query):
+                return dict(item)
+        return None
+
+    def find(self, query, projection=None, **_options):
+        return RetailCursor(
+            [item for item in self.items if _matches_retail(item, query)]
+        )
+
+    async def update_one(self, query, update, **_options):
+        for item in self.items:
+            if _matches_retail(item, query):
+                item.update(update.get("$set", {}))
+                return types.SimpleNamespace(matched_count=1)
+        return types.SimpleNamespace(matched_count=0)
 
 ACTOR = {"id": "order-admin", "email": "orders@niuva.test"}
 
@@ -39,7 +128,7 @@ CUSTOMER = {"name": "Ayu", "email": "ayu@example.com", "phone": "081234567890"}
 class RetailDatabase(FakeDatabase):
     def __init__(self):
         super().__init__()
-        self.retail_orders = FakeCollection()
+        self.retail_orders = RetailCollection()
         self.retail_order_counters = CounterCollection()
 
 
