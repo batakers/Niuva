@@ -111,11 +111,17 @@ function B2BList({ kind }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
   const [error, setError] = useState("");
+  const [loadMoreError, setLoadMoreError] = useState("");
 
   const load = useCallback((cursor = null) => {
-    if (cursor) setLoadingMore(true);
-    else setLoading(true);
-    setError("");
+    if (cursor) {
+      setLoadingMore(true);
+      setLoadMoreError("");
+    } else {
+      setLoading(true);
+      setError("");
+      setLoadMoreError("");
+    }
     api
       .get(config.endpoint, {
         params: config.paginated
@@ -134,9 +140,11 @@ function B2BList({ kind }) {
         );
         setNextCursor(page.nextCursor);
       })
-      .catch((requestError) =>
-        setError(formatApiError(requestError.response?.data?.detail))
-      )
+      .catch((requestError) => {
+        const message = formatApiError(requestError.response?.data?.detail);
+        if (cursor) setLoadMoreError(message);
+        else setError(message);
+      })
       .finally(() => {
         setLoading(false);
         setLoadingMore(false);
@@ -198,6 +206,16 @@ function B2BList({ kind }) {
                 <ArrowRight className="h-4 w-4 shrink-0 text-text-secondary transition-transform duration-fast group-hover:translate-x-1 motion-reduce:transition-none" />
               </Link>
             ))}
+            {loadMoreError && (
+              <OperationalState
+                state="error"
+                title={t("b2b.loadFailed")}
+                description={loadMoreError}
+                retryLabel={t("common.retry")}
+                onRetry={() => load(nextCursor)}
+                className="min-h-0 border-0 border-t p-4 sm:p-5"
+              />
+            )}
             {nextCursor && (
               <div className="flex justify-center p-4 sm:p-5">
                 <Button

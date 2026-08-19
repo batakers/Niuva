@@ -63,6 +63,17 @@ describe("B2B Admin workbench routes", () => {
     expect(listSource).toContain("onRetry={() => load()}");
   });
 
+  test("retains loaded records when load-more fails and retries the same cursor", () => {
+    expect(listSource).toContain("loadMoreError");
+    expect(listSource).toContain("setLoadMoreError");
+    expect(listSource).toContain("if (cursor) setLoadMoreError(message)");
+    expect(listSource).toContain("onRetry={() => load(nextCursor)}");
+    expect(listSource).toContain('className="min-h-0 border-0 border-t');
+    expect(listSource.indexOf("{records.map")).toBeLessThan(
+      listSource.indexOf("{loadMoreError &&")
+    );
+  });
+
   test("shows operational spine, blockers, version, and audit history", () => {
     expect(detailSource).toContain('data-testid="b2b-operational-spine"');
     expect(detailSource).toContain('t("b2b.blockers")');
