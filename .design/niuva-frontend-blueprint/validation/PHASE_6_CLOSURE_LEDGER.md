@@ -6,9 +6,9 @@ families are reopened one at a time and Phase 7 remains **explicitly frozen**
 **Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`0bb9111b2052baa2aef0f52196e700519e61284c`
+`74967a33abc6537bdd4a5c0eaec826ad251b8d91`
 
-**Worktree:** `docs/niuva-phase6-two-axis-staff-g3-20260819`
+**Worktree:** `docs/niuva-ops-b2b-g3-rebaseline-20260819`
 
 **Scope:** Reconcile the complete Niuva frontend migration boundary across
 Public, Commerce/Retail, Account/Auth, Customer-owned records, Operations,
@@ -23,8 +23,11 @@ or business rules.
 
 ## 1. Closure decision and two-axis model
 
-Phase 6 is not closed yet. The first reopened family is Staff login and
-invitation acceptance; the exact G3 card and self-review are linked below.
+Phase 6 is not closed yet. Staff login and invitation acceptance was the first
+reopened family and its bounded frontend G4 is now recorded in PR #310. The
+next reopened candidate is Operations Quotes and B2B Projects; its exact G3
+card and self-review are linked below. Capability status remains independent:
+the Staff API and Operations lifecycle authorities are still deferred.
 
 The design artifacts and executable Wave B–F candidate tasks are complete at
 the candidate/self-review level, and bounded source pilots have been merged.
@@ -49,13 +52,21 @@ Inactive Retail transaction paths, reserved project-detail paths, compatibility
 aliases, prototypes, provider seams, and legal/content holds remain explicit
 exceptions rather than being fabricated into “complete” runtime features.
 
-The first reopened family is:
+The first reopened family was:
 
 [`STAFF_LOGIN_INVITATION_G3_TASK_CARD.md`](../migration/account/STAFF_LOGIN_INVITATION_G3_TASK_CARD.md)
 
 Its self-review is:
 
 [`STAFF_LOGIN_INVITATION_G3_SELF_REVIEW.md`](STAFF_LOGIN_INVITATION_G3_SELF_REVIEW.md)
+
+The next exact G3 candidate is:
+
+[`OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md`](../migration/operations/OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md)
+
+Its self-review is:
+
+[`OPS_03_B2B_QUOTE_PROJECT_G3_SELF_REVIEW.md`](OPS_03_B2B_QUOTE_PROJECT_G3_SELF_REVIEW.md)
 
 ## 2. Authority and precedence
 
@@ -91,7 +102,9 @@ The working evidence set for this ledger is:
   `PENDING_G3` row; and
 - [`PHASE_6_TWO_AXIS_STATUS_AMENDMENT.md`](PHASE_6_TWO_AXIS_STATUS_AMENDMENT.md)
   plus [`STAFF_LOGIN_INVITATION_G3_SELF_REVIEW.md`](STAFF_LOGIN_INVITATION_G3_SELF_REVIEW.md),
-  the current two-axis reopening and Staff G3 evidence.
+  the Staff G3 evidence and post-PR #310 frontend status; and
+- [`OPS_03_B2B_QUOTE_PROJECT_G3_SELF_REVIEW.md`](OPS_03_B2B_QUOTE_PROJECT_G3_SELF_REVIEW.md),
+  the current exact-source review for the next Operations candidate.
 
 ## 3. Inventory baseline
 
@@ -128,9 +141,9 @@ never authorization, and a component's existence is never adoption proof.
 | Customer Login and recovery | `DELIVERED_BOUNDED` | `BOUNDED_ACTIVE` | `DELIVERED_BOUNDED` | MIG-03 Account/Auth pilot, merged PR #288 | Backend session, identity, provider, and activation boundaries remain unchanged. |
 | Customer Registration email/password | `DELIVERED_BOUNDED` | `BOUNDED_ACTIVE` | `DELIVERED_BOUNDED` | Registration slice, merged PR #296 | Verification and dormant Google OIDC seams do not activate registration flags or provider credentials. |
 | Customer-owned dashboard/order detail | `DELIVERED_BOUNDED` | `BOUNDED_ACTIVE` | `DELIVERED_BOUNDED` | SRC-ACC-03 read-only order recovery pilot, merged PR #299 | Customer-safe projection only; no new order, payment, upload, or permission authority. |
-| Staff login and invitation acceptance | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`STAFF_LOGIN_INVITATION_G3_TASK_CARD.md`](../migration/account/STAFF_LOGIN_INVITATION_G3_TASK_CARD.md); current `AdminLogin`, `StaffInvitationAccept`, AuthShell/ProtectedRoute tests | Invitation validity/identity and staff lifecycle require a separately approved staff API/source card; customer identity remains distinct. |
+| Staff login and invitation acceptance | `DELIVERED_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`STAFF_LOGIN_INVITATION_G3_TASK_CARD.md`](../migration/account/STAFF_LOGIN_INVITATION_G3_TASK_CARD.md), bounded G4 PR #310, and current `AdminLogin`/`StaffInvitationAccept` tests | Frontend handoff, localization, safe return, and uncertain outcome are bounded; invitation validity/identity and staff lifecycle remain separately owned capability gates. |
 | Operations Inquiry queue/detail | `DELIVERED_BOUNDED` | `BOUNDED_ACTIVE` | `DELIVERED_BOUNDED` | MIG-04 bounded Operations presentation pilot, merged PR #290 | Backend authorization, projection, and lifecycle remain the authority. |
-| Operations Quotes and B2B Projects | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current B2B list/detail/revision source and contract tests | Quote/Project lifecycle transitions, revision authority, and permissions require their own Operations G4. |
+| Operations Quotes and B2B Projects | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md`](../migration/operations/OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md) and its self-review | G3 exact-file review is the next gate; Quote/Project lifecycle transitions, revision authority, and permissions remain domain-owned and no capability activation is implied. |
 | Operations Retail Orders and after-sales | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current Retail Order presentation and contract tests | Finance/provider, refund/reprint, fulfillment, permission, API, and activation gates remain open. |
 | Operations catalog, materials, inventory, work orders | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current Catalog/Materials/Inventory/Work Order source and tests | Product/production state is domain-owned; no provider or production readiness is implied. |
 | Operations publishing/CMS | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current CMS/Portfolio source and lifecycle tests | Content owner, locale, version, publish, rollback, and asset authority require separate source evidence. |
@@ -170,8 +183,9 @@ Phase 6 must proceed in this order:
 2. Record `frontend_status` and `capability_status` independently. A deferred
    capability may have a `PRESENTATION_BOUNDED` frontend status, but it is not
    a delivered capability.
-3. Reopen one deferred family at a time. The current family is Staff login and
-   invitation; its exact G3 card is the next gate.
+3. Reopen one deferred family at a time. Staff login/invitation is recorded
+   with bounded frontend G4 evidence; the current family is Operations Quotes
+   and B2B Projects and its exact G3 card is the next gate.
 4. For each eligible family, create one exact-file G3 card, review current
    source/tests, and authorize only the named G4 slice.
 5. Implement in one owned worktree per slice without changing unrelated
@@ -223,8 +237,13 @@ token-promotion mechanism.
       frontend/capability disposition and documented owner/domain reason where
       deferred.
 - [x] Staff login/invitation is reopened as the first exact G3 family.
+- [x] Staff login/invitation frontend evidence is updated through merged PR #310
+      while capability status remains deferred.
+- [x] Operations Quotes and B2B Projects is named as the next exact G3 family
+      with a bounded candidate file set.
 - [ ] Final Phase 6 closure verdict.
 
-**Current verdict:** `CANDIDATE TWO-AXIS REOPEN — Staff login/invitation is the
-first deferred family reopened for G3; final Phase 6 closure remains pending
-and Phase 7 remains frozen.`
+**Current verdict:** `CANDIDATE TWO-AXIS REOPEN — Staff login/invitation has
+bounded frontend evidence in PR #310, and Operations Quotes/B2B Projects is
+the next exact G3 family; final Phase 6 closure remains pending and Phase 7
+remains frozen.`
