@@ -6,9 +6,9 @@ families are reopened one at a time and Phase 7 remains **explicitly frozen**
 **Date:** 19 August 2026
 
 **Repository baseline:** `origin/main`
-`74967a33abc6537bdd4a5c0eaec826ad251b8d91`
+`7cbaba7c782eabebdbbf6ff24e7d5fb2cbea7b50`
 
-**Worktree:** `docs/niuva-ops-b2b-g3-rebaseline-20260819`
+**Worktree:** `docs/niuva-ops-b2b-g4-evidence-20260819`
 
 **Scope:** Reconcile the complete Niuva frontend migration boundary across
 Public, Commerce/Retail, Account/Auth, Customer-owned records, Operations,
@@ -24,10 +24,11 @@ or business rules.
 ## 1. Closure decision and two-axis model
 
 Phase 6 is not closed yet. Staff login and invitation acceptance was the first
-reopened family and its bounded frontend G4 is now recorded in PR #310. The
-next reopened candidate is Operations Quotes and B2B Projects; its exact G3
-card and self-review are linked below. Capability status remains independent:
-the Staff API and Operations lifecycle authorities are still deferred.
+reopened family and its bounded frontend G4 is recorded in PR #310. Operations
+Quotes and B2B Projects was the next reopened family; its bounded load-more G4
+is recorded in PR #312. Capability status remains independent: the Staff API
+and Operations lifecycle authorities are still deferred, and no new family is
+selected by this record.
 
 The design artifacts and executable Wave B–F candidate tasks are complete at
 the candidate/self-review level, and bounded source pilots have been merged.
@@ -60,13 +61,17 @@ Its self-review is:
 
 [`STAFF_LOGIN_INVITATION_G3_SELF_REVIEW.md`](STAFF_LOGIN_INVITATION_G3_SELF_REVIEW.md)
 
-The next exact G3 candidate is:
+The Operations Quotes and B2B Projects G3 card was:
 
 [`OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md`](../migration/operations/OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md)
 
 Its self-review is:
 
 [`OPS_03_B2B_QUOTE_PROJECT_G3_SELF_REVIEW.md`](OPS_03_B2B_QUOTE_PROJECT_G3_SELF_REVIEW.md)
+
+Its bounded G4 evidence is:
+
+[`OPS_03_B2B_QUOTE_PROJECT_G4_SELF_REVIEW.md`](OPS_03_B2B_QUOTE_PROJECT_G4_SELF_REVIEW.md)
 
 ## 2. Authority and precedence
 
@@ -104,7 +109,9 @@ The working evidence set for this ledger is:
   plus [`STAFF_LOGIN_INVITATION_G3_SELF_REVIEW.md`](STAFF_LOGIN_INVITATION_G3_SELF_REVIEW.md),
   the Staff G3 evidence and post-PR #310 frontend status; and
 - [`OPS_03_B2B_QUOTE_PROJECT_G3_SELF_REVIEW.md`](OPS_03_B2B_QUOTE_PROJECT_G3_SELF_REVIEW.md),
-  the current exact-source review for the next Operations candidate.
+  the exact-source review that identified the load-more recovery gap; and
+- [`OPS_03_B2B_QUOTE_PROJECT_G4_SELF_REVIEW.md`](OPS_03_B2B_QUOTE_PROJECT_G4_SELF_REVIEW.md),
+  the merged bounded recovery evidence for OPS-03.
 
 ## 3. Inventory baseline
 
@@ -143,7 +150,7 @@ never authorization, and a component's existence is never adoption proof.
 | Customer-owned dashboard/order detail | `DELIVERED_BOUNDED` | `BOUNDED_ACTIVE` | `DELIVERED_BOUNDED` | SRC-ACC-03 read-only order recovery pilot, merged PR #299 | Customer-safe projection only; no new order, payment, upload, or permission authority. |
 | Staff login and invitation acceptance | `DELIVERED_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`STAFF_LOGIN_INVITATION_G3_TASK_CARD.md`](../migration/account/STAFF_LOGIN_INVITATION_G3_TASK_CARD.md), bounded G4 PR #310, and current `AdminLogin`/`StaffInvitationAccept` tests | Frontend handoff, localization, safe return, and uncertain outcome are bounded; invitation validity/identity and staff lifecycle remain separately owned capability gates. |
 | Operations Inquiry queue/detail | `DELIVERED_BOUNDED` | `BOUNDED_ACTIVE` | `DELIVERED_BOUNDED` | MIG-04 bounded Operations presentation pilot, merged PR #290 | Backend authorization, projection, and lifecycle remain the authority. |
-| Operations Quotes and B2B Projects | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md`](../migration/operations/OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md) and its self-review | G3 exact-file review is the next gate; Quote/Project lifecycle transitions, revision authority, and permissions remain domain-owned and no capability activation is implied. |
+| Operations Quotes and B2B Projects | `DELIVERED_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | [`OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md`](../migration/operations/OPS_03_B2B_QUOTE_PROJECT_G3_TASK_CARD.md), bounded G4 PR [#312](https://github.com/batakers/Niuva/pull/312), and [`OPS_03_B2B_QUOTE_PROJECT_G4_SELF_REVIEW.md`](OPS_03_B2B_QUOTE_PROJECT_G4_SELF_REVIEW.md) | Load-more recovery is bounded; Quote/Project lifecycle transitions, revision authority, permission/API truth, and mutation error taxonomy remain domain-owned. |
 | Operations Retail Orders and after-sales | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current Retail Order presentation and contract tests | Finance/provider, refund/reprint, fulfillment, permission, API, and activation gates remain open. |
 | Operations catalog, materials, inventory, work orders | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current Catalog/Materials/Inventory/Work Order source and tests | Product/production state is domain-owned; no provider or production readiness is implied. |
 | Operations publishing/CMS | `PRESENTATION_BOUNDED` | `DEFERRED` | `DEFERRED_WITH_OWNER_REASON` | `PHASE_6_PENDING_G3_SELF_REVIEW.md`; current CMS/Portfolio source and lifecycle tests | Content owner, locale, version, publish, rollback, and asset authority require separate source evidence. |
@@ -183,9 +190,9 @@ Phase 6 must proceed in this order:
 2. Record `frontend_status` and `capability_status` independently. A deferred
    capability may have a `PRESENTATION_BOUNDED` frontend status, but it is not
    a delivered capability.
-3. Reopen one deferred family at a time. Staff login/invitation is recorded
-   with bounded frontend G4 evidence; the current family is Operations Quotes
-   and B2B Projects and its exact G3 card is the next gate.
+3. Reopen one deferred family at a time. Staff login/invitation and Operations
+   Quotes/B2B Projects now have bounded frontend G4 evidence; remaining
+   deferred families require their own exact G3 review before any new G4.
 4. For each eligible family, create one exact-file G3 card, review current
    source/tests, and authorize only the named G4 slice.
 5. Implement in one owned worktree per slice without changing unrelated
@@ -241,9 +248,11 @@ token-promotion mechanism.
       while capability status remains deferred.
 - [x] Operations Quotes and B2B Projects is named as the next exact G3 family
       with a bounded candidate file set.
+- [x] Operations Quotes and B2B Projects load-more recovery evidence is recorded
+      through merged PR #312 while capability status remains deferred.
 - [ ] Final Phase 6 closure verdict.
 
-**Current verdict:** `CANDIDATE TWO-AXIS REOPEN — Staff login/invitation has
-bounded frontend evidence in PR #310, and Operations Quotes/B2B Projects is
-the next exact G3 family; final Phase 6 closure remains pending and Phase 7
-remains frozen.`
+**Current verdict:** `CANDIDATE TWO-AXIS REOPEN — Staff login/invitation and
+Operations Quotes/B2B Projects have bounded frontend evidence in PRs #310 and
+#312; remaining deferred families require separate review, final Phase 6
+closure remains pending, and Phase 7 remains frozen.`
